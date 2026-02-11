@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-Spider AI Tool - Premium WhatsApp Automation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary: #25D366; --dark: #0A0E27; --gold: #fab005; }
+        body { font-family: 'Poppins', sans-serif; background: #f0f2f5; padding: 20px; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .logo { font-family: 'Bebas Neue'; font-size: 3rem; text-align: center; color: var(--primary); }
+        .wallet-card { background: var(--dark); color: white; padding: 15px; border-radius: 12px; margin-bottom: 20px; display: flex; justify-content: space-between; }
+        .input-group { margin-bottom: 15px; }
+        input, select, textarea { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 10px; margin-top: 5px; }
+        .btn { width: 100%; padding: 15px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-gen { background: var(--primary); color: white; }
+        .btn-pay { background: var(--gold); color: black; }
+        .preview-box { background: #e5ddd5; padding: 15px; border-radius: 10px; margin-top: 15px; min-height: 100px; white-space: pre-wrap; }
+        .disclaimer { font-size: 0.75rem; color: #666; margin-top: 30px; padding: 15px; border: 1px solid #ddd; background: #fff5f5; border-radius: 10px; }
+        .watermark { position: fixed; bottom: 10px; right: 10px; opacity: 0.2; font-family: 'Bebas Neue'; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div class="watermark">K SPIDER FOR KREATION</div>
+
+<div class="container">
+    <div class="logo">🕷️ K-SPIDER AI</div>
+    
+    <div class="wallet-card">
+        <div>🆓 Free Messages: <span id="freeLeft">10</span></div>
+        <div>💰 Balance: ₹<span id="balance">0</span></div>
+        <div>📊 Spent: <span id="spent">0</span> msg</div>
+    </div>
+
+    <div class="section">
+        <div class="input-group">
+            <label>Topic (Mera Topic likhen)</label>
+            <input type="text" id="topic" placeholder="e.g. How to Earn Money Online">
+        </div>
+        
+        <div class="input-group">
+            <label>Style Chunein (Maximum Styles)</label>
+            <select id="style">
+                <option value="viral">🔥 Viral Message Style</option>
+                <option value="breaking">📰 Breaking News Style</option>
+                <option value="motivational">💪 Motivational Style</option>
+                <option value="business">💼 Business / Professional</option>
+                <option value="educational">📚 Educational / Learning</option>
+                <option value="tips">💡 Tips & Tricks</option>
+                <option value="festival">🎉 Festival Greetings</option>
+            </select>
+        </div>
+
+        <button class="btn btn-gen" onclick="generateMessage()">✨ Generate / Regenerate Message</button>
+    </div>
+
+    <div class="preview-box" id="preview">Apka generated message yahan dikhega...</div>
+
+    <div style="margin-top: 20px;">
+        <label>Target Numbers (Comma se alag karein)</label>
+        <textarea id="numbers" placeholder="919876543210, 910000000000"></textarea>
+        <button class="btn btn-gen" style="background: #128C7E;" onclick="startSending()">🚀 Start Sending (₹1 / message)</button>
+    </div>
+
+    <div id="rechargeSection" style="display:none;" class="earning-section">
+        <hr style="margin: 20px 0;">
+        <h3 style="text-align: center;">🛑 Free Limit Reached!</h3>
+        <p style="text-align: center; font-size: 0.9rem;">Ab aage use karne ke liye recharge karein (₹1 per message)</p>
+        <div style="text-align: center; padding: 15px; background: #fff9db; border: 2px dashed #fab005; border-radius: 10px; margin-top: 10px;">
+            <strong>UPI ID: 9099928877@pthdfc</strong><br>
+            <small>Minimum Recharge: ₹10</small>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px;">
+            <a href="mailto:doeaccmorbi@gmail.com?subject=Payment Proof" class="btn btn-pay" style="text-align:center; text-decoration:none;">📧 Email Proof</a>
+            <a href="https://wa.me/919099928877?text=Mene payment kar diya hai, please approve karein" class="btn btn-pay" style="text-align:center; text-decoration:none; background:#25D366; color:white;">📱 WhatsApp Proof</a>
+        </div>
+    </div>
+
+    <div class="disclaimer">
+        <strong>⚠️ LEGAL DISCLAIMER (कानूनी सूचना):</strong><br>
+        1. Yah tool keval educational aur personal use ke liye hai. <br>
+        2. SPAM message bhejna "TRAI Regulation" aur "IT Act 2000" ke tahat jurm hai. <br>
+        3. Kisi bhi vyakti ko uski sahmati ke bina message na bhejein. <br>
+        4. "K Spider for Kreation" channel ya iske owner kisi bhi account ban ya legal action ke liye zimmedar nahi honge. <br>
+        5. User is tool ka upyog apni zimmedari par kar raha hai. 
+    </div>
+</div>
+
+<script>
+    let freeCount = 10;
+    let balance = 0;
+    let spentCount = 0;
+
+    function generateMessage() {
+        const topic = document.getElementById('topic').value;
+        const style = document.getElementById('style').value;
+        if(!topic) { alert("Please enter a topic!"); return; }
+
+        const variants = {
+            viral: ["🔥 Viral Alert! Topic: {t}. Pura dekhein!", "⚡ Trending Now! {t}. Don't miss this!"],
+            breaking: ["📰 BREAKING NEWS: {t}. Sabse pehle yahan dekhein.", "🚨 BIG UPDATE: {t}. Live Details Inside!"],
+            motivational: ["💪 Aaj ka Motivation: {t}. Himmat mat haariye!", "🌟 Success Mantra: {t}. Focus on your goals."],
+            business: ["💼 Professional Update: {t}. Growth ke liye jaruri hai.", "🚀 Business Insight: {t}. Strategy for 2024."],
+            educational: ["📚 Knowledge Byte: {t}. Aaj kuch naya seekhein.", "🎓 Learning Session: {t}. Important facts."],
+            tips: ["💡 Pro Tip: {t}. Ye hack aapke kaam aayega.", "✨ Smart Trick: {t}. Try this today!"],
+            festival: ["🎉 Festival Special: {t}. Khushiyan baantein!", "🎁 Celebration Alert: {t}. Wishes for you!"]
+        };
+
+        const randomMsg = variants[style][Math.floor(Math.random() * variants[style].length)];
+        let finalMsg = randomMsg.replace("{t}", topic.toUpperCase());
+        
+        // Mandatory Branding
+        finalMsg += `\n\n━━━━━━━━━━━━━━━━━━━━━\n🤖 Powered by "K Spider for Kreation" YouTube\n✅ Tool Link: [Your-Link-Here]`;
+
+        document.getElementById('preview').innerText = finalMsg;
+    }
+
+    function startSending() {
+        const msg = document.getElementById('preview').innerText;
+        const numInput = document.getElementById('numbers').value;
+        const nums = numInput.split(',').filter(n => n.trim() !== "");
+
+        if(nums.length === 0) { alert("Numbers add karein!"); return; }
+
+        for(let i=0; i < nums.length; i++) {
+            if(freeCount > 0) {
+                executeSend(nums[i], msg);
+                freeCount--;
+            } else if(balance > 0) {
+                executeSend(nums[i], msg);
+                balance--;
+                spentCount++;
+            } else {
+                document.getElementById('rechargeSection').style.display = "block";
+                alert("Balance khatam! Please recharge.");
+                break;
+            }
+        }
+        updateUI();
+    }
+
+    function executeSend(num, msg) {
+        window.open(`https://wa.me/${num.trim()}?text=${encodeURIComponent(msg)}`, '_blank');
+    }
+
+    function updateUI() {
+        document.getElementById('freeLeft').innerText = freeCount;
+        document.getElementById('balance').innerText = balance;
+        document.getElementById('spent').innerText = spentCount;
+    }
+</script>
+
+</body>
+</html>
