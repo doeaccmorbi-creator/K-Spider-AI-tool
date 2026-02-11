@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>K-Spider Ultimate AI Tool - Powered by Kreation</title>
+    <title>K-Spider Ultimate AI - Powered by Kreation</title>
     <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,7 +12,7 @@
         body {
             font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #1e3c72 0%, #2a5298 50%, #7e22ce 100%);
-            min-height: 100vh; padding: 20px; color: #333;
+            min-height: 100vh; padding: 20px; position: relative;
         }
 
         .watermark {
@@ -20,68 +20,64 @@
             opacity: 0.05; font-family: 'Bebas Neue'; font-size: 6rem; pointer-events: none; z-index: 0;
         }
 
-        .container { max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+        .container { max-width: 1000px; margin: 0 auto; position: relative; z-index: 1; }
         
         .main-card {
             background: rgba(255, 255, 255, 0.98); border-radius: 30px; padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.3);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3); backdrop-filter: blur(10px);
         }
 
         .logo {
-            font-family: 'Bebas Neue', cursive; font-size: 4rem; text-align: center;
+            font-family: 'Bebas Neue', cursive; font-size: 3.5rem; text-align: center;
             background: linear-gradient(45deg, #25D366, #FFD700, #FF3366);
             -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px;
         }
 
-        .wallet-bar {
-            background: var(--dark); color: white; padding: 15px; border-radius: 15px;
+        .wallet-card {
+            background: var(--dark); color: white; padding: 20px; border-radius: 20px;
             display: flex; justify-content: space-around; margin-bottom: 25px; font-weight: 600;
+            border: 2px solid var(--primary);
         }
 
         .section-title {
-            font-size: 1.3rem; color: var(--dark); margin: 20px 0 15px;
-            padding-left: 10px; border-left: 5px solid var(--primary); font-weight: 700;
+            font-size: 1.4rem; color: var(--dark); margin: 25px 0 15px;
+            padding-left: 15px; border-left: 5px solid var(--primary); font-weight: 700;
         }
 
-        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px; }
         
         input, select, textarea {
-            width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 12px;
-            font-family: 'Poppins'; font-size: 0.9rem; transition: 0.3s;
+            width: 100%; padding: 14px; border: 2px solid #e0e0e0; border-radius: 12px;
+            font-family: 'Poppins'; font-size: 0.95rem;
         }
 
-        input:focus { border-color: var(--primary); outline: none; }
-
-        .social-box { background: #f8f9fa; padding: 20px; border-radius: 20px; border: 1px solid #eee; }
+        .upload-area {
+            border: 3px dashed #e0e0e0; border-radius: 15px; padding: 20px;
+            text-align: center; cursor: pointer; background: #f8f9fa; transition: 0.3s;
+        }
+        .upload-area:hover { border-color: var(--primary); background: rgba(37, 211, 102, 0.05); }
 
         .btn {
-            padding: 15px; border: none; border-radius: 12px; font-weight: 700;
-            cursor: pointer; transition: 0.3s; width: 100%; margin-top: 15px;
-            text-transform: uppercase; letter-spacing: 1px;
+            padding: 15px 30px; border: none; border-radius: 12px; font-weight: 700;
+            cursor: pointer; transition: 0.3s; width: 100%; margin-top: 10px;
+        }
+        .btn-gen { background: var(--primary); color: white; }
+        .btn-send { background: var(--primary-dark); color: white; font-size: 1.2rem; }
+
+        .preview-box { background: #E5DDD5; padding: 20px; border-radius: 15px; margin-top: 15px; }
+        .preview-bubble { background: white; padding: 20px; border-radius: 10px; white-space: pre-wrap; font-size: 0.9rem; }
+
+        .payment-section {
+            display: none; background: #fff3cd; border: 2px dashed #fab005;
+            padding: 25px; border-radius: 20px; text-align: center; margin-top: 30px;
         }
 
-        .btn-generate { background: var(--primary); color: white; }
-        .btn-send { background: var(--primary-dark); color: white; }
-        .btn-generate:hover { transform: scale(1.02); }
-
-        .preview-area {
-            background: #E5DDD5; padding: 20px; border-radius: 15px; margin-top: 15px;
-            border: 1px solid #ccc; position: relative;
+        .disclaimer-box {
+            background: #fff5f5; border: 1px solid #feb2b2; padding: 20px;
+            border-radius: 15px; margin-top: 40px; font-size: 0.8rem; line-height: 1.6;
         }
 
-        .preview-bubble { background: white; padding: 15px; border-radius: 10px; white-space: pre-wrap; font-size: 0.9rem; }
-
-        .payment-card {
-            display: none; background: #fff3cd; border: 2px dashed #ffeeba;
-            padding: 20px; border-radius: 20px; text-align: center; margin-top: 30px;
-        }
-
-        .disclaimer {
-            font-size: 0.7rem; color: #777; margin-top: 30px; text-align: justify;
-            padding: 15px; border-top: 1px solid #eee;
-        }
-
-        @media (max-width: 600px) { .input-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .input-grid { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -90,136 +86,134 @@
 
     <div class="container">
         <div class="main-card">
-            <div class="logo">🕷️ K-SPIDER AI</div>
-            <p style="text-align:center; margin-bottom: 20px; font-size: 0.9rem; color: #666;">Ultimate WhatsApp Automation Tool</p>
+            <div class="logo">🕷️ K-SPIDER AI TOOL</div>
+            <p style="text-align:center; color:#666; margin-bottom:20px;">Premium WhatsApp Automation & Branding</p>
 
-            <div class="wallet-bar">
-                <span>🆓 Free: <span id="freeCount">10</span></span>
-                <span>💰 Bal: ₹<span id="balCount">0</span></span>
-                <span>📊 Spent: <span id="spentCount">0</span></span>
+            <div class="wallet-card">
+                <span>🎁 Free: <span id="freeVal">10</span></span>
+                <span>💰 Bal: ₹<span id="balVal">0</span></span>
+                <span>📈 Spent: <span id="spentVal">0</span></span>
             </div>
 
-            <div class="section-title">1. Create Viral Content</div>
-            <div class="input-grid">
-                <input type="text" id="topic" placeholder="Enter Topic (e.g. AI Earning Tips)">
-                <select id="style">
-                    <option value="viral">🔥 Viral Style</option>
-                    <option value="news">📰 Breaking News</option>
-                    <option value="motivation">💪 Motivational</option>
-                    <option value="tips">💡 Smart Tips</option>
-                    <option value="offer">🎁 Special Offer</option>
-                </select>
-            </div>
-
-            <div class="section-title">2. Social Media Links</div>
-            <div class="social-box">
-                <input type="url" id="ytLink" placeholder="📺 YouTube Video Link" style="margin-bottom: 10px;">
+            <div class="section">
+                <h2 class="section-title">1. Message Details</h2>
                 <div class="input-grid">
-                    <input type="text" id="insta" placeholder="📸 Instagram">
-                    <input type="text" id="fb" placeholder="🔵 Facebook">
-                    <input type="text" id="linkdin" placeholder="💼 LinkedIn">
-                    <input type="text" id="web" placeholder="🌐 Website">
+                    <input type="text" id="topic" placeholder="Main Topic / Headline">
+                    <select id="style">
+                        <option value="viral">🔥 Viral Trending</option>
+                        <option value="motivational">💪 Motivational</option>
+                        <option value="news">📰 Breaking News</option>
+                        <option value="educational">📚 Educational</option>
+                    </select>
+                </div>
+                
+                <h2 class="section-title">2. Social Links (Separate)</h2>
+                <input type="url" id="yt" placeholder="📺 YouTube Video Link" style="margin-bottom:15px;">
+                <div class="input-grid">
+                    <input type="text" id="insta" placeholder="📸 Instagram Link">
+                    <input type="text" id="fb" placeholder="🔵 Facebook Link">
+                    <input type="text" id="linkdin" placeholder="💼 LinkedIn Profile">
+                    <input type="text" id="web" placeholder="🌐 Website/Portfolio">
+                </div>
+
+                <h2 class="section-title">3. Media Support</h2>
+                <div class="upload-area" onclick="document.getElementById('mediaFile').click()">
+                    <div id="mediaText">📤 Click to Upload Image/Video (Max 16MB)</div>
+                    <input type="file" id="mediaFile" hidden accept="image/*,video/*">
+                </div>
+
+                <button class="btn btn-gen" onclick="generateAI()">✨ Generate / Regenerate AI Message</button>
+            </div>
+
+            <div class="section">
+                <h2 class="section-title">4. Message Preview</h2>
+                <div class="preview-box">
+                    <div class="preview-bubble" id="previewArea">Message yahan dikhega...</div>
+                </div>
+                <textarea id="numbers" style="margin-top:20px; min-height:100px;" placeholder="Target Numbers (Comma separated: 919876543210, 918877665544)"></textarea>
+                <button class="btn btn-send" onclick="sendToAll()">🚀 Start Sending (₹1 / Message)</button>
+            </div>
+
+            <div id="payBox" class="payment-section">
+                <h3 style="color:#856404;">🛑 Limit Reached!</h3>
+                <p>Recharge ₹10 (Min) to continue using premium features.</p>
+                <div style="margin:15px; font-weight:700; color:#128C7E; font-size:1.3rem; background:white; padding:10px; border-radius:10px;">
+                    UPI ID: 9099928877@pthdfc
+                </div>
+                <div class="input-grid">
+                    <a href="mailto:doeaccmorbi@gmail.com" class="btn" style="background:#555; color:white; text-decoration:none; text-align:center;">📧 Email Proof</a>
+                    <a href="https://wa.me/919099928877" class="btn" style="background:#25D366; color:white; text-decoration:none; text-align:center;">📱 WhatsApp Proof</a>
                 </div>
             </div>
 
-            <button class="btn btn-generate" onclick="generateAI()">✨ Generate & Regenerate Message</button>
-
-            <div class="section-title">3. Preview & Edit</div>
-            <div class="preview-area">
-                <div class="preview-bubble" id="msgPreview">Enter topic and click generate...</div>
-            </div>
-
-            <div class="section-title">4. Target Numbers</div>
-            <textarea id="numList" placeholder="919876543210, 918877665544 (Comma separated)" style="min-height: 100px;"></textarea>
-            
-            <button class="btn btn-send" onclick="sendBulk()">🚀 Start Sending (₹1 / Message)</button>
-
-            <div id="payArea" class="payment-card">
-                <h3 style="color: #856404;">🛑 Limit Reached!</h3>
-                <p>Recharge ₹10 minimum to continue (₹1 per message)</p>
-                <div style="margin: 15px 0; font-size: 1.2rem; font-weight: 700; color: #128C7E;">UPI ID: 9099928877@pthdfc</div>
-                <div class="input-grid">
-                    <a href="mailto:doeaccmorbi@gmail.com" class="btn" style="background: #555; color:white; text-decoration:none; text-align:center;">📧 Email Proof</a>
-                    <a href="https://wa.me/919099928877" class="btn" style="background: #25D366; color:white; text-decoration:none; text-align:center;">📱 WhatsApp Proof</a>
-                </div>
-            </div>
-
-            <div class="disclaimer">
-                <strong>LEGAL DISCLAIMER:</strong> Yah tool educational purpose ke liye hai. "K Spider for Kreation" SPAM messages ya account ban hone ki zimmedari nahi leta. User ko sabhi Indian IT Acts aur Global Privacy Rules ka palan karna anivarya hai. Iska misuse karne par aap swayam zimmedar honge.
+            <div class="disclaimer-box">
+                <strong>⚠️ LEGAL DISCLAIMER / कानूनी सूचना:</strong><br>
+                1. Yeh tool keval educational use ke liye hai. <br>
+                2. SPAM message bhejna Indian IT Act aur TRAI rules ke tehat jurm hai. <br>
+                3. Kisi bhi account ban ke liye "K Spider for Kreation" zimmedar nahi hoga. <br>
+                4. User apni marzi aur zimmedari par ise use kar raha hai.
             </div>
         </div>
-        <p style="text-align:center; color:white; margin-top:20px; font-size: 0.8rem;">© 2024 K Spider for Kreation. Like Share Subscribe!</p>
     </div>
 
     <script>
-        let fCount = 10;
-        let balance = 0;
-        let spent = 0;
+        let f = 10; let b = 0; let s = 0;
+        let mediaUploaded = false;
+
+        document.getElementById('mediaFile').addEventListener('change', function(e) {
+            if(e.target.files[0]) {
+                document.getElementById('mediaText').innerText = "✅ Media Ready: " + e.target.files[0].name;
+                mediaUploaded = true;
+            }
+        });
 
         function generateAI() {
-            const t = document.getElementById('topic').value || "Amazing Info";
-            const s = document.getElementById('style').value;
-            const yt = document.getElementById('ytLink').value;
-            const ins = document.getElementById('insta').value;
-            const f = document.getElementById('fb').value;
-            const l = document.getElementById('linkdin').value;
-            const w = document.getElementById('web').value;
-
-            const msgs = {
-                viral: ["🔥 VIRAL ALERT! {t}. Pura video dekhein!", "⚡ TRENDING: {t}. Aapke liye khaas jankari."],
-                news: ["📰 BREAKING NEWS: {t}. Sabse badi update!", "🚨 BIG NEWS: {t}. Live update yahan dekhein."],
-                motivation: ["💪 AAJ KA GYAN: {t}. Success ke liye jaruri!", "🌟 MOTIVATION: {t}. Kabhi haar mat maano."],
-                tips: ["💡 SMART TIP: {t}. Ye trick kaam aayegi.", "✨ PRO HACK: {t}. Try karke dekhein."],
-                offer: ["🎁 SURPRISE: {t}. Limited time deal!", "🔥 SPECIAL OFFER: {t}. Don't miss this."]
+            const topic = document.getElementById('topic').value || "Amazing Update";
+            const style = document.getElementById('style').value;
+            const variations = {
+                viral: ["🔥 VIRAL ALERT! {t}. Pura dekhein!", "⚡ TRENDING: {t}. Miss mat karna!"],
+                motivational: ["💪 AAJ KA GYAN: {t}. Success mantra!", "🌟 MOTIVATION: {t}. Power your day."],
+                news: ["📰 BREAKING NEWS: {t}. Sabse pehle yahan!", "🚨 BIG UPDATE: {t}. Watch now."],
+                educational: ["📚 LEARN TODAY: {t}. Expert tips inside.", "🎓 KNOWLEDGE: {t}. Important facts."]
             };
 
-            let base = msgs[s][Math.floor(Math.random() * msgs[s].length)].replace("{t}", t.toUpperCase());
-            base += `\n\nCheckout here:`;
-            if(yt) base += `\n📺 YouTube: ${yt}`;
-            if(ins) base += `\n📸 Instagram: ${ins}`;
-            if(f) base += `\n🔵 Facebook: ${f}`;
-            if(l) base += `\n💼 LinkedIn: ${l}`;
-            if(w) base += `\n🌐 Website: ${w}`;
+            let msg = variations[style][Math.floor(Math.random() * 2)].replace("{t}", topic.toUpperCase());
+            
+            const links = { "YouTube": document.getElementById('yt').value, "Insta": document.getElementById('insta').value, "FB": document.getElementById('fb').value, "LinkedIn": document.getElementById('linkdin').value, "Web": document.getElementById('web').value };
+            
+            msg += `\n\nCheckout Details:`;
+            for(let key in links) if(links[key]) msg += `\n🔗 ${key}: ${links[key]}`;
+            
+            if(mediaUploaded) msg += `\n\n🖼️ [Media File Attached]`;
 
             // MANDATORY BRANDING
-            base += `\n\n━━━━━━━━━━━━━━━━━━━━━\n🤖 *AI Tool Powered by "K Spider for Kreation" YouTube Channel*\n👉 Like | Share | Subscribe for More!`;
+            msg += `\n\n━━━━━━━━━━━━━━━━━━━━━\n🤖 *AI Tool Powered by "K Spider for Kreation" YouTube Channel*\n✅ Subscribe for more: https://youtube.com/@KSpider`;
 
-            document.getElementById('msgPreview').innerText = base;
+            document.getElementById('previewArea').innerText = msg;
         }
 
-        function sendBulk() {
-            const msg = document.getElementById('msgPreview').innerText;
-            const nums = document.getElementById('numList').value.split(',').filter(n => n.trim() !== "");
+        function sendToAll() {
+            const msg = document.getElementById('previewArea').innerText;
+            const nums = document.getElementById('numbers').value.split(',').filter(n => n.trim() !== "");
 
-            if(!msg || nums.length === 0) { alert("Generate message and add numbers!"); return; }
+            if(nums.length === 0 || msg.includes("dikhega")) { alert("Check fields!"); return; }
 
             nums.forEach((num, i) => {
-                if(fCount > 0) {
-                    openWA(num, msg);
-                    fCount--;
-                } else if(balance > 0) {
-                    openWA(num, msg);
-                    balance--;
-                    spent++;
-                } else {
-                    document.getElementById('payArea').style.display = "block";
-                    alert("Balance Finish! Please Recharge.");
-                    return;
-                }
+                if(f > 0) { openWA(num, msg); f--; }
+                else if(b > 0) { openWA(num, msg); b--; s++; }
+                else { document.getElementById('payBox').style.display = "block"; return; }
             });
             updateUI();
         }
 
         function openWA(n, m) {
-            setTimeout(() => {
-                window.open(`https://wa.me/${n.trim()}?text=${encodeURIComponent(m)}`, '_blank');
-            }, 2000);
+            window.open(`https://wa.me/${n.trim()}?text=${encodeURIComponent(m)}`, '_blank');
         }
 
         function updateUI() {
-            document.getElementById('freeCount').innerText = fCount;
-            document.getElementById('balCount').innerText = balance;
-            document.getElementById('spentCount').innerText = spent;
+            document.getElementById('freeVal').innerText = f;
+            document.getElementById('balVal').innerText = b;
+            document.getElementById('spentVal').innerText = s;
         }
     </script>
 </body>
