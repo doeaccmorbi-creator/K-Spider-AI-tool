@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K Spider AI Tool - Live Market Intelligence (Backend Connected)</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --red: #c31432; --red2: #8b0000;
+    --gold: #ffd700; --gold2: #ff8c00;
+    --dark: #0a0a0f; --dark2: #111118; --dark3: #1a1a28;
+    --green: #00e676; --blue: #2979ff;
+    --card: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--dark);
+    color: #e0e0e0;
+    font-family: 'Rajdhani', sans-serif;
+    min-height: 100vh;
+  }
+
+  /* Connection Status Badge */
+  .connection-status {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+    background: rgba(0,0,0,0.8);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85em;
+  }
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+  .status-dot.connected { background: var(--green); }
+  .status-dot.disconnected { background: #ff1744; animation: none; }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+  }
+
+  /* Existing styles from original file */
+  #ticker-bar {
+    background: #000;
+    border-bottom: 1px solid var(--red);
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    overflow: hidden;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .ticker-label {
+    background: var(--red);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.8em;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 1px;
+  }
+  #ticker-data {
+    flex: 1;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85em;
+    color: #aaa;
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .tick-item { display: flex; align-items: center; gap: 6px; }
+  .tick-name { color: #888; font-size: 0.9em; }
+  .tick-val  { font-weight: 700; font-size: 1.05em; }
+  .tick-chg  { font-size: 0.85em; }
+  .up   { color: var(--green); }
+  .down { color: #ff1744; }
+  .neu  { color: #ffd700; }
+  .tick-time { color: #555; font-size: 0.8em; margin-left: auto; white-space: nowrap; }
+  #refresh-btn {
+    background: transparent;
+    border: 1px solid #333;
+    color: #888;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8em;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  #refresh-btn:hover { border-color: var(--blue); color: var(--blue); }
+
+  .header {
+    background: linear-gradient(135deg, var(--dark2) 0%, var(--dark3) 100%);
+    border-bottom: 2px solid var(--red);
+    padding: 30px 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(195,20,50,0.15) 0%, transparent 70%);
+  }
+  .brand-tag {
+    display: inline-block;
+    background: var(--red);
+    color: white;
+    padding: 4px 16px;
+    border-radius: 20px;
+    font-size: 0.8em;
+    letter-spacing: 2px;
+    margin-bottom: 12px;
+  }
+  .header h1 {
+    font-size: clamp(1.6em, 4vw, 2.8em);
+    font-weight: 700;
+    color: white;
+    text-shadow: 0 0 30px rgba(195,20,50,0.5);
+    margin-bottom: 8px;
+  }
+  .header h1 span { color: var(--gold); }
+  .header p {
+    color: #888;
+    font-size: 1em;
+    letter-spacing: 1px;
+  }
+
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+
+  /* Loading spinner */
+  .spinner {
+    border: 3px solid rgba(255,255,255,0.1);
+    border-top: 3px solid var(--red);
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+  }
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .gen-btn {
+    width: 100%;
+    padding: 18px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--red) 0%, var(--red2) 100%);
+    color: white;
+    font-size: 1.1em;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .gen-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(195,20,50,0.4); }
+  .gen-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Keep all other styles from original file */
+</style>
+</head>
+<body>
+
+<!-- Connection Status -->
+<div class="connection-status" id="connection-status">
+  <div class="status-dot disconnected" id="status-dot"></div>
+  <span id="status-text">Connecting...</span>
+</div>
+
+<!-- Live Ticker Bar -->
+<div id="ticker-bar">
+  <div class="ticker-label">🔴 LIVE</div>
+  <div id="ticker-data">
+    <div class="spinner"></div>
+  </div>
+  <button id="refresh-btn" onclick="refreshTicker()">🔄 Refresh</button>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="brand-tag">REAL-TIME CONNECTED</div>
+  <h1>K SPIDER <span>AI TOOL</span></h1>
+  <p>Real-time Market Intelligence with Backend Integration</p>
+</div>
+
+<div class="container">
+  <div id="results"></div>
+</div>
+
+<script>
+// ==================== CONFIGURATION ====================
+const API_BASE_URL = 'http://localhost:3000'; // Change this to your deployed backend URL
+let isConnected = false;
+
+// ==================== CONNECTION MANAGEMENT ====================
+async function checkConnection() {
+  try {
+    const response = await fetch(`${API_BASE_URL}/health`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      updateConnectionStatus(true, data.sheetsConnected);
+      return true;
+    } else {
+      updateConnectionStatus(false);
+      return false;
+    }
+  } catch (error) {
+    console.error('Connection check failed:', error);
+    updateConnectionStatus(false);
+    return false;
+  }
+}
+
+function updateConnectionStatus(connected, sheetsConnected = false) {
+  isConnected = connected;
+  const statusDot = document.getElementById('status-dot');
+  const statusText = document.getElementById('status-text');
+  
+  if (connected) {
+    statusDot.className = 'status-dot connected';
+    statusText.textContent = sheetsConnected ? 
+      '✅ Backend + Sheets' : '✅ Backend (Sheets Offline)';
+  } else {
+    statusDot.className = 'status-dot disconnected';
+    statusText.textContent = '❌ Backend Offline';
+  }
+}
+
+// ==================== LIVE TICKER ====================
+async function refreshTicker() {
+  const tickerEl = document.getElementById('ticker-data');
+  
+  if (!isConnected) {
+    tickerEl.innerHTML = '<span style="color:#ff1744;">⚠️ Backend disconnected. Using demo data.</span>';
+    displayDemoTicker();
+    return;
+  }
+  
+  try {
+    tickerEl.innerHTML = '<div class="spinner"></div>';
+    
+    const response = await fetch(`${API_BASE_URL}/api/ticker?provider=auto`);
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+    
+    const data = result.data;
+    displayLiveTicker(data);
+    
+  } catch (error) {
+    console.error('Error fetching ticker:', error);
+    tickerEl.innerHTML = '<span style="color:#ff1744;">❌ Error loading data</span>';
+    setTimeout(() => displayDemoTicker(), 2000);
+  }
+}
+
+function displayLiveTicker(data) {
+  const tickerEl = document.getElementById('ticker-data');
+  
+  let html = '';
+  
+  for (const [symbol, info] of Object.entries(data)) {
+    const cls = info.pct >= 0 ? 'up' : 'down';
+    const arrow = info.pct >= 0 ? '▲' : '▼';
+    
+    html += `
+      <div class="tick-item">
+        <span class="tick-name">${symbol}:</span>
+        <span class="tick-val ${cls}">₹${info.price.toLocaleString('en-IN', {maximumFractionDigits:2})}</span>
+        <span class="tick-chg ${cls}">${arrow} ${Math.abs(info.pct).toFixed(2)}%</span>
+        <span style="font-size:0.75em;color:#555;">[${info.source}]</span>
+      </div>
+    `;
+  }
+  
+  const updateTime = new Date().toLocaleTimeString('en-IN', {
+    timeZone: 'Asia/Kolkata',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+  
+  html += `<div class="tick-time">Updated: ${updateTime} IST</div>`;
+  tickerEl.innerHTML = html;
+}
+
+function displayDemoTicker() {
+  const demoData = {
+    'SENSEX': { price: 73891.25, pct: 0.45, source: 'Demo' },
+    'NIFTY': { price: 22445.80, pct: 0.38, source: 'Demo' },
+    'RELIANCE': { price: 2850.50, pct: -0.25, source: 'Demo' },
+    'TCS': { price: 3920.75, pct: 1.12, source: 'Demo' }
+  };
+  
+  displayLiveTicker(demoData);
+}
+
+// ==================== ANALYZE FUNCTION ====================
+async function generateReport() {
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = '<div class="spinner"></div><p style="text-align:center;margin-top:10px;">Fetching real-time analysis...</p>';
+  
+  if (!isConnected) {
+    resultsEl.innerHTML = '<div style="text-align:center;padding:40px;color:#ff1744;">❌ Backend not connected. Please start the backend server.</div>';
+    return;
+  }
+  
+  try {
+    const mode = document.querySelector('input[name="mode"]:checked')?.value || 'mfbuy';
+    const dateFrom = document.getElementById('range-from')?.value;
+    const dateTo = document.getElementById('range-to')?.value;
+    
+    const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, dateFrom, dateTo })
+    });
+    
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.error);
+    }
+    
+    displayAnalysis(result.data);
+    
+  } catch (error) {
+    console.error('Error generating report:', error);
+    resultsEl.innerHTML = `<div style="text-align:center;padding:40px;color:#ff1744;">❌ Error: ${error.message}</div>`;
+  }
+}
+
+function displayAnalysis(data) {
+  const resultsEl = document.getElementById('results');
+  
+  let html = '<h2 style="color:var(--gold);margin-bottom:20px;">📊 Real-time Analysis Results</h2>';
+  
+  if (data.buying && data.buying.length > 0) {
+    html += '<h3 style="color:var(--green);margin-top:30px;">✅ Mutual Funds BUYING</h3>';
+    data.buying.forEach((stock, i) => {
+      html += `
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin:15px 0;">
+          <h4 style="color:white;font-size:1.2em;">${i+1}. ${stock.name} (${stock.symbol})</h4>
+          <p style="color:#888;margin:8px 0;">Sector: ${stock.sector} | Price: ₹${stock.price.toFixed(2)}</p>
+          <p style="color:var(--green);margin:8px 0;">MFs Buying: ${stock.fundNames}</p>
+          <p style="margin:12px 0;line-height:1.6;">${stock.reason}</p>
+          <div style="background:rgba(0,230,118,0.1);border-left:3px solid var(--green);padding:12px;margin-top:12px;">
+            <strong>✅ Verdict:</strong> ${stock.verdict}
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  if (data.selling && data.selling.length > 0) {
+    html += '<h3 style="color:#ff1744;margin-top:40px;">⚠️ Mutual Funds SELLING</h3>';
+    data.selling.forEach((stock, i) => {
+      html += `
+        <div style="background:var(--card);border:1px solid rgba(255,23,68,0.3);border-radius:12px;padding:20px;margin:15px 0;">
+          <h4 style="color:white;font-size:1.2em;">${i+1}. ${stock.name} (${stock.symbol})</h4>
+          <p style="color:#888;margin:8px 0;">Sector: ${stock.sector} | Price: ₹${stock.price.toFixed(2)}</p>
+          <p style="color:#ff9800;margin:8px 0;">MFs Exiting: ${stock.fundNames}</p>
+          <p style="margin:12px 0;line-height:1.6;">${stock.reason}</p>
+          <div style="background:rgba(255,23,68,0.1);border-left:3px solid #ff1744;padding:12px;margin-top:12px;">
+            <strong>🚫 Verdict:</strong> ${stock.verdict}
+          </div>
+        </div>
+      `;
+    });
+  }
+  
+  resultsEl.innerHTML = html;
+}
+
+// ==================== INITIALIZATION ====================
+async function init() {
+  console.log('🚀 K Spider AI Tool initializing...');
+  
+  // Check backend connection
+  const connected = await checkConnection();
+  
+  if (connected) {
+    console.log('✅ Backend connected successfully');
+    refreshTicker();
+  } else {
+    console.warn('⚠️ Backend not available. Using demo mode.');
+    displayDemoTicker();
+  }
+  
+  // Auto-refresh ticker every 5 minutes during market hours
+  setInterval(() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const day = now.getDay();
+    
+    // Market hours: Mon-Fri, 9 AM - 3:30 PM IST
+    if (day >= 1 && day <= 5 && hour >= 9 && hour <= 15) {
+      refreshTicker();
+    }
+  }, 5 * 60 * 1000);
+  
+  // Check connection every 30 seconds
+  setInterval(checkConnection, 30000);
+}
+
+// Start when page loads
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
