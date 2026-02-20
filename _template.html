@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!--
+    ════════════════════════════════════════════════════════════
+    K SPIDER AI TOOL — NEW TOOL TEMPLATE
+    1. Replace [TOOL NAME], [TOOL DESCRIPTION] etc.
+    2. Add your tool logic in the <!-- TOOL LOGIC --> section
+    3. Add entry to ../tools.config.json
+    4. Deploy — done!
+    ════════════════════════════════════════════════════════════
+  -->
+  <title>[TOOL NAME] — K Spider AI Tool | www.kspiderai.in</title>
+  <meta name="description" content="[TOOL DESCRIPTION]. Free AI tool by K Spider for Kreation — www.kspiderai.in">
+  <link rel="canonical" href="https://www.kspiderai.in/tools/[tool-slug].html">
+  <link rel="stylesheet" href="../assets/css/design-system.css">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800;900&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --font-display:'Sora',sans-serif; --font-body:'DM Sans',sans-serif; }
+    .tool-page { max-width: 860px; margin: 0 auto; padding: 32px; }
+    .tool-output-box { background: var(--bg-subtle); border: 1.5px solid var(--border); border-radius: var(--r-xl); padding: 24px; min-height: 160px; font-size: .92rem; line-height: 1.8; color: var(--text-2); white-space: pre-wrap; position: relative; }
+    .tool-action-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .tool-disclaimer { background: var(--amber-light); border: 1px solid #fde68a; border-radius: var(--r-md); padding: 14px 18px; font-size: .8rem; color: #78350f; line-height: 1.65; margin-top: 24px; }
+    .lang-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .ai-limit-notice { background: var(--brand-light); border: 1px solid var(--brand-mid); border-radius: var(--r-md); padding: 14px 18px; font-size: .82rem; color: var(--brand-dark); margin-top: 20px; }
+  </style>
+</head>
+<body>
+<!-- Global Branding Strip -->
+<div class="powered-strip">
+  Powered by <strong>K Spider AI Tool</strong> ·
+  <a href="https://www.kspiderai.in" target="_blank">www.kspiderai.in</a> ·
+  <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank">@KSpider4Kreaction</a> ·
+  By Gaurang Raval &amp; Khush Raval
+</div>
+
+<nav class="navbar" id="navbar" style="top:var(--strip-h)">
+  <div class="nav-inner container">
+    <a href="../index.html" class="nav-brand">
+      <div class="nav-logo">🕷️</div>
+      <div class="nav-name">K Spider <span class="ai">AI Tool</span></div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="../index.html#tools">← All Tools</a></li>
+      <li><a href="../legal/index.html">⚖️ Legal</a></li>
+      <li><a href="../index.html#contact">Contact</a></li>
+    </ul>
+  </div>
+</nav>
+
+<main style="padding-top:var(--header-offset)">
+<div class="tool-page">
+
+  <!-- Tool Header -->
+  <div style="margin-bottom:32px">
+    <div class="badge badge-green badge-live" style="margin-bottom:12px">LIVE</div>
+    <h1 style="font-family:var(--font-display);font-size:2rem;font-weight:800;margin-bottom:8px">[TOOL EMOJI] [TOOL NAME]</h1>
+    <p style="color:var(--text-3);font-size:.95rem;line-height:1.7">[TOOL DESCRIPTION]. Completely free. Powered by K Spider AI Tool.</p>
+  </div>
+
+  <!-- Language Selector -->
+  <div class="lang-bar">
+    <label style="font-size:.78rem;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px">🌐 Output Language:</label>
+    <select class="form-control" id="lang-select" style="width:auto;min-width:180px" onchange="KSpider.Lang.set(this.value)">
+      <!-- Auto-populated by platform.js -->
+    </select>
+  </div>
+
+  <!-- Tool Form -->
+  <div class="card" style="margin-bottom:24px">
+    <div class="card-body">
+      <h2 style="font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-bottom:20px">Enter Your Details</h2>
+
+      <!-- ═══ TOOL INPUT FIELDS ═══ -->
+      <!-- Add your input fields here -->
+      <div class="form-group">
+        <label class="form-label" for="user-name-field">Your Name (appears in output)</label>
+        <input class="form-control" id="user-name-field" type="text" placeholder="e.g. Gaurang Raval" maxlength="100">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="main-input">Main Input *</label>
+        <textarea class="form-control" id="main-input" rows="4" placeholder="Enter your input here..." maxlength="1000" style="resize:vertical"></textarea>
+      </div>
+
+      <!-- ═══ END TOOL INPUT FIELDS ═══ -->
+
+      <button class="btn btn-primary btn-lg" id="generate-btn" onclick="generateOutput()" style="margin-top:8px">
+        ⚡ Generate with AI
+      </button>
+    </div>
+  </div>
+
+  <!-- Output Section -->
+  <div id="output-section" style="display:none">
+    <h2 style="font-family:var(--font-display);font-weight:700;font-size:1.1rem;margin-bottom:14px">✨ Generated Output</h2>
+    <div class="tool-output-box" id="output-box"></div>
+
+    <div class="tool-action-bar">
+      <button class="btn btn-primary" onclick="copyOutput()">📋 Copy</button>
+      <button class="btn btn-secondary" onclick="downloadOutput()">⬇️ Download</button>
+      <button class="btn btn-secondary" onclick="shareWhatsApp()">📤 WhatsApp Share</button>
+      <button class="btn btn-ghost" onclick="generateOutput()">🔄 Regenerate</button>
+    </div>
+
+    <!-- AI Limitation Notice (show when live data needed) -->
+    <div class="ai-limit-notice" id="ai-limit-notice" style="display:none">
+      <strong>ℹ️ AI Limitation Notice:</strong> This tool cannot access real-time data.
+      <strong>Optimized Prompt for you:</strong> <span id="optimized-prompt"></span>
+      <br><strong>Suggested Platform:</strong> Use <a href="https://www.perplexity.ai" target="_blank" rel="noopener">Perplexity AI</a> for live internet search or <a href="https://chat.openai.com" target="_blank" rel="noopener">ChatGPT</a> for this prompt.
+    </div>
+
+    <!-- Disclaimer -->
+    <div class="tool-disclaimer">
+      ⚠️ <strong>Disclaimer:</strong> Output generated by K Spider AI Tool is for informational purposes only.
+      Always verify important information independently. This does not constitute professional advice.
+      For legal, medical, or financial matters, consult a licensed professional.
+      <br><br>
+      <strong>Powered by K Spider AI Tool — www.kspiderai.in — https://www.youtube.com/@KSpider4Kreaction</strong><br>
+      Developed by Gaurang Raval &amp; Khush Raval | K Spider for Kreation
+    </div>
+  </div>
+
+</div>
+</main>
+
+<!-- Platform JS -->
+<script src="../assets/js/platform.js"></script>
+<script>
+  // ── Initialize tool ──
+  document.addEventListener('DOMContentLoaded', () => {
+    // Pre-fill user name if registered
+    const user = KSpider.Auth.getUser();
+    if (user) {
+      const nameField = document.getElementById('user-name-field');
+      if (nameField && !nameField.value) nameField.value = user.name;
+    }
+
+    // Populate language select
+    KSpider.Lang.renderSelect('lang-select', KSpider.Lang.getCurrent());
+  });
+
+  // ═══ TOOL LOGIC ═══
+  async function generateOutput() {
+    const btn = document.getElementById('generate-btn');
+    const outputSection = document.getElementById('output-section');
+    const outputBox = document.getElementById('output-box');
+
+    const userName  = KSpider.Security.sanitize(document.getElementById('user-name-field').value) || 'User';
+    const mainInput = KSpider.Security.sanitize(document.getElementById('main-input').value);
+    const lang      = KSpider.Lang.getCurrent();
+
+    if (!mainInput.trim()) { KSpider.UI.toast('Please enter your input first.', 'warn'); return; }
+
+    if (!KSpider.Security.rateLimit('tool_generate')) {
+      KSpider.UI.toast('Please wait a moment before generating again.', 'warn');
+      return;
+    }
+
+    // Show loading
+    btn.disabled = true;
+    btn.innerHTML = '<div class="spinner"></div> Generating...';
+    outputBox.textContent = 'AI is generating your content...';
+    outputSection.style.display = 'block';
+
+    try {
+      const langInstruction = KSpider.Lang.getLangInstruction(lang);
+
+      // ── Claude API Call ──
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: 'claude-sonnet-4-20250514',
+          max_tokens: 1000,
+          messages: [{
+            role: 'user',
+            content:
+              // ═══ CUSTOMIZE THIS PROMPT FOR YOUR TOOL ═══
+              `${langInstruction}\n\n` +
+              `You are a professional [TOOL TYPE] assistant for K Spider AI Tool (www.kspiderai.in).\n` +
+              `User Name: ${userName}\n\n` +
+              `Task: [DESCRIBE TOOL TASK HERE]\n\n` +
+              `Input: ${mainInput}\n\n` +
+              `Instructions:\n` +
+              `- Generate high-quality, professional output\n` +
+              `- Personalize with "I am ${userName}" style where appropriate\n` +
+              `- Be concise and practical\n` +
+              `- End output with: "Powered by K Spider AI Tool — www.kspiderai.in"\n`
+              // ═══ END PROMPT CUSTOMIZATION ═══
+          }]
+        })
+      });
+
+      if (!response.ok) throw new Error('API error: ' + response.status);
+      const data = await response.json();
+      const output = data.content?.[0]?.text || 'No output generated.';
+
+      outputBox.textContent = output;
+      KSpider.Auth.incrementToolUse();
+      KSpider.Analytics.track('tool_used', '[TOOL_ID]');
+      KSpider.UI.toast('Output generated successfully!', 'success');
+
+    } catch (err) {
+      // Show AI limitation fallback
+      outputBox.textContent = 'AI is temporarily unavailable. Please try again in a moment, or use the optimized prompt below.';
+      document.getElementById('ai-limit-notice').style.display = 'block';
+      document.getElementById('optimized-prompt').textContent =
+        `[OPTIMIZED PROMPT for: ${mainInput.substring(0,100)}...]`;
+      KSpider.UI.toast('Using fallback mode. Check the optimized prompt below.', 'warn');
+    }
+
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Generate with AI';
+  }
+
+  function copyOutput() {
+    const text = document.getElementById('output-box').textContent;
+    KSpider.Share.copyText(text);
+  }
+
+  function downloadOutput() {
+    const text = document.getElementById('output-box').textContent;
+    KSpider.Share.downloadText('[tool-name]-output.txt', text);
+  }
+
+  function shareWhatsApp() {
+    const text = document.getElementById('output-box').textContent;
+    KSpider.Share.shareToolOutput('[TOOL NAME]', text);
+  }
+</script>
+</body>
+</html>
