@@ -49,6 +49,10 @@
   <!-- Email SDK — load FIRST, not deferred -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
   <!-- Google Analytics -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
   <script>
@@ -1389,8 +1393,94 @@ body {
 /* ══════════════════════════════════════════════════════
    EMAILJS CONFIG — AAPKE ACTUAL IDs
    ══════════════════════════════════════════════════════ */
-var EJS_SERVICE   = 'service_4fxv8en';       // aapka service ID
-var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN';   // aapka public key
+var EJS_SERVICE   = 'service_4fxv8en';
+var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN';
+
+/* ══════════════════════════════════════════════════════
+   FIREBASE CONFIG — K Spider AI Tool
+   ══════════════════════════════════════════════════════ */
+var FB_CONFIG = {
+  apiKey:            "AIzaSyDLj9Xvjg_Z5xcfEoFQXYzKBrPrD8lokn0",
+  authDomain:        "kspider-ai-tool.firebaseapp.com",
+  projectId:         "kspider-ai-tool",
+  storageBucket:     "kspider-ai-tool.firebasestorage.app",
+  messagingSenderId: "974024986087",
+  appId:             "1:974024986087:web:4ff8124a3f1846fc21c142"
+};
+
+var _fbApp = null;
+var _db    = null;
+
+function initFirebase() {
+  try {
+    if (typeof firebase === 'undefined') { console.warn('[KSpider] Firebase SDK not loaded'); return false; }
+    if (!_fbApp) {
+      _fbApp = firebase.initializeApp(FB_CONFIG);
+      _db    = firebase.firestore();
+      console.log('[KSpider] Firebase initialized ✅');
+    }
+    return true;
+  } catch(e) { console.error('[KSpider] Firebase init error:', e); return false; }
+}
+
+/* ── Firebase: User save karo ── */
+function saveUserToFirebase(userData, callback) {
+  if (!initFirebase() || !_db) { if (callback) callback(false); return; }
+  var key = userData.email.replace(/[.#$\/\[\]]/g, '_');
+  _db.collection('users').doc(key).set({
+    name:         userData.name,
+    email:        userData.email,
+    mobile:       userData.mobile,
+    city:         userData.city || '',
+    language:     userData.language || 'en',
+    verified:     userData.verified || false,
+    registeredAt: userData.registeredAt,
+    verifiedAt:   userData.verifiedAt || null,
+    toolsUsed:    userData.toolsUsed || 0,
+    premium:      userData.premium || false,
+    lastSeen:     new Date().toISOString(),
+    source:       'kspiderai.in'
+  }, { merge: true })
+  .then(function() {
+    console.log('[KSpider] User saved to Firebase ✅');
+    if (callback) callback(true);
+  })
+  .catch(function(err) {
+    console.error('[KSpider] Firebase save error:', err);
+    if (callback) callback(false);
+  });
+}
+
+/* ── Firebase: Email already registered check ── */
+function checkEmailExists(email, callback) {
+  if (!initFirebase() || !_db) { callback(false); return; }
+  var key = email.replace(/[.#$\/\[\]]/g, '_');
+  _db.collection('users').doc(key).get()
+  .then(function(doc) {
+    if (doc.exists) {
+      var data = doc.data();
+      console.log('[KSpider] Email found in Firebase:', data.verified);
+      callback(true, data);
+    } else {
+      callback(false, null);
+    }
+  })
+  .catch(function(err) {
+    console.error('[KSpider] Firebase check error:', err);
+    callback(false, null);
+  });
+}
+
+/* ── Firebase: User ka data fetch karo (login check) ── */
+function fetchUserFromFirebase(email, callback) {
+  if (!initFirebase() || !_db) { callback(null); return; }
+  var key = email.replace(/[.#$\/\[\]]/g, '_');
+  _db.collection('users').doc(key).get()
+  .then(function(doc) {
+    callback(doc.exists ? doc.data() : null);
+  })
+  .catch(function() { callback(null); });
+}
 
 // ⚠️  IMPORTANT: EmailJS pe EK NAYA TEMPLATE banao naam: template_otp_kspider
 // Template variables:
@@ -1524,7 +1614,10 @@ function getUser() {
   try { var r = localStorage.getItem('ks_u'); if (!r) return null; var p = JSON.parse(r); return p.v || null; } catch(e) { return null; }
 }
 function saveUser(u) {
-  try { localStorage.setItem('ks_u', JSON.stringify({ v: u, ts: Date.now(), app: 'KS' })); } catch(e) {}
+  try {
+    localStorage.setItem('ks_u', JSON.stringify({ v: u, ts: Date.now(), app: 'KS' }));
+    if (u && u.email) localStorage.setItem('ks_last_email', u.email); // cross-device restore ke liye
+  } catch(e) {}
 }
 function isReg() { var u = getUser(); return !!(u && u.verified); }
 
@@ -1726,7 +1819,16 @@ function verifyOTP() {
   _otpCode = null;
   _pendingUser.verified = true;
   _pendingUser.verifiedAt = new Date().toISOString();
+
+  // localStorage mein save (local fast access ke liye)
   saveUser(_pendingUser);
+
+  // Firebase mein bhi save karo (permanent, cross-device)
+  saveUserToFirebase(_pendingUser, function(ok) {
+    if (ok) console.log('[KSpider] User permanently saved to Firebase ✅');
+    else console.warn('[KSpider] Firebase save failed — only localStorage saved');
+  });
+
   closeM('otp-ov');
 
   // Admin ko verified alert
@@ -1803,25 +1905,45 @@ function submitReg(e) {
 
   _rs = true;
   var btn = document.getElementById('rb');
-  btn.innerHTML = '<div class="sp-icon"></div> OTP bheja ja raha hai...';
+  btn.innerHTML = '<div class="sp-icon"></div> Checking...';
   btn.disabled = true;
 
   document.getElementById('rd').value = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-  _pendingUser = {
-    name: n.replace(/[<>"&]/g,'').substring(0,100),
-    email: em,        // ← Raw email — EmailJS ko exact email chahiye, HTML encode mat karo
-    mobile: m,        // ← Raw mobile
-    city: document.getElementById('rc').value.trim().substring(0,60),
-    language: document.getElementById('rl').value,
-    consentGDPR: true, consentIT: true,
-    registeredAt: new Date().toISOString(), toolsUsed: 0, premium: false, verified: false
-  };
+  // Firebase mein email already registered hai? Check karo pehle
+  checkEmailExists(em, function(exists, existingData) {
+    if (exists && existingData && existingData.verified) {
+      // Already verified user — localStorage mein restore karo, OTP mat maango
+      saveUser(existingData);
+      updateUW();
+      _rs = false;
+      btn.innerHTML = 'Register &amp; Get Free Access →';
+      btn.disabled = false;
+      closeM('reg-ov');
+      toast('🎉 Welcome back, ' + existingData.name + '! Aap pehle se registered hain ✅', 'success', 6000);
+      return;
+    }
 
-  _otpCode   = generateOTP();
-  _otpExpiry = Date.now() + 5 * 60 * 1000;
+    if (exists && existingData && !existingData.verified) {
+      // Registered but not verified — OTP phir se bhejo
+      toast('⚠️ Yeh email pehle se registered hai lekin verify nahi hua. OTP dobara bhej rahe hain.', 'warn', 5000);
+    }
 
-  // OTP modal pehle prepare karo
+    // Naya user ya unverified — aage badho
+    _pendingUser = {
+      name: n.replace(/[<>"&]/g,'').substring(0,100),
+      email: em,
+      mobile: m,
+      city: document.getElementById('rc').value.trim().substring(0,60),
+      language: document.getElementById('rl').value,
+      consentGDPR: true, consentIT: true,
+      registeredAt: new Date().toISOString(), toolsUsed: 0, premium: false, verified: false
+    };
+
+    _otpCode   = generateOTP();
+    _otpExpiry = Date.now() + 5 * 60 * 1000;
+
+    // OTP modal pehle prepare karo
   closeM('reg-ov');
   var dispEl = document.getElementById('otp-email-display');
   if (dispEl) dispEl.textContent = _pendingUser.email;
@@ -1834,14 +1956,16 @@ function submitReg(e) {
   // OTP bhejo — showOtpOnScreen andar call hoga, modal already open hai
   sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
 
-  toast('📧 OTP bheja ja raha hai...', 'info', 3000);
+    toast('📧 OTP bheja ja raha hai...', 'info', 3000);
 
-  // ← Button ab baad mein reset hoga (OTP modal open hone ke baad)
-  setTimeout(function() {
-    _rs = false;
-    btn.innerHTML = 'Register &amp; Get Free Access →';
-    btn.disabled = false;
-  }, 1000);
+    // Button reset
+    setTimeout(function() {
+      _rs = false;
+      btn.innerHTML = 'Register &amp; Get Free Access →';
+      btn.disabled = false;
+    }, 1000);
+
+  }); // end checkEmailExists
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1968,7 +2092,25 @@ document.addEventListener('DOMContentLoaded', function() {
     console.error('[KSpider] EmailJS NOT loaded ❌ — CDN blocked ya internet nahi hai');
   }
 
-  if (isReg()) updateUW();
+  // Firebase init
+  initFirebase();
+
+  // Returning user check — agar localStorage mein verified hai toh seedha
+  if (isReg()) {
+    updateUW();
+  } else {
+    // localStorage nahi hai — koi saved email check karo (cross-device login)
+    var savedEmail = localStorage.getItem('ks_last_email');
+    if (savedEmail) {
+      fetchUserFromFirebase(savedEmail, function(fbUser) {
+        if (fbUser && fbUser.verified) {
+          saveUser(fbUser);
+          updateUW();
+          toast('👋 Welcome back, ' + fbUser.name + '!', 'success', 4000);
+        }
+      });
+    }
+  }
 
   // OTP input — sirf numbers, auto-verify on 6 digits
   var otpInput = document.getElementById('otp-input');
