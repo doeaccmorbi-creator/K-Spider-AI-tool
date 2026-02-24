@@ -1341,7 +1341,7 @@ body {
       </div>
       <div class="form-group" style="text-align:left">
         <label class="form-label">Enter OTP *</label>
-        <input class="form-ctrl" id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:1.4rem;letter-spacing:.4em;text-align:center;font-weight:700" autocomplete="one-time-code" oninput="this.value=this.value.replace(/[^0-9]/g,'');if(this.value.length===6){verifyOTP();}" onkeydown="if(event.key==='Enter'){verifyOTP();}">
+        <input class="form-ctrl" id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:1.4rem;letter-spacing:.4em;text-align:center;font-weight:700" autocomplete="one-time-code">
       </div>
       <p id="otp-timer" style="font-size:.76rem;color:var(--t3);margin-bottom:16px;margin-top:-8px">OTP expires in <span id="otp-countdown" style="color:var(--red);font-weight:700">5:00</span></p>
       <button onclick="verifyOTP()" id="otp-btn" style="width:100%;padding:13px;background:var(--t1);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.88rem;border:none;border-radius:var(--r8);cursor:pointer;transition:all .25s;margin-bottom:12px">
@@ -1615,45 +1615,55 @@ function startOTPTimer() {
    EmailJS template mein {{to_name}}, {{to_email}}, {{otp_code}} use karo
    ══════════════════════════════════════════════════════ */
 function showOtpOnScreen(otp, email) {
-  // OTP directly modal mein dikhao — email fail ya file:// protocol
   var box = document.getElementById('otp-status-box');
   var msgEl = document.getElementById('otp-status-msg');
   var iconEl = document.getElementById('otp-status-icon');
   if (box && msgEl) {
     if (iconEl) iconEl.textContent = '🔐';
-    msgEl.innerHTML = 'Email send nahi hua (local/testing mode).<br>Aapka OTP hai:<br><strong style="font-size:1.6rem;letter-spacing:.2em;color:#b8792a;display:block;margin:8px 0">' + otp + '</strong><small style="color:var(--t3)">Yeh OTP copy karke neeche box mein enter karo.</small>';
+    var otpDiv = document.createElement('div');
+    otpDiv.style.cssText = 'font-size:2rem;font-weight:900;letter-spacing:.3em;color:#b8792a;background:#fff8ee;border:2px dashed #b8792a;border-radius:10px;padding:10px 0;margin:8px 0;text-align:center;cursor:pointer;';
+    otpDiv.textContent = otp;
+    otpDiv.title = 'Click to copy';
+    otpDiv.addEventListener('click', function() {
+      if (navigator.clipboard) { navigator.clipboard.writeText(otp); toast('OTP copy ho gaya!', 'success'); }
+    });
+    msgEl.innerHTML = '<div style="font-weight:700;font-size:.88rem;margin-bottom:8px">Aapka OTP hai:</div>';
+    msgEl.appendChild(otpDiv);
+    var hint = document.createElement('div');
+    hint.style.cssText = 'font-size:.75rem;color:#7a7468;margin-top:4px';
+    hint.textContent = String.fromCodePoint(0x1F446) + ' OTP pe click karke copy karo, phir neeche box mein paste karo';
+    msgEl.appendChild(hint);
     box.classList.add('show');
     box.classList.remove('err');
-    box.style.cssText += ';background:rgba(184,121,42,.1);border-color:rgba(184,121,42,.4);color:var(--t1)';
+    box.style.cssText += ';background:rgba(184,121,42,.08);border-color:rgba(184,121,42,.5);color:var(--t1)';
   }
-  // Auto-fill OTP input
   var inp = document.getElementById('otp-input');
-  if (inp) { inp.value = otp; inp.style.background = '#fffbf0'; inp.style.borderColor = 'var(--gold-b)'; }
-  console.log('[KSpider] OTP (testing/local):', otp);
+  if (inp) {
+    inp.value = otp;
+    inp.style.background = '#fffbf0';
+    inp.style.borderColor = '#b8792a';
+    inp.style.boxShadow = '0 0 0 3px rgba(184,121,42,.15)';
+  }
+  console.log('[KSpider] OTP:', otp);
 }
 
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  console.log('[KSpider] Sending OTP to:', email, '| OTP:', otp);
+  console.log('[KSpider] OTP:', otp, '| To:', email);
 
-  if (typeof emailjs === 'undefined') {
-    console.error('[KSpider] EmailJS not loaded!');
-    showOtpOnScreen(otp, email);
-    return;
-  }
+  // HAMESHA pehle OTP screen pe dikhao — email sirf bonus hai
+  showOtpOnScreen(otp, email);
 
-  // file:// protocol pe EmailJS CORS block — OTP screen pe dikhao
-  if (window.location.protocol === 'file:') {
-    console.warn('[KSpider] file:// protocol — EmailJS CORS blocked. Showing OTP on screen.');
-    showOtpOnScreen(otp, email);
+  // file:// ya EmailJS missing → screen OTP kaafi hai
+  if (typeof emailjs === 'undefined' || window.location.protocol === 'file:') {
+    console.warn('[KSpider] EmailJS unavailable or file:// — screen OTP shown.');
     return;
   }
 
   var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-
   var userParams = {
     to_name:    name,
-    to_email:   email,   // EmailJS template "To Email" field mein {{to_email}} daalo
-    reply_to:   email,   // reply-to header set karo — better deliverability
+    to_email:   email,
+    reply_to:   email,
     otp_code:   otp,
     user_mobile: mobile,
     user_city:   city || 'N/A',
@@ -1661,31 +1671,24 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
     platform:    'K Spider AI Tool — www.kspiderai.in'
   };
 
+  // Try OTP template
   emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
-    .then(function(response) {
-      console.log('[KSpider] OTP email sent!', response.status);
-      showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam folder check karo.', false);
+    .then(function(r) {
+      console.log('[KSpider] Email sent! Status:', r.status);
+      showOtpStatus('✅ OTP <strong>' + email + '</strong> par bhi bheja gaya! Inbox + Spam check karo.<br>Ya neeche dikha OTP seedha use karo.', false);
     })
     .catch(function(err) {
-      console.error('[KSpider] OTP template failed:', err);
-      // Fallback: admin template se try
+      console.error('[KSpider] Email failed. Status:', err.status, '| Reason:', err.text);
+      // Screen OTP already shown — sirf console error log karo
+      // Try fallback silently
       var fallbackParams = {
-        user_name:  name,
-        user_email: email,
-        user_mobile: mobile,
+        user_name: name, user_email: email, user_mobile: mobile,
         registration_date: dateStr,
-        platform: '🔐 K Spider OTP: ' + otp + ' (5 min valid) — ' + dateStr
+        platform: 'OTP: ' + otp + ' | ' + dateStr
       };
       emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, fallbackParams)
-        .then(function() {
-          showOtpStatus('✅ OTP bhej diya! Inbox + Spam check karo.', false);
-        })
-        .catch(function(err2) {
-          console.error('[KSpider] Both templates failed. Reason:', JSON.stringify(err2));
-          // Possible reasons: wrong template ID, template not configured, quota exceeded
-          showOtpOnScreen(otp, email);
-          toast('⚠️ EmailJS error: ' + (err2.text || err2.status || 'Unknown') + ' — OTP screen pe dekho', 'warn', 10000);
-        });
+        .then(function() { console.log('[KSpider] Fallback email sent.'); })
+        .catch(function(e2) { console.warn('[KSpider] Fallback also failed:', e2.status, e2.text); });
     });
 
   // ── ADMIN KO NOTIFICATION (register info) ──
@@ -1818,19 +1821,20 @@ function submitReg(e) {
   _otpCode   = generateOTP();
   _otpExpiry = Date.now() + 5 * 60 * 1000;
 
-  // OTP bhejo
-  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
-
-  // OTP modal open karo
+  // OTP modal pehle prepare karo
   closeM('reg-ov');
   var dispEl = document.getElementById('otp-email-display');
   if (dispEl) dispEl.textContent = _pendingUser.email;
   var otpInp = document.getElementById('otp-input');
   if (otpInp) otpInp.value = '';
-  hideOtpStatus();
-  startOTPTimer();
+  hideOtpStatus();   // ← sirf yahan clear karo — BEFORE sendOTPEmail
   openM('otp-ov');
-  toast('OTP ' + _pendingUser.email + ' par bheja gaya! Inbox + Spam check karo.', 'info', 6000);
+  startOTPTimer();
+
+  // OTP bhejo — showOtpOnScreen andar call hoga, modal already open hai
+  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
+
+  toast('📧 OTP bheja ja raha hai...', 'info', 3000);
 
   // ← Button ab baad mein reset hoga (OTP modal open hone ke baad)
   setTimeout(function() {
@@ -1965,6 +1969,18 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   if (isReg()) updateUW();
+
+  // OTP input — sirf numbers, auto-verify on 6 digits
+  var otpInput = document.getElementById('otp-input');
+  if (otpInput) {
+    otpInput.addEventListener('input', function() {
+      this.value = this.value.replace(/[^0-9]/g, '');
+      if (this.value.length === 6) { verifyOTP(); }
+    });
+    otpInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { verifyOTP(); }
+    });
+  }
 
   var liveCount = TD.filter(function(t) { return t.status === 'live'; }).length;
   var statEl = document.getElementById('stat-live');
