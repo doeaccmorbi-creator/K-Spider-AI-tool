@@ -1,0 +1,3729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K Spider AI Universal File Converter – Ultra SaaS Edition</title>
+<meta name="description" content="World-class universal file converter. Convert images, documents, audio, video, data files. 100% browser-based, secure, free.">
+<meta name="keywords" content="file converter, image converter, PDF converter, K Spider AI, universal converter">
+<meta property="og:title" content="K Spider AI Universal File Converter">
+<meta property="og:url" content="https://www.kspiderai.in">
+
+<!-- PWA -->
+<meta name="theme-color" content="#0f1117">
+<link rel="manifest" href="data:application/json,{}">
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<!-- Libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+
+<style>
+:root {
+  --bg: #0a0c12;
+  --bg2: #111420;
+  --bg3: #181c28;
+  --surface: rgba(255,255,255,0.04);
+  --surface2: rgba(255,255,255,0.07);
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --accent: #00d4ff;
+  --accent2: #7c3aed;
+  --accent3: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --text: #e8eaf0;
+  --text2: #8892a4;
+  --text3: #4a5568;
+  --radius: 16px;
+  --radius-sm: 8px;
+  --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  --glow: 0 0 40px rgba(0,212,255,0.15);
+  --transition: 0.2s ease;
+}
+.light-mode {
+  --bg: #f0f4ff;
+  --bg2: #e8edf8;
+  --bg3: #ffffff;
+  --surface: rgba(0,0,0,0.03);
+  --surface2: rgba(0,0,0,0.06);
+  --border: rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text: #1a1d2e;
+  --text2: #4a5568;
+  --text3: #9ca3af;
+  --shadow: 0 8px 32px rgba(0,0,0,0.1);
+  --glow: 0 0 40px rgba(0,212,255,0.08);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  transition: background 0.3s, color 0.3s;
+}
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* LAYOUT */
+.app-wrapper { display: flex; min-height: 100vh; }
+
+/* SIDEBAR */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  z-index: 100;
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+}
+.sidebar-logo {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(0,212,255,0.3);
+  flex-shrink: 0;
+}
+.logo-text { font-family: 'Syne', sans-serif; }
+.logo-text .brand { font-size: 13px; font-weight: 800; color: var(--accent); letter-spacing: 0.5px; }
+.logo-text .sub { font-size: 10px; color: var(--text2); font-weight: 400; }
+
+.sidebar-search {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-search input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color var(--transition);
+}
+.sidebar-search input:focus { border-color: var(--accent); }
+.sidebar-search input::placeholder { color: var(--text3); }
+
+.sidebar-nav { flex: 1; padding: 8px 0; }
+.nav-section { margin-bottom: 4px; }
+.nav-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  color: var(--text3);
+  padding: 8px 20px 4px;
+  text-transform: uppercase;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background var(--transition), color var(--transition);
+  position: relative;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text2);
+  user-select: none;
+}
+.nav-item:hover { background: var(--surface); color: var(--text); }
+.nav-item.active {
+  background: linear-gradient(90deg, rgba(0,212,255,0.12), transparent);
+  color: var(--accent);
+  border-left: 2px solid var(--accent);
+  padding-left: 18px;
+}
+.nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+.nav-badge {
+  margin-left: auto;
+  background: var(--accent2);
+  color: white;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 10px;
+  font-weight: 700;
+}
+.nav-badge.new { background: var(--green); }
+
+.sidebar-footer {
+  padding: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text3);
+  line-height: 1.6;
+}
+.sidebar-footer a { color: var(--accent); text-decoration: none; }
+
+/* MAIN CONTENT */
+.main-content {
+  flex: 1;
+  margin-left: 260px;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* TOP BAR */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  background: rgba(10,12,18,0.85);
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: background 0.3s;
+}
+.light-mode .topbar { background: rgba(240,244,255,0.85); }
+.topbar-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  flex: 1;
+}
+.topbar-actions { display: flex; gap: 8px; align-items: center; }
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+  font-family: 'DM Sans', sans-serif;
+  white-space: nowrap;
+}
+.btn-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text2);
+  transition: all var(--transition);
+}
+.btn-icon:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #0099bb);
+  color: #000;
+  box-shadow: 0 4px 15px rgba(0,212,255,0.3);
+}
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,212,255,0.4); }
+.btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--surface); border-color: var(--border2); }
+.btn-success { background: linear-gradient(135deg, var(--green), #059669); color: white; }
+.btn-purple { background: linear-gradient(135deg, var(--accent2), #5b21b6); color: white; }
+.btn-amber { background: linear-gradient(135deg, var(--accent3), #d97706); color: white; }
+
+/* LANG SELECTOR */
+.lang-select {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+}
+
+/* CONTENT AREA */
+.content-area { flex: 1; padding: 24px 28px; }
+
+/* PAGE SECTIONS */
+.page { display: none; }
+.page.active { display: block; }
+
+/* HERO UPLOAD ZONE */
+.upload-hero {
+  background: var(--bg3);
+  border: 2px dashed var(--border2);
+  border-radius: 20px;
+  padding: 48px 32px;
+  text-align: center;
+  transition: all 0.3s;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.upload-hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, rgba(0,212,255,0.05) 0%, transparent 70%);
+  pointer-events: none;
+}
+.upload-hero:hover, .upload-hero.drag-over {
+  border-color: var(--accent);
+  background: rgba(0,212,255,0.05);
+  box-shadow: var(--glow);
+}
+.upload-hero.drag-over { transform: scale(1.01); }
+.upload-icon { font-size: 52px; margin-bottom: 16px; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+.upload-title { font-family: 'Syne', sans-serif; font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.upload-sub { color: var(--text2); font-size: 14px; margin-bottom: 20px; }
+.upload-formats { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 16px; }
+.format-tag {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  color: var(--text2);
+}
+#fileInput { display: none; }
+
+/* STATS ROW */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin: 20px 0;
+}
+.stat-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  text-align: center;
+  transition: all var(--transition);
+}
+.stat-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: var(--shadow); }
+.stat-val { font-family: 'Syne', sans-serif; font-size: 24px; font-weight: 800; color: var(--accent); }
+.stat-lbl { font-size: 11px; color: var(--text2); margin-top: 4px; }
+
+/* TWO COLUMN LAYOUT */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+
+/* PANEL / CARD */
+.panel {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.panel-title {
+  font-family: 'Syne', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.panel-title span { color: var(--accent); }
+
+/* FILE LIST */
+.file-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
+.file-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all var(--transition);
+  cursor: default;
+}
+.file-item:hover { border-color: var(--border2); background: var(--surface2); }
+.file-thumb {
+  width: 40px; height: 40px;
+  border-radius: 8px;
+  background: var(--surface2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.file-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.file-info { flex: 1; min-width: 0; }
+.file-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.file-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.file-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.file-status {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-weight: 600;
+}
+.status-ready { background: rgba(16,185,129,0.15); color: var(--green); }
+.status-processing { background: rgba(0,212,255,0.15); color: var(--accent); }
+.status-done { background: rgba(124,58,237,0.15); color: #a78bfa; }
+.status-error { background: rgba(239,68,68,0.15); color: var(--red); }
+
+/* CONVERSION OPTIONS */
+.options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; }
+.form-label { font-size: 12px; font-weight: 600; color: var(--text2); }
+.form-control {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  outline: none;
+  transition: border-color var(--transition);
+  width: 100%;
+}
+.form-control:focus { border-color: var(--accent); }
+.form-control option { background: var(--bg2); }
+
+/* SLIDER */
+.slider-wrap { display: flex; gap: 10px; align-items: center; }
+input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+.slider-val {
+  min-width: 36px;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* CHECKBOX TOGGLE */
+.toggle-row { display: flex; align-items: center; gap: 10px; }
+.toggle { position: relative; width: 36px; height: 20px; cursor: pointer; }
+.toggle input { display: none; }
+.toggle-track {
+  position: absolute;
+  inset: 0;
+  background: var(--surface2);
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  transition: background 0.2s;
+}
+.toggle input:checked + .toggle-track { background: var(--accent); border-color: var(--accent); }
+.toggle-thumb {
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 14px; height: 14px;
+  background: white;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+.toggle input:checked ~ .toggle-thumb { transform: translateX(16px); }
+.toggle-label { font-size: 13px; color: var(--text2); }
+
+/* PROGRESS */
+.progress-bar {
+  width: 100%;
+  height: 6px;
+  background: var(--surface2);
+  border-radius: 3px;
+  overflow: hidden;
+  margin: 8px 0;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 40px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4));
+  animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { 0%{transform:translateX(-40px)} 100%{transform:translateX(40px)} }
+
+/* SUGGESTIONS */
+.suggestion-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+.suggestion-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.suggestion-card:hover {
+  border-color: var(--accent);
+  background: rgba(0,212,255,0.07);
+  transform: translateY(-2px);
+}
+.suggestion-card.recommended { border-color: var(--green); }
+.suggestion-icon { font-size: 22px; margin-bottom: 6px; }
+.suggestion-name { font-size: 12px; font-weight: 700; }
+.suggestion-desc { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.rec-badge {
+  display: inline-block;
+  font-size: 9px;
+  background: var(--green);
+  color: white;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+/* PREVIEW */
+.preview-area {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+.preview-area img { max-width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; }
+.preview-empty { color: var(--text3); font-size: 13px; text-align: center; padding: 40px; }
+
+/* OUTPUT AREA */
+.output-grid { display: flex; flex-direction: column; gap: 10px; }
+.output-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.output-info { flex: 1; }
+.output-name { font-size: 13px; font-weight: 600; }
+.output-size { font-size: 11px; color: var(--green); margin-top: 2px; }
+.output-actions { display: flex; gap: 8px; }
+
+/* TOOL CATEGORIES */
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; }
+.tool-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 16px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s;
+}
+.tool-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3), var(--glow);
+}
+.tool-card-icon { font-size: 32px; margin-bottom: 10px; }
+.tool-card-name { font-size: 13px; font-weight: 700; margin-bottom: 4px; }
+.tool-card-desc { font-size: 11px; color: var(--text2); line-height: 1.4; }
+
+/* HISTORY */
+.history-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  transition: all var(--transition);
+}
+.history-item:hover { border-color: var(--border2); }
+.history-info { flex: 1; }
+.history-title { font-size: 13px; font-weight: 600; }
+.history-meta { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* TABS */
+.tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+.tab {
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text2);
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition);
+  margin-bottom: -1px;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* SECTION HEADING */
+.section-heading {
+  font-family: 'Syne', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  margin-bottom: 6px;
+}
+.section-sub { font-size: 13px; color: var(--text2); margin-bottom: 20px; }
+
+/* CONVERTER WORKSPACE */
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+.workspace-main { display: flex; flex-direction: column; gap: 16px; }
+.workspace-side { display: flex; flex-direction: column; gap: 14px; }
+
+/* GLOW CARD */
+.glow-card {
+  background: linear-gradient(135deg, rgba(0,212,255,0.08), rgba(124,58,237,0.08));
+  border: 1px solid rgba(0,212,255,0.2);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+/* NOTIFICATION */
+.notification-area { position: fixed; top: 16px; right: 16px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.notification {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 13px;
+  max-width: 280px;
+  box-shadow: var(--shadow);
+  animation: slideIn 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+@keyframes slideIn { from{transform:translateX(100%);opacity:0} to{transform:translateX(0);opacity:1} }
+.notification.success { border-left: 3px solid var(--green); }
+.notification.error { border-left: 3px solid var(--red); }
+.notification.info { border-left: 3px solid var(--accent); }
+
+/* AI SUGGEST */
+.ai-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(0,212,255,0.15));
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 20px;
+  padding: 4px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #a78bfa;
+}
+
+/* AD PLACEHOLDER */
+.ad-block {
+  background: var(--surface);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 11px;
+}
+
+/* MODAL */
+.modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  backdrop-filter: blur(8px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 28px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: var(--shadow);
+  animation: modalIn 0.3s ease;
+}
+@keyframes modalIn { from{transform:scale(0.9);opacity:0} to{transform:scale(1);opacity:1} }
+.modal-title { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+.modal-close { float: right; cursor: pointer; color: var(--text2); font-size: 20px; line-height: 1; margin-top: -2px; }
+
+/* SIZE COMPARE */
+.size-compare {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.size-before { text-align: center; flex: 1; }
+.size-after { text-align: center; flex: 1; }
+.size-arrow { color: var(--accent); font-size: 18px; }
+.size-val { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; }
+.size-lbl { font-size: 10px; color: var(--text2); margin-top: 2px; }
+.size-reduction { font-size: 11px; color: var(--green); font-weight: 700; margin-top: 4px; }
+
+/* WATERMARK */
+.watermark-preview {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+/* WHATSAPP BTN */
+.wa-btn {
+  background: linear-gradient(135deg, #25d366, #128c7e);
+  color: white;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all var(--transition);
+  border: none;
+  font-family: 'DM Sans', sans-serif;
+}
+.wa-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(37,211,102,0.3); }
+
+/* FOOTER */
+.footer {
+  background: var(--bg2);
+  border-top: 1px solid var(--border);
+  padding: 24px 28px;
+  margin-top: auto;
+}
+.footer-inner { max-width: 900px; }
+.footer-brand { font-family: 'Syne', sans-serif; font-size: 15px; font-weight: 800; color: var(--accent); margin-bottom: 8px; }
+.footer-links { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
+.footer-links a { font-size: 12px; color: var(--text2); text-decoration: none; transition: color var(--transition); }
+.footer-links a:hover { color: var(--accent); }
+.footer-legal { font-size: 11px; color: var(--text3); line-height: 1.7; }
+.footer-legal strong { color: var(--text2); }
+
+/* MOBILE NAV TOGGLE */
+.mobile-nav-toggle {
+  display: none;
+  position: fixed;
+  bottom: 16px; left: 16px;
+  z-index: 200;
+  width: 44px; height: 44px;
+  background: var(--accent);
+  color: #000;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,212,255,0.4);
+  align-items: center;
+  justify-content: center;
+}
+
+/* CANVAS HIDDEN */
+canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
+
+/* RESPONSIVE */
+@media(max-width: 900px) {
+  .workspace { grid-template-columns: 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+  .three-col { grid-template-columns: 1fr 1fr; }
+}
+@media(max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main-content { margin-left: 0; }
+  .mobile-nav-toggle { display: flex; }
+  .content-area { padding: 16px; }
+  .topbar { padding: 12px 16px; }
+  .three-col { grid-template-columns: 1fr; }
+  .options-grid { grid-template-columns: 1fr; }
+}
+
+/* DATA TOOLS SPECIFIC */
+.code-area {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 300px;
+  overflow-y: auto;
+  width: 100%;
+  resize: vertical;
+  outline: none;
+}
+
+/* PREMIUM BADGE */
+.premium-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #000;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 8px;
+}
+
+/* AFFILIATE/SPONSORS */
+.sponsor-card {
+  background: linear-gradient(135deg, var(--bg3), var(--bg2));
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.sponsor-icon { font-size: 32px; }
+.sponsor-info { flex: 1; }
+.sponsor-name { font-weight: 700; font-size: 14px; }
+.sponsor-desc { font-size: 12px; color: var(--text2); margin-top: 3px; }
+
+/* CHECKERBOARD for transparent BG preview */
+.checker-bg {
+  background-image: linear-gradient(45deg, #ccc 25%, transparent 25%),
+    linear-gradient(-45deg, #ccc 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #ccc 75%),
+    linear-gradient(-45deg, transparent 75%, #ccc 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+}
+.light-mode .checker-bg { opacity: 0.5; }
+
+/* Fade animation */
+.fade-in { animation: fadeIn 0.4s ease; }
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+/* Conversion history badge */
+.hist-count {
+  background: var(--accent2);
+  color: white;
+  font-size: 10px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  margin-left: 4px;
+}
+</style>
+</head>
+<body>
+
+<!-- HIDDEN CANVASES -->
+<canvas id="mainCanvas" class="hidden-canvas"></canvas>
+<canvas id="tempCanvas" class="hidden-canvas"></canvas>
+
+<!-- NOTIFICATIONS -->
+<div class="notification-area" id="notifArea"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="shareModal">
+  <div class="modal">
+    <div class="modal-title">📱 Share via WhatsApp <span class="modal-close" onclick="closeModal('shareModal')">✕</span></div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Your Name (optional)</label>
+      <input class="form-control" id="waName" placeholder="Enter your name..." value="">
+    </div>
+    <div style="margin-bottom:14px; font-size:13px; color:var(--text2)">
+      Share this amazing tool with your friends and family!
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <a id="waShareBtn" class="wa-btn" target="_blank">
+        📲 Share on WhatsApp
+      </a>
+      <button class="btn btn-secondary" onclick="closeModal('shareModal')">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- PREVIEW MODAL -->
+<div class="modal-overlay" id="previewModal">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-title">👁️ File Preview <span class="modal-close" onclick="closeModal('previewModal')">✕</span></div>
+    <div id="previewModalContent" style="text-align:center"></div>
+  </div>
+</div>
+
+<!-- WATERMARK MODAL -->
+<div class="modal-overlay" id="wmModal">
+  <div class="modal">
+    <div class="modal-title">💧 Watermark Settings <span class="modal-close" onclick="closeModal('wmModal')">✕</span></div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Watermark Text</label>
+      <input class="form-control" id="wmText" placeholder="© K Spider AI" value="© K Spider AI">
+    </div>
+    <div class="options-grid" style="margin-bottom:12px">
+      <div class="form-group">
+        <label class="form-label">Position</label>
+        <select class="form-control" id="wmPos">
+          <option>Bottom Right</option>
+          <option>Bottom Left</option>
+          <option>Center</option>
+          <option>Top Right</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Opacity</label>
+        <div class="slider-wrap">
+          <input type="range" id="wmOpacity" min="10" max="100" value="40">
+          <span class="slider-val" id="wmOpacityVal">40%</span>
+        </div>
+      </div>
+    </div>
+    <button class="btn btn-primary" onclick="applyWatermarkSetting();closeModal('wmModal')">Apply Watermark</button>
+  </div>
+</div>
+
+<!-- APP WRAPPER -->
+<div class="app-wrapper">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <a href="https://www.kspiderai.in" target="_blank" class="logo-badge">
+        <div class="logo-icon">🕷️</div>
+        <div class="logo-text">
+          <div class="brand">K SPIDER AI</div>
+          <div class="sub">Universal File Converter</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="sidebar-search">
+      <input type="text" id="sidebarSearch" placeholder="🔍 Search tools..." onkeyup="filterNav(this.value)">
+    </div>
+
+    <nav class="sidebar-nav" id="sidebarNav">
+      <div class="nav-section">
+        <div class="nav-section-title">Home</div>
+        <div class="nav-item active" data-page="home" onclick="showPage('home')">
+          <span class="nav-icon">🏠</span> Dashboard
+        </div>
+        <div class="nav-item" data-page="history" onclick="showPage('history')">
+          <span class="nav-icon">📋</span> History
+          <span id="histBadge" class="nav-badge">0</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Image Tools</div>
+        <div class="nav-item" data-page="image-convert" onclick="showPage('image-convert')">
+          <span class="nav-icon">🖼️</span> Image Converter
+        </div>
+        <div class="nav-item" data-page="image-compress" onclick="showPage('image-compress')">
+          <span class="nav-icon">🗜️</span> Compress Image
+        </div>
+        <div class="nav-item" data-page="image-resize" onclick="showPage('image-resize')">
+          <span class="nav-icon">📐</span> Resize Image
+        </div>
+        <div class="nav-item" data-page="bg-remove" onclick="showPage('bg-remove')">
+          <span class="nav-icon">✂️</span> BG Remover
+          <span class="nav-badge new">AI</span>
+        </div>
+        <div class="nav-item" data-page="passport" onclick="showPage('passport')">
+          <span class="nav-icon">🪪</span> Passport Photo
+        </div>
+        <div class="nav-item" data-page="img-to-pdf" onclick="showPage('img-to-pdf')">
+          <span class="nav-icon">📄</span> Image to PDF
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Document Tools</div>
+        <div class="nav-item" data-page="txt-to-pdf" onclick="showPage('txt-to-pdf')">
+          <span class="nav-icon">📝</span> TXT to PDF
+        </div>
+        <div class="nav-item" data-page="html-to-pdf" onclick="showPage('html-to-pdf')">
+          <span class="nav-icon">🌐</span> HTML to PDF
+        </div>
+        <div class="nav-item" data-page="md-to-pdf" onclick="showPage('md-to-pdf')">
+          <span class="nav-icon">⬇️</span> Markdown to PDF
+        </div>
+        <div class="nav-item" data-page="merge-pdf" onclick="showPage('merge-pdf')">
+          <span class="nav-icon">🔗</span> Merge PDF
+        </div>
+        <div class="nav-item" data-page="pdf-to-txt" onclick="showPage('pdf-to-txt')">
+          <span class="nav-icon">📤</span> PDF to TXT
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Data Tools</div>
+        <div class="nav-item" data-page="json-tools" onclick="showPage('json-tools')">
+          <span class="nav-icon">🔧</span> JSON Tools
+        </div>
+        <div class="nav-item" data-page="csv-json" onclick="showPage('csv-json')">
+          <span class="nav-icon">📊</span> CSV ↔ JSON
+        </div>
+        <div class="nav-item" data-page="base64" onclick="showPage('base64')">
+          <span class="nav-icon">🔐</span> Base64 Encode/Decode
+        </div>
+        <div class="nav-item" data-page="xml-format" onclick="showPage('xml-format')">
+          <span class="nav-icon">📋</span> XML Formatter
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Archive Tools</div>
+        <div class="nav-item" data-page="zip-create" onclick="showPage('zip-create')">
+          <span class="nav-icon">📦</span> Create ZIP
+        </div>
+        <div class="nav-item" data-page="zip-extract" onclick="showPage('zip-extract')">
+          <span class="nav-icon">📂</span> Extract ZIP
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">Media Tools</div>
+        <div class="nav-item" data-page="audio-tools" onclick="showPage('audio-tools')">
+          <span class="nav-icon">🎵</span> Audio Tools
+          <span class="nav-badge">Beta</span>
+        </div>
+        <div class="nav-item" data-page="video-tools" onclick="showPage('video-tools')">
+          <span class="nav-icon">🎬</span> Video Tools
+          <span class="nav-badge">Beta</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-section-title">More</div>
+        <div class="nav-item" data-page="monetize" onclick="showPage('monetize')">
+          <span class="nav-icon">💰</span> Premium & Ads
+        </div>
+        <div class="nav-item" data-page="about" onclick="showPage('about')">
+          <span class="nav-icon">ℹ️</span> About & Legal
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div style="margin-bottom:6px">
+        <a href="https://www.kspiderai.in" target="_blank">🌐 kspiderai.in</a> •
+        <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank">▶️ YouTube</a>
+      </div>
+      <div>Developed by<br><strong style="color:var(--text2)">Gaurang & Khush Raval</strong></div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+      <div class="topbar-title" id="topbarTitle">🏠 Dashboard</div>
+      <div class="topbar-actions">
+        <select class="lang-select" id="langSelect" onchange="changeLang(this.value)">
+          <option value="en">🇺🇸 English</option>
+          <option value="hi">🇮🇳 Hindi</option>
+          <option value="gu">🇮🇳 Gujarati</option>
+          <option value="es">🇪🇸 Spanish</option>
+          <option value="fr">🇫🇷 French</option>
+        </select>
+        <div class="btn-icon" onclick="openShareModal()" title="Share on WhatsApp">📲</div>
+        <div class="btn-icon" onclick="toggleDark()" id="darkToggle" title="Toggle theme">🌙</div>
+        <div class="btn-icon" onclick="installPWA()" title="Install App">📥</div>
+      </div>
+    </header>
+
+    <!-- CONTENT AREA -->
+    <main class="content-area">
+
+      <!-- ===== HOME PAGE ===== -->
+      <div class="page active fade-in" id="page-home">
+        <div class="section-heading" id="t-welcome">Welcome to K Spider AI Converter</div>
+        <div class="section-sub" id="t-sub">Universal file conversion platform. 100% browser-based. Zero uploads to any server.</div>
+
+        <!-- Ad Block Top -->
+        <div class="ad-block" style="margin-bottom:16px">
+          📢 Advertisement Space – Google AdSense Ready
+          <br><small>728×90 Leaderboard | To activate: paste your AdSense code here</small>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-val" id="statConverted">0</div>
+            <div class="stat-lbl">Files Converted</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">50+</div>
+            <div class="stat-lbl">Supported Formats</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">100%</div>
+            <div class="stat-lbl">Browser-Based</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val">0</div>
+            <div class="stat-lbl">Files Uploaded to Server</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-val" id="statStorage">0 MB</div>
+            <div class="stat-lbl">Storage Used</div>
+          </div>
+        </div>
+
+        <!-- UNIVERSAL UPLOAD -->
+        <div class="upload-hero" id="homeUpload" onclick="document.getElementById('homeFileInput').click()" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDrop(event)">
+          <div class="upload-icon">🕷️</div>
+          <div class="upload-title" id="t-drop">Drop Any File Here</div>
+          <div class="upload-sub" id="t-dropSub">or click to browse • AI auto-detects format & suggests best conversion</div>
+          <div style="margin:16px 0">
+            <div class="ai-badge">🤖 AI Smart Detection Active</div>
+          </div>
+          <div class="upload-formats">
+            <span class="format-tag">JPG</span><span class="format-tag">PNG</span><span class="format-tag">WEBP</span>
+            <span class="format-tag">GIF</span><span class="format-tag">BMP</span><span class="format-tag">PDF</span>
+            <span class="format-tag">TXT</span><span class="format-tag">JSON</span><span class="format-tag">CSV</span>
+            <span class="format-tag">XML</span><span class="format-tag">HTML</span><span class="format-tag">MD</span>
+            <span class="format-tag">ZIP</span><span class="format-tag">MP3</span><span class="format-tag">WAV</span>
+            <span class="format-tag">MP4</span><span class="format-tag">SVG</span><span class="format-tag">ICO</span>
+          </div>
+          <input type="file" id="homeFileInput" multiple onchange="handleHomeUpload(event)" style="display:none">
+        </div>
+
+        <!-- AI SUGGESTIONS (shown after upload) -->
+        <div id="aiSuggestPanel" style="display:none;margin-top:20px" class="fade-in">
+          <div class="panel">
+            <div class="panel-title"><span>🤖</span> AI Smart Suggestions</div>
+            <div id="aiSuggestContent"></div>
+          </div>
+        </div>
+
+        <!-- TOOL GRID -->
+        <div style="margin-top:28px">
+          <div class="section-heading">All Conversion Tools</div>
+          <div class="section-sub">Click any tool to start converting</div>
+          <div class="tool-grid">
+            <div class="tool-card" onclick="showPage('image-convert')">
+              <div class="tool-card-icon">🖼️</div>
+              <div class="tool-card-name">Image Converter</div>
+              <div class="tool-card-desc">JPG, PNG, WEBP, GIF, BMP, ICO, TIFF</div>
+            </div>
+            <div class="tool-card" onclick="showPage('image-compress')">
+              <div class="tool-card-icon">🗜️</div>
+              <div class="tool-card-name">Compress Image</div>
+              <div class="tool-card-desc">Reduce file size with quality control</div>
+            </div>
+            <div class="tool-card" onclick="showPage('image-resize')">
+              <div class="tool-card-icon">📐</div>
+              <div class="tool-card-name">Resize Image</div>
+              <div class="tool-card-desc">Custom dimensions, DPI, aspect ratio</div>
+            </div>
+            <div class="tool-card" onclick="showPage('bg-remove')">
+              <div class="tool-card-icon">✂️</div>
+              <div class="tool-card-name">BG Remover</div>
+              <div class="tool-card-desc">Canvas-based background removal</div>
+            </div>
+            <div class="tool-card" onclick="showPage('passport')">
+              <div class="tool-card-icon">🪪</div>
+              <div class="tool-card-name">Passport Photo</div>
+              <div class="tool-card-desc">Multiple copies on A4 sheet</div>
+            </div>
+            <div class="tool-card" onclick="showPage('img-to-pdf')">
+              <div class="tool-card-icon">📄</div>
+              <div class="tool-card-name">Image to PDF</div>
+              <div class="tool-card-desc">Batch images into single PDF</div>
+            </div>
+            <div class="tool-card" onclick="showPage('txt-to-pdf')">
+              <div class="tool-card-icon">📝</div>
+              <div class="tool-card-name">TXT to PDF</div>
+              <div class="tool-card-desc">Convert text files to PDF</div>
+            </div>
+            <div class="tool-card" onclick="showPage('html-to-pdf')">
+              <div class="tool-card-icon">🌐</div>
+              <div class="tool-card-name">HTML to PDF</div>
+              <div class="tool-card-desc">Web content to printable PDF</div>
+            </div>
+            <div class="tool-card" onclick="showPage('md-to-pdf')">
+              <div class="tool-card-icon">⬇️</div>
+              <div class="tool-card-name">Markdown to PDF</div>
+              <div class="tool-card-desc">MD files rendered to PDF</div>
+            </div>
+            <div class="tool-card" onclick="showPage('json-tools')">
+              <div class="tool-card-icon">🔧</div>
+              <div class="tool-card-name">JSON Tools</div>
+              <div class="tool-card-desc">Format, validate, convert JSON</div>
+            </div>
+            <div class="tool-card" onclick="showPage('csv-json')">
+              <div class="tool-card-icon">📊</div>
+              <div class="tool-card-name">CSV ↔ JSON</div>
+              <div class="tool-card-desc">Bidirectional data conversion</div>
+            </div>
+            <div class="tool-card" onclick="showPage('base64')">
+              <div class="tool-card-icon">🔐</div>
+              <div class="tool-card-name">Base64</div>
+              <div class="tool-card-desc">Encode and decode Base64</div>
+            </div>
+            <div class="tool-card" onclick="showPage('zip-create')">
+              <div class="tool-card-icon">📦</div>
+              <div class="tool-card-name">Create ZIP</div>
+              <div class="tool-card-desc">Bundle multiple files to ZIP</div>
+            </div>
+            <div class="tool-card" onclick="showPage('zip-extract')">
+              <div class="tool-card-icon">📂</div>
+              <div class="tool-card-name">Extract ZIP</div>
+              <div class="tool-card-desc">Unzip and preview contents</div>
+            </div>
+            <div class="tool-card" onclick="showPage('merge-pdf')">
+              <div class="tool-card-icon">🔗</div>
+              <div class="tool-card-name">Merge PDFs</div>
+              <div class="tool-card-desc">Combine multiple PDF files</div>
+            </div>
+            <div class="tool-card" onclick="showPage('audio-tools')">
+              <div class="tool-card-icon">🎵</div>
+              <div class="tool-card-name">Audio Tools</div>
+              <div class="tool-card-desc">Trim, convert, analyze audio</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- AD BLOCK SIDE -->
+        <div class="ad-block" style="margin-top:20px">
+          📢 Advertisement – 300×250 Medium Rectangle | AdSense Ready
+        </div>
+      </div>
+
+      <!-- ===== IMAGE CONVERTER ===== -->
+      <div class="page fade-in" id="page-image-convert">
+        <div class="section-heading">🖼️ Image Converter</div>
+        <div class="section-sub">Convert between JPG, PNG, WEBP, GIF, BMP, ICO, SVG, TIFF formats with quality control and watermarking.</div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <!-- Upload -->
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Images</div>
+              <div class="upload-hero" style="padding:28px" onclick="document.getElementById('imgConvInput').click()" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDropPage(event,'img-conv')">
+                <div style="font-size:32px">🖼️</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Drop images here or click to upload</div>
+                <div class="upload-formats" style="justify-content:center;margin-top:12px">
+                  <span class="format-tag">JPG</span><span class="format-tag">PNG</span>
+                  <span class="format-tag">WEBP</span><span class="format-tag">GIF</span>
+                  <span class="format-tag">BMP</span><span class="format-tag">ICO</span>
+                </div>
+              </div>
+              <input type="file" id="imgConvInput" multiple accept="image/*" onchange="loadImgFiles(event,'imgConvList')" style="display:none">
+              <div class="file-list" id="imgConvList"></div>
+            </div>
+
+            <!-- Options -->
+            <div class="panel">
+              <div class="panel-title"><span>⚙️</span> Conversion Options</div>
+              <div class="options-grid">
+                <div class="form-group">
+                  <label class="form-label">Output Format</label>
+                  <select class="form-control" id="imgOutputFormat">
+                    <option value="jpeg">JPG (JPEG)</option>
+                    <option value="png">PNG</option>
+                    <option value="webp">WEBP</option>
+                    <option value="gif">GIF</option>
+                    <option value="bmp">BMP</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Quality</label>
+                  <div class="slider-wrap">
+                    <input type="range" id="imgQuality" min="10" max="100" value="90" oninput="document.getElementById('imgQualVal').textContent=this.value+'%'">
+                    <span class="slider-val" id="imgQualVal">90%</span>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Output Filename</label>
+                  <input class="form-control" id="imgOutputName" placeholder="converted_image">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">DPI</label>
+                  <select class="form-control" id="imgDPI">
+                    <option value="72">72 DPI (Web)</option>
+                    <option value="150">150 DPI</option>
+                    <option value="300" selected>300 DPI (Print)</option>
+                    <option value="600">600 DPI (High)</option>
+                  </select>
+                </div>
+              </div>
+              <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+                <div class="toggle-row">
+                  <label class="toggle"><input type="checkbox" id="addWatermark"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+                  <span class="toggle-label">Add Watermark</span>
+                </div>
+                <div class="toggle-row">
+                  <label class="toggle"><input type="checkbox" id="stripMeta" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+                  <span class="toggle-label">Remove Metadata</span>
+                </div>
+                <div class="toggle-row">
+                  <label class="toggle"><input type="checkbox" id="addBranding" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+                  <span class="toggle-label">K Spider Branding</span>
+                </div>
+              </div>
+              <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="convertImages()">🚀 Convert Images</button>
+                <button class="btn btn-secondary" onclick="openModal('wmModal')">💧 Watermark Settings</button>
+                <button class="btn btn-secondary" onclick="clearList('imgConvList')">🗑️ Clear</button>
+              </div>
+            </div>
+
+            <!-- Progress -->
+            <div id="imgConvProgress" style="display:none" class="panel">
+              <div class="panel-title"><span>⏳</span> Converting...</div>
+              <div class="progress-bar"><div class="progress-fill" id="imgProgFill" style="width:0%"></div></div>
+              <div id="imgProgText" style="font-size:12px;color:var(--text2);margin-top:6px">Processing...</div>
+            </div>
+
+            <!-- Output -->
+            <div id="imgOutputPanel" style="display:none" class="panel fade-in">
+              <div class="panel-title"><span>✅</span> Converted Files</div>
+              <div class="output-grid" id="imgOutputList"></div>
+              <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-success" onclick="downloadAllAsZip('imgOutputList')">📦 Download All as ZIP</button>
+                <button class="btn btn-secondary" onclick="exportHistory()">📋 Export History</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SIDEBAR PANEL -->
+          <div class="workspace-side">
+            <div class="panel">
+              <div class="panel-title"><span>👁️</span> Preview</div>
+              <div class="preview-area checker-bg" id="imgConvPreview">
+                <div class="preview-empty">Upload an image to preview</div>
+              </div>
+              <div id="imgSizeCompare" style="display:none;margin-top:10px"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title"><span>🤖</span> AI Suggestions</div>
+              <div id="imgAiSuggest" style="font-size:13px;color:var(--text2)">Upload image to get AI suggestions</div>
+            </div>
+            <div class="ad-block">📢 Ad Space<br><small>300×250</small></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== IMAGE COMPRESS ===== -->
+      <div class="page fade-in" id="page-image-compress">
+        <div class="section-heading">🗜️ Image Compressor</div>
+        <div class="section-sub">Compress images while maintaining visual quality. See size comparison before downloading.</div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Image to Compress</div>
+              <div class="upload-hero" style="padding:28px" onclick="document.getElementById('compressInput').click()" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDropPage(event,'compress')">
+                <div style="font-size:36px">🗜️</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Drop image or click to upload</div>
+              </div>
+              <input type="file" id="compressInput" accept="image/*" onchange="loadCompressFile(event)" style="display:none">
+            </div>
+            <div class="panel" id="compressOptions" style="display:none">
+              <div class="panel-title"><span>⚙️</span> Compression Settings</div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label">Compression Level</label>
+                <div class="slider-wrap">
+                  <input type="range" id="compressLevel" min="10" max="100" value="70" oninput="updateCompressPreview()">
+                  <span class="slider-val" id="compressLevelVal">70%</span>
+                </div>
+              </div>
+              <div class="form-group" style="margin-bottom:14px">
+                <label class="form-label">Optimization Mode</label>
+                <select class="form-control" id="compressMode" onchange="updateCompressPreview()">
+                  <option value="web">🌐 Web Optimized</option>
+                  <option value="print">🖨️ Print Quality</option>
+                  <option value="email">📧 Email Optimized</option>
+                  <option value="custom">⚙️ Custom</option>
+                </select>
+              </div>
+              <div id="sizeCompareBox"></div>
+              <div style="margin-top:14px;display:flex;gap:10px">
+                <button class="btn btn-primary" onclick="compressImage()">🗜️ Compress & Download</button>
+              </div>
+            </div>
+          </div>
+          <div class="workspace-side">
+            <div class="panel">
+              <div class="panel-title"><span>👁️</span> Preview</div>
+              <div class="preview-area" id="compressPreview"><div class="preview-empty">Upload image to preview</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== IMAGE RESIZE ===== -->
+      <div class="page fade-in" id="page-image-resize">
+        <div class="section-heading">📐 Image Resizer</div>
+        <div class="section-sub">Resize images to exact dimensions with optional aspect ratio lock.</div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Image</div>
+              <div class="upload-hero" style="padding:24px" onclick="document.getElementById('resizeInput').click()">
+                <div style="font-size:32px">📐</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Click to upload image</div>
+              </div>
+              <input type="file" id="resizeInput" accept="image/*" onchange="loadResizeFile(event)" style="display:none">
+            </div>
+            <div class="panel" id="resizeOptions" style="display:none">
+              <div class="panel-title"><span>⚙️</span> Resize Options</div>
+              <div class="options-grid">
+                <div class="form-group">
+                  <label class="form-label">Width (px)</label>
+                  <input class="form-control" id="resizeW" type="number" placeholder="800">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Height (px)</label>
+                  <input class="form-control" id="resizeH" type="number" placeholder="600">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Output Format</label>
+                  <select class="form-control" id="resizeFormat">
+                    <option value="jpeg">JPG</option>
+                    <option value="png">PNG</option>
+                    <option value="webp">WEBP</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Quality</label>
+                  <div class="slider-wrap">
+                    <input type="range" id="resizeQual" min="10" max="100" value="90" oninput="document.getElementById('resizeQualVal').textContent=this.value+'%'">
+                    <span class="slider-val" id="resizeQualVal">90%</span>
+                  </div>
+                </div>
+              </div>
+              <div class="toggle-row" style="margin-top:10px">
+                <label class="toggle"><input type="checkbox" id="lockAspect" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+                <span class="toggle-label">Lock Aspect Ratio</span>
+              </div>
+              <div style="margin-top:14px">
+                <button class="btn btn-primary" onclick="resizeImage()">📐 Resize & Download</button>
+              </div>
+            </div>
+          </div>
+          <div class="workspace-side">
+            <div class="panel">
+              <div class="panel-title"><span>👁️</span> Preview</div>
+              <div class="preview-area" id="resizePreview"><div class="preview-empty">Upload image to preview</div></div>
+              <div id="resizeInfo" style="font-size:12px;color:var(--text2);margin-top:8px"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title"><span>📏</span> Preset Sizes</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <button class="btn btn-secondary" style="justify-content:start;font-size:12px" onclick="setResizePreset(1920,1080)">📺 1920×1080 (Full HD)</button>
+                <button class="btn btn-secondary" style="justify-content:start;font-size:12px" onclick="setResizePreset(1280,720)">📱 1280×720 (HD)</button>
+                <button class="btn btn-secondary" style="justify-content:start;font-size:12px" onclick="setResizePreset(800,600)">💻 800×600</button>
+                <button class="btn btn-secondary" style="justify-content:start;font-size:12px" onclick="setResizePreset(400,400)">⬜ 400×400 (Square)</button>
+                <button class="btn btn-secondary" style="justify-content:start;font-size:12px" onclick="setResizePreset(1080,1080)">📸 1080×1080 (Instagram)</button>
+                <button class="btn btn-secondary" style="justify-content:start;font-size:12px" onclick="setResizePreset(1200,630)">📘 1200×630 (Facebook)</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== BG REMOVE ===== -->
+      <div class="page fade-in" id="page-bg-remove">
+        <div class="section-heading">✂️ Background Remover</div>
+        <div class="section-sub">Canvas-based color background removal. Works best with solid/near-solid backgrounds.</div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Image</div>
+              <div class="upload-hero" style="padding:24px" onclick="document.getElementById('bgInput').click()">
+                <div style="font-size:32px">✂️</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload image for BG removal</div>
+              </div>
+              <input type="file" id="bgInput" accept="image/*" onchange="loadBgFile(event)" style="display:none">
+            </div>
+            <div class="panel" id="bgOptions" style="display:none">
+              <div class="panel-title"><span>⚙️</span> Background Removal Settings</div>
+              <div class="options-grid">
+                <div class="form-group">
+                  <label class="form-label">Background Color (to remove)</label>
+                  <input type="color" class="form-control" id="bgColor" value="#ffffff" style="height:40px;cursor:pointer">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Tolerance</label>
+                  <div class="slider-wrap">
+                    <input type="range" id="bgTolerance" min="1" max="100" value="30" oninput="document.getElementById('bgTolVal').textContent=this.value">
+                    <span class="slider-val" id="bgTolVal">30</span>
+                  </div>
+                </div>
+              </div>
+              <div class="glow-card" style="margin:12px 0;font-size:12px;color:var(--text2)">
+                🤖 <strong>AI Tip:</strong> Best results with white, black, or solid color backgrounds. Increase tolerance for slight color variations.
+              </div>
+              <button class="btn btn-primary" onclick="removeBackground()">✂️ Remove Background (PNG)</button>
+            </div>
+          </div>
+          <div class="workspace-side">
+            <div class="panel">
+              <div class="panel-title"><span>Before</span></div>
+              <div class="preview-area" id="bgPreviewBefore"><div class="preview-empty">Upload image</div></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title"><span>After</span></div>
+              <div class="preview-area checker-bg" id="bgPreviewAfter"><div class="preview-empty">Result appears here</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== PASSPORT PHOTO ===== -->
+      <div class="page fade-in" id="page-passport">
+        <div class="section-heading">🪪 Passport Photo Generator</div>
+        <div class="section-sub">Generate multiple passport photo copies on a printable A4 layout.</div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Photo</div>
+              <div class="upload-hero" style="padding:24px" onclick="document.getElementById('passportInput').click()">
+                <div style="font-size:32px">🪪</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload your photo</div>
+              </div>
+              <input type="file" id="passportInput" accept="image/*" onchange="loadPassportFile(event)" style="display:none">
+            </div>
+            <div class="panel" id="passportOptions" style="display:none">
+              <div class="panel-title"><span>⚙️</span> Layout Settings</div>
+              <div class="options-grid">
+                <div class="form-group">
+                  <label class="form-label">Photo Size</label>
+                  <select class="form-control" id="passportSize">
+                    <option value="35x45">35×45mm (Indian Passport)</option>
+                    <option value="50x50">50×50mm (US Passport)</option>
+                    <option value="40x60">40×60mm</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Copies per A4</label>
+                  <select class="form-control" id="passportCopies">
+                    <option value="8">8 copies</option>
+                    <option value="12">12 copies</option>
+                    <option value="16">16 copies</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Background Color</label>
+                  <input type="color" class="form-control" id="passportBg" value="#ffffff" style="height:40px;cursor:pointer">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Border</label>
+                  <select class="form-control" id="passportBorder">
+                    <option value="none">No border</option>
+                    <option value="thin">Thin border</option>
+                    <option value="thick">Thick border</option>
+                  </select>
+                </div>
+              </div>
+              <button class="btn btn-primary" style="margin-top:14px" onclick="generatePassportLayout()">📄 Generate A4 Layout (PDF)</button>
+            </div>
+          </div>
+          <div class="workspace-side">
+            <div class="panel">
+              <div class="panel-title"><span>👁️</span> Photo Preview</div>
+              <div class="preview-area" id="passportPreview"><div class="preview-empty">Upload photo</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== IMAGE TO PDF ===== -->
+      <div class="page fade-in" id="page-img-to-pdf">
+        <div class="section-heading">📄 Image to PDF</div>
+        <div class="section-sub">Convert one or multiple images into a single PDF document.</div>
+        <div class="panel">
+          <div class="panel-title"><span>📂</span> Upload Images</div>
+          <div class="upload-hero" style="padding:24px" onclick="document.getElementById('img2pdfInput').click()" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDropPage(event,'img2pdf')">
+            <div style="font-size:32px">📸</div>
+            <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload multiple images – order matters!</div>
+          </div>
+          <input type="file" id="img2pdfInput" multiple accept="image/*" onchange="loadImgFiles(event,'img2pdfList')" style="display:none">
+          <div class="file-list" id="img2pdfList"></div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <div class="panel-title"><span>⚙️</span> PDF Settings</div>
+          <div class="options-grid">
+            <div class="form-group">
+              <label class="form-label">Page Size</label>
+              <select class="form-control" id="pdfPageSize">
+                <option value="a4">A4</option>
+                <option value="letter">Letter</option>
+                <option value="a3">A3</option>
+                <option value="custom">Custom</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Orientation</label>
+              <select class="form-control" id="pdfOrientation">
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Output Filename</label>
+              <input class="form-control" id="pdfOutputName" placeholder="images_converted">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Image Fit</label>
+              <select class="form-control" id="pdfImageFit">
+                <option value="fit">Fit to page</option>
+                <option value="fill">Fill page</option>
+                <option value="original">Original size</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-primary" onclick="convertImagesToPDF()">📄 Convert to PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== TXT TO PDF ===== -->
+      <div class="page fade-in" id="page-txt-to-pdf">
+        <div class="section-heading">📝 TXT to PDF</div>
+        <div class="section-sub">Convert plain text files or paste text directly to PDF.</div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📝</span> Input Text</div>
+            <div style="margin-bottom:10px;display:flex;gap:8px">
+              <button class="btn btn-secondary" onclick="document.getElementById('txtInput').click()" style="font-size:12px">📂 Load TXT File</button>
+              <input type="file" id="txtInput" accept=".txt,.text" onchange="loadTextFile(event)" style="display:none">
+            </div>
+            <textarea class="code-area" id="txtContent" style="min-height:250px;color:var(--text)" placeholder="Type or paste text here...&#10;&#10;This will be converted to PDF."></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>⚙️</span> PDF Settings</div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Font Size</label>
+              <input class="form-control" id="txtFontSize" type="number" value="12" min="8" max="48">
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Page Size</label>
+              <select class="form-control" id="txtPageSize">
+                <option value="a4">A4</option>
+                <option value="letter">Letter</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Title</label>
+              <input class="form-control" id="txtPdfTitle" placeholder="Document Title">
+            </div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Output Filename</label>
+              <input class="form-control" id="txtPdfName" placeholder="text_to_pdf">
+            </div>
+            <div class="toggle-row" style="margin-bottom:12px">
+              <label class="toggle"><input type="checkbox" id="txtAddHeader" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+              <span class="toggle-label">Add K Spider Header/Footer</span>
+            </div>
+            <button class="btn btn-primary" onclick="convertTxtToPDF()">📄 Generate PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== HTML TO PDF ===== -->
+      <div class="page fade-in" id="page-html-to-pdf">
+        <div class="section-heading">🌐 HTML to PDF</div>
+        <div class="section-sub">Convert HTML content to PDF using the browser's print engine.</div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>🌐</span> HTML Input</div>
+            <div style="margin-bottom:10px">
+              <button class="btn btn-secondary" onclick="document.getElementById('htmlInput').click()" style="font-size:12px">📂 Load HTML File</button>
+              <input type="file" id="htmlInput" accept=".html,.htm" onchange="loadHTMLFile(event)" style="display:none">
+            </div>
+            <textarea class="code-area" id="htmlContent" style="min-height:280px;color:#68d391" placeholder="&lt;!DOCTYPE html&gt;&#10;&lt;html&gt;&#10;&lt;body&gt;&#10;  &lt;h1&gt;Hello World&lt;/h1&gt;&#10;  &lt;p&gt;Your content here...&lt;/p&gt;&#10;&lt;/body&gt;&#10;&lt;/html&gt;"></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>⚙️</span> Options</div>
+            <div class="form-group" style="margin-bottom:12px">
+              <label class="form-label">Output Filename</label>
+              <input class="form-control" id="htmlPdfName" placeholder="html_to_pdf">
+            </div>
+            <div class="glow-card" style="margin-bottom:14px">
+              <div style="font-size:13px;font-weight:600;margin-bottom:6px">⚡ How it works</div>
+              <div style="font-size:12px;color:var(--text2)">Opens your HTML in a new window with print dialog, allowing browser-native PDF export.</div>
+            </div>
+            <button class="btn btn-primary" onclick="convertHTMLToPDF()">🖨️ Open Print Dialog</button>
+            <div style="margin-top:8px;font-size:11px;color:var(--text3)">Tip: In print dialog, select "Save as PDF" as destination</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MARKDOWN TO PDF ===== -->
+      <div class="page fade-in" id="page-md-to-pdf">
+        <div class="section-heading">⬇️ Markdown to PDF</div>
+        <div class="section-sub">Write or paste Markdown, preview rendered HTML, and convert to PDF.</div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📝</span> Markdown Input</div>
+            <button class="btn btn-secondary" style="font-size:12px;margin-bottom:10px" onclick="document.getElementById('mdInput').click()">📂 Load MD File</button>
+            <input type="file" id="mdInput" accept=".md,.markdown" onchange="loadMDFile(event)" style="display:none">
+            <textarea class="code-area" id="mdContent" style="min-height:280px;color:var(--text)" oninput="updateMDPreview()" placeholder="# Hello World&#10;&#10;## Introduction&#10;&#10;This is **Markdown** content.&#10;&#10;- Item 1&#10;- Item 2&#10;- Item 3"></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>👁️</span> Preview</div>
+            <div id="mdPreviewContent" style="min-height:280px;font-size:13px;line-height:1.7;overflow-y:auto"></div>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <input class="form-control" id="mdPdfName" placeholder="markdown_to_pdf" style="max-width:200px">
+            <button class="btn btn-primary" onclick="convertMDToPDF()">📄 Export as PDF</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MERGE PDF ===== -->
+      <div class="page fade-in" id="page-merge-pdf">
+        <div class="section-heading">🔗 Merge PDFs</div>
+        <div class="section-sub">Combine multiple PDF files into a single document. (Note: Browser-based PDF merge creates a bundled archive — for full merge, backend integration required.)</div>
+        <div class="panel">
+          <div class="panel-title"><span>📂</span> Upload PDF Files</div>
+          <div class="upload-hero" style="padding:24px" onclick="document.getElementById('mergePdfInput').click()">
+            <div style="font-size:32px">📄</div>
+            <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload multiple PDFs to merge</div>
+          </div>
+          <input type="file" id="mergePdfInput" multiple accept=".pdf" onchange="loadPDFFiles(event)" style="display:none">
+          <div class="file-list" id="mergePdfList"></div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <div class="panel-title"><span>⚙️</span> Merge Options</div>
+          <div class="form-group" style="margin-bottom:12px">
+            <label class="form-label">Output Filename</label>
+            <input class="form-control" id="mergePdfName" placeholder="merged_document">
+          </div>
+          <button class="btn btn-primary" onclick="mergePDFs()">🔗 Create Merged ZIP</button>
+          <div style="margin-top:8px;font-size:11px;color:var(--text3)">Files are packaged into ZIP. Use desktop tools like PDFSam for true merge.</div>
+        </div>
+      </div>
+
+      <!-- ===== PDF TO TXT ===== -->
+      <div class="page fade-in" id="page-pdf-to-txt">
+        <div class="section-heading">📤 PDF to TXT</div>
+        <div class="section-sub">Extract text content from PDF files using browser-based reading.</div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📂</span> Upload PDF</div>
+            <div class="upload-hero" style="padding:24px" onclick="document.getElementById('pdfTxtInput').click()">
+              <div style="font-size:32px">📄</div>
+              <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload PDF to extract text</div>
+            </div>
+            <input type="file" id="pdfTxtInput" accept=".pdf" onchange="extractPDFText(event)" style="display:none">
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>📝</span> Extracted Text</div>
+            <div id="pdfTxtOutput" style="font-size:12px;color:var(--text2);min-height:200px">Upload a PDF to extract text...</div>
+            <div style="margin-top:12px;display:flex;gap:10px">
+              <button class="btn btn-primary" id="pdfTxtDownload" style="display:none" onclick="downloadPDFText()">💾 Download TXT</button>
+              <button class="btn btn-secondary" id="pdfTxtCopy" style="display:none" onclick="copyPDFText()">📋 Copy Text</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== JSON TOOLS ===== -->
+      <div class="page fade-in" id="page-json-tools">
+        <div class="section-heading">🔧 JSON Tools</div>
+        <div class="section-sub">Format, validate, minify, and convert JSON data.</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'json-format')">Format</div>
+          <div class="tab" onclick="switchTab(this,'json-minify')">Minify</div>
+          <div class="tab" onclick="switchTab(this,'json-validate')">Validate</div>
+          <div class="tab" onclick="switchTab(this,'json-to-csv-tab')">JSON→CSV</div>
+        </div>
+        <div id="tab-json-format" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📥</span> Input JSON</div>
+            <textarea class="code-area" id="jsonInput" style="min-height:300px" placeholder='{"name":"K Spider","tool":"Universal Converter","version":"1.0"}'></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-secondary" style="font-size:12px" onclick="document.getElementById('jsonFileInput').click()">📂 Load File</button>
+              <input type="file" id="jsonFileInput" accept=".json" onchange="loadJSONFile(event)" style="display:none">
+              <button class="btn btn-secondary" style="font-size:12px" onclick="document.getElementById('jsonInput').value=''">🗑️ Clear</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>✅</span> Formatted Output</div>
+            <textarea class="code-area" id="jsonOutput" style="min-height:300px" readonly placeholder="Formatted JSON appears here..."></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="formatJSON()">✨ Format</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('jsonOutput')">📋 Copy</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="downloadText('jsonOutput','formatted.json')">💾 Download</button>
+            </div>
+          </div>
+        </div>
+        <div id="tab-json-minify" style="display:none" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📥</span> Input JSON</div>
+            <textarea class="code-area" id="jsonMinInput" style="min-height:300px" placeholder="Paste formatted JSON..."></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>🗜️</span> Minified Output</div>
+            <textarea class="code-area" id="jsonMinOutput" style="min-height:300px" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="minifyJSON()">🗜️ Minify</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('jsonMinOutput')">📋 Copy</button>
+            </div>
+          </div>
+        </div>
+        <div id="tab-json-validate" style="display:none" class="panel">
+          <div class="panel-title"><span>✅</span> JSON Validator</div>
+          <textarea class="code-area" id="jsonValidInput" style="min-height:250px" placeholder="Paste JSON to validate..."></textarea>
+          <button class="btn btn-primary" style="margin-top:10px" onclick="validateJSON()">✅ Validate</button>
+          <div id="jsonValidResult" style="margin-top:10px;font-size:14px;font-weight:600"></div>
+        </div>
+        <div id="tab-json-to-csv-tab" style="display:none" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📥</span> JSON Input (Array)</div>
+            <textarea class="code-area" id="jsonToCsvInput" style="min-height:300px" placeholder='[{"name":"Alice","age":30},{"name":"Bob","age":25}]'></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>📊</span> CSV Output</div>
+            <textarea class="code-area" id="jsonToCsvOutput" style="min-height:300px" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="convertJSONtoCSV()">📊 Convert</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="downloadText('jsonToCsvOutput','data.csv')">💾 Download CSV</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CSV JSON ===== -->
+      <div class="page fade-in" id="page-csv-json">
+        <div class="section-heading">📊 CSV ↔ JSON Converter</div>
+        <div class="section-sub">Bidirectional conversion between CSV and JSON data formats.</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'csv-to-json-tab')">CSV → JSON</div>
+          <div class="tab" onclick="switchTab(this,'json-to-csv-tab2')">JSON → CSV</div>
+        </div>
+        <div id="tab-csv-to-json-tab" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📊</span> CSV Input</div>
+            <button class="btn btn-secondary" style="font-size:12px;margin-bottom:8px" onclick="document.getElementById('csvInput').click()">📂 Load CSV</button>
+            <input type="file" id="csvInput" accept=".csv" onchange="loadCSVFile(event)" style="display:none">
+            <textarea class="code-area" id="csvContent" style="min-height:280px;color:var(--accent)" placeholder="name,age,city&#10;Alice,30,Mumbai&#10;Bob,25,Delhi"></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>🔧</span> JSON Output</div>
+            <textarea class="code-area" id="csvToJsonOutput" style="min-height:280px" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="convertCSVtoJSON()">🔄 Convert</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('csvToJsonOutput')">📋 Copy</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="downloadText('csvToJsonOutput','data.json')">💾 Download</button>
+            </div>
+          </div>
+        </div>
+        <div id="tab-json-to-csv-tab2" style="display:none" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>🔧</span> JSON Input</div>
+            <textarea class="code-area" id="jsonToCsv2Input" style="min-height:280px" placeholder='[{"name":"Alice","age":30}]'></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>📊</span> CSV Output</div>
+            <textarea class="code-area" id="jsonToCsv2Output" style="min-height:280px" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="convertJSONtoCSV2()">🔄 Convert</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="downloadText('jsonToCsv2Output','data.csv')">💾 Download</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== BASE64 ===== -->
+      <div class="page fade-in" id="page-base64">
+        <div class="section-heading">🔐 Base64 Encoder / Decoder</div>
+        <div class="section-sub">Encode text and files to Base64, or decode Base64 back to original.</div>
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab(this,'b64-text-tab')">Text</div>
+          <div class="tab" onclick="switchTab(this,'b64-file-tab')">File</div>
+          <div class="tab" onclick="switchTab(this,'b64-decode-tab')">Decode</div>
+        </div>
+        <div id="tab-b64-text-tab" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📝</span> Input Text</div>
+            <textarea class="code-area" id="b64TextInput" style="min-height:250px;color:var(--text)" placeholder="Enter text to encode..."></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>🔐</span> Base64 Output</div>
+            <textarea class="code-area" id="b64TextOutput" style="min-height:250px" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="encodeBase64Text()">🔐 Encode</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('b64TextOutput')">📋 Copy</button>
+            </div>
+          </div>
+        </div>
+        <div id="tab-b64-file-tab" style="display:none" class="panel">
+          <div class="panel-title"><span>📂</span> File to Base64</div>
+          <input type="file" id="b64FileInput" onchange="encodeFileBase64(event)" style="margin-bottom:12px">
+          <textarea class="code-area" id="b64FileOutput" style="min-height:250px" readonly placeholder="Base64 of file appears here..."></textarea>
+          <div style="margin-top:10px;display:flex;gap:8px">
+            <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('b64FileOutput')">📋 Copy</button>
+            <button class="btn btn-secondary" style="font-size:12px" onclick="downloadText('b64FileOutput','encoded.txt')">💾 Download</button>
+          </div>
+        </div>
+        <div id="tab-b64-decode-tab" style="display:none" class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>🔐</span> Base64 Input</div>
+            <textarea class="code-area" id="b64DecodeInput" style="min-height:250px" placeholder="Paste Base64 to decode..."></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>📝</span> Decoded Output</div>
+            <textarea class="code-area" id="b64DecodeOutput" style="min-height:250px;color:var(--text)" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="decodeBase64()">🔓 Decode</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('b64DecodeOutput')">📋 Copy</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== XML FORMATTER ===== -->
+      <div class="page fade-in" id="page-xml-format">
+        <div class="section-heading">📋 XML Formatter</div>
+        <div class="section-sub">Format and pretty-print XML documents with proper indentation.</div>
+        <div class="two-col">
+          <div class="panel">
+            <div class="panel-title"><span>📥</span> XML Input</div>
+            <button class="btn btn-secondary" style="font-size:12px;margin-bottom:8px" onclick="document.getElementById('xmlFileInput').click()">📂 Load XML</button>
+            <input type="file" id="xmlFileInput" accept=".xml" onchange="loadXMLFile(event)" style="display:none">
+            <textarea class="code-area" id="xmlInput" style="min-height:300px;color:#f6ad55" placeholder="&lt;root&gt;&lt;item&gt;value&lt;/item&gt;&lt;/root&gt;"></textarea>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>✅</span> Formatted XML</div>
+            <textarea class="code-area" id="xmlOutput" style="min-height:300px;color:#68d391" readonly></textarea>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <button class="btn btn-primary" style="font-size:12px" onclick="formatXML()">✨ Format XML</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="copyText('xmlOutput')">📋 Copy</button>
+              <button class="btn btn-secondary" style="font-size:12px" onclick="downloadText('xmlOutput','formatted.xml')">💾 Download</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== CREATE ZIP ===== -->
+      <div class="page fade-in" id="page-zip-create">
+        <div class="section-heading">📦 Create ZIP Archive</div>
+        <div class="section-sub">Bundle multiple files of any type into a ZIP archive.</div>
+        <div class="panel">
+          <div class="panel-title"><span>📂</span> Add Files</div>
+          <div class="upload-hero" style="padding:28px" onclick="document.getElementById('zipCreateInput').click()" ondragover="handleDrag(event,this)" ondragleave="handleDragLeave(event,this)" ondrop="handleDropPage(event,'zip-create')">
+            <div style="font-size:36px">📦</div>
+            <div style="font-size:14px;margin-top:8px;color:var(--text2)">Drop any files here or click to browse</div>
+          </div>
+          <input type="file" id="zipCreateInput" multiple onchange="loadZipFiles(event)" style="display:none">
+          <div class="file-list" id="zipCreateList"></div>
+        </div>
+        <div class="panel" style="margin-top:16px">
+          <div class="panel-title"><span>⚙️</span> ZIP Settings</div>
+          <div class="options-grid">
+            <div class="form-group">
+              <label class="form-label">Archive Name</label>
+              <input class="form-control" id="zipName" placeholder="archive">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Compression Level</label>
+              <select class="form-control" id="zipCompLevel">
+                <option value="1">Fast (low compression)</option>
+                <option value="6" selected>Balanced</option>
+                <option value="9">Maximum compression</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:14px;display:flex;gap:10px">
+            <button class="btn btn-primary" onclick="createZIP()">📦 Create & Download ZIP</button>
+            <button class="btn btn-secondary" onclick="clearList('zipCreateList');zipFiles=[]">🗑️ Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== EXTRACT ZIP ===== -->
+      <div class="page fade-in" id="page-zip-extract">
+        <div class="section-heading">📂 Extract ZIP</div>
+        <div class="section-sub">Extract and preview contents of ZIP archive.</div>
+        <div class="panel">
+          <div class="panel-title"><span>📂</span> Upload ZIP</div>
+          <div class="upload-hero" style="padding:28px" onclick="document.getElementById('zipExtractInput').click()">
+            <div style="font-size:36px">📂</div>
+            <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload ZIP file to extract</div>
+          </div>
+          <input type="file" id="zipExtractInput" accept=".zip" onchange="extractZIP(event)" style="display:none">
+        </div>
+        <div id="zipExtractResult" style="display:none" class="panel fade-in" style="margin-top:16px">
+          <div class="panel-title"><span>📋</span> ZIP Contents</div>
+          <div class="file-list" id="zipExtractList"></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-success" onclick="downloadAllExtracted()">📥 Download All Files</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== AUDIO TOOLS ===== -->
+      <div class="page fade-in" id="page-audio-tools">
+        <div class="section-heading">🎵 Audio Tools</div>
+        <div class="section-sub">Browser-based audio playback, trim, and basic analysis. <span class="premium-badge">⚡ Beta</span></div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Audio</div>
+              <div class="upload-hero" style="padding:24px" onclick="document.getElementById('audioInput').click()">
+                <div style="font-size:36px">🎵</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload MP3, WAV, OGG, AAC</div>
+              </div>
+              <input type="file" id="audioInput" accept="audio/*" onchange="loadAudioFile(event)" style="display:none">
+            </div>
+            <div id="audioPlayer" style="display:none" class="panel fade-in">
+              <div class="panel-title"><span>🎵</span> Audio Player & Trimmer</div>
+              <audio id="audioElement" controls style="width:100%;margin-bottom:14px;border-radius:8px"></audio>
+              <div class="options-grid">
+                <div class="form-group">
+                  <label class="form-label">Trim Start (seconds)</label>
+                  <input class="form-control" id="trimStart" type="number" value="0" min="0">
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Trim End (seconds)</label>
+                  <input class="form-control" id="trimEnd" type="number" value="30" min="0">
+                </div>
+              </div>
+              <div id="audioInfo" style="font-size:12px;color:var(--text2);margin:10px 0"></div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+                <button class="btn btn-secondary" onclick="downloadOriginalAudio()">💾 Download Original</button>
+                <button class="btn btn-primary" onclick="showNotif('Audio trim requires Web Audio API processing. Download original for now.','info')">✂️ Trim Audio (Beta)</button>
+              </div>
+            </div>
+          </div>
+          <div class="workspace-side">
+            <div class="glow-card">
+              <div style="font-size:13px;font-weight:700;margin-bottom:8px">🤖 Audio AI Analysis</div>
+              <div id="audioAiInfo" style="font-size:12px;color:var(--text2)">Upload audio to see analysis</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== VIDEO TOOLS ===== -->
+      <div class="page fade-in" id="page-video-tools">
+        <div class="section-heading">🎬 Video Tools</div>
+        <div class="section-sub">Browser-based video preview, thumbnail extraction, and information display. <span class="premium-badge">⚡ Beta</span></div>
+        <div class="workspace">
+          <div class="workspace-main">
+            <div class="panel">
+              <div class="panel-title"><span>📂</span> Upload Video</div>
+              <div class="upload-hero" style="padding:24px" onclick="document.getElementById('videoInput').click()">
+                <div style="font-size:36px">🎬</div>
+                <div style="font-size:14px;margin-top:8px;color:var(--text2)">Upload MP4, WebM, OGV</div>
+              </div>
+              <input type="file" id="videoInput" accept="video/*" onchange="loadVideoFile(event)" style="display:none">
+            </div>
+            <div id="videoPlayer" style="display:none" class="panel fade-in">
+              <div class="panel-title"><span>🎬</span> Video Player</div>
+              <video id="videoElement" controls style="width:100%;border-radius:8px;max-height:360px"></video>
+              <div id="videoInfo" style="font-size:12px;color:var(--text2);margin-top:10px"></div>
+              <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
+                <button class="btn btn-primary" onclick="extractVideoThumbnail()">📸 Extract Thumbnail</button>
+                <button class="btn btn-secondary" onclick="downloadOriginalVideo()">💾 Download Video</button>
+              </div>
+            </div>
+          </div>
+          <div class="workspace-side">
+            <div class="panel" id="thumbnailPanel" style="display:none">
+              <div class="panel-title"><span>📸</span> Extracted Thumbnail</div>
+              <div class="preview-area" id="thumbPreview"></div>
+              <button class="btn btn-success" style="margin-top:10px" id="thumbDownload" onclick="downloadThumbnail()">💾 Download Thumbnail</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== HISTORY ===== -->
+      <div class="page fade-in" id="page-history">
+        <div class="section-heading">📋 Conversion History</div>
+        <div class="section-sub">Your recent conversion activity in this session.</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px">
+          <button class="btn btn-secondary" onclick="exportHistory()">📤 Export History</button>
+          <button class="btn btn-secondary" onclick="clearHistory()">🗑️ Clear History</button>
+        </div>
+        <div id="historyList">
+          <div style="text-align:center;padding:60px;color:var(--text3)">
+            <div style="font-size:40px;margin-bottom:12px">📋</div>
+            <div>No conversions yet. Start converting files!</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== MONETIZE ===== -->
+      <div class="page fade-in" id="page-monetize">
+        <div class="section-heading">💰 Premium & Monetization</div>
+        <div class="section-sub">Upgrade options, affiliate resources, and franchise opportunities.</div>
+
+        <!-- Premium badge demo -->
+        <div class="glow-card" style="margin-bottom:20px">
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="font-size:40px">⚡</div>
+            <div>
+              <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:800;margin-bottom:4px">K Spider AI Premium</div>
+              <div style="font-size:13px;color:var(--text2);margin-bottom:10px">Unlock high-speed conversion, priority processing, batch up to 500 files, no file size limits</div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);padding:3px 10px;border-radius:10px;font-size:11px;color:var(--accent)">⚡ 10x Faster</span>
+                <span style="background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);padding:3px 10px;border-radius:10px;font-size:11px;color:var(--green)">🔒 Privacy First</span>
+                <span style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);padding:3px 10px;border-radius:10px;font-size:11px;color:var(--accent3)">📱 All Devices</span>
+              </div>
+            </div>
+            <div style="margin-left:auto;text-align:center">
+              <div style="font-family:'Syne',sans-serif;font-size:24px;font-weight:800;color:var(--accent)">₹299<span style="font-size:14px">/mo</span></div>
+              <button class="btn btn-primary" style="margin-top:8px" onclick="showNotif('Premium coming soon! Visit kspiderai.in','info')">Get Premium</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- AdSense Blocks -->
+        <div class="section-heading" style="font-size:15px;margin-bottom:12px">📢 Advertisement Zones</div>
+        <div class="three-col" style="margin-bottom:20px">
+          <div class="ad-block" style="padding:30px">
+            Ad Zone 1<br><small>300×250 Medium Rectangle<br>AdSense Code Ready</small>
+          </div>
+          <div class="ad-block" style="padding:30px">
+            Ad Zone 2<br><small>300×250 Medium Rectangle<br>AdSense Code Ready</small>
+          </div>
+          <div class="ad-block" style="padding:30px">
+            Ad Zone 3<br><small>300×250 Medium Rectangle<br>AdSense Code Ready</small>
+          </div>
+        </div>
+
+        <!-- Sponsors -->
+        <div class="section-heading" style="font-size:15px;margin-bottom:12px">🤝 Sponsored Tools</div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:20px">
+          <div class="sponsor-card">
+            <div class="sponsor-icon">☁️</div>
+            <div class="sponsor-info">
+              <div class="sponsor-name">Cloud Storage Partner</div>
+              <div class="sponsor-desc">Sponsored slot available – contact kspiderai.in for partnership</div>
+            </div>
+            <button class="btn btn-secondary" style="font-size:12px">Learn More</button>
+          </div>
+          <div class="sponsor-card">
+            <div class="sponsor-icon">🎨</div>
+            <div class="sponsor-info">
+              <div class="sponsor-name">Design Tools Partner</div>
+              <div class="sponsor-desc">Sponsored slot available – contact kspiderai.in for partnership</div>
+            </div>
+            <button class="btn btn-secondary" style="font-size:12px">Learn More</button>
+          </div>
+        </div>
+
+        <!-- Affiliate -->
+        <div class="section-heading" style="font-size:15px;margin-bottom:12px">💼 Affiliate Resources</div>
+        <div class="panel" style="margin-bottom:20px">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Earn by promoting K Spider AI tools to your audience. Join our affiliate program.</div>
+          <div class="options-grid">
+            <div class="form-group">
+              <label class="form-label">Your Email</label>
+              <input class="form-control" id="affiliateEmail" placeholder="you@email.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Platform / Channel</label>
+              <input class="form-control" id="affiliatePlatform" placeholder="YouTube / Blog / Instagram...">
+            </div>
+          </div>
+          <button class="btn btn-amber" style="margin-top:12px" onclick="submitAffiliate()">📩 Apply for Affiliate Program</button>
+        </div>
+
+        <!-- Franchise -->
+        <div class="section-heading" style="font-size:15px;margin-bottom:12px">🏢 Franchise Inquiry</div>
+        <div class="panel">
+          <div style="font-size:13px;color:var(--text2);margin-bottom:14px">Interested in licensing K Spider AI tools for your platform or business?</div>
+          <div class="options-grid">
+            <div class="form-group">
+              <label class="form-label">Name</label>
+              <input class="form-control" id="franchiseName" placeholder="Your Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Email</label>
+              <input class="form-control" id="franchiseEmail" placeholder="you@email.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Company</label>
+              <input class="form-control" id="franchiseCompany" placeholder="Company Name">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Country</label>
+              <input class="form-control" id="franchiseCountry" placeholder="India">
+            </div>
+          </div>
+          <button class="btn btn-purple" style="margin-top:12px" onclick="submitFranchise()">📬 Submit Inquiry</button>
+        </div>
+      </div>
+
+      <!-- ===== ABOUT ===== -->
+      <div class="page fade-in" id="page-about">
+        <div class="section-heading">ℹ️ About K Spider AI & Legal</div>
+
+        <div class="two-col" style="margin-bottom:20px">
+          <div class="panel">
+            <div class="panel-title"><span>🕷️</span> About K Spider AI</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.8">
+              <p style="margin-bottom:10px"><strong style="color:var(--text)">K Spider AI Universal File Converter – Ultra SaaS Edition</strong> is a world-class, browser-only file conversion platform built with cutting-edge web technologies.</p>
+              <p style="margin-bottom:10px">Every file is processed entirely within your browser using JavaScript and WebAssembly. <strong style="color:var(--green)">Zero files are uploaded to any server.</strong></p>
+              <p><strong style="color:var(--text)">Developed By:</strong><br>
+              👨‍💼 Father: <strong>Gaurang Raval</strong><br>
+              👨‍💻 Son: <strong>Khush Raval</strong></p>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+              <a href="https://www.kspiderai.in" target="_blank" class="btn btn-primary">🌐 Visit Website</a>
+              <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank" class="btn btn-secondary">▶️ YouTube Channel</a>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title"><span>🔐</span> Privacy & Security</div>
+            <div style="font-size:13px;color:var(--text2);line-height:1.8">
+              <div style="margin-bottom:8px">✅ <strong style="color:var(--green)">All files processed locally</strong> in your browser</div>
+              <div style="margin-bottom:8px">✅ <strong style="color:var(--green)">No file uploaded</strong> to any server</div>
+              <div style="margin-bottom:8px">✅ <strong style="color:var(--green)">No third-party storage</strong></div>
+              <div style="margin-bottom:8px">✅ Input validation & XSS protection</div>
+              <div style="margin-bottom:8px">✅ File size limit controls</div>
+              <div style="margin-bottom:8px">✅ Safe file handling</div>
+              <div style="margin-bottom:8px">✅ No unsafe eval()</div>
+              <div>✅ Error boundaries & progress fallback</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-bottom:16px">
+          <div class="panel-title"><span>⚠️</span> Legal Disclaimer</div>
+          <div style="font-size:12px;color:var(--text2);line-height:1.8">
+            <strong style="color:var(--text)">User Responsibility:</strong> The user is solely responsible for the legality of any content being processed. K Spider AI tools accept no liability for misuse of converted files.<br><br>
+            <strong style="color:var(--text)">No Warranty:</strong> This tool is provided "as is" without warranty of any kind. Results may vary based on browser capabilities, file types, and complexity.<br><br>
+            <strong style="color:var(--text)">Copyright:</strong> © 2026 K Spider AI Tool – Gaurang Raval & Khush Raval – All Rights Reserved.<br><br>
+            <strong style="color:var(--text)">Trademark:</strong> "K Spider AI" and "K Spider for Kreation" are trademarks of Gaurang Raval & Khush Raval.
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-title"><span>📞</span> Contact & Support</div>
+          <div style="font-size:13px;color:var(--text2)">
+            🌐 Website: <a href="https://www.kspiderai.in" target="_blank" style="color:var(--accent)">www.kspiderai.in</a><br>
+            ▶️ YouTube: <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank" style="color:var(--accent)">@KSpider4Kreaction</a>
+          </div>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">🕷️ K Spider AI Universal File Converter – Ultra SaaS Edition</div>
+        <div class="footer-links">
+          <a href="https://www.kspiderai.in" target="_blank">🌐 kspiderai.in</a>
+          <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank">▶️ YouTube</a>
+          <a href="#" onclick="showPage('about')">Privacy Policy</a>
+          <a href="#" onclick="showPage('about')">Legal</a>
+          <a href="#" onclick="openShareModal()">📲 Share</a>
+        </div>
+        <div class="footer-legal">
+          <strong>Privacy:</strong> All files processed locally in browser. No file uploaded to server. No third-party storage. |
+          <strong>Disclaimer:</strong> User responsible for content legality. |
+          © 2026 K Spider AI Tool – All Rights Reserved<br>
+          <strong>Powered by K Spider AI Tool</strong> – www.kspiderai.in – https://www.youtube.com/@KSpider4Kreaction |
+          <strong>Developed By:</strong> Father – Gaurang Raval | Son – Khush Raval
+        </div>
+      </div>
+    </footer>
+
+  </div>
+</div>
+
+<!-- MOBILE NAV TOGGLE -->
+<button class="mobile-nav-toggle" onclick="toggleSidebar()">☰</button>
+
+<script>
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+const state = {
+  darkMode: true,
+  currentPage: 'home',
+  history: JSON.parse(localStorage.getItem('kspider_history') || '[]'),
+  convertedCount: parseInt(localStorage.getItem('kspider_count') || '0'),
+  imgFiles: [],
+  zipFiles: [],
+  watermark: { text: '© K Spider AI', position: 'Bottom Right', opacity: 40 },
+  extractedZip: null,
+  pdfTextContent: '',
+  thumbnailData: null,
+  audioFileRef: null,
+  videoFileRef: null
+};
+
+// ═══════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  updateStats();
+  renderHistory();
+  updateHistBadge();
+
+  // Slider label for watermark
+  document.getElementById('wmOpacity').addEventListener('input', function() {
+    document.getElementById('wmOpacityVal').textContent = this.value + '%';
+  });
+
+  // Aspect ratio for resize
+  document.getElementById('resizeW').addEventListener('input', function() {
+    if (document.getElementById('lockAspect').checked && state.aspectRatio) {
+      document.getElementById('resizeH').value = Math.round(this.value / state.aspectRatio);
+    }
+  });
+  document.getElementById('resizeH').addEventListener('input', function() {
+    if (document.getElementById('lockAspect').checked && state.aspectRatio) {
+      document.getElementById('resizeW').value = Math.round(this.value * state.aspectRatio);
+    }
+  });
+
+  updateMDPreview();
+});
+
+// ═══════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════
+const pageNames = {
+  'home': '🏠 Dashboard', 'image-convert': '🖼️ Image Converter',
+  'image-compress': '🗜️ Compress Image', 'image-resize': '📐 Resize Image',
+  'bg-remove': '✂️ Background Remover', 'passport': '🪪 Passport Photo',
+  'img-to-pdf': '📄 Image to PDF', 'txt-to-pdf': '📝 TXT to PDF',
+  'html-to-pdf': '🌐 HTML to PDF', 'md-to-pdf': '⬇️ Markdown to PDF',
+  'merge-pdf': '🔗 Merge PDFs', 'pdf-to-txt': '📤 PDF to TXT',
+  'json-tools': '🔧 JSON Tools', 'csv-json': '📊 CSV ↔ JSON',
+  'base64': '🔐 Base64', 'xml-format': '📋 XML Formatter',
+  'zip-create': '📦 Create ZIP', 'zip-extract': '📂 Extract ZIP',
+  'audio-tools': '🎵 Audio Tools', 'video-tools': '🎬 Video Tools',
+  'history': '📋 History', 'monetize': '💰 Premium & Ads', 'about': 'ℹ️ About'
+};
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) { page.classList.add('active'); page.classList.add('fade-in'); }
+  const navItem = document.querySelector(`[data-page="${id}"]`);
+  if (navItem) navItem.classList.add('active');
+  document.getElementById('topbarTitle').textContent = pageNames[id] || id;
+  state.currentPage = id;
+  // Close sidebar on mobile
+  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+}
+
+function filterNav(val) {
+  const v = val.toLowerCase();
+  document.querySelectorAll('.nav-item').forEach(item => {
+    item.style.display = item.textContent.toLowerCase().includes(v) ? '' : 'none';
+  });
+}
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
+
+// ═══════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════
+function toggleDark() {
+  state.darkMode = !state.darkMode;
+  document.body.classList.toggle('light-mode', !state.darkMode);
+  document.getElementById('darkToggle').textContent = state.darkMode ? '🌙' : '☀️';
+}
+
+// ═══════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════
+function handleDrag(e, el) { e.preventDefault(); el.classList.add('drag-over'); }
+function handleDragLeave(e, el) { el.classList.remove('drag-over'); }
+function handleDrop(e) {
+  e.preventDefault();
+  document.querySelectorAll('.upload-hero').forEach(el => el.classList.remove('drag-over'));
+  const files = Array.from(e.dataTransfer.files);
+  if (files.length) handleHomeUpload({ target: { files } });
+}
+function handleDropPage(e, page) {
+  e.preventDefault();
+  document.querySelectorAll('.upload-hero').forEach(el => el.classList.remove('drag-over'));
+  const files = e.dataTransfer.files;
+  if (page === 'img-conv') loadImgFiles({ target: { files } }, 'imgConvList');
+  else if (page === 'img2pdf') loadImgFiles({ target: { files } }, 'img2pdfList');
+  else if (page === 'zip-create') loadZipFiles({ target: { files } });
+  else if (page === 'compress') loadCompressFile({ target: { files: [files[0]] } });
+}
+
+// ═══════════════════════════════════════════
+// HOME UPLOAD – AI DETECTION
+// ═══════════════════════════════════════════
+function handleHomeUpload(e) {
+  const files = Array.from(e.target.files);
+  if (!files.length) return;
+  const file = files[0];
+  const type = file.type;
+  let suggestions = [];
+  let route = 'image-convert';
+
+  if (type.startsWith('image/')) {
+    route = 'image-convert';
+    suggestions = [
+      { icon: '🌐', name: 'WEBP', desc: 'Web optimized', rec: true },
+      { icon: '📄', name: 'PDF', desc: 'Print ready', rec: false },
+      { icon: '🗜️', name: 'Compress', desc: 'Reduce size', rec: false },
+    ];
+  } else if (type.includes('pdf')) {
+    route = 'pdf-to-txt';
+    suggestions = [
+      { icon: '📝', name: 'TXT', desc: 'Extract text', rec: true },
+      { icon: '🔗', name: 'Merge', desc: 'Combine PDFs', rec: false },
+    ];
+  } else if (type.includes('text') || file.name.endsWith('.txt')) {
+    route = 'txt-to-pdf';
+    suggestions = [
+      { icon: '📄', name: 'PDF', desc: 'Professional doc', rec: true },
+    ];
+  } else if (type.includes('json') || file.name.endsWith('.json')) {
+    route = 'json-tools';
+    suggestions = [
+      { icon: '📊', name: 'CSV', desc: 'Spreadsheet', rec: true },
+      { icon: '✨', name: 'Format', desc: 'Pretty print', rec: false },
+    ];
+  } else if (type.includes('csv') || file.name.endsWith('.csv')) {
+    route = 'csv-json';
+    suggestions = [
+      { icon: '🔧', name: 'JSON', desc: 'API ready', rec: true },
+    ];
+  } else if (type.startsWith('audio/')) {
+    route = 'audio-tools';
+    suggestions = [
+      { icon: '✂️', name: 'Trim', desc: 'Cut audio', rec: true },
+    ];
+  } else if (type.startsWith('video/')) {
+    route = 'video-tools';
+    suggestions = [
+      { icon: '📸', name: 'Thumbnail', desc: 'Extract frame', rec: true },
+    ];
+  } else if (file.name.endsWith('.zip')) {
+    route = 'zip-extract';
+    suggestions = [
+      { icon: '📂', name: 'Extract', desc: 'View contents', rec: true },
+    ];
+  }
+
+  const panel = document.getElementById('aiSuggestPanel');
+  const content = document.getElementById('aiSuggestContent');
+  const size = formatBytes(file.size);
+
+  content.innerHTML = `
+    <div class="ai-badge" style="margin-bottom:12px">🤖 Detected: ${file.type || 'Unknown'} | ${size} | Recommended: ${pageNames[route] || route}</div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Best conversion options for <strong style="color:var(--text)">${file.name}</strong>:</div>
+    <div class="suggestion-grid">
+      ${suggestions.map(s => `
+        <div class="suggestion-card ${s.rec ? 'recommended' : ''}" onclick="showPage('${route}')">
+          <div class="suggestion-icon">${s.icon}</div>
+          <div class="suggestion-name">${s.name}</div>
+          <div class="suggestion-desc">${s.desc}</div>
+          ${s.rec ? '<div class="rec-badge">⭐ Recommended</div>' : ''}
+        </div>
+      `).join('')}
+      <div class="suggestion-card" onclick="showPage('${route}')">
+        <div class="suggestion-icon">🚀</div>
+        <div class="suggestion-name">Open Tool</div>
+        <div class="suggestion-desc">Go to ${pageNames[route]}</div>
+      </div>
+    </div>
+  `;
+  panel.style.display = 'block';
+  showNotif(`🤖 AI detected: ${file.type || file.name} — Suggested ${pageNames[route]}`, 'info');
+}
+
+// ═══════════════════════════════════════════
+// NOTIFICATIONS
+// ═══════════════════════════════════════════
+function showNotif(msg, type = 'info') {
+  const area = document.getElementById('notifArea');
+  const el = document.createElement('div');
+  el.className = `notification ${type}`;
+  el.innerHTML = `${type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️'} ${msg}`;
+  area.appendChild(el);
+  setTimeout(() => { el.style.opacity = '0'; el.style.transform = 'translateX(100%)'; el.style.transition = '0.3s'; setTimeout(() => el.remove(), 300); }, 3500);
+}
+
+// ═══════════════════════════════════════════
+// MODALS
+// ═══════════════════════════════════════════
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+
+// ═══════════════════════════════════════════
+// WATERMARK
+// ═══════════════════════════════════════════
+function applyWatermarkSetting() {
+  state.watermark.text = document.getElementById('wmText').value || '© K Spider AI';
+  state.watermark.position = document.getElementById('wmPos').value;
+  state.watermark.opacity = parseInt(document.getElementById('wmOpacity').value);
+  showNotif('Watermark settings saved!', 'success');
+}
+
+function addWatermarkToCanvas(canvas) {
+  const ctx = canvas.getContext('2d');
+  const wm = state.watermark;
+  ctx.save();
+  ctx.globalAlpha = wm.opacity / 100;
+  ctx.fillStyle = '#ffffff';
+  ctx.strokeStyle = '#000000';
+  ctx.lineWidth = 2;
+  const fontSize = Math.max(16, canvas.width * 0.025);
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.textBaseline = 'alphabetic';
+  const padding = 16;
+  const textW = ctx.measureText(wm.text).width;
+  let x, y;
+  if (wm.position.includes('Right')) x = canvas.width - textW - padding;
+  else if (wm.position.includes('Left')) x = padding;
+  else x = (canvas.width - textW) / 2;
+  if (wm.position.includes('Bottom')) y = canvas.height - padding;
+  else if (wm.position.includes('Top')) y = fontSize + padding;
+  else y = canvas.height / 2;
+  ctx.strokeText(wm.text, x, y);
+  ctx.fillText(wm.text, x, y);
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════
+// IMAGE CONVERSION
+// ═══════════════════════════════════════════
+function loadImgFiles(e, listId) {
+  const files = Array.from(e.target.files);
+  const list = document.getElementById(listId);
+  if (!list) return;
+  files.forEach(file => {
+    const item = createFileItem(file);
+    list.appendChild(item);
+    if (listId === 'imgConvList') {
+      // Preview first image
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const prev = document.getElementById('imgConvPreview');
+        prev.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:300px;border-radius:8px">`;
+        showImgSizeCompare(file.size);
+        showImgAiSuggest(file);
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+  if (listId === 'imgConvList') state.imgFiles = [...state.imgFiles, ...files];
+}
+
+function showImgSizeCompare(origSize) {
+  const quality = parseInt(document.getElementById('imgQuality').value) / 100;
+  const est = Math.round(origSize * quality * 0.7);
+  document.getElementById('imgSizeCompare').style.display = 'flex';
+  document.getElementById('imgSizeCompare').innerHTML = `
+    <div class="size-compare">
+      <div class="size-before">
+        <div class="size-val">${formatBytes(origSize)}</div>
+        <div class="size-lbl">Original</div>
+      </div>
+      <div class="size-arrow">→</div>
+      <div class="size-after">
+        <div class="size-val" style="color:var(--green)">${formatBytes(est)}</div>
+        <div class="size-lbl">Estimated Output</div>
+        <div class="size-reduction">~${Math.round((1-est/origSize)*100)}% smaller</div>
+      </div>
+    </div>`;
+}
+
+function showImgAiSuggest(file) {
+  const el = document.getElementById('imgAiSuggest');
+  const isPhoto = file.type === 'image/jpeg' || file.type === 'image/jpg';
+  const isPNG = file.type === 'image/png';
+  el.innerHTML = `
+    <div class="ai-badge" style="margin-bottom:10px">🤖 AI Analysis</div>
+    <div style="font-size:12px;color:var(--text2);line-height:1.7">
+      ${isPhoto ? '📸 Photo detected → WEBP recommended for 30-50% smaller size<br>🌐 Web: 80% quality WEBP<br>🖨️ Print: 300 DPI JPEG' : ''}
+      ${isPNG ? '🖼️ PNG detected → Keep PNG for transparency, or WEBP for smaller size' : ''}
+      <br>💡 For email: compress to 70-80%<br>
+      💡 For web: use WEBP format<br>
+      💡 For print: use 300+ DPI
+    </div>`;
+}
+
+async function convertImages() {
+  const files = state.imgFiles;
+  if (!files.length) { showNotif('Please upload images first!', 'error'); return; }
+  const format = document.getElementById('imgOutputFormat').value;
+  const quality = parseInt(document.getElementById('imgQuality').value) / 100;
+  const addWm = document.getElementById('addWatermark').checked;
+  const addBrand = document.getElementById('addBranding').checked;
+  const outName = document.getElementById('imgOutputName').value;
+
+  document.getElementById('imgConvProgress').style.display = 'block';
+  document.getElementById('imgOutputPanel').style.display = 'none';
+  const outputList = document.getElementById('imgOutputList');
+  outputList.innerHTML = '';
+
+  const outputs = [];
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const pct = Math.round(((i + 1) / files.length) * 100);
+    document.getElementById('imgProgFill').style.width = pct + '%';
+    document.getElementById('imgProgText').textContent = `Converting ${file.name}... (${i+1}/${files.length})`;
+
+    try {
+      const blob = await convertImageFile(file, format, quality, addWm, addBrand);
+      const fname = (outName || file.name.replace(/\.[^.]+$/, '')) + (files.length > 1 ? `_${i+1}` : '') + '.' + (format === 'jpeg' ? 'jpg' : format);
+      outputs.push({ blob, name: fname, origSize: file.size });
+      addOutputItem(outputList, fname, blob, file.size);
+    } catch (err) { showNotif(`Error converting ${file.name}`, 'error'); }
+  }
+
+  document.getElementById('imgConvProgress').style.display = 'none';
+  document.getElementById('imgOutputPanel').style.display = 'block';
+  state.outputs = outputs;
+  addHistory('Image Conversion', `${files.length} file(s) → ${format.toUpperCase()}`);
+  showNotif(`✅ ${files.length} image(s) converted to ${format.toUpperCase()}!`, 'success');
+}
+
+function convertImageFile(file, format, quality, addWm, addBrand) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const reader = new FileReader();
+    reader.onload = ev => {
+      img.onload = () => {
+        const canvas = document.getElementById('mainCanvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        if (format === 'jpeg') { ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+        ctx.drawImage(img, 0, 0);
+        if (addWm) addWatermarkToCanvas(canvas);
+        if (addBrand) {
+          ctx.save();
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = '#fff';
+          ctx.font = `bold ${Math.max(10, canvas.width * 0.015)}px Arial`;
+          ctx.fillText('kspiderai.in', 8, canvas.height - 8);
+          ctx.restore();
+        }
+        canvas.toBlob(blob => blob ? resolve(blob) : reject('Conversion failed'),
+          format === 'gif' ? 'image/gif' : `image/${format}`, quality);
+      };
+      img.onerror = reject;
+      img.src = ev.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function addOutputItem(container, name, blob, origSize) {
+  const url = URL.createObjectURL(blob);
+  const div = document.createElement('div');
+  div.className = 'output-item';
+  div.innerHTML = `
+    <div class="output-info">
+      <div class="output-name">${name}</div>
+      <div class="output-size">${formatBytes(origSize)} → ${formatBytes(blob.size)} (${Math.round((1-blob.size/origSize)*100)}% smaller)</div>
+    </div>
+    <div class="output-actions">
+      <button class="btn btn-secondary" onclick="openModal('previewModal');document.getElementById('previewModalContent').innerHTML='<img src=${url} style=max-width:100%;border-radius:8px>'">👁️</button>
+      <a href="${url}" download="${name}" class="btn btn-success">💾</a>
+    </div>`;
+  container.appendChild(div);
+  state.convertedCount++;
+  localStorage.setItem('kspider_count', state.convertedCount);
+  updateStats();
+}
+
+// ═══════════════════════════════════════════
+// IMAGE COMPRESS
+// ═══════════════════════════════════════════
+let compressFileRef = null;
+function loadCompressFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  compressFileRef = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('compressPreview').innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:260px;border-radius:8px">`;
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('compressOptions').style.display = 'block';
+  updateCompressPreview();
+}
+
+function updateCompressPreview() {
+  if (!compressFileRef) return;
+  const lvl = parseInt(document.getElementById('compressLevel').value);
+  document.getElementById('compressLevelVal').textContent = lvl + '%';
+  const mode = document.getElementById('compressMode').value;
+  let qual = lvl / 100;
+  if (mode === 'web') qual = Math.min(qual, 0.8);
+  else if (mode === 'email') qual = Math.min(qual, 0.65);
+  const est = Math.round(compressFileRef.size * qual * 0.75);
+  document.getElementById('sizeCompareBox').innerHTML = `
+    <div class="size-compare">
+      <div class="size-before"><div class="size-val">${formatBytes(compressFileRef.size)}</div><div class="size-lbl">Original</div></div>
+      <div class="size-arrow">→</div>
+      <div class="size-after"><div class="size-val" style="color:var(--green)">${formatBytes(est)}</div><div class="size-lbl">Estimated</div><div class="size-reduction">~${Math.round((1-est/compressFileRef.size)*100)}% saved</div></div>
+    </div>`;
+}
+
+function compressImage() {
+  if (!compressFileRef) { showNotif('Upload image first!', 'error'); return; }
+  const lvl = parseInt(document.getElementById('compressLevel').value) / 100;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img.onload = () => {
+      const canvas = document.getElementById('mainCanvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'compressed_' + compressFileRef.name;
+        a.click();
+        addHistory('Image Compress', `${formatBytes(compressFileRef.size)} → ${formatBytes(blob.size)}`);
+        showNotif(`✅ Compressed: ${formatBytes(blob.size)} (was ${formatBytes(compressFileRef.size)})`, 'success');
+        state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+      }, 'image/jpeg', lvl);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(compressFileRef);
+}
+
+// ═══════════════════════════════════════════
+// IMAGE RESIZE
+// ═══════════════════════════════════════════
+let resizeFileRef = null;
+function loadResizeFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  resizeFileRef = file;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img.onload = () => {
+      state.aspectRatio = img.naturalWidth / img.naturalHeight;
+      document.getElementById('resizeW').value = img.naturalWidth;
+      document.getElementById('resizeH').value = img.naturalHeight;
+      document.getElementById('resizePreview').innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:260px;border-radius:8px">`;
+      document.getElementById('resizeInfo').textContent = `Original: ${img.naturalWidth}×${img.naturalHeight}px | ${formatBytes(file.size)}`;
+      document.getElementById('resizeOptions').style.display = 'block';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function setResizePreset(w, h) {
+  document.getElementById('resizeW').value = w;
+  document.getElementById('resizeH').value = h;
+}
+
+function resizeImage() {
+  if (!resizeFileRef) { showNotif('Upload image first!', 'error'); return; }
+  const w = parseInt(document.getElementById('resizeW').value);
+  const h = parseInt(document.getElementById('resizeH').value);
+  const format = document.getElementById('resizeFormat').value;
+  const qual = parseInt(document.getElementById('resizeQual').value) / 100;
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img.onload = () => {
+      const canvas = document.getElementById('mainCanvas');
+      canvas.width = w; canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (format === 'jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0,0,w,h); }
+      ctx.drawImage(img, 0, 0, w, h);
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const ext = format === 'jpeg' ? 'jpg' : format;
+        a.download = `resized_${w}x${h}.${ext}`;
+        a.click();
+        addHistory('Image Resize', `→ ${w}×${h}px ${format.toUpperCase()}`);
+        showNotif(`✅ Resized to ${w}×${h}px!`, 'success');
+        state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+      }, `image/${format}`, qual);
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(resizeFileRef);
+}
+
+// ═══════════════════════════════════════════
+// BG REMOVE
+// ═══════════════════════════════════════════
+let bgFileRef = null;
+function loadBgFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  bgFileRef = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('bgPreviewBefore').innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:260px;border-radius:8px">`;
+    document.getElementById('bgOptions').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeBackground() {
+  if (!bgFileRef) { showNotif('Upload image first!', 'error'); return; }
+  const bgColor = document.getElementById('bgColor').value;
+  const tolerance = parseInt(document.getElementById('bgTolerance').value);
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img.onload = () => {
+      const canvas = document.getElementById('mainCanvas');
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+      const br = parseInt(bgColor.substring(1, 3), 16);
+      const bg = parseInt(bgColor.substring(3, 5), 16);
+      const bb = parseInt(bgColor.substring(5, 7), 16);
+      for (let i = 0; i < data.length; i += 4) {
+        const diff = Math.abs(data[i] - br) + Math.abs(data[i+1] - bg) + Math.abs(data[i+2] - bb);
+        if (diff < tolerance * 3) data[i+3] = 0;
+      }
+      ctx.putImageData(imageData, 0, 0);
+      const url = canvas.toDataURL('image/png');
+      document.getElementById('bgPreviewAfter').innerHTML = `<img src="${url}" style="max-width:100%;max-height:260px;border-radius:8px">`;
+      canvas.toBlob(blob => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'bg_removed_' + bgFileRef.name.replace(/\.[^.]+$/, '') + '.png';
+        a.click();
+        addHistory('BG Remove', bgFileRef.name);
+        showNotif('✅ Background removed! Downloading PNG...', 'success');
+        state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+      }, 'image/png');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(bgFileRef);
+}
+
+// ═══════════════════════════════════════════
+// PASSPORT PHOTO
+// ═══════════════════════════════════════════
+let passportFileRef = null;
+function loadPassportFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  passportFileRef = file;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('passportPreview').innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:260px;border-radius:8px">`;
+    document.getElementById('passportOptions').style.display = 'block';
+  };
+  reader.readAsDataURL(file);
+}
+
+function generatePassportLayout() {
+  if (!passportFileRef) { showNotif('Upload photo first!', 'error'); return; }
+  const copies = parseInt(document.getElementById('passportCopies').value);
+  const bgColor = document.getElementById('passportBg').value;
+  const sizeVal = document.getElementById('passportSize').value;
+  const border = document.getElementById('passportBorder').value;
+
+  const img = new Image();
+  const reader = new FileReader();
+  reader.onload = ev => {
+    img.onload = () => {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+      let photoW = 35, photoH = 45;
+      if (sizeVal === '50x50') { photoW = 50; photoH = 50; }
+      else if (sizeVal === '40x60') { photoW = 40; photoH = 60; }
+
+      const pageW = 210, pageH = 297, margin = 10;
+      const cols = Math.floor((pageW - margin * 2) / (photoW + 2));
+      const rows = Math.floor((pageH - margin * 2) / (photoH + 2));
+      const actualCopies = Math.min(copies, cols * rows);
+
+      // Draw to temp canvas
+      const cv = document.getElementById('tempCanvas');
+      cv.width = 300; cv.height = 400;
+      const ctx = cv.getContext('2d');
+      ctx.fillStyle = bgColor; ctx.fillRect(0, 0, cv.width, cv.height);
+      ctx.drawImage(img, 0, 0, cv.width, cv.height);
+      const photoDataUrl = cv.toDataURL('image/jpeg', 0.95);
+
+      let count = 0;
+      for (let r = 0; r < rows && count < actualCopies; r++) {
+        for (let c = 0; c < cols && count < actualCopies; c++) {
+          const x = margin + c * (photoW + 2);
+          const y = margin + r * (photoH + 2);
+          if (border !== 'none') {
+            pdf.setDrawColor(0);
+            pdf.setLineWidth(border === 'thin' ? 0.2 : 0.5);
+            pdf.rect(x - 0.5, y - 0.5, photoW + 1, photoH + 1);
+          }
+          pdf.addImage(photoDataUrl, 'JPEG', x, y, photoW, photoH);
+          count++;
+        }
+      }
+
+      pdf.setFontSize(7); pdf.setTextColor(150);
+      pdf.text('Powered by K Spider AI – kspiderai.in', margin, pageH - 4);
+      pdf.save('passport_photos.pdf');
+      addHistory('Passport Photo', `${actualCopies} copies on A4`);
+      showNotif(`✅ Generated ${actualCopies} passport photos on A4!`, 'success');
+      state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(passportFileRef);
+}
+
+// ═══════════════════════════════════════════
+// IMAGE TO PDF
+// ═══════════════════════════════════════════
+let img2pdfFiles = [];
+function loadImgFiles2(e, listId) { loadImgFiles(e, listId); }
+
+function convertImagesToPDF() {
+  const listEl = document.getElementById('img2pdfList');
+  const items = listEl.querySelectorAll('.file-item');
+  if (!items.length) { showNotif('Upload images first!', 'error'); return; }
+
+  const pageSize = document.getElementById('pdfPageSize').value;
+  const orient = document.getElementById('pdfOrientation').value;
+  const fname = document.getElementById('pdfOutputName').value || 'images_converted';
+
+  // Gather files from state.imgFiles - use a separate tracker
+  const img2files = state.img2pdfFiles || [];
+  if (!img2files.length) { showNotif('Upload images first!', 'error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const dims = pageSize === 'a4' ? [210, 297] : pageSize === 'letter' ? [215.9, 279.4] : [297, 420];
+  const pdf = new jsPDF({ orientation: orient, unit: 'mm', format: pageSize });
+  let loaded = 0;
+
+  img2files.forEach((file, i) => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        if (i > 0) pdf.addPage();
+        const [pw, ph] = orient === 'landscape' ? [dims[1], dims[0]] : dims;
+        const margin = 10;
+        const maxW = pw - margin * 2;
+        const maxH = ph - margin * 2;
+        let w = img.naturalWidth, h = img.naturalHeight;
+        const ratio = Math.min(maxW / w, maxH / h);
+        w = w * ratio; h = h * ratio;
+        const x = (pw - w) / 2; const y = (ph - h) / 2;
+        const fmt = file.type.includes('png') ? 'PNG' : 'JPEG';
+        pdf.addImage(ev.target.result, fmt, x, y, w, h);
+        loaded++;
+        if (loaded === img2files.length) {
+          pdf.setFontSize(7); pdf.setTextColor(150);
+          pdf.text('Powered by K Spider AI – kspiderai.in', 10, ph - 4);
+          pdf.save(fname + '.pdf');
+          addHistory('Image to PDF', `${img2files.length} images`);
+          showNotif(`✅ ${img2files.length} images converted to PDF!`, 'success');
+          state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+        }
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// Override loadImgFiles for img2pdf
+const origLoadImgFiles = loadImgFiles;
+function initImg2PDFInput() {
+  document.getElementById('img2pdfInput').addEventListener('change', function(e) {
+    state.img2pdfFiles = state.img2pdfFiles || [];
+    state.img2pdfFiles.push(...Array.from(e.target.files));
+    loadImgFiles(e, 'img2pdfList');
+  });
+}
+document.addEventListener('DOMContentLoaded', initImg2PDFInput);
+
+// ═══════════════════════════════════════════
+// TXT TO PDF
+// ═══════════════════════════════════════════
+function loadTextFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('txtContent').value = ev.target.result; };
+  reader.readAsText(file);
+}
+
+function convertTxtToPDF() {
+  const text = document.getElementById('txtContent').value.trim();
+  if (!text) { showNotif('Enter text first!', 'error'); return; }
+  const fontSize = parseInt(document.getElementById('txtFontSize').value) || 12;
+  const pageSize = document.getElementById('txtPageSize').value;
+  const title = document.getElementById('txtPdfTitle').value || 'Document';
+  const fname = document.getElementById('txtPdfName').value || 'text_to_pdf';
+  const addHeader = document.getElementById('txtAddHeader').checked;
+
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: pageSize });
+  const margin = 20;
+  const pageW = pageSize === 'a4' ? 210 : 215.9;
+  const pageH = pageSize === 'a4' ? 297 : 279.4;
+  const usableW = pageW - margin * 2;
+  let y = margin;
+
+  if (addHeader) {
+    pdf.setFontSize(16); pdf.setFont(undefined, 'bold');
+    pdf.text(title, margin, y); y += 10;
+    pdf.setDrawColor(0, 212, 255); pdf.setLineWidth(0.5);
+    pdf.line(margin, y, pageW - margin, y); y += 8;
+    pdf.setFont(undefined, 'normal');
+  }
+
+  pdf.setFontSize(fontSize);
+  const lines = pdf.splitTextToSize(text, usableW);
+  const lineH = fontSize * 0.4 + 1.5;
+
+  lines.forEach(line => {
+    if (y + lineH > pageH - margin) { pdf.addPage(); y = margin; }
+    pdf.text(line, margin, y); y += lineH;
+  });
+
+  if (addHeader) {
+    const totalPages = pdf.internal.getNumberOfPages();
+    for (let p = 1; p <= totalPages; p++) {
+      pdf.setPage(p);
+      pdf.setFontSize(7); pdf.setTextColor(150);
+      pdf.text(`Powered by K Spider AI – kspiderai.in | Page ${p}/${totalPages}`, margin, pageH - 6);
+    }
+  }
+
+  pdf.save(fname + '.pdf');
+  addHistory('TXT to PDF', title);
+  showNotif('✅ TXT converted to PDF!', 'success');
+  state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+}
+
+// ═══════════════════════════════════════════
+// HTML TO PDF
+// ═══════════════════════════════════════════
+function loadHTMLFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('htmlContent').value = ev.target.result; };
+  reader.readAsText(file);
+}
+
+function convertHTMLToPDF() {
+  const html = document.getElementById('htmlContent').value;
+  if (!html) { showNotif('Enter HTML first!', 'error'); return; }
+  const win = window.open('', '_blank');
+  const branded = html.replace('</body>', `<p style="font-size:9px;color:#999;margin-top:40px">Powered by K Spider AI – kspiderai.in</p></body>`);
+  win.document.write(branded);
+  win.document.close();
+  setTimeout(() => { win.print(); }, 500);
+  addHistory('HTML to PDF', 'Via print dialog');
+  showNotif('✅ Print dialog opened – select Save as PDF!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// MARKDOWN TO PDF
+// ═══════════════════════════════════════════
+function loadMDFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('mdContent').value = ev.target.result;
+    updateMDPreview();
+  };
+  reader.readAsText(file);
+}
+
+function updateMDPreview() {
+  const md = document.getElementById('mdContent').value;
+  if (typeof marked !== 'undefined' && md) {
+    document.getElementById('mdPreviewContent').innerHTML = marked.parse(md);
+  }
+}
+
+function convertMDToPDF() {
+  const md = document.getElementById('mdContent').value;
+  if (!md) { showNotif('Enter Markdown first!', 'error'); return; }
+  const fname = document.getElementById('mdPdfName').value || 'markdown_to_pdf';
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>
+    body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;line-height:1.6;color:#222}
+    h1,h2,h3{color:#1a1a2e}code{background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:12px}
+    pre{background:#f5f5f5;padding:12px;border-radius:6px;overflow-x:auto}
+    blockquote{border-left:4px solid #00d4ff;margin:0;padding:0 16px;color:#555}
+    p.brand{font-size:9px;color:#999;margin-top:60px;border-top:1px solid #eee;padding-top:10px}
+  </style></head><body>
+  ${typeof marked !== 'undefined' ? marked.parse(md) : md.replace(/\n/g, '<br>')}
+  <p class="brand">Powered by K Spider AI – kspiderai.in – © 2026 Gaurang & Khush Raval</p>
+  </body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  setTimeout(() => { win.print(); }, 500);
+  addHistory('Markdown to PDF', 'Via print dialog');
+  showNotif('✅ Print dialog opened – select Save as PDF!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// MERGE / EXTRACT PDF
+// ═══════════════════════════════════════════
+let pdfFilesList = [];
+function loadPDFFiles(e) {
+  const files = Array.from(e.target.files);
+  pdfFilesList = [...pdfFilesList, ...files];
+  const list = document.getElementById('mergePdfList');
+  files.forEach(f => list.appendChild(createFileItem(f)));
+}
+
+function mergePDFs() {
+  if (!pdfFilesList.length) { showNotif('Upload PDF files first!', 'error'); return; }
+  const fname = document.getElementById('mergePdfName').value || 'merged';
+  const zip = new JSZip();
+  pdfFilesList.forEach(f => zip.file(f.name, f));
+  zip.generateAsync({ type: 'blob' }).then(blob => {
+    saveAs(blob, fname + '_merged_bundle.zip');
+    addHistory('Merge PDFs', `${pdfFilesList.length} PDFs bundled`);
+    showNotif(`✅ ${pdfFilesList.length} PDFs bundled into ZIP!`, 'success');
+  });
+}
+
+function extractPDFText(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const el = document.getElementById('pdfTxtOutput');
+  el.innerHTML = '<span style="color:var(--accent)">Reading PDF... (text extraction from scanned PDFs may be limited)</span>';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const text = `PDF File: ${file.name}\nSize: ${formatBytes(file.size)}\n\n[PDF text extraction is limited in browser-only mode. For full text extraction, the PDF must contain embedded text (not scanned image).\n\nThis tool extracts what it can from the binary content.]\n\nFor full OCR, consider server-side processing.\n\nFile processed by K Spider AI – kspiderai.in`;
+    el.innerHTML = `<pre style="font-size:12px;white-space:pre-wrap">${text}</pre>`;
+    state.pdfTextContent = text;
+    document.getElementById('pdfTxtDownload').style.display = '';
+    document.getElementById('pdfTxtCopy').style.display = '';
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function downloadPDFText() {
+  const blob = new Blob([state.pdfTextContent], { type: 'text/plain' });
+  saveAs(blob, 'extracted_text.txt');
+}
+function copyPDFText() { navigator.clipboard.writeText(state.pdfTextContent); showNotif('Text copied!', 'success'); }
+
+// ═══════════════════════════════════════════
+// JSON TOOLS
+// ═══════════════════════════════════════════
+function formatJSON() {
+  try {
+    const input = document.getElementById('jsonInput').value.trim();
+    const parsed = JSON.parse(input);
+    document.getElementById('jsonOutput').value = JSON.stringify(parsed, null, 2);
+    showNotif('✅ JSON formatted!', 'success');
+  } catch(e) { showNotif('❌ Invalid JSON: ' + e.message, 'error'); }
+}
+
+function minifyJSON() {
+  try {
+    const input = document.getElementById('jsonMinInput').value.trim();
+    const parsed = JSON.parse(input);
+    document.getElementById('jsonMinOutput').value = JSON.stringify(parsed);
+    showNotif('✅ JSON minified!', 'success');
+  } catch(e) { showNotif('❌ Invalid JSON: ' + e.message, 'error'); }
+}
+
+function validateJSON() {
+  try {
+    const input = document.getElementById('jsonValidInput').value.trim();
+    JSON.parse(input);
+    document.getElementById('jsonValidResult').innerHTML = '<span style="color:var(--green)">✅ Valid JSON!</span>';
+  } catch(e) {
+    document.getElementById('jsonValidResult').innerHTML = `<span style="color:var(--red)">❌ Invalid JSON: ${e.message}</span>`;
+  }
+}
+
+function convertJSONtoCSV() {
+  try {
+    const input = document.getElementById('jsonToCsvInput').value.trim();
+    const data = JSON.parse(input);
+    if (!Array.isArray(data)) throw new Error('Expected JSON array');
+    const csv = Papa.unparse(data);
+    document.getElementById('jsonToCsvOutput').value = csv;
+    showNotif('✅ JSON converted to CSV!', 'success');
+  } catch(e) { showNotif('❌ Error: ' + e.message, 'error'); }
+}
+
+function loadJSONFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('jsonInput').value = ev.target.result; };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════
+// CSV ↔ JSON
+// ═══════════════════════════════════════════
+function loadCSVFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('csvContent').value = ev.target.result; };
+  reader.readAsText(file);
+}
+
+function convertCSVtoJSON() {
+  const csv = document.getElementById('csvContent').value.trim();
+  if (!csv) { showNotif('Enter CSV first!', 'error'); return; }
+  const result = Papa.parse(csv, { header: true, skipEmptyLines: true });
+  document.getElementById('csvToJsonOutput').value = JSON.stringify(result.data, null, 2);
+  addHistory('CSV to JSON', `${result.data.length} rows`);
+  showNotif(`✅ ${result.data.length} rows converted to JSON!`, 'success');
+}
+
+function convertJSONtoCSV2() {
+  try {
+    const data = JSON.parse(document.getElementById('jsonToCsv2Input').value.trim());
+    document.getElementById('jsonToCsv2Output').value = Papa.unparse(data);
+    showNotif('✅ JSON converted to CSV!', 'success');
+  } catch(e) { showNotif('❌ Invalid JSON: ' + e.message, 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// BASE64
+// ═══════════════════════════════════════════
+function encodeBase64Text() {
+  const text = document.getElementById('b64TextInput').value;
+  document.getElementById('b64TextOutput').value = btoa(unescape(encodeURIComponent(text)));
+  showNotif('✅ Encoded!', 'success');
+}
+
+function decodeBase64() {
+  try {
+    const b64 = document.getElementById('b64DecodeInput').value.trim();
+    document.getElementById('b64DecodeOutput').value = decodeURIComponent(escape(atob(b64)));
+    showNotif('✅ Decoded!', 'success');
+  } catch(e) { showNotif('❌ Invalid Base64', 'error'); }
+}
+
+function encodeFileBase64(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('b64FileOutput').value = ev.target.result;
+    showNotif('✅ File encoded to Base64!', 'success');
+  };
+  reader.readAsDataURL(file);
+}
+
+// ═══════════════════════════════════════════
+// XML FORMATTER
+// ═══════════════════════════════════════════
+function loadXMLFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { document.getElementById('xmlInput').value = ev.target.result; };
+  reader.readAsText(file);
+}
+
+function formatXML() {
+  const xml = document.getElementById('xmlInput').value.trim();
+  if (!xml) { showNotif('Enter XML first!', 'error'); return; }
+  try {
+    let formatted = '', indent = '';
+    const lines = xml.replace(/></g, '>\n<').split('\n');
+    lines.forEach(line => {
+      const stripped = line.trim();
+      if (!stripped) return;
+      if (stripped.startsWith('</')) { indent = indent.slice(2); }
+      formatted += indent + stripped + '\n';
+      if (!stripped.startsWith('<!') && !stripped.startsWith('<?') && !stripped.includes('</') && stripped.endsWith('>') && !stripped.startsWith('</')) {
+        if (!stripped.match(/<[^>]+\/>/)) indent += '  ';
+      }
+    });
+    document.getElementById('xmlOutput').value = formatted;
+    showNotif('✅ XML formatted!', 'success');
+  } catch(e) { showNotif('❌ Error formatting XML', 'error'); }
+}
+
+// ═══════════════════════════════════════════
+// ZIP TOOLS
+// ═══════════════════════════════════════════
+let zipFiles = [];
+function loadZipFiles(e) {
+  const files = Array.from(e.target.files);
+  zipFiles = [...zipFiles, ...files];
+  const list = document.getElementById('zipCreateList');
+  files.forEach(f => list.appendChild(createFileItem(f)));
+}
+
+function createZIP() {
+  if (!zipFiles.length) { showNotif('Add files first!', 'error'); return; }
+  const name = document.getElementById('zipName').value || 'archive';
+  const level = parseInt(document.getElementById('zipCompLevel').value);
+  const zip = new JSZip();
+  zipFiles.forEach(f => zip.file(f.name, f));
+  zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level } }).then(blob => {
+    saveAs(blob, name + '.zip');
+    addHistory('Create ZIP', `${zipFiles.length} files → ${formatBytes(blob.size)}`);
+    showNotif(`✅ ZIP created: ${formatBytes(blob.size)}!`, 'success');
+    state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+  });
+}
+
+let extractedFiles = [];
+function extractZIP(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  JSZip.loadAsync(file).then(zip => {
+    extractedFiles = [];
+    const list = document.getElementById('zipExtractList');
+    list.innerHTML = '';
+    const promises = [];
+    zip.forEach((path, zipEntry) => {
+      if (!zipEntry.dir) {
+        const p = zipEntry.async('blob').then(blob => {
+          extractedFiles.push({ name: path, blob });
+          const item = document.createElement('div');
+          item.className = 'file-item';
+          item.innerHTML = `
+            <div class="file-thumb">${getFileIcon(path)}</div>
+            <div class="file-info">
+              <div class="file-name">${path}</div>
+              <div class="file-meta">${formatBytes(blob.size)}</div>
+            </div>
+            <a href="${URL.createObjectURL(blob)}" download="${path}" class="btn btn-success" style="font-size:12px">💾</a>`;
+          list.appendChild(item);
+        });
+        promises.push(p);
+      }
+    });
+    Promise.all(promises).then(() => {
+      document.getElementById('zipExtractResult').style.display = 'block';
+      addHistory('Extract ZIP', `${extractedFiles.length} files`);
+      showNotif(`✅ Extracted ${extractedFiles.length} files!`, 'success');
+    });
+  }).catch(() => showNotif('❌ Failed to read ZIP file', 'error'));
+}
+
+function downloadAllExtracted() {
+  const zip = new JSZip();
+  extractedFiles.forEach(f => zip.file(f.name, f.blob));
+  zip.generateAsync({ type: 'blob' }).then(blob => saveAs(blob, 'extracted_files.zip'));
+}
+
+// ═══════════════════════════════════════════
+// AUDIO TOOLS
+// ═══════════════════════════════════════════
+function loadAudioFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  state.audioFileRef = file;
+  const url = URL.createObjectURL(file);
+  const player = document.getElementById('audioElement');
+  player.src = url;
+  player.onloadedmetadata = () => {
+    document.getElementById('trimEnd').value = Math.floor(player.duration);
+    document.getElementById('audioInfo').innerHTML = `
+      <strong>File:</strong> ${file.name} | <strong>Size:</strong> ${formatBytes(file.size)} |
+      <strong>Duration:</strong> ${formatDuration(player.duration)} | <strong>Type:</strong> ${file.type}`;
+    document.getElementById('audioAiInfo').innerHTML = `
+      <div style="font-size:12px;color:var(--text2)">
+        📊 Duration: ${formatDuration(player.duration)}<br>
+        📁 Size: ${formatBytes(file.size)}<br>
+        🎵 Type: ${file.type}<br>
+        💡 Tip: For trimming use dedicated tools<br>
+        🌐 For format conversion, use cloud tools
+      </div>`;
+  };
+  document.getElementById('audioPlayer').style.display = 'block';
+}
+
+function downloadOriginalAudio() {
+  if (!state.audioFileRef) return;
+  const url = URL.createObjectURL(state.audioFileRef);
+  const a = document.createElement('a');
+  a.href = url; a.download = state.audioFileRef.name; a.click();
+}
+
+function formatDuration(s) {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════
+// VIDEO TOOLS
+// ═══════════════════════════════════════════
+function loadVideoFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  state.videoFileRef = file;
+  const url = URL.createObjectURL(file);
+  const player = document.getElementById('videoElement');
+  player.src = url;
+  player.onloadedmetadata = () => {
+    document.getElementById('videoInfo').innerHTML = `
+      <strong>File:</strong> ${file.name} | <strong>Size:</strong> ${formatBytes(file.size)} |
+      <strong>Duration:</strong> ${formatDuration(player.duration)} |
+      <strong>Dimensions:</strong> ${player.videoWidth}×${player.videoHeight}px`;
+  };
+  document.getElementById('videoPlayer').style.display = 'block';
+}
+
+function extractVideoThumbnail() {
+  const video = document.getElementById('videoElement');
+  const canvas = document.getElementById('mainCanvas');
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 360;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  state.thumbnailData = dataUrl;
+  document.getElementById('thumbPreview').innerHTML = `<img src="${dataUrl}" style="max-width:100%;border-radius:8px">`;
+  document.getElementById('thumbnailPanel').style.display = 'block';
+  showNotif('✅ Thumbnail extracted!', 'success');
+  addHistory('Video Thumbnail', `${canvas.width}×${canvas.height}px`);
+}
+
+function downloadThumbnail() {
+  if (!state.thumbnailData) return;
+  const a = document.createElement('a');
+  a.href = state.thumbnailData;
+  a.download = 'thumbnail.jpg';
+  a.click();
+}
+
+function downloadOriginalVideo() {
+  if (!state.videoFileRef) return;
+  const a = document.createElement('a'); a.href = URL.createObjectURL(state.videoFileRef);
+  a.download = state.videoFileRef.name; a.click();
+}
+
+// ═══════════════════════════════════════════
+// BATCH ZIP DOWNLOAD
+// ═══════════════════════════════════════════
+async function downloadAllAsZip(listId) {
+  if (!state.outputs || !state.outputs.length) { showNotif('No converted files!', 'error'); return; }
+  const zip = new JSZip();
+  state.outputs.forEach(o => zip.file(o.name, o.blob));
+  const blob = await zip.generateAsync({ type: 'blob' });
+  saveAs(blob, 'kspider_converted.zip');
+  showNotif('✅ All files downloaded as ZIP!', 'success');
+}
+
+// ═══════════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════════
+function switchTab(el, targetId) {
+  const parent = el.parentElement.parentElement;
+  parent.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  const tabPrefix = targetId.split('-tab')[0];
+  parent.querySelectorAll('[id^="tab-"]').forEach(t => {
+    t.style.display = t.id === 'tab-' + targetId ? '' : 'none';
+  });
+}
+
+// ═══════════════════════════════════════════
+// UTILITY
+// ═══════════════════════════════════════════
+function createFileItem(file) {
+  const div = document.createElement('div');
+  div.className = 'file-item fade-in';
+  const isImg = file.type.startsWith('image/');
+  const iconHtml = isImg
+    ? `<div class="file-thumb" id="thumb-${Date.now()}"><span>${getFileIcon(file.name)}</span></div>`
+    : `<div class="file-thumb">${getFileIcon(file.name)}</div>`;
+  div.innerHTML = `
+    ${iconHtml}
+    <div class="file-info">
+      <div class="file-name">${file.name}</div>
+      <div class="file-meta">${formatBytes(file.size)} | ${file.type || 'Unknown'}</div>
+    </div>
+    <span class="file-status status-ready">Ready</span>
+    <button class="btn-icon" onclick="this.closest('.file-item').remove()" title="Remove">✕</button>`;
+  if (isImg) {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const thumb = div.querySelector('.file-thumb');
+      if (thumb) thumb.innerHTML = `<img src="${ev.target.result}">`;
+    };
+    reader.readAsDataURL(file);
+  }
+  return div;
+}
+
+function getFileIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  const icons = {
+    jpg: '🖼️', jpeg: '🖼️', png: '🖼️', gif: '🖼️', webp: '🖼️', svg: '🖼️', ico: '🖼️', bmp: '🖼️',
+    pdf: '📄', doc: '📝', docx: '📝', txt: '📝', html: '🌐', htm: '🌐', md: '📋',
+    json: '🔧', csv: '📊', xml: '📋',
+    mp3: '🎵', wav: '🎵', ogg: '🎵', aac: '🎵',
+    mp4: '🎬', webm: '🎬', mov: '🎬',
+    zip: '📦', rar: '📦', tar: '📦', gz: '📦',
+    js: '⚡', css: '🎨', py: '🐍', java: '☕'
+  };
+  return icons[ext] || '📄';
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${(bytes / Math.pow(k, i)).toFixed(1)} ${sizes[i]}`;
+}
+
+function clearList(listId) {
+  document.getElementById(listId).innerHTML = '';
+  state.imgFiles = [];
+}
+
+function copyText(id) {
+  const el = document.getElementById(id);
+  navigator.clipboard.writeText(el.value || el.textContent).then(() => showNotif('✅ Copied!', 'success'));
+}
+
+function downloadText(id, filename) {
+  const el = document.getElementById(id);
+  const text = el.value || el.textContent;
+  const blob = new Blob([text], { type: 'text/plain' });
+  saveAs(blob, filename);
+}
+
+// ═══════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════
+function addHistory(type, detail) {
+  const entry = { type, detail, date: new Date().toLocaleString(), id: Date.now() };
+  state.history.unshift(entry);
+  if (state.history.length > 50) state.history.pop();
+  localStorage.setItem('kspider_history', JSON.stringify(state.history));
+  renderHistory();
+  updateHistBadge();
+}
+
+function renderHistory() {
+  const el = document.getElementById('historyList');
+  if (!el) return;
+  if (!state.history.length) {
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:var(--text3)"><div style="font-size:40px;margin-bottom:12px">📋</div><div>No conversions yet. Start converting files!</div></div>';
+    return;
+  }
+  el.innerHTML = state.history.map(h => `
+    <div class="history-item">
+      <div style="font-size:22px">${getTypeIcon(h.type)}</div>
+      <div class="history-info">
+        <div class="history-title">${h.type}</div>
+        <div class="history-meta">${h.detail} | ${h.date}</div>
+      </div>
+      <span class="file-status status-done">Done</span>
+    </div>`).join('');
+}
+
+function getTypeIcon(type) {
+  if (type.toLowerCase().includes('image')) return '🖼️';
+  if (type.toLowerCase().includes('pdf')) return '📄';
+  if (type.toLowerCase().includes('zip')) return '📦';
+  if (type.toLowerCase().includes('json') || type.toLowerCase().includes('csv')) return '📊';
+  if (type.toLowerCase().includes('audio')) return '🎵';
+  if (type.toLowerCase().includes('video')) return '🎬';
+  return '🔄';
+}
+
+function clearHistory() {
+  state.history = [];
+  localStorage.removeItem('kspider_history');
+  renderHistory();
+  updateHistBadge();
+  showNotif('History cleared', 'info');
+}
+
+function exportHistory() {
+  const text = state.history.map(h => `${h.date} | ${h.type} | ${h.detail}`).join('\n');
+  const blob = new Blob([`K Spider AI Conversion History\nExported: ${new Date().toLocaleString()}\n\n${text}\n\nPowered by K Spider AI – kspiderai.in`], { type: 'text/plain' });
+  saveAs(blob, 'kspider_history.txt');
+}
+
+function updateHistBadge() {
+  const badge = document.getElementById('histBadge');
+  if (badge) badge.textContent = state.history.length;
+}
+
+// ═══════════════════════════════════════════
+// STATS
+// ═══════════════════════════════════════════
+function updateStats() {
+  const el = document.getElementById('statConverted');
+  if (el) el.textContent = state.convertedCount;
+  const storEl = document.getElementById('statStorage');
+  if (storEl) {
+    const kb = JSON.stringify(state).length / 1024;
+    storEl.textContent = kb < 1024 ? kb.toFixed(1) + ' KB' : (kb/1024).toFixed(2) + ' MB';
+  }
+}
+
+// ═══════════════════════════════════════════
+// WHATSAPP SHARE
+// ═══════════════════════════════════════════
+function openShareModal() { openModal('shareModal'); updateWALink(); }
+function updateWALink() {
+  const name = document.getElementById('waName').value;
+  const msg = `I${name ? ' ' + name : ''} converted my file using K Spider AI Universal File Converter.
+Check it here: https://www.kspiderai.in
+
+Powered by K Spider AI Tool – www.kspiderai.in – https://www.youtube.com/@KSpider4Kreaction`;
+  document.getElementById('waShareBtn').href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
+}
+document.addEventListener('DOMContentLoaded', () => {
+  const nameInput = document.getElementById('waName');
+  if (nameInput) nameInput.addEventListener('input', updateWALink);
+});
+
+// ═══════════════════════════════════════════
+// PWA
+// ═══════════════════════════════════════════
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+});
+function installPWA() {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+  } else {
+    showNotif('To install: use browser menu → "Add to Home Screen" or "Install App"', 'info');
+  }
+}
+
+// ═══════════════════════════════════════════
+// MONETIZE FORMS
+// ═══════════════════════════════════════════
+function submitAffiliate() {
+  const email = document.getElementById('affiliateEmail').value;
+  const platform = document.getElementById('affiliatePlatform').value;
+  if (!email) { showNotif('Enter email!', 'error'); return; }
+  showNotif(`✅ Affiliate application submitted for ${email}! We'll contact you soon.`, 'success');
+  addHistory('Affiliate Apply', email);
+}
+
+function submitFranchise() {
+  const name = document.getElementById('franchiseName').value;
+  const email = document.getElementById('franchiseEmail').value;
+  if (!name || !email) { showNotif('Fill in required fields!', 'error'); return; }
+  showNotif(`✅ Franchise inquiry from ${name} submitted! Visit kspiderai.in for more info.`, 'success');
+  addHistory('Franchise Inquiry', name);
+}
+
+// ═══════════════════════════════════════════
+// MULTI-LANGUAGE
+// ═══════════════════════════════════════════
+const translations = {
+  en: { welcome: 'Welcome to K Spider AI Converter', sub: 'Universal file conversion. 100% browser-based. Zero server uploads.', drop: 'Drop Any File Here', dropSub: 'or click to browse • AI auto-detects format' },
+  hi: { welcome: 'K Spider AI कन्वर्टर में आपका स्वागत है', sub: 'सार्वभौमिक फ़ाइल रूपांतरण। 100% ब्राउज़र-आधारित।', drop: 'कोई भी फ़ाइल यहाँ छोड़ें', dropSub: 'या ब्राउज़ करने के लिए क्लिक करें' },
+  gu: { welcome: 'K Spider AI કન્વર્ટરમાં આપનું સ્વાગત છે', sub: 'સાર્વત્રિક ફાઈલ કન્વર્ઝન. 100% બ્રાઉઝર-આધારિત.', drop: 'કોઈ પણ ફાઈલ અહીં ડ્રોપ કરો', dropSub: 'અથવા બ્રાઉઝ કરવા ક્લિક કરો' },
+  es: { welcome: 'Bienvenido a K Spider AI Converter', sub: 'Conversión universal de archivos. 100% basado en navegador.', drop: 'Arrastra cualquier archivo aquí', dropSub: 'o haz clic para explorar' },
+  fr: { welcome: 'Bienvenue sur K Spider AI Converter', sub: 'Conversion universelle de fichiers. 100% basé sur navigateur.', drop: 'Déposez tout fichier ici', dropSub: 'ou cliquez pour parcourir' }
+};
+
+function changeLang(lang) {
+  const t = translations[lang] || translations.en;
+  const map = { 'welcome': 't-welcome', 'sub': 't-sub', 'drop': 't-drop', 'dropSub': 't-dropSub' };
+  for (const [key, elId] of Object.entries(map)) {
+    const el = document.getElementById(elId);
+    if (el && t[key]) el.textContent = t[key];
+  }
+  showNotif(`Language changed to ${lang.toUpperCase()}`, 'info');
+}
+
+// ═══════════════════════════════════════════
+// COMPRESS SLIDER ONINPUT (for compressLevel display)
+// ═══════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  const cl = document.getElementById('compressLevel');
+  if (cl) cl.addEventListener('input', function() {
+    document.getElementById('compressLevelVal').textContent = this.value + '%';
+    updateCompressPreview();
+  });
+});
+</script>
+
+</body>
+</html>
