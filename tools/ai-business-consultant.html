@@ -44,6 +44,18 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--t1);min-h
 .tbadge{padding:4px 11px;border-radius:100px;background:var(--gs);border:1px solid var(--brg);font-size:.61rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--g2)}
 .tback{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:var(--bg3);border:1px solid var(--br);border-radius:var(--r4);font-size:.72rem;font-weight:600;color:var(--t2);text-decoration:none;transition:all .2s}
 .tback:hover{border-color:var(--brg);color:var(--g2)}
+.tkey{display:inline-flex;align-items:center;gap:5px;padding:6px 13px;background:var(--gs);border:1px solid var(--brg);border-radius:var(--r4);font-size:.72rem;font-weight:700;color:var(--g2);cursor:pointer;transition:all .2s}
+.tkey:hover{background:var(--gb)}
+.ak-overlay{display:none;position:fixed;inset:0;z-index:1100;background:rgba(0,0,0,.45);align-items:center;justify-content:center;padding:16px}
+.ak-overlay.open{display:flex}
+.ak-modal{background:var(--bg2);border-radius:var(--r12);border:1px solid var(--br);padding:28px;max-width:440px;width:100%;box-shadow:0 16px 48px rgba(0,0,0,.18)}
+.ak-modal h3{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--t1);margin-bottom:6px}
+.ak-modal p{font-size:.78rem;color:var(--t3);line-height:1.65;margin-bottom:14px}
+.ak-btns{display:flex;gap:8px;margin-top:4px}
+.ak-save{flex:1;padding:10px;background:var(--t1);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.82rem;border:none;border-radius:var(--r8);cursor:pointer}
+.ak-cancel{padding:10px 16px;background:var(--bg3);border:1px solid var(--br);border-radius:var(--r8);font-size:.82rem;cursor:pointer;color:var(--t2)}
+.ak-note{font-size:.65rem;color:var(--t4);margin-top:10px;line-height:1.6}
+.ak-link{color:var(--g2);text-decoration:none}
 
 /* LAYOUT */
 .app{display:grid;grid-template-columns:266px 1fr;min-height:100vh;padding-top:58px}
@@ -397,7 +409,7 @@ input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.25)}
   <div class="tbi">
     <a href="../index.html" class="tbrand"><div class="tlogo">🕷️</div><div class="tname">K Spider <span class="ai">AI Tool</span></div></a>
     <div class="tcenter"><div class="tdot"></div><span class="tctxt">AI Business Consultant</span></div>
-    <div class="tright"><span class="tbadge">💎 Premium</span><a href="../index.html" class="tback">← Back to Hub</a></div>
+    <div class="tright"><span class="tbadge">💎 Premium</span><a href="../index.html" class="tback">← Back to Hub</a><button class="tkey" onclick="showApiKeyModal()">🔑 API Key</button></div>
   </div>
 </header>
 
@@ -637,9 +649,36 @@ function brf(mod){
     '</div>';
 }
 
+function getApiKey(){
+  return localStorage.getItem('ks_api_key')||'';
+}
+function showApiKeyModal(){
+  document.getElementById('apikey-overlay').classList.add('open');
+}
+function closeApiKeyModal(){
+  document.getElementById('apikey-overlay').classList.remove('open');
+}
+function saveApiKey(){
+  var k=(document.getElementById('apikey-input').value||'').trim();
+  if(!k.startsWith('sk-ant-')){toast('Invalid key — must start with sk-ant-','e');return;}
+  localStorage.setItem('ks_api_key',k);
+  closeApiKeyModal();
+  toast('API key saved! You can now generate reports.','s');
+}
 async function apiCall(sys,msg,tokens,attempt){
   tokens=tokens||3000; attempt=attempt||1;
-  var res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:tokens,system:sys,messages:[{role:'user',content:msg}]})});
+  var key=getApiKey();
+  if(!key){showApiKeyModal();throw new Error('API key required. Please enter your Anthropic API key.');}
+  var res=await fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':key,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:'claude-opus-4-5',max_tokens:tokens,system:sys,messages:[{role:'user',content:msg}]})
+  });
   if(res.status===429||res.status===529){
     if(attempt>=3)throw new Error('Server busy (429). Please wait 30 seconds and try again.');
     var wait=attempt*8000;
@@ -647,7 +686,7 @@ async function apiCall(sys,msg,tokens,attempt){
     await new Promise(function(r){setTimeout(r,wait)});
     return apiCall(sys,msg,tokens,attempt+1);
   }
-  if(res.status===401)throw new Error('API key error (401). Please check your Anthropic API key.');
+  if(res.status===401){localStorage.removeItem('ks_api_key');showApiKeyModal();throw new Error('API key invalid (401). Please re-enter your Anthropic API key.');}
   if(!res.ok){var et=await res.text().catch(function(){return''});throw new Error('API error '+res.status+(et?' — '+et.slice(0,80):''));}
   var d=await res.json();
   return(d.content&&d.content[0]&&d.content[0].text)?d.content[0].text:'';
@@ -990,8 +1029,29 @@ function doPrint(html,title){
 /* Init */
 document.addEventListener('DOMContentLoaded',function(){
   try{var u=JSON.parse(localStorage.getItem('ks_u')||'{}');if(u&&u.v&&u.v.name)toast('Welcome back, '+u.v.name.split(' ')[0]+'! Ready to analyse your business?','tip')}catch(e){}
+  var saved=localStorage.getItem('ks_api_key')||'';
+  var ki=document.getElementById('apikey-input');if(ki&&saved)ki.value=saved;
+  if(!saved){setTimeout(function(){showApiKeyModal();},800);}
 });
 </script>
+
+<!-- API Key Modal -->
+<div class="ak-overlay" id="apikey-overlay">
+  <div class="ak-modal">
+    <h3>🔑 Enter Anthropic API Key</h3>
+    <p>Aapka API key aapke browser mein locally save hoga. Kisi server ko bheja nahi jaata.<br>
+    API key lene ke liye jaayein: <a href="https://console.anthropic.com/keys" target="_blank" class="ak-link">console.anthropic.com/keys</a></p>
+    <div class="fg">
+      <label>API Key</label>
+      <input type="password" id="apikey-input" placeholder="sk-ant-api03-..." autocomplete="off">
+    </div>
+    <div class="ak-btns">
+      <button class="ak-cancel" onclick="closeApiKeyModal()">Cancel</button>
+      <button class="ak-save" onclick="saveApiKey()">✅ Save & Continue</button>
+    </div>
+    <div class="ak-note">🔒 Key aapke browser localStorage mein save hoti hai. Kisi bhi server ya third party ko share nahi hoti. Agar key hata'ni ho toh browser localStorage clear karein.</div>
+  </div>
+</div>
 
 <!-- WhatsApp Share Modal -->
 <div class="wa-overlay" id="wa-overlay" onclick="if(event.target===this)closeWA()">
