@@ -1,0 +1,1540 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K Spider LinkShare — Your Links, One Place</title>
+<style>
+  /* 100% Offline - No internet needed - System fonts */
+  @font-face {
+    font-family: 'Syne';
+    src: local('Arial Black'), local('Impact'), local('Trebuchet MS');
+    font-weight: 700 800;
+  }
+
+  /* Syne-style bold headings via CSS */
+  .logo, .section-title, .preview-name, .stat-num, .qr-title {
+    font-family: 'Arial Black', 'Helvetica Neue', system-ui, sans-serif !important;
+    letter-spacing: -0.01em;
+  }
+</style>
+<style>
+  :root {
+    --bg: #f5f5fa;
+    --surface: #ffffff;
+    --surface2: #f0f0f7;
+    --border: rgba(0,0,0,0.09);
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #f59e0b;
+    --text: #1a1a2e;
+    --muted: #6b7280;
+    --success: #10b981;
+    --danger: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 20% 20%, rgba(124,58,237,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.05) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ===================== HEADER ===================== */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(245,245,250,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    font-weight: 800;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: linear-gradient(135deg, #7c3aed, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .logo span { font-size: 1.4rem; }
+
+  .header-btns { display: flex; gap: 10px; align-items: center; }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 8px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--text); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #5b21b6);
+    border: none;
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,58,237,0.4); }
+
+  /* ===================== MAIN LAYOUT ===================== */
+  .app {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    min-height: calc(100vh - 60px);
+  }
+
+  /* ===================== SIDEBAR ===================== */
+  .sidebar {
+    width: 340px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 60px);
+    position: sticky;
+    top: 60px;
+    overflow-y: auto;
+  }
+
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .profile-editor {
+    padding: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-title {
+    font-family: 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+
+  .avatar-upload {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .avatar-circle {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    border: 2px solid var(--border);
+    transition: all 0.2s;
+  }
+  .avatar-circle:hover { border-color: var(--accent); transform: scale(1.05); }
+  .avatar-circle img { width: 100%; height: 100%; object-fit: cover; }
+
+  .avatar-info { flex: 1; }
+  .avatar-info p { font-size: 0.82rem; color: var(--muted); margin-top: 4px; }
+
+  .btn-upload {
+    background: var(--surface2);
+    border: 1px dashed rgba(124,58,237,0.4);
+    color: var(--accent);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    transition: all 0.2s;
+    display: inline-block;
+  }
+  .btn-upload:hover { background: rgba(124,58,237,0.1); border-color: var(--accent); }
+
+  .input-group { margin-bottom: 14px; }
+  .input-label { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; display: block; }
+
+  .input-field {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border 0.2s;
+  }
+  .input-field:focus { border-color: var(--accent); }
+  .input-field::placeholder { color: var(--muted); }
+
+  textarea.input-field { resize: vertical; min-height: 72px; }
+
+  /* Theme Color Picker */
+  .theme-colors {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+  }
+  .color-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .color-dot:hover, .color-dot.active { border-color: #fff; transform: scale(1.15); }
+
+  /* Links Section */
+  .links-editor {
+    padding: 20px 24px;
+    flex: 1;
+  }
+
+  .add-link-form {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .platform-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .platform-btn {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.2s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .platform-btn:hover { border-color: var(--accent); background: rgba(124,58,237,0.08); }
+  .platform-btn.selected { border-color: var(--accent); background: rgba(124,58,237,0.15); }
+  .platform-btn .p-icon { font-size: 1.2rem; }
+  .platform-btn .p-name { font-size: 0.62rem; color: var(--muted); }
+
+  .form-row { display: flex; gap: 8px; margin-top: 10px; }
+  .form-row .input-field { flex: 1; }
+  .btn-add {
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-add:hover { background: #6d28d9; transform: translateY(-1px); }
+
+  /* Link Items */
+  .links-list { display: flex; flex-direction: column; gap: 8px; }
+
+  .link-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: all 0.2s;
+    animation: slideIn 0.3s ease;
+  }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-16px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .link-item:hover { border-color: rgba(124,58,237,0.3); }
+
+  .drag-handle {
+    color: var(--muted);
+    cursor: grab;
+    font-size: 1.1rem;
+    flex-shrink: 0;
+  }
+
+  .link-icon {
+    font-size: 1.3rem;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+
+  .link-info { flex: 1; min-width: 0; }
+  .link-title { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .link-url { font-size: 0.75rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .link-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .link-actions button {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .link-actions .del-btn:hover { border-color: var(--danger); color: var(--danger); background: rgba(239,68,68,0.1); }
+  .link-actions .edit-btn:hover { border-color: var(--accent); color: var(--accent); background: rgba(124,58,237,0.1); }
+
+  /* ===================== PREVIEW PANE ===================== */
+  .preview-pane {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 40px 24px;
+    overflow-y: auto;
+  }
+
+  .phone-mockup {
+    width: 320px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 40px;
+  }
+
+  .phone-frame {
+    background: #e8e8f0;
+    border: 3px solid #d0d0e0;
+    border-radius: 40px;
+    padding: 16px 12px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.08);
+    position: relative;
+  }
+
+  .phone-notch {
+    width: 80px;
+    height: 22px;
+    background: #e8e8f0;
+    border-radius: 0 0 16px 16px;
+    margin: 0 auto 12px;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .phone-notch::after {
+    content: '';
+    width: 40px;
+    height: 10px;
+    background: #c8c8d8;
+    border-radius: 8px;
+  }
+
+  .phone-screen {
+    border-radius: 28px;
+    overflow: hidden;
+    background: var(--bg);
+    min-height: 580px;
+    overflow-y: auto;
+  }
+  .phone-screen::-webkit-scrollbar { display: none; }
+
+  /* Profile Card in Preview */
+  .preview-profile {
+    padding: 32px 20px 20px;
+    text-align: center;
+    position: relative;
+  }
+
+  .preview-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    margin: 0 auto 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    border: 3px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .preview-avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+  .preview-name {
+    font-family: 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 1.15rem;
+    margin-bottom: 4px;
+  }
+
+  .preview-bio {
+    font-size: 0.78rem;
+    color: var(--muted);
+    line-height: 1.5;
+    max-width: 220px;
+    margin: 0 auto;
+  }
+
+  /* Preview Links */
+  .preview-links {
+    padding: 8px 16px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .preview-link {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-decoration: none;
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .preview-link::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .preview-link:hover::before { opacity: 0.08; }
+  .preview-link:hover { border-color: rgba(124,58,237,0.4); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+
+  .preview-link-icon {
+    font-size: 1.3rem;
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  }
+
+  .preview-link-text {
+    flex: 1;
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+  }
+
+  .preview-link-title {
+    font-size: 0.88rem;
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .preview-link-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .preview-link-arrow {
+    position: relative;
+    z-index: 1;
+    color: var(--muted);
+    font-size: 0.85rem;
+    transition: transform 0.2s;
+  }
+  .preview-link:hover .preview-link-arrow { transform: translateX(3px); color: var(--accent); }
+
+  /* Preview Footer */
+  .preview-footer {
+    text-align: center;
+    padding: 12px 16px 16px;
+  }
+  .preview-footer p {
+    font-size: 0.65rem;
+    color: rgba(107,114,128,0.5);
+  }
+  .preview-footer strong { color: rgba(124,58,237,0.6); }
+
+  /* ===================== SHARE PANEL ===================== */
+  .share-panel {
+    width: 280px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    padding: 24px 20px;
+    height: calc(100vh - 60px);
+    position: sticky;
+    top: 60px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .share-url-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+
+  .share-url {
+    font-size: 0.78rem;
+    color: var(--accent2);
+    word-break: break-all;
+    margin-bottom: 10px;
+    font-family: monospace;
+  }
+
+  .copy-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #5b21b6);
+    border: none;
+    color: #fff;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .copy-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(124,58,237,0.4); }
+  .copy-btn.copied { background: linear-gradient(135deg, var(--success), #059669); }
+
+  .share-platforms { display: flex; flex-direction: column; gap: 8px; }
+
+  .share-platform-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.85rem;
+    transition: all 0.2s;
+    text-decoration: none;
+    width: 100%;
+    text-align: left;
+  }
+  .share-platform-btn:hover { border-color: var(--accent); transform: translateX(4px); }
+  .share-platform-btn .sp-icon { font-size: 1.1rem; }
+  .share-platform-btn .sp-name { flex: 1; }
+  .share-platform-btn .sp-arrow { color: var(--muted); font-size: 0.8rem; }
+
+  /* QR Code */
+  .qr-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+  }
+  #qr-canvas {
+    margin: 0 auto;
+    display: block;
+    background: white;
+    border-radius: 8px;
+    padding: 8px;
+  }
+  .qr-title {
+    font-family: 'Arial Black', 'Helvetica Neue', system-ui, sans-serif;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .download-qr {
+    margin-top: 10px;
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+  }
+  .download-qr:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  /* Stats */
+  .stats-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .stat-item { text-align: center; }
+  .stat-num { font-family: 'Arial Black', 'Helvetica Neue', system-ui, sans-serif; font-size: 1.3rem; font-weight: 800; color: var(--accent); }
+  .stat-label { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--success);
+    color: #fff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    font-weight: 500;
+    z-index: 1000;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Responsive */
+  @media (max-width: 900px) {
+    .share-panel { display: none; }
+  }
+  @media (max-width: 640px) {
+    .sidebar { width: 100%; height: auto; position: relative; top: 0; }
+    .app { flex-direction: column; }
+    .preview-pane { padding: 24px 16px; }
+  }
+
+  /* Empty state */
+  .empty-links {
+    text-align: center;
+    padding: 24px 16px;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+  .empty-links .empty-icon { font-size: 2rem; margin-bottom: 8px; opacity: 0.5; }
+
+  /* Toggle switch */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+  }
+  .toggle-label { font-size: 0.85rem; color: var(--text); }
+  .toggle {
+    width: 40px;
+    height: 22px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.25s;
+  }
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 14px;
+    height: 14px;
+    background: var(--muted);
+    border-radius: 50%;
+    transition: all 0.25s;
+  }
+  .toggle.on { background: var(--accent); border-color: var(--accent); }
+  .toggle.on::after { left: 21px; background: #fff; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo"><span>🕷️</span> K Spider LinkShare</div>
+  <div class="header-btns">
+    <button class="btn-ghost" onclick="resetAll()">↺ Reset</button>
+    <button class="btn-ghost" onclick="showOutputShareModal()">📤 Share Output</button>
+    <button class="btn-primary" onclick="exportPage()">⬇ Export HTML</button>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- SIDEBAR: Editor -->
+  <aside class="sidebar">
+
+    <!-- Profile Editor -->
+    <div class="profile-editor">
+      <div class="section-title">👤 Profile</div>
+
+      <div class="avatar-upload">
+        <div class="avatar-circle" id="avatarCircle" onclick="document.getElementById('avatarInput').click()">
+          🕷️
+        </div>
+        <div class="avatar-info">
+          <label class="btn-upload" onclick="document.getElementById('avatarInput').click()">📷 Upload Photo</label>
+          <p>PNG, JPG, GIF ok</p>
+        </div>
+        <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatar(event)">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Your Name</label>
+        <input type="text" class="input-field" id="profileName" placeholder="Your Name" oninput="updatePreview()" value="K Spider AI">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Username / Handle</label>
+        <input type="text" class="input-field" id="profileHandle" placeholder="@yourhandle" oninput="updatePreview(); updateShareUrl();" value="@kspider4kreaction">
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Bio</label>
+        <textarea class="input-field" id="profileBio" placeholder="Your bio here..." oninput="updatePreview()">Free AI Tools for Everyone 🕷️ Made in India 🇮🇳</textarea>
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Theme Color</label>
+        <div class="theme-colors" id="themeColors">
+          <div class="color-dot active" style="background: linear-gradient(135deg, #7c3aed, #5b21b6);" data-color="#7c3aed" onclick="setTheme(this, '#7c3aed', '#5b21b6')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #06b6d4, #0891b2);" data-color="#06b6d4" onclick="setTheme(this, '#06b6d4', '#0891b2')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #f59e0b, #d97706);" data-color="#f59e0b" onclick="setTheme(this, '#f59e0b', '#d97706')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #ef4444, #dc2626);" data-color="#ef4444" onclick="setTheme(this, '#ef4444', '#dc2626')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #10b981, #059669);" data-color="#10b981" onclick="setTheme(this, '#10b981', '#059669')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #ec4899, #db2777);" data-color="#ec4899" onclick="setTheme(this, '#ec4899', '#db2777')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #f97316, #ea580c);" data-color="#f97316" onclick="setTheme(this, '#f97316', '#ea580c')"></div>
+          <div class="color-dot" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);" data-color="#8b5cf6" onclick="setTheme(this, '#8b5cf6', '#7c3aed')"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Links Editor -->
+    <div class="links-editor">
+      <div class="section-title">🔗 Add Links</div>
+
+      <div class="add-link-form">
+        <div class="platform-grid" id="platformGrid">
+          <!-- Platform buttons injected by JS -->
+        </div>
+
+        <div class="input-group" style="margin-bottom:10px">
+          <input type="text" class="input-field" id="linkTitle" placeholder="Link Title (e.g. My YouTube)">
+        </div>
+        <div class="form-row">
+          <input type="url" class="input-field" id="linkUrl" placeholder="https://...">
+          <button class="btn-add" onclick="addLink()">+ Add</button>
+        </div>
+      </div>
+
+      <div class="links-list" id="linksList">
+        <!-- Links rendered here -->
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- CENTER: Preview -->
+  <main class="preview-pane">
+    <div class="phone-mockup">
+      <div class="phone-frame">
+        <div class="phone-notch"></div>
+        <div class="phone-screen" id="phoneScreen">
+          <div class="preview-profile">
+            <div class="preview-avatar" id="previewAvatar">🕷️</div>
+            <div class="preview-name" id="previewName">K Spider AI</div>
+            <div class="preview-bio" id="previewBio">Free AI Tools for Everyone 🕷️ Made in India 🇮🇳</div>
+          </div>
+          <div class="preview-links" id="previewLinks">
+            <!-- Live preview links -->
+          </div>
+          <div class="preview-footer">
+            <p>Powered by <strong>K Spider LinkShare</strong> 🕷️</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- RIGHT: Share Panel -->
+  <aside class="share-panel">
+
+    <div>
+      <div class="section-title">🔗 Your Link</div>
+      <div class="share-url-box">
+        <div class="share-url" id="shareUrlText">kspiderai.in/link/yourname</div>
+        <button class="copy-btn" id="copyBtn" onclick="copyLink()">
+          📋 Copy Link
+        </button>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-title">📤 Share On</div>
+      <div class="share-platforms">
+        <a href="#" class="share-platform-btn" onclick="shareOn('whatsapp_saved')"><span class="sp-icon">💬</span><span class="sp-name">WhatsApp (Saved No.)</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="shareOnWhatsAppUnsaved()"><span class="sp-icon">📲</span><span class="sp-name">WhatsApp (Any No.)</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="shareOn('telegram')"><span class="sp-icon">✈️</span><span class="sp-name">Telegram</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="shareOn('twitter')"><span class="sp-icon">𝕏</span><span class="sp-name">Twitter / X</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="shareOn('facebook')"><span class="sp-icon">👥</span><span class="sp-name">Facebook</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="shareOn('linkedin')"><span class="sp-icon">💼</span><span class="sp-name">LinkedIn</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="shareOn('instagram')"><span class="sp-icon">📸</span><span class="sp-name">Instagram Bio</span><span class="sp-arrow">→</span></a>
+        <a href="#" class="share-platform-btn" onclick="nativeShare()"><span class="sp-icon">📤</span><span class="sp-name">More / Share...</span><span class="sp-arrow">→</span></a>
+      </div>
+    </div>
+
+    <div class="qr-box">
+      <div class="qr-title">📱 QR Code</div>
+      <canvas id="qr-canvas" width="120" height="120"></canvas>
+      <button class="download-qr" onclick="downloadQR()">⬇ Download QR</button>
+    </div>
+
+    <div class="stats-box">
+      <div class="section-title">📊 Stats (Demo)</div>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-num" id="statLinks">0</div>
+          <div class="stat-label">Links Added</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">🇮🇳</div>
+          <div class="stat-label">Made in India</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">∞</div>
+          <div class="stat-label">Free Forever</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-num">100%</div>
+          <div class="stat-label">Yours</div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<!-- Output Share Modal -->
+<div id="outputShareModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:999;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:360px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.2);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+      <div style="font-weight:800;font-size:1rem;color:var(--text);">📤 Share Your Output</div>
+      <button onclick="closeOutputShareModal()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--muted);">✕</button>
+    </div>
+    <div style="font-size:0.8rem;color:var(--muted);margin-bottom:16px;">Share your link page on any platform 🚀</div>
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button onclick="shareOutput('whatsapp_saved')" class="share-platform-btn" style="width:100%;"><span class="sp-icon">💬</span><span class="sp-name">WhatsApp (Saved Number)</span><span class="sp-arrow">→</span></button>
+      <button onclick="shareOutputWhatsAppUnsaved()" class="share-platform-btn" style="width:100%;"><span class="sp-icon">📲</span><span class="sp-name">WhatsApp (Any Number)</span><span class="sp-arrow">→</span></button>
+      <button onclick="shareOutput('telegram')" class="share-platform-btn" style="width:100%;"><span class="sp-icon">✈️</span><span class="sp-name">Telegram</span><span class="sp-arrow">→</span></button>
+      <button onclick="shareOutput('twitter')" class="share-platform-btn" style="width:100%;"><span class="sp-icon">𝕏</span><span class="sp-name">Twitter / X</span><span class="sp-arrow">→</span></button>
+      <button onclick="shareOutput('facebook')" class="share-platform-btn" style="width:100%;"><span class="sp-icon">👥</span><span class="sp-name">Facebook</span><span class="sp-arrow">→</span></button>
+      <button onclick="shareOutput('linkedin')" class="share-platform-btn" style="width:100%;"><span class="sp-icon">💼</span><span class="sp-name">LinkedIn</span><span class="sp-arrow">→</span></button>
+      <button onclick="nativeShare()" class="share-platform-btn" style="width:100%;"><span class="sp-icon">📤</span><span class="sp-name">More Apps / Share Sheet</span><span class="sp-arrow">→</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- WhatsApp Unsaved Number Modal -->
+<div id="waUnsavedModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1000;align-items:center;justify-content:center;">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;width:340px;max-width:95vw;box-shadow:0 24px 60px rgba(0,0,0,0.2);">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div style="font-weight:800;font-size:1rem;color:var(--text);">📲 WhatsApp - Any Number</div>
+      <button onclick="closeWaModal()" style="background:none;border:none;cursor:pointer;font-size:1.3rem;color:var(--muted);">✕</button>
+    </div>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:14px;">Country code sathi number enter karo (e.g. 919876543210)</p>
+    <input type="tel" id="waPhoneInput" class="input-field" placeholder="919876543210" style="margin-bottom:12px;">
+    <button onclick="sendToWaUnsaved()" class="btn-primary" style="width:100%;padding:12px;font-size:0.9rem;">💬 Send on WhatsApp</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">✅ <span id="toastMsg">Copied!</span></div>
+
+<script>
+// ========== DATA ==========
+const PLATFORMS = [
+  { id: 'youtube',   name: 'YouTube',   icon: '▶️',  color: '#FF0000', base: 'youtube.com/' },
+  { id: 'instagram', name: 'Insta',     icon: '📸',  color: '#E1306C', base: 'instagram.com/' },
+  { id: 'whatsapp',  name: 'WhatsApp',  icon: '💬',  color: '#25D366', base: 'wa.me/' },
+  { id: 'facebook',  name: 'Facebook',  icon: '👥',  color: '#1877F2', base: 'facebook.com/' },
+  { id: 'twitter',   name: 'X / Twitter', icon: '𝕏', color: '#1DA1F2', base: 'x.com/' },
+  { id: 'linkedin',  name: 'LinkedIn',  icon: '💼',  color: '#0A66C2', base: 'linkedin.com/' },
+  { id: 'telegram',  name: 'Telegram',  icon: '✈️',  color: '#229ED9', base: 't.me/' },
+  { id: 'website',   name: 'Website',   icon: '🌐',  color: '#7c3aed', base: 'https://' },
+  { id: 'pinterest', name: 'Pinterest', icon: '📌',  color: '#E60023', base: 'pinterest.com/' },
+  { id: 'github',    name: 'GitHub',    icon: '🐙',  color: '#fff',    base: 'github.com/' },
+  { id: 'email',     name: 'Email',     icon: '📧',  color: '#EA4335', base: 'mailto:' },
+  { id: 'phone',     name: 'Phone',     icon: '📞',  color: '#10b981', base: 'tel:' },
+  { id: 'other',     name: 'Other',     icon: '🔗',  color: '#6b7280', base: 'https://' },
+];
+
+let selectedPlatform = PLATFORMS[0];
+let links = [];
+let accentColor = '#7c3aed';
+let accentColor2 = '#5b21b6';
+let avatarSrc = null;
+
+// ========== INIT ==========
+function init() {
+  renderPlatformGrid();
+  addDefaultLinks();
+  updatePreview();
+  generateQR();
+}
+
+function addDefaultLinks() {
+  links = [
+    { id: Date.now() + 1, platform: PLATFORMS.find(p => p.id === 'whatsapp'),  title: 'K Spider WhatsApp Channel',  url: 'https://whatsapp.com/channel/0029Vb7bJKz5PO15U1NeML3I' },
+    { id: Date.now() + 2, platform: PLATFORMS.find(p => p.id === 'youtube'),   title: 'K Spider YouTube Channel',   url: 'https://youtube.com/@kspider4kreation?si=_AnRXJeMu7Ofl-kn' },
+    { id: Date.now() + 3, platform: PLATFORMS.find(p => p.id === 'instagram'), title: 'Gaurang Raval Instagram',     url: 'https://www.instagram.com/gaurang.m.raval?igsh=eHV6ejlxNzR3aTVi' },
+    { id: Date.now() + 4, platform: PLATFORMS.find(p => p.id === 'telegram'),  title: 'K Spider Telegram Channel',  url: 'https://t.me/+jPVF39C2yCQ3ZDhl' },
+    { id: Date.now() + 5, platform: PLATFORMS.find(p => p.id === 'facebook'),  title: 'K Spider Facebook',          url: 'https://www.facebook.com/profile.php?id=100073954855614' },
+    { id: Date.now() + 6, platform: PLATFORMS.find(p => p.id === 'website'),   title: 'K Spider AI Website',        url: 'https://kspiderai.in' },
+    { id: Date.now() + 7, platform: PLATFORMS.find(p => p.id === 'whatsapp'),  title: 'K Spider WhatsApp Group',    url: 'https://chat.whatsapp.com/FKIc3m3SsgOLD8F5oKcmih?mode=gi_t' },
+    { id: Date.now() + 8, platform: PLATFORMS.find(p => p.id === 'pinterest'), title: 'K Spider Pinterest',         url: 'https://pin.it/tR3P9VFfc' },
+    { id: Date.now() + 9, platform: PLATFORMS.find(p => p.id === 'email'),     title: 'Email Us',                   url: 'mailto:kspider221206@gmail.com' },
+  ];
+  renderLinks();
+  renderPreviewLinks();
+  updateStats();
+}
+
+// ========== PLATFORM GRID ==========
+function renderPlatformGrid() {
+  const grid = document.getElementById('platformGrid');
+  grid.innerHTML = PLATFORMS.map(p => `
+    <div class="platform-btn ${p.id === selectedPlatform.id ? 'selected' : ''}" onclick="selectPlatform('${p.id}')">
+      <span class="p-icon">${p.icon}</span>
+      <span class="p-name">${p.name}</span>
+    </div>
+  `).join('');
+}
+
+function selectPlatform(id) {
+  selectedPlatform = PLATFORMS.find(p => p.id === id);
+  renderPlatformGrid();
+  const urlInput = document.getElementById('linkUrl');
+  if (!urlInput.value) urlInput.placeholder = selectedPlatform.base + '...';
+}
+
+// ========== ADD LINK ==========
+function addLink() {
+  const title = document.getElementById('linkTitle').value.trim();
+  const url = document.getElementById('linkUrl').value.trim();
+
+  if (!url) { showToast('⚠️ URL enter karo!', '#f59e0b'); return; }
+  if (!title) { showToast('⚠️ Title enter karo!', '#f59e0b'); return; }
+
+  links.push({ id: Date.now(), platform: selectedPlatform, title, url });
+
+  document.getElementById('linkTitle').value = '';
+  document.getElementById('linkUrl').value = '';
+
+  renderLinks();
+  renderPreviewLinks();
+  updateStats();
+  showToast('✅ Link add thayu!');
+}
+
+// ========== RENDER LINKS (SIDEBAR) ==========
+function renderLinks() {
+  const list = document.getElementById('linksList');
+  if (!links.length) {
+    list.innerHTML = `<div class="empty-links"><div class="empty-icon">🔗</div>No links yet. Add your first link above!</div>`;
+    return;
+  }
+  list.innerHTML = links.map(link => `
+    <div class="link-item" id="li-${link.id}">
+      <span class="drag-handle">⠿</span>
+      <div class="link-icon">${link.platform.icon}</div>
+      <div class="link-info">
+        <div class="link-title">${link.title}</div>
+        <div class="link-url">${link.url}</div>
+      </div>
+      <div class="link-actions">
+        <button class="edit-btn" onclick="editLink(${link.id})" title="Edit">✏️</button>
+        <button class="del-btn" onclick="deleteLink(${link.id})" title="Delete">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function deleteLink(id) {
+  links = links.filter(l => l.id !== id);
+  renderLinks();
+  renderPreviewLinks();
+  updateStats();
+  showToast('🗑 Link remove thayu!', '#ef4444');
+}
+
+function editLink(id) {
+  const link = links.find(l => l.id === id);
+  if (!link) return;
+  document.getElementById('linkTitle').value = link.title;
+  document.getElementById('linkUrl').value = link.url;
+  selectedPlatform = link.platform;
+  renderPlatformGrid();
+  deleteLink(id);
+  document.getElementById('linkTitle').focus();
+}
+
+// ========== PREVIEW ==========
+function updatePreview() {
+  document.getElementById('previewName').textContent = document.getElementById('profileName').value || 'Your Name';
+  document.getElementById('previewBio').textContent = document.getElementById('profileBio').value || 'Your bio here...';
+
+  if (avatarSrc) {
+    document.getElementById('previewAvatar').innerHTML = `<img src="${avatarSrc}" alt="avatar">`;
+    document.getElementById('avatarCircle').innerHTML = `<img src="${avatarSrc}" alt="avatar" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+}
+
+function renderPreviewLinks() {
+  const container = document.getElementById('previewLinks');
+  if (!links.length) {
+    container.innerHTML = `<div class="empty-links"><div class="empty-icon">🔗</div><p>Add links to see preview</p></div>`;
+    return;
+  }
+  container.innerHTML = links.map(link => `
+    <a href="${link.url}" class="preview-link" target="_blank" rel="noopener">
+      <span class="preview-link-icon">${link.platform.icon}</span>
+      <div class="preview-link-text">
+        <div class="preview-link-title">${link.title}</div>
+        <div class="preview-link-sub">${link.platform.name}</div>
+      </div>
+      <span class="preview-link-arrow">›</span>
+    </a>
+  `).join('');
+}
+
+// ========== THEME ==========
+function setTheme(el, color1, color2) {
+  document.querySelectorAll('.color-dot').forEach(d => d.classList.remove('active'));
+  el.classList.add('active');
+  accentColor = color1;
+  accentColor2 = color2;
+  document.documentElement.style.setProperty('--accent', color1);
+  document.body.style.setProperty('--accent', color1);
+
+  // Update CSS variable
+  const style = document.createElement('style');
+  style.id = 'theme-override';
+  const old = document.getElementById('theme-override');
+  if (old) old.remove();
+  style.textContent = `:root { --accent: ${color1}; }`;
+  document.head.appendChild(style);
+
+  generateQR();
+}
+
+// ========== AVATAR ==========
+function handleAvatar(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    avatarSrc = ev.target.result;
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+// ========== SHARE URL ==========
+function updateShareUrl() {
+  const handle = document.getElementById('profileHandle').value.replace('@', '') || 'yourname';
+  const url = `kspiderai.in/link/${handle}`;
+  document.getElementById('shareUrlText').textContent = url;
+  generateQR();
+}
+
+function copyLink() {
+  const url = document.getElementById('shareUrlText').textContent;
+  navigator.clipboard.writeText('https://' + url).then(() => {
+    const btn = document.getElementById('copyBtn');
+    btn.classList.add('copied');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => {
+      btn.classList.remove('copied');
+      btn.innerHTML = '📋 Copy Link';
+    }, 2000);
+    showToast('📋 Link copy thayu!');
+  }).catch(() => {
+    showToast('⚠️ Copy manually karo', '#f59e0b');
+  });
+}
+
+// ========== SHARE ON PLATFORMS ==========
+function getShareUrl() {
+  return 'https://' + document.getElementById('shareUrlText').textContent;
+}
+
+// Build full attractive branded message with all user links
+function buildFullShareMessage() {
+  const name    = document.getElementById('profileName').value.trim()   || 'My Links';
+  const handle  = document.getElementById('profileHandle').value.trim() || '';
+  const bio     = document.getElementById('profileBio').value.trim()    || '';
+
+  // Random opening hooks
+  const hooks = [
+    '🔥 Ek jagah, saari links! Check karo aur connect karo! 👇',
+    '✨ Mere saare important links ek hi jagah — bilkul FREE! 🚀',
+    '💡 Ab dhundhne ki zaroorat nahi! Saari links ek click mein! 👇',
+    '🌟 Ek link, infinite possibilities! Mil do mujhse har jagah! 💫',
+    '🚀 My digital world — sab kuch ek jagah! Miss mat karna! 🔥',
+    '💥 Ye hai mera Link Hub! Saari platforms, ek hi jagah! 🎯',
+    '🎯 Stop scrolling & START connecting! Saari links yahan hain! ⚡',
+    '⚡ Instant access to everything I do — check it out! 🙌',
+  ];
+  const hook = hooks[Math.floor(Math.random() * hooks.length)];
+
+  // Random closing CTAs
+  const ctas = [
+    '👆 Upar diye links pe click karo aur connected raho! 💬',
+    '🔗 Ek click mein mujhse har jagah connect karo! Don\'t miss it! 🙌',
+    '💫 Share karo apne dosto ke saath bhi — sab ko dikhao! 🔥',
+    '🌟 Pasand aaya? Apne friends ko bhi share karo! 🚀',
+    '📲 Abhi follow karo — exciting content miss mat karna! 🎯',
+    '🎉 Aur bhi links aate rahenge — save karo yeh page! ⭐',
+  ];
+  const cta = ctas[Math.floor(Math.random() * ctas.length)];
+
+  // Build links list text
+  let linksText = '';
+  if (links.length > 0) {
+    linksText = links.map(function(l) {
+      return l.platform.icon + ' *' + l.title + '*\n   ' + l.url;
+    }).join('\n\n');
+  }
+
+  // Branding lines (random)
+  const brandings = [
+    '🕷️ *K Spider AI* — Free AI Tools for Everyone!\n🌐 kspiderai.in',
+    '⚡ Powered by *K Spider LinkShare* 🕷️\n🇮🇳 Made in India | kspiderai.in',
+    '🚀 Create YOUR free link page at *kspiderai.in*\n🕷️ K Spider AI Tools — 100% Free!',
+    '✨ *K Spider AI* — Apna link page banao FREE mein!\n🌐 Visit: kspiderai.in',
+    '🔥 *K Spider LinkShare* — One Link for Everything!\n🇮🇳 kspiderai.in | Free Forever',
+  ];
+  const branding = brandings[Math.floor(Math.random() * brandings.length)];
+
+  // Assemble full message
+  let msg = hook + '\n\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n';
+  msg += '👤 *' + name + '*';
+  if (handle) msg += '  |  ' + handle;
+  msg += '\n';
+  if (bio) msg += '📝 ' + bio + '\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+
+  if (linksText) {
+    msg += '🔗 *MY LINKS:*\n\n';
+    msg += linksText + '\n\n';
+    msg += '━━━━━━━━━━━━━━━━━━━━\n\n';
+  }
+
+  msg += cta + '\n\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━\n';
+  msg += branding + '\n';
+  msg += '━━━━━━━━━━━━━━━━━━━━';
+
+  return msg;
+}
+
+function shareOn(platform) {
+  const pageUrl = encodeURIComponent(getShareUrl());
+  const fullMsg = encodeURIComponent(buildFullShareMessage());
+
+  const urls = {
+    whatsapp_saved: 'https://wa.me/?text=' + fullMsg,
+    telegram:       'https://t.me/share/url?url=' + pageUrl + '&text=' + fullMsg,
+    twitter:        'https://twitter.com/intent/tweet?text=' + fullMsg,
+    facebook:       'https://www.facebook.com/sharer/sharer.php?u=' + pageUrl,
+    linkedin:       'https://www.linkedin.com/sharing/share-offsite/?url=' + pageUrl,
+    instagram:      null
+  };
+
+  if (platform === 'instagram') {
+    navigator.clipboard.writeText(buildFullShareMessage());
+    showToast('📸 Message copied! Instagram bio/story ma paste karo 🙌', '#E1306C');
+    return;
+  }
+  if (urls[platform]) window.open(urls[platform], '_blank');
+}
+
+function shareOnWhatsAppUnsaved() {
+  document.getElementById('waUnsavedModal').style.display = 'flex';
+}
+function closeWaModal() {
+  document.getElementById('waUnsavedModal').style.display = 'none';
+}
+function sendToWaUnsaved() {
+  const phone = document.getElementById('waPhoneInput').value.replace(/\D/g, '');
+  if (!phone || phone.length < 7) { showToast('⚠️ Valid number enter karo!', '#f59e0b'); return; }
+  const fullMsg = encodeURIComponent(buildFullShareMessage());
+  window.open('https://wa.me/' + phone + '?text=' + fullMsg, '_blank');
+  closeWaModal();
+}
+
+// Output share — same full branded message
+function shareOutput(platform) {
+  closeOutputShareModal();
+  shareOn(platform);
+}
+function shareOutputWhatsAppUnsaved() {
+  closeOutputShareModal();
+  shareOnWhatsAppUnsaved();
+}
+
+function nativeShare() {
+  const msg = buildFullShareMessage();
+  if (navigator.share) {
+    navigator.share({
+      title: document.getElementById('profileName').value || 'My Links',
+      text:  msg,
+      url:   getShareUrl()
+    }).catch(() => {});
+  } else {
+    navigator.clipboard.writeText(msg);
+    showToast('📋 Full message copied! Kahi bhi paste karo 🚀', '#06b6d4');
+  }
+}
+
+function showOutputShareModal() {
+  document.getElementById('outputShareModal').style.display = 'flex';
+}
+function closeOutputShareModal() {
+  document.getElementById('outputShareModal').style.display = 'none';
+}
+
+
+// ========== QR CODE (Simple Canvas) ==========
+function generateQR() {
+  const canvas = document.getElementById('qr-canvas');
+  const ctx = canvas.getContext('2d');
+  const size = 120;
+  canvas.width = size;
+  canvas.height = size;
+
+  // Simple visual QR placeholder
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, size, size);
+
+  const grid = 21;
+  const cell = size / grid;
+
+  // Seed from URL
+  const url = document.getElementById('shareUrlText')?.textContent || 'kspiderai.in';
+  let seed = 0;
+  for (let i = 0; i < url.length; i++) seed += url.charCodeAt(i);
+
+  function pseudo(x, y) {
+    const v = (seed * (x + 1) * 13 + y * 7 + x * y * 3) % 17;
+    return v < 8;
+  }
+
+  // Corner squares
+  function drawCorner(ox, oy) {
+    ctx.fillStyle = accentColor;
+    ctx.fillRect(ox * cell, oy * cell, 7 * cell, 7 * cell);
+    ctx.fillStyle = '#fff';
+    ctx.fillRect((ox+1)*cell, (oy+1)*cell, 5*cell, 5*cell);
+    ctx.fillStyle = accentColor;
+    ctx.fillRect((ox+2)*cell, (oy+2)*cell, 3*cell, 3*cell);
+  }
+
+  // Data modules
+  ctx.fillStyle = accentColor;
+  for (let y = 0; y < grid; y++) {
+    for (let x = 0; x < grid; x++) {
+      const inCorner =
+        (x < 8 && y < 8) ||
+        (x > grid-9 && y < 8) ||
+        (x < 8 && y > grid-9);
+      if (!inCorner && pseudo(x, y)) {
+        ctx.fillStyle = accentColor;
+        ctx.fillRect(x*cell, y*cell, cell-0.5, cell-0.5);
+      }
+    }
+  }
+
+  drawCorner(0, 0);
+  drawCorner(grid-7, 0);
+  drawCorner(0, grid-7);
+
+  // Center logo
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(size/2-10, size/2-10, 20, 20);
+  ctx.font = '14px serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('🕷️', size/2, size/2 + 5);
+}
+
+function downloadQR() {
+  const canvas = document.getElementById('qr-canvas');
+  const a = document.createElement('a');
+  a.download = 'kspider-qr.png';
+  a.href = canvas.toDataURL();
+  a.click();
+  showToast('⬇ QR download thayu!');
+}
+
+// ========== STATS ==========
+function updateStats() {
+  document.getElementById('statLinks').textContent = links.length;
+}
+
+// ========== RESET ==========
+function resetAll() {
+  if (!confirm('Reset karvu chhe? Badhu delete thai jashe.')) return;
+  links = [];
+  document.getElementById('profileName').value = '';
+  document.getElementById('profileHandle').value = '';
+  document.getElementById('profileBio').value = '';
+  avatarSrc = null;
+  document.getElementById('avatarCircle').innerHTML = '🕷️';
+  renderLinks();
+  renderPreviewLinks();
+  updatePreview();
+  updateStats();
+  showToast('↺ Reset thayu!', '#f59e0b');
+}
+
+// ========== EXPORT ==========
+// ========== EXPORT ==========
+function exportPage() {
+  try {
+    var name   = document.getElementById('profileName').value   || 'My Links';
+    var bio    = document.getElementById('profileBio').value    || '';
+    var handle = (document.getElementById('profileHandle').value || 'mylinks').replace('@','');
+    var rgb    = hexToRgb(accentColor);
+    var c1     = accentColor;
+    var c2     = accentColor2;
+
+    // Random promotional branding
+    const promos = [
+      { tag: '🚀 Create Your Own Free Link Page!', url: 'https://kspiderai.in', cta: 'Try Free at kspiderai.in' },
+      { tag: '🕷️ K Spider AI — Free Tools for Everyone!', url: 'https://kspiderai.in', cta: 'Explore kspiderai.in' },
+      { tag: '⚡ Build Your Link Page in 60 Seconds!', url: 'https://kspiderai.in', cta: 'Start Free → kspiderai.in' },
+      { tag: '🇮🇳 Made in India · K Spider AI Tools', url: 'https://kspiderai.in', cta: 'Free for All Indians 🇮🇳' },
+      { tag: '✨ Your Links, One Beautiful Page!', url: 'https://kspiderai.in', cta: 'Powered by K Spider AI' },
+      { tag: '💡 Share All Links with One URL!', url: 'https://kspiderai.in', cta: 'Create Yours Free at kspiderai.in' },
+    ];
+    const promo = promos[Math.floor(Math.random() * promos.length)];
+
+    var linksHtml = links.map(function(l) {
+      return '<a href="' + l.url + '" class="link-card" target="_blank" rel="noopener">'
+        + '<span class="licon">' + l.platform.icon + '</span>'
+        + '<div class="linfo">'
+        + '<div class="ltitle">' + l.title + '</div>'
+        + '<div class="lsub">' + l.platform.name + '</div>'
+        + '</div>'
+        + '<span class="larrow">&rsaquo;</span>'
+        + '</a>';
+    }).join('\n');
+
+    var avatarHtml = avatarSrc
+      ? '<img src="' + avatarSrc + '" class="ava-img" alt="avatar">'
+      : '<span style="font-size:2.5rem">🕷️</span>';
+
+    var css = [
+      '*{margin:0;padding:0;box-sizing:border-box}',
+      'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#f5f5fa;color:#1a1a2e;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:40px 16px}',
+      'body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(' + rgb + ',0.08) 0%,transparent 60%);pointer-events:none}',
+      '.card{width:100%;max-width:440px;position:relative;z-index:1}',
+      '.profile{text-align:center;padding:32px 0 24px}',
+      '.ava{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,' + c1 + ',' + c2 + ');margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:3px solid rgba(255,255,255,0.1);overflow:hidden}',
+      '.ava-img{width:100%;height:100%;object-fit:cover}',
+      '.pname{font-family:"Arial Black","Helvetica Neue",system-ui,sans-serif;font-weight:800;font-size:1.4rem;margin-bottom:6px}',
+      '.pbio{font-size:0.85rem;color:#9ca3af;line-height:1.5}',
+      '.links{display:flex;flex-direction:column;gap:12px}',
+      '.link-card{display:flex;align-items:center;gap:14px;background:#ffffff;border:1px solid rgba(0,0,0,0.09);border-radius:16px;padding:16px 18px;text-decoration:none;color:#1a1a2e;transition:all 0.25s;box-shadow:0 2px 8px rgba(0,0,0,0.06)}',
+      '.link-card:hover{border-color:' + c1 + ';transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.12)}',
+      '.licon{font-size:1.4rem;flex-shrink:0}',
+      '.linfo{flex:1}',
+      '.ltitle{font-size:0.95rem;font-weight:500}',
+      '.lsub{font-size:0.72rem;color:#6b7280;margin-top:2px}',
+      '.larrow{color:#9ca3af;font-size:1.1rem;transition:0.2s}',
+      '.link-card:hover .larrow{color:' + c1 + ';transform:translateX(3px)}',
+      '.promo-banner{margin-top:28px;background:linear-gradient(135deg,' + c1 + ',' + c2 + ');border-radius:14px;padding:16px 20px;text-align:center;width:100%;max-width:440px}',
+      '.promo-tag{color:#fff;font-size:0.88rem;font-weight:700;margin-bottom:6px}',
+      '.promo-cta{display:inline-block;margin-top:8px;background:rgba(255,255,255,0.2);color:#fff;padding:7px 18px;border-radius:20px;font-size:0.78rem;font-weight:600;text-decoration:none;border:1px solid rgba(255,255,255,0.35);transition:all 0.2s}',
+      '.promo-cta:hover{background:rgba(255,255,255,0.35)}',
+      'footer{margin-top:20px;text-align:center;font-size:0.72rem;color:rgba(107,114,128,0.7)}',
+      'footer strong{color:rgba(' + rgb + ',0.8)}'
+    ].join('\n');
+
+    var html = '<!DOCTYPE html>\n'
+      + '<html lang="en">\n<head>\n'
+      + '<meta charset="UTF-8">\n'
+      + '<meta name="viewport" content="width=device-width, initial-scale=1.0">\n'
+      + '<title>' + name + ' \u2014 Links</title>\n'
+      + '<style>\n' + css + '\n</style>\n'
+      + '</head>\n<body>\n'
+      + '<div class="card">\n'
+      + '  <div class="profile">\n'
+      + '    <div class="ava">' + avatarHtml + '</div>\n'
+      + '    <div class="pname">' + name + '</div>\n'
+      + '    <div class="pbio">' + bio + '</div>\n'
+      + '  </div>\n'
+      + '  <div class="links">\n' + linksHtml + '\n  </div>\n'
+      + '</div>\n'
+      + '<div class="promo-banner">\n'
+      + '  <div class="promo-tag">' + promo.tag + '</div>\n'
+      + '  <a href="' + promo.url + '" class="promo-cta" target="_blank" rel="noopener">' + promo.cta + '</a>\n'
+      + '</div>\n'
+      + '<footer>Powered by <strong>K Spider LinkShare 🕷️</strong> &middot; kspiderai.in</footer>\n'
+      + '</body>\n</html>';
+
+    // Method 1: Blob URL
+    try {
+      var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+      var url  = URL.createObjectURL(blob);
+      var a    = document.createElement('a');
+      a.href     = url;
+      a.download = handle + '-links.html';
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function() {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 2000);
+      showToast('✅ Export thayu! Download folder check karo.');
+    } catch(e1) {
+      // Method 2: data URI fallback
+      try {
+        var encoded = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+        var a2 = document.createElement('a');
+        a2.href = encoded;
+        a2.download = handle + '-links.html';
+        a2.style.display = 'none';
+        document.body.appendChild(a2);
+        a2.click();
+        document.body.removeChild(a2);
+        showToast('✅ Export thayu! (Fallback)');
+      } catch(e2) {
+        // Method 3: Open in new tab
+        var win = window.open('', '_blank');
+        if (win) {
+          win.document.write(html);
+          win.document.close();
+          showToast('✅ New tab ma khulyu — Ctrl+S thi save karo!', '#06b6d4');
+        } else {
+          showToast('❌ Popup block chhe — browser allow karo!', '#ef4444');
+        }
+      }
+    }
+  } catch(err) {
+    showToast('❌ Error: ' + err.message, '#ef4444');
+    console.error('Export error:', err);
+  }
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+// ========== TOAST ==========
+function showToast(msg, color = '#10b981') {
+  const t = document.getElementById('toast');
+  const m = document.getElementById('toastMsg');
+  t.style.background = color;
+  m.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ========== START ==========
+init();
+</script>
+</body>
+</html>

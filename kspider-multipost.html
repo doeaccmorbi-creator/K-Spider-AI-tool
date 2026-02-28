@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>K Spider MultiPost — Real Upload & Share Everywhere</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f0eff7;--surface:#fff;--surface2:#f5f4fc;--surface3:#eeedf8;
+  --border:rgba(80,60,200,0.10);--accent:#5c2de8;--a2:#00c9a7;--a3:#ff6b35;
+  --text:#0d0c1d;--muted:#7b7b9a;--success:#00c9a7;--danger:#ff3b5c;--warn:#f59e0b;
+  --sh:0 4px 28px rgba(92,45,232,0.10);--sh2:0 8px 40px rgba(0,0,0,0.13);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 70% 50% at 10% 0%,rgba(92,45,232,0.07) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 90% 100%,rgba(0,201,167,0.06) 0%,transparent 55%);pointer-events:none;z-index:0}
+header{position:sticky;top:0;z-index:200;background:rgba(240,239,247,0.93);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);padding:0 28px;height:62px;display:flex;align-items:center;justify-content:space-between}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.45rem;letter-spacing:0.06em;background:linear-gradient(135deg,var(--accent),var(--a2));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:flex;align-items:center;gap:10px}
+.logo-sub{font-family:'DM Sans',sans-serif;font-size:0.62rem;font-weight:600;color:var(--muted);letter-spacing:0.14em;text-transform:uppercase;-webkit-text-fill-color:var(--muted);display:block;margin-top:-3px}
+.hdr-badges{display:flex;gap:8px;align-items:center}
+.badge{padding:4px 11px;border-radius:20px;font-size:0.67rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase}
+.badge-green{background:rgba(0,201,167,0.12);color:#059669;border:1px solid rgba(0,201,167,0.25)}
+.badge-purple{background:rgba(92,45,232,0.1);color:var(--accent);border:1px solid rgba(92,45,232,0.2)}
+.app{position:relative;z-index:1;max-width:1320px;margin:0 auto;padding:24px 20px 60px}
+.hero{background:linear-gradient(135deg,var(--accent) 0%,#7c3aed 50%,#0891b2 100%);border-radius:22px;padding:30px 36px;margin-bottom:24px;display:flex;align-items:center;justify-content:space-between;gap:20px;overflow:hidden;position:relative}
+.hero::after{content:'🕷️';position:absolute;right:20px;bottom:-20px;font-size:9rem;opacity:0.06;pointer-events:none}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:2.1rem;letter-spacing:0.05em;color:#fff;line-height:1.1}
+.hero p{font-size:0.84rem;color:rgba(255,255,255,0.78);margin-top:6px;max-width:500px;line-height:1.5}
+.hero-chips{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.hero-chip{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:4px 12px;border-radius:20px;font-size:0.72rem;font-weight:600;backdrop-filter:blur(8px)}
+.hero-stats{display:flex;gap:14px;flex-shrink:0;position:relative;z-index:1}
+.hstat{text-align:center;background:rgba(255,255,255,0.13);border:1px solid rgba(255,255,255,0.2);border-radius:14px;padding:14px 20px;backdrop-filter:blur(8px)}
+.hstat-n{font-family:'Bebas Neue',sans-serif;font-size:2rem;color:#fff;line-height:1}
+.hstat-l{font-size:0.62rem;color:rgba(255,255,255,0.7);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px}
+.ad-slot{background:var(--surface);border:1px dashed rgba(92,45,232,0.18);border-radius:12px;padding:14px 20px;text-align:center;margin-bottom:22px;position:relative}
+.ad-label{position:absolute;top:6px;left:10px;font-size:0.58rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;font-family:'JetBrains Mono',monospace}
+.ad-inner{font-size:0.75rem;color:var(--muted);padding:6px 0}
+.ad-inner strong{color:var(--accent)}
+.disc{background:linear-gradient(135deg,rgba(255,107,53,0.05),rgba(245,158,11,0.05));border:1px solid rgba(255,107,53,0.18);border-radius:16px;padding:20px;margin-bottom:24px}
+.disc-title{font-family:'Bebas Neue',sans-serif;font-size:0.95rem;letter-spacing:0.1em;color:var(--a3);margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.disc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.disc-item{display:flex;align-items:flex-start;gap:7px;font-size:0.76rem;line-height:1.45;color:#555}
+.disc-item::before{content:'•';color:var(--a3);font-weight:700;flex-shrink:0;margin-top:1px}
+.grid2{display:grid;grid-template-columns:1fr 390px;gap:22px;margin-bottom:22px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:22px;box-shadow:var(--sh)}
+.card-title{font-family:'Bebas Neue',sans-serif;font-size:0.95rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.drop-zone{border:2px dashed rgba(92,45,232,0.28);border-radius:14px;background:linear-gradient(135deg,rgba(92,45,232,0.03),rgba(0,201,167,0.03));padding:36px 20px;text-align:center;cursor:pointer;transition:all 0.25s;position:relative}
+.drop-zone.drag{border-color:var(--accent);background:rgba(92,45,232,0.07);transform:scale(1.01)}
+.dz-icon{font-size:2.6rem;display:block;margin-bottom:10px}
+.dz-title{font-size:1rem;font-weight:600;margin-bottom:5px}
+.dz-sub{font-size:0.78rem;color:var(--muted);line-height:1.5}
+.dz-types{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;margin-top:10px}
+.type-chip{background:var(--surface2);border:1px solid var(--border);border-radius:20px;padding:3px 9px;font-size:0.65rem;font-weight:600;color:var(--muted)}
+.file-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.file-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;display:flex;align-items:center;gap:10px;animation:fadeUp .3s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fthumb{width:42px;height:42px;border-radius:8px;background:var(--surface3);display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0;overflow:hidden}
+.fthumb img{width:100%;height:100%;object-fit:cover;border-radius:8px}
+.fmeta{flex:1;min-width:0}
+.fname{font-size:0.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fsize{font-size:0.7rem;color:var(--muted);margin-top:2px}
+.fstatus{font-size:0.68rem;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.fstatus.uploading{background:rgba(92,45,232,0.1);color:var(--accent);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.fstatus.done{background:rgba(0,201,167,0.12);color:#059669}
+.fstatus.error{background:rgba(255,59,92,0.1);color:var(--danger)}
+.fstatus.local{background:rgba(107,114,128,0.1);color:var(--muted)}
+.fstatus.pending{background:rgba(245,158,11,0.1);color:#d97706}
+.fremove{background:none;border:none;cursor:pointer;color:var(--muted);font-size:0.9rem;width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.fremove:hover{background:rgba(255,59,92,0.1);color:var(--danger)}
+.upload-strip{background:linear-gradient(135deg,rgba(92,45,232,0.07),rgba(0,201,167,0.07));border:1px solid rgba(92,45,232,0.14);border-radius:12px;padding:14px 16px;margin-top:14px;display:none}
+.upload-strip-title{font-size:0.78rem;font-weight:700;color:var(--accent);margin-bottom:8px}
+.upload-progress{height:6px;background:var(--surface3);border-radius:6px;overflow:hidden;margin-bottom:8px}
+.upload-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--a2));border-radius:6px;transition:width .4s;width:0%}
+.upload-msg{font-size:0.75rem;color:var(--muted)}
+.shared-urls{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:14px;margin-top:12px;display:none}
+.shared-url-title{font-size:0.72rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:10px}
+.shared-url-item{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border)}
+.shared-url-item:last-child{border-bottom:none}
+.shared-url-link{flex:1;color:var(--accent);font-family:'JetBrains Mono',monospace;word-break:break-all;font-size:0.68rem}
+.lbl{font-size:0.72rem;font-weight:700;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:7px;display:block}
+.ifield{width:100%;background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;transition:border .2s,box-shadow .2s;margin-bottom:14px}
+.ifield:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(92,45,232,0.08)}
+.ifield::placeholder{color:var(--muted)}
+textarea.ifield{resize:vertical;min-height:108px;margin-bottom:0;line-height:1.55}
+.char-cnt{font-size:0.68rem;color:var(--muted);text-align:right;margin-top:4px}
+.char-cnt.over{color:var(--danger)}
+.caption-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px}
+.hashtag-out{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;font-size:0.75rem;color:var(--accent);font-family:'JetBrains Mono',monospace;line-height:1.7;margin-top:8px;word-break:break-all;min-height:40px}
+.brand-row{display:flex;align-items:center;justify-content:space-between;background:linear-gradient(135deg,rgba(92,45,232,0.05),rgba(0,201,167,0.05));border:1px solid rgba(92,45,232,0.12);border-radius:10px;padding:10px 14px;margin-top:10px}
+.brand-lbl{font-size:0.82rem;font-weight:600;display:flex;align-items:center;gap:6px}
+.toggle{width:42px;height:24px;background:var(--surface3);border:1px solid var(--border);border-radius:20px;cursor:pointer;position:relative;transition:all .25s;flex-shrink:0}
+.toggle::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;background:var(--muted);border-radius:50%;transition:all .25s}
+.toggle.on{background:var(--accent);border-color:var(--accent)}
+.toggle.on::after{left:21px;background:#fff}
+.plat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:9px}
+.plat-card{background:var(--surface2);border:2px solid var(--border);border-radius:13px;padding:13px 6px 9px;text-align:center;cursor:pointer;transition:all .2s;position:relative;user-select:none}
+.plat-card:hover{border-color:var(--accent);transform:translateY(-2px);box-shadow:0 6px 18px rgba(92,45,232,0.12)}
+.plat-card.sel{border-color:var(--accent);background:rgba(92,45,232,0.07)}
+.plat-card.sel::after{content:'✓';position:absolute;top:4px;right:6px;font-size:0.6rem;font-weight:800;color:var(--accent)}
+.plat-icon{font-size:1.5rem;display:block;margin-bottom:5px}
+.plat-name{font-size:0.61rem;font-weight:700;color:var(--muted);letter-spacing:0.04em;text-transform:uppercase}
+.plat-card.sel .plat-name{color:var(--accent)}
+.plat-type{font-size:0.55rem;color:var(--muted);margin-top:2px;opacity:0.75}
+.plat-btns{display:flex;gap:7px;margin-top:11px;flex-wrap:wrap}
+.btn-sm{background:var(--surface2);border:1px solid var(--border);color:var(--muted);padding:6px 13px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:0.75rem;font-weight:600;transition:all .2s}
+.btn-sm:hover{border-color:var(--accent);color:var(--accent)}
+.btn-publish{width:100%;background:linear-gradient(135deg,var(--accent),#7c3aed);border:none;color:#fff;padding:17px;border-radius:14px;font-family:'Bebas Neue',sans-serif;font-size:1.25rem;letter-spacing:0.13em;cursor:pointer;transition:all .25s;display:flex;align-items:center;justify-content:center;gap:10px;box-shadow:0 6px 24px rgba(92,45,232,0.38);position:relative;overflow:hidden}
+.btn-publish:hover{transform:translateY(-2px);box-shadow:0 10px 34px rgba(92,45,232,0.48)}
+.btn-outline{background:none;border:1px solid var(--border);color:var(--muted);padding:5px 11px;border-radius:7px;font-size:0.73rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s;display:inline-flex;align-items:center;gap:5px}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-accent{background:var(--accent);border:none;color:#fff;padding:6px 14px;border-radius:8px;font-size:0.78rem;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all .2s}
+.btn-accent:hover{background:#4a22cc}
+.status-list{display:flex;flex-direction:column;gap:7px;margin-top:14px}
+.sitem{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 13px;font-size:0.82rem;animation:fadeUp .3s ease}
+.sitem-icon{font-size:1rem;width:22px;text-align:center;flex-shrink:0}
+.sitem-name{flex:1;font-weight:500}
+.sbadge{font-size:0.65rem;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap}
+.sbadge.pend{background:rgba(245,158,11,0.12);color:#d97706}
+.sbadge.open{background:rgba(92,45,232,0.1);color:var(--accent)}
+.sbadge.done{background:rgba(0,201,167,0.12);color:#059669}
+.info-box{margin-top:14px;padding:12px 14px;background:rgba(92,45,232,0.05);border:1px solid rgba(92,45,232,0.1);border-radius:10px;font-size:0.75rem;color:var(--muted);line-height:1.6}
+.info-box strong{color:var(--accent)}
+.guide{display:flex;flex-direction:column;gap:9px}
+.gstep{display:flex;gap:12px;align-items:flex-start;padding:11px 13px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;font-size:0.8rem;line-height:1.5}
+.gnum{width:24px;height:24px;background:linear-gradient(135deg,var(--accent),#7c3aed);color:#fff;border-radius:50%;font-size:0.68rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.gtext strong{color:var(--accent)}
+.mon-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(195px,1fr));gap:12px;margin-bottom:24px}
+.mcard{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;transition:all .2s}
+.mcard:hover{border-color:var(--a2);box-shadow:0 4px 16px rgba(0,201,167,0.1)}
+.micon{font-size:1.6rem;margin-bottom:8px}
+.mtitle{font-size:0.85rem;font-weight:700;margin-bottom:4px}
+.mdesc{font-size:0.72rem;color:var(--muted);line-height:1.4}
+.mbadge{display:inline-block;margin-top:6px;font-size:0.6rem;font-weight:700;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:0.07em}
+.mb-legal{background:rgba(0,201,167,0.12);color:#059669}
+.mb-ad{background:rgba(92,45,232,0.1);color:var(--accent)}
+.mb-cr{background:rgba(255,107,53,0.1);color:var(--a3)}
+.sec-head{display:flex;align-items:center;gap:12px;margin:28px 0 16px}
+.sec-line{flex:1;height:1px;background:var(--border)}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:0.15em;color:var(--muted);white-space:nowrap}
+.bf{background:linear-gradient(135deg,var(--accent),#7c3aed,var(--a2));border-radius:20px;padding:26px 32px;margin-top:28px;display:flex;align-items:center;justify-content:space-between;gap:16px;position:relative;overflow:hidden}
+.bf::before{content:'🕷️';position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:8rem;opacity:0.07;pointer-events:none}
+.bf h3{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:0.07em;color:#fff}
+.bf p{font-size:0.8rem;color:rgba(255,255,255,0.75);margin-top:5px}
+.bf-links{display:flex;gap:8px;position:relative;z-index:1;flex-wrap:wrap}
+.bf-link{background:rgba(255,255,255,0.14);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:7px 14px;border-radius:20px;font-size:0.73rem;font-weight:600;text-decoration:none;transition:all .2s}
+.bf-link:hover{background:rgba(255,255,255,0.28)}
+.cap-preview{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;font-size:.78rem;line-height:1.6;white-space:pre-wrap;max-height:180px;overflow-y:auto;color:var(--text);font-family:'DM Sans',sans-serif;word-break:break-word}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--text);color:#fff;padding:13px 20px;border-radius:12px;font-size:0.86rem;font-weight:500;z-index:9999;transform:translateY(80px);opacity:0;transition:all .35s cubic-bezier(.34,1.56,.64,1);box-shadow:0 8px 28px rgba(0,0,0,0.22);display:flex;align-items:center;gap:8px;max-width:360px}
+.toast.show{transform:translateY(0);opacity:1}
+@media(max-width:960px){.grid2{grid-template-columns:1fr}.disc-grid{grid-template-columns:1fr}.hero{flex-direction:column}.hero-stats{justify-content:center}}
+@media(max-width:480px){.app{padding:14px 12px 40px}header{padding:0 14px}.hero{padding:20px 18px}.bf{flex-direction:column}.plat-grid{grid-template-columns:repeat(auto-fill,minmax(70px,1fr))}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span style="font-size:1.4rem">🕷️</span>
+    <div>K Spider MultiPost<span class="logo-sub">Upload Once · Share Everywhere</span></div>
+  </div>
+  <div class="hdr-badges">
+    <span class="badge badge-green">✓ Real Imgur Upload</span>
+    <span class="badge badge-purple">🇮🇳 Free Tool</span>
+  </div>
+</header>
+
+<div class="app">
+
+<div class="hero">
+  <div>
+    <h1>One Upload.<br>Every Platform.<br>Real Links.</h1>
+    <p>Upload image → Get real Imgur URL → Auto-share across 13+ platforms with full K Spider branding, hashtags & captions.</p>
+    <div class="hero-chips">
+      <span class="hero-chip">✅ Real Imgur Upload</span>
+      <span class="hero-chip">📋 Auto Caption</span>
+      <span class="hero-chip">🔗 Live URLs</span>
+      <span class="hero-chip">13+ Platforms</span>
+      <span class="hero-chip">100% Free · No Login</span>
+    </div>
+  </div>
+  <div class="hero-stats">
+    <div class="hstat"><div class="hstat-n">13+</div><div class="hstat-l">Platforms</div></div>
+    <div class="hstat"><div class="hstat-n">∞</div><div class="hstat-l">Reach</div></div>
+    <div class="hstat"><div class="hstat-n">0₹</div><div class="hstat-l">Cost</div></div>
+  </div>
+</div>
+
+<!-- ADSENSE TOP -->
+<div class="ad-slot">
+  <span class="ad-label">Advertisement</span>
+  <div class="ad-inner">
+    <!-- PASTE YOUR GOOGLE ADSENSE 728x90 CODE BELOW -->
+    <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX" crossorigin="anonymous"></script><ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXX" data-ad-slot="XXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script> -->
+    <strong>📢 Google AdSense — 728×90 Leaderboard</strong><br>
+    <span style="font-size:.67rem">Replace this block with your AdSense code · adsense.google.com</span>
+  </div>
+</div>
+
+<!-- DISCLAIMER -->
+<div class="disc">
+  <div class="disc-title">⚠️ Guidelines, Legal Disclaimer & Platform Policies</div>
+  <div class="disc-grid">
+    <div class="disc-item"><strong>Images & GIFs</strong> are uploaded to Imgur (free, anonymous, public). <strong>Videos/Docs</strong> are prepared locally — paste + upload manually on each platform.</div>
+    <div class="disc-item"><strong>Community Guidelines:</strong> Never post hate speech, violence, explicit content, spam, or copyrighted material. Violations result in platform bans.</div>
+    <div class="disc-item"><strong>Copyright Law:</strong> Only post content you own or have rights to. Unauthorized use is illegal under India's IT Act & international copyright law.</div>
+    <div class="disc-item"><strong>Spam Prevention:</strong> Space identical posts 5–10 mins apart. Bulk-identical posts trigger platform spam filters and can ban your account.</div>
+    <div class="disc-item"><strong>WhatsApp Policy:</strong> Do NOT mass-message unsaved contacts. Use Channel or Group to broadcast. Violating this causes account ban.</div>
+    <div class="disc-item"><strong>Data Privacy:</strong> Images uploaded to Imgur are PUBLIC. Do NOT upload private, sensitive, or personal data. No data stored on K Spider servers.</div>
+    <div class="disc-item"><strong>Age Policy:</strong> All content must meet platform minimum age requirements. Adult content only allowed on specifically age-verified platforms.</div>
+    <div class="disc-item"><strong>K Spider Branding</strong> is compulsory per tool usage terms. It appears in all captions and cannot be disabled — this is non-negotiable.</div>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="grid2">
+
+  <!-- LEFT -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+
+    <!-- UPLOAD -->
+    <div class="card">
+      <div class="card-title">📁 Upload Content</div>
+      <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+        <span class="dz-icon">☁️</span>
+        <div class="dz-title">Drop files here or click to browse</div>
+        <div class="dz-sub">
+          <strong>Images (JPG, PNG, GIF, WEBP)</strong> → Auto-uploaded to Imgur (real public URL)<br>
+          <strong>Videos, PDFs, Docs, Audio</strong> → Ready locally for manual upload
+        </div>
+        <div class="dz-types">
+          <span class="type-chip">📷 JPG · PNG · GIF · WEBP</span>
+          <span class="type-chip">🎬 MP4 · MOV</span>
+          <span class="type-chip">📄 PDF · DOC</span>
+          <span class="type-chip">🎵 MP3 · AAC</span>
+        </div>
+      </div>
+      <input type="file" id="fileInput" multiple accept="*/*" style="display:none" onchange="handleFiles(this.files)">
+      <div class="file-list" id="fileList"></div>
+
+      <div class="upload-strip" id="uploadStrip">
+        <div class="upload-strip-title">☁️ Uploading to Imgur... <span id="uploadPct">0%</span></div>
+        <div class="upload-progress"><div class="upload-fill" id="uploadFill"></div></div>
+        <div class="upload-msg" id="uploadMsg">Preparing...</div>
+      </div>
+
+      <div class="shared-urls" id="sharedUrls">
+        <div class="shared-url-title">✅ Uploaded Image URLs — Use these to share on platforms</div>
+        <div id="sharedUrlList"></div>
+      </div>
+    </div>
+
+    <!-- CAPTION -->
+    <div class="card">
+      <div class="card-title">✍️ Caption & Hashtags</div>
+      <div class="caption-hdr">
+        <span class="lbl" style="margin-bottom:0">Post Caption</span>
+        <button class="btn-accent" onclick="copyFullCaption()">📋 Copy Full Caption</button>
+      </div>
+      <textarea class="ifield" id="captionText" placeholder="Write your caption here...&#10;&#10;💡 Use emojis, line breaks and a strong call-to-action for better engagement 🚀" oninput="onCaption(this)" style="margin-top:8px"></textarea>
+      <div class="char-cnt" id="charCnt">0 / 2200</div>
+
+      <label class="lbl" style="margin-top:14px">Auto Hashtag Generator</label>
+      <input type="text" class="ifield" id="hashTopic" placeholder="Enter topic: AI tools, food, travel, fitness..." oninput="genTags(this.value)">
+      <div class="hashtag-out" id="hashOut">Enter topic above to auto-generate hashtags 👆</div>
+
+      <div class="brand-row">
+        <span class="brand-lbl">🕷️ <strong>K Spider Branding</strong> <span style="font-size:.7rem;color:var(--muted);font-weight:400">(Compulsory — cannot disable)</span></span>
+        <div class="toggle on"></div>
+      </div>
+      <div class="brand-row" style="margin-top:8px;background:rgba(0,201,167,0.04);border-color:rgba(0,201,167,0.18)">
+        <span class="brand-lbl">🔗 <strong>Include K Spider Link</strong></span>
+        <div class="toggle on" id="linkTgl" onclick="togLink()"></div>
+      </div>
+
+      <div style="margin-top:14px">
+        <div class="caption-hdr" style="margin-bottom:6px">
+          <span class="lbl" style="margin-bottom:0;font-size:.68rem">Live Preview (exactly what gets shared)</span>
+          <button class="btn-outline" onclick="copyFullCaption()">📋 Copy</button>
+        </div>
+        <div class="cap-preview" id="capPreview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div style="display:flex;flex-direction:column;gap:20px">
+
+    <!-- PLATFORMS -->
+    <div class="card">
+      <div class="card-title">🌐 Select Platforms</div>
+      <div class="plat-grid" id="platGrid"></div>
+      <div class="plat-btns">
+        <button class="btn-sm" onclick="selAll()">✅ Select All</button>
+        <button class="btn-sm" onclick="selNone()">☐ Clear</button>
+        <button class="btn-sm" onclick="selRec()">⚡ Top 7</button>
+      </div>
+      <div id="selCnt" style="font-size:.76rem;color:var(--muted);margin-top:10px;text-align:center">0 platforms selected</div>
+    </div>
+
+    <!-- PUBLISH -->
+    <div class="card">
+      <div class="card-title">🚀 Publish</div>
+      <button class="btn-publish" onclick="publishAll()">🚀 PUBLISH TO ALL SELECTED</button>
+      <div class="status-list" id="statusList"></div>
+      <div class="info-box">
+        ℹ️ <strong>How it works:</strong> Clicking Publish <strong>auto-copies your caption</strong> to clipboard and opens each platform in a new tab. Just <strong>Paste (Ctrl+V)</strong> and upload your file. For images, use the Imgur URL from the panel above.
+      </div>
+    </div>
+
+    <!-- AD SIDEBAR -->
+    <div class="ad-slot" style="margin-bottom:0">
+      <span class="ad-label">Advertisement</span>
+      <div class="ad-inner">
+        <!-- PASTE ADSENSE 300x250 HERE -->
+        <strong>📢 AdSense 300×250 Medium Rectangle</strong><br>
+        <span style="font-size:.66rem">Paste your AdSense code here after approval</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- GUIDE -->
+<div class="sec-head"><div class="sec-line"></div><div class="sec-title">📖 Step-by-Step Guide</div><div class="sec-line"></div></div>
+<div class="card" style="margin-bottom:24px">
+  <div class="guide">
+    <div class="gstep"><div class="gnum">1</div><div class="gtext"><strong>Upload your file</strong> — Drag & drop or click to browse. Images are automatically uploaded to Imgur and you get a real public URL instantly.</div></div>
+    <div class="gstep"><div class="gnum">2</div><div class="gtext"><strong>Write your caption</strong> — Enter topic for auto-hashtags. K Spider branding is auto-appended. Click "Copy Full Caption" — everything including image URL, hashtags & branding is copied.</div></div>
+    <div class="gstep"><div class="gnum">3</div><div class="gtext"><strong>Select platforms</strong> — Pick your targets. Use "Top 7" for best reach: WhatsApp, Instagram, Facebook, YouTube, Telegram, Twitter, LinkedIn.</div></div>
+    <div class="gstep"><div class="gnum">4</div><div class="gtext"><strong>Click Publish</strong> — Caption auto-copies to clipboard. Each platform opens in a new tab with 0.8s stagger. Simply <strong>Paste + post</strong> on each tab.</div></div>
+    <div class="gstep"><div class="gnum">5</div><div class="gtext"><strong>For images on Telegram, Twitter, LinkedIn</strong> — Copy the Imgur URL from the "Uploaded URLs" panel and paste it directly as an image link — no separate upload needed!</div></div>
+    <div class="gstep"><div class="gnum">6</div><div class="gtext"><strong>Videos & Documents</strong> — These open locally. Save the file to your device and upload it on each platform tab that opens.</div></div>
+  </div>
+</div>
+
+<!-- MONETIZE -->
+<div class="sec-head"><div class="sec-line"></div><div class="sec-title">💰 Legal Online Earning Options</div><div class="sec-line"></div></div>
+<div class="mon-grid">
+  <div class="mcard"><div class="micon">📢</div><div class="mtitle">Google AdSense</div><div class="mdesc">Earn from website/blog traffic. Requires 20+ quality posts & original content. Apply at adsense.google.com</div><span class="mbadge mb-ad">Ad Revenue</span></div>
+  <div class="mcard"><div class="micon">▶️</div><div class="mtitle">YouTube Monetization</div><div class="mdesc">1K subs + 4K watch hours unlock ads. Also earn via memberships, Super Thanks & merchandise shelf.</div><span class="mbadge mb-cr">Creator Fund</span></div>
+  <div class="mcard"><div class="micon">📸</div><div class="mtitle">Instagram Creator</div><div class="mdesc">Reels bonuses, brand collabs, affiliate links in bio. 10K+ followers unlocks all monetization tools.</div><span class="mbadge mb-cr">Creator Fund</span></div>
+  <div class="mcard"><div class="micon">🤝</div><div class="mtitle">Affiliate Marketing</div><div class="mdesc">Promote Amazon, Flipkart, Meesho products. Earn commission per sale — 100% legal passive income.</div><span class="mbadge mb-legal">Legal ✓</span></div>
+  <div class="mcard"><div class="micon">💼</div><div class="mtitle">Sponsored Posts</div><div class="mdesc">Brands pay creators for posts. Disclose #ad or #sponsored as required by ASCI/FTC guidelines.</div><span class="mbadge mb-legal">Legal ✓</span></div>
+  <div class="mcard"><div class="micon">🛍️</div><div class="mtitle">Digital Products</div><div class="mdesc">Sell eBooks, templates, courses via Gumroad, Instamojo or your own website. Zero inventory.</div><span class="mbadge mb-legal">Legal ✓</span></div>
+  <div class="mcard"><div class="micon">🎯</div><div class="mtitle">Facebook Ad Breaks</div><div class="mdesc">10K page likes + 600K minutes viewed. Earn from in-stream ads in Facebook videos automatically.</div><span class="mbadge mb-ad">Ad Revenue</span></div>
+  <div class="mcard"><div class="micon">📌</div><div class="mtitle">Pinterest Shopping</div><div class="mdesc">Link pins to product pages. High buying-intent audience — great for fashion, home, food niches.</div><span class="mbadge mb-legal">Legal ✓</span></div>
+</div>
+
+<!-- BOTTOM AD -->
+<div class="ad-slot">
+  <span class="ad-label">Advertisement</span>
+  <div class="ad-inner">
+    <!-- PASTE ADSENSE 970x90 HERE -->
+    <strong>📢 Google AdSense — 970×90 Large Banner</strong><br>
+    <span style="font-size:.67rem">Paste your AdSense leaderboard code here</span>
+  </div>
+</div>
+
+<!-- BRANDING FOOTER -->
+<div class="bf">
+  <div>
+    <h3>🕷️ K Spider AI — Free Tools for Everyone!</h3>
+    <p>India's #1 Free AI Tool Platform · kspiderai.in · Made with ❤️ in India 🇮🇳</p>
+  </div>
+  <div class="bf-links">
+    <a class="bf-link" href="https://whatsapp.com/channel/0029Vb7bJKz5PO15U1NeML3I" target="_blank">💬 WA Channel</a>
+    <a class="bf-link" href="https://youtube.com/@kspider4kreation" target="_blank">▶️ YouTube</a>
+    <a class="bf-link" href="https://www.instagram.com/gaurang.m.raval" target="_blank">📸 Instagram</a>
+    <a class="bf-link" href="https://t.me/+jPVF39C2yCQ3ZDhl" target="_blank">✈️ Telegram</a>
+    <a class="bf-link" href="https://kspiderai.in" target="_blank">🌐 Website</a>
+    <a class="bf-link" href="https://chat.whatsapp.com/FKIc3m3SsgOLD8F5oKcmih" target="_blank">👥 WA Group</a>
+  </div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"><span id="toastMsg"></span></div>
+
+<script>
+// ─── PLATFORMS ───────────────────────────────
+const PLATS = [
+  { id:'wa_status',  name:'WA Status',  icon:'💬', rec:true,  type:'Paste & post',    url:'https://web.whatsapp.com/' },
+  { id:'wa_channel', name:'WA Channel', icon:'📢', rec:true,  type:'Channel update',  url:'https://web.whatsapp.com/' },
+  { id:'wa_group',   name:'WA Group',   icon:'👥', rec:false, type:'Group post',      url:'https://chat.whatsapp.com/FKIc3m3SsgOLD8F5oKcmih' },
+  { id:'instagram',  name:'Instagram',  icon:'📸', rec:true,  type:'Post/Reel/Story', url:'https://www.instagram.com/create/select/' },
+  { id:'facebook',   name:'Facebook',   icon:'👤', rec:true,  type:'Post/Reel/Story', url:'https://www.facebook.com/' },
+  { id:'youtube',    name:'YouTube',    icon:'▶️', rec:true,  type:'Video/Short',     url:'https://studio.youtube.com/' },
+  { id:'telegram',   name:'Telegram',   icon:'✈️', rec:true,  type:'Channel/Group',   url:'https://web.telegram.org/' },
+  { id:'twitter',    name:'X/Twitter',  icon:'𝕏',  rec:true,  type:'Tweet/Thread',    url:'' },
+  { id:'linkedin',   name:'LinkedIn',   icon:'💼', rec:false, type:'Post/Article',    url:'https://www.linkedin.com/post/new/' },
+  { id:'pinterest',  name:'Pinterest',  icon:'📌', rec:false, type:'Pin',             url:'https://www.pinterest.com/pin/creation/button/' },
+  { id:'threads',    name:'Threads',    icon:'🧵', rec:false, type:'Thread',          url:'https://www.threads.net/' },
+  { id:'sharechat',  name:'ShareChat',  icon:'🇮🇳',rec:false, type:'Hindi/Regional',  url:'https://sharechat.com/' },
+  { id:'moj',        name:'Moj',        icon:'🎵', rec:false, type:'Short video',     url:'https://mojapp.in/' },
+];
+
+// ─── STATE ───────────────────────────────────
+let selPlats = new Set(['wa_status','wa_channel','instagram','facebook','youtube','telegram','twitter']);
+let files    = [];   // { file, name, size, type, imgurUrl, localUrl, status, uid }
+let linkOn   = true;
+let brandIdx = 0;
+
+const BRANDS = [
+  '\n\n━━━━━━━━━━━━━━━━━━━━\n🕷️ *K Spider AI* — Free AI Tools for Everyone!\n🌐 kspiderai.in | 🇮🇳 Made in India\n━━━━━━━━━━━━━━━━━━━━',
+  '\n\n⚡ Powered by *K Spider AI Tools* 🕷️\n🆓 100% Free Forever · kspiderai.in\n🇮🇳 Proudly Made in India',
+  '\n\n🕷️━━━━━━━━━━━━━━━━━━\n✨ *K Spider AI* — India ka #1 Free Tool!\n👉 kspiderai.in\n━━━━━━━━━━━━━━━━━━🕷️',
+  '\n\n🔥 *K Spider AI* 🕷️\n🚀 Free AI Tools · kspiderai.in\n🇮🇳 Built in India, For the World',
+];
+
+// ─── INIT ─────────────────────────────────────
+(function(){ renderPlats(); updateSelCnt(); updatePreview(); })();
+
+// ─── PLATFORMS ────────────────────────────────
+function renderPlats(){
+  document.getElementById('platGrid').innerHTML = PLATS.map(p=>`
+    <div class="plat-card${selPlats.has(p.id)?' sel':''}" onclick="togPlat('${p.id}')">
+      <span class="plat-icon">${p.icon}</span>
+      <div class="plat-name">${p.name}</div>
+      <div class="plat-type">${p.type}</div>
+    </div>`).join('');
+}
+function togPlat(id){ selPlats.has(id)?selPlats.delete(id):selPlats.add(id); renderPlats(); updateSelCnt(); }
+function selAll(){ PLATS.forEach(p=>selPlats.add(p.id)); renderPlats(); updateSelCnt(); }
+function selNone(){ selPlats.clear(); renderPlats(); updateSelCnt(); }
+function selRec(){ selPlats.clear(); PLATS.filter(p=>p.rec).forEach(p=>selPlats.add(p.id)); renderPlats(); updateSelCnt(); }
+function updateSelCnt(){ const n=selPlats.size; document.getElementById('selCnt').textContent=n===0?'No platforms selected':`${n} platform${n>1?'s':''} selected`; }
+
+// ─── FILE HANDLING ────────────────────────────
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e=>{ e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', ()=> dz.classList.remove('drag'));
+dz.addEventListener('drop', e=>{ e.preventDefault(); dz.classList.remove('drag'); handleFiles(e.dataTransfer.files); });
+
+async function handleFiles(fileList){
+  const arr = Array.from(fileList);
+  for(const f of arr){
+    if(files.find(x=>x.name===f.name && x.size===f.size)) continue;
+    const entry = { file:f, name:f.name, size:f.size, type:f.type||'', imgurUrl:null, localUrl:URL.createObjectURL(f), status:'pending', uid:Date.now()+Math.random() };
+    files.push(entry);
+    renderFiles();
+    if(f.type.startsWith('image/') && f.size <= 20*1024*1024){
+      await uploadImgur(entry);
+    } else {
+      entry.status = 'local';
+      renderFiles();
+      updatePreview();
+      const msg = f.type.startsWith('image/') ? '⚠️ Image >20MB — prepared locally only.' : '📁 '+f.name+' ready locally. Upload manually on each platform.';
+      toast(msg, '#7c3aed');
+    }
+  }
+  document.getElementById('fileInput').value = '';
+}
+
+async function uploadImgur(entry){
+  entry.status = 'uploading';
+  renderFiles();
+  showStrip(true, 10, 'Reading file...');
+
+  try {
+    const b64 = await readB64(entry.file);
+    showStrip(true, 35, 'Connecting to Imgur...');
+
+    const fd = new FormData();
+    fd.append('image', b64.split(',')[1]);
+    fd.append('type', 'base64');
+
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api.imgur.com/3/image');
+    xhr.setRequestHeader('Authorization', 'Client-ID 546c25a59c58ad7');
+
+    xhr.upload.onprogress = e=>{
+      if(e.lengthComputable){
+        const p = Math.round(e.loaded/e.total*60)+35;
+        showStrip(true, p, 'Uploading... '+p+'%');
+      }
+    };
+
+    const result = await new Promise((resolve, reject)=>{
+      xhr.onload = ()=>{
+        try {
+          const r = JSON.parse(xhr.responseText);
+          if(r.success && r.data && r.data.link) resolve(r.data.link);
+          else reject(new Error(r.data && r.data.error ? r.data.error : 'Upload failed'));
+        } catch(e){ reject(e); }
+      };
+      xhr.onerror = ()=> reject(new Error('Network error — check internet connection'));
+      xhr.send(fd);
+    });
+
+    entry.imgurUrl = result;
+    entry.status   = 'done';
+    showStrip(true, 100, '✅ Upload complete!');
+    setTimeout(()=> showStrip(false), 1600);
+    renderFiles();
+    addUrlCard(entry.name, result);
+    updatePreview();
+    toast('✅ '+entry.name+' uploaded! Imgur URL ready to share.', '#00c9a7');
+
+  } catch(err){
+    entry.status = 'error';
+    renderFiles();
+    showStrip(false);
+    toast('❌ Imgur failed: '+err.message, '#ff3b5c');
+  }
+}
+
+function readB64(file){
+  return new Promise((res,rej)=>{
+    const r = new FileReader();
+    r.onload = e=> res(e.target.result);
+    r.onerror = ()=> rej(new Error('Could not read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+function showStrip(show, pct, msg){
+  const s = document.getElementById('uploadStrip');
+  s.style.display = show ? 'block' : 'none';
+  if(show){
+    document.getElementById('uploadFill').style.width = pct+'%';
+    document.getElementById('uploadPct').textContent  = pct+'%';
+    document.getElementById('uploadMsg').textContent  = msg;
+  }
+}
+
+function addUrlCard(name, url){
+  const panel = document.getElementById('sharedUrls');
+  const list  = document.getElementById('sharedUrlList');
+  panel.style.display = 'block';
+  const div = document.createElement('div');
+  div.className = 'shared-url-item';
+  div.innerHTML = `
+    <span>🖼️</span>
+    <span class="shared-url-link">${url}</span>
+    <button class="btn-outline" onclick="copyTxt('${url}');toast('✅ URL copied!','#00c9a7')">Copy</button>
+    <a href="${url}" target="_blank" class="btn-outline">View</a>`;
+  list.appendChild(div);
+}
+
+function renderFiles(){
+  const list = document.getElementById('fileList');
+  if(!files.length){ list.innerHTML=''; return; }
+  list.innerHTML = files.map((f,i)=>{
+    const isImg = f.type.startsWith('image/');
+    const ico   = f.type.startsWith('video/')?'🎬':f.type.includes('pdf')?'📄':f.type.includes('audio')?'🎵':'📎';
+    const sMap  = { pending:'⏳ Pending', uploading:'☁️ Uploading…', done:'✅ URL Ready', error:'⚠️ Local Only', local:'📁 Local Ready' };
+    const cMap  = { pending:'pending', uploading:'uploading', done:'done', error:'error', local:'local' };
+    return `
+      <div class="file-item">
+        <div class="fthumb">${isImg && f.localUrl ? `<img src="${f.localUrl}">` : `<span>${ico}</span>`}</div>
+        <div class="fmeta">
+          <div class="fname">${f.name}</div>
+          <div class="fsize">${fmtSz(f.size)} · ${f.type||'file'}${f.imgurUrl?` <button class="btn-outline" style="font-size:.62rem;padding:2px 7px" onclick="copyTxt('${f.imgurUrl}');toast('URL copied!','#00c9a7')">Copy URL</button>`:''}</div>
+        </div>
+        <span class="fstatus ${cMap[f.status]||'local'}">${sMap[f.status]||'Ready'}</span>
+        <button class="fremove" onclick="removeFile(${i})">✕</button>
+      </div>`;
+  }).join('');
+}
+function removeFile(i){ files.splice(i,1); renderFiles(); updatePreview(); }
+function fmtSz(b){ return b<1024?b+'B':b<1048576?(b/1024).toFixed(1)+'KB':(b/1048576).toFixed(1)+'MB'; }
+
+// ─── CAPTION ──────────────────────────────────
+function onCaption(el){
+  const n = el.value.length;
+  const c = document.getElementById('charCnt');
+  c.textContent = n+' / 2200';
+  c.className   = 'char-cnt'+(n>2200?' over':'');
+  updatePreview();
+}
+
+function buildCaption(){
+  let cap = document.getElementById('captionText').value.trim();
+  const tags   = document.getElementById('hashOut').textContent;
+  const hasTags = tags && !tags.includes('Enter topic');
+  const imgUrls = files.filter(f=>f.imgurUrl).map(f=>f.imgurUrl);
+
+  if(imgUrls.length) cap += '\n\n📸 '+imgUrls.join('\n📸 ');
+  if(hasTags) cap += '\n\n'+tags;
+  cap += BRANDS[brandIdx % BRANDS.length];
+  if(linkOn) cap += '\n\n🔗 All my links: https://kspiderai.in/link/kspider4kreaction';
+  return cap;
+}
+
+function updatePreview(){ document.getElementById('capPreview').textContent = buildCaption(); }
+
+function copyFullCaption(){
+  brandIdx++;
+  const cap = buildCaption();
+  updatePreview();
+  copyTxt(cap);
+  toast('📋 Caption copied with K Spider branding! Paste on any platform.', '#5c2de8');
+}
+
+// ─── HASHTAGS ─────────────────────────────────
+function genTags(topic){
+  if(!topic || topic.trim().length < 2){
+    document.getElementById('hashOut').textContent = 'Enter topic above to auto-generate hashtags 👆';
+    updatePreview(); return;
+  }
+  const t    = topic.trim();
+  const slug = t.replace(/\s+/g,'').toLowerCase();
+  const tags = [
+    '#'+slug, '#'+slug+'tips', '#'+slug+'india', '#'+slug+'viral', '#'+slug+'2025',
+    '#'+slug+'content', '#'+slug+'creator', '#'+slug+'trending', '#'+slug+'reels',
+    '#kspiderai', '#kspider4kreation', '#freeitools', '#indiagram',
+    '#madeinIndia', '#digitalindia', '#viral2025', '#trending', '#'+slug+'shorts',
+    '#india', '#'+t.replace(/\s+/g,'_'),
+  ];
+  document.getElementById('hashOut').textContent = tags.join(' ');
+  updatePreview();
+}
+
+// ─── TOGGLES ──────────────────────────────────
+function togLink(){ linkOn=!linkOn; document.getElementById('linkTgl').classList.toggle('on',linkOn); updatePreview(); }
+
+// ─── PUBLISH ──────────────────────────────────
+function publishAll(){
+  if(selPlats.size===0){ toast('⚠️ Pehle koi platform select karo!','#f59e0b'); return; }
+  brandIdx++;
+  const cap = buildCaption();
+  updatePreview();
+  copyTxt(cap);
+
+  const statusDiv = document.getElementById('statusList');
+  statusDiv.innerHTML = '';
+  const sel = PLATS.filter(p=>selPlats.has(p.id));
+
+  sel.forEach((p,i)=>{
+    const div = document.createElement('div');
+    div.className = 'sitem';
+    div.innerHTML = `<span class="sitem-icon">${p.icon}</span><span class="sitem-name">${p.name} <span style="font-size:.67rem;color:var(--muted)">${p.type}</span></span><span class="sbadge pend" id="sb-${p.id}">Pending</span>`;
+    statusDiv.appendChild(div);
+
+    setTimeout(()=>{
+      const b = document.getElementById('sb-'+p.id);
+      if(b){ b.className='sbadge open'; b.textContent='Opening…'; }
+
+      let url = p.url;
+      if(p.id==='twitter') url = 'https://x.com/intent/tweet?text='+encodeURIComponent(cap.substring(0,270));
+
+      window.open(url,'_blank');
+      setTimeout(()=>{ if(b){ b.className='sbadge done'; b.textContent='✓ Tab Opened'; } }, 1000);
+    }, i*800);
+  });
+
+  setTimeout(()=>{
+    toast('🚀 '+sel.length+' platforms khul gaye! Caption clipboard mein hai → Paste (Ctrl+V) karke post karo!','#5c2de8');
+  }, sel.length*800+400);
+}
+
+// ─── UTILS ────────────────────────────────────
+function copyTxt(txt){
+  navigator.clipboard.writeText(txt).catch(()=>{
+    const t=document.createElement('textarea');
+    t.value=txt; t.style.cssText='position:fixed;opacity:0';
+    document.body.appendChild(t); t.select();
+    try{ document.execCommand('copy'); }catch(e){}
+    document.body.removeChild(t);
+  });
+}
+
+let toastT;
+function toast(msg, bg='#0d0c1d'){
+  clearTimeout(toastT);
+  const el = document.getElementById('toast');
+  el.style.background = bg;
+  document.getElementById('toastMsg').textContent = msg;
+  el.classList.add('show');
+  toastT = setTimeout(()=> el.classList.remove('show'), 3800);
+}
+</script>
+</body>
+</html>
