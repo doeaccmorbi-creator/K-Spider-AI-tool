@@ -663,12 +663,9 @@
   ══════════════════════════════════════ */
 
   var BLOG_CONFIG = {
-    // ⬇️ REPLACE with your actual Google Sheet ID
-    sheetId: 'YOUR_GOOGLE_SHEET_ID_HERE',
-    // Sheet tab name (default: Sheet1)
-    sheetName: 'Blog',
+    csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFctGZgpDCTM3h8Y8l4QL3d4MQzxg5D6UM19LaWzgIjbCBph-VHvthsN2SWRNaCjnkKRXh-bVw55Df/pub?output=csv',
     postsPerPage: 6,
-    fallbackToSample: true  // show sample posts if sheet not configured
+    fallbackToSample: true
   };
 
   var ALL_POSTS = [];
@@ -677,49 +674,65 @@
   var ACTIVE_CAT = 'all';
   var SEARCH_QUERY = '';
 
-  /* ── FETCH FROM GOOGLE SHEET ── */
+  /* ── FETCH FROM GOOGLE SHEET (CSV) ── */
   function fetchBlogPosts() {
     showSkeletons();
-    var url = 'https://opensheet.elk.sh/' + BLOG_CONFIG.sheetId + '/' + encodeURIComponent(BLOG_CONFIG.sheetName);
-
-    fetch(url)
-      .then(function(r) {
-        if (!r.ok) throw new Error('Sheet fetch failed');
-        return r.json();
-      })
-      .then(function(data) {
-        if (!data || !data.length) throw new Error('No data');
-        ALL_POSTS = parseSheetData(data);
+    fetch(BLOG_CONFIG.csvUrl)
+      .then(function(r){ if(!r.ok) throw new Error('CSV fetch failed'); return r.text(); })
+      .then(function(csv){
+        var rows = parseCSV(csv);
+        if(!rows || rows.length < 2) throw new Error('Empty sheet');
+        ALL_POSTS = csvRowsToPosts(rows);
+        if(!ALL_POSTS.length) throw new Error('No valid posts');
         initBlog();
       })
-      .catch(function(err) {
-        console.warn('KSpider Blog: Using sample data. Configure BLOG_CONFIG.sheetId for live data.', err);
-        if (BLOG_CONFIG.fallbackToSample && typeof SAMPLE_POSTS !== 'undefined') {
-          ALL_POSTS = SAMPLE_POSTS;
-        } else {
-          ALL_POSTS = getBuiltinSamples();
-        }
+      .catch(function(err){
+        console.warn('KSpider Blog: Using sample data.', err);
+        ALL_POSTS = (typeof SAMPLE_POSTS !== 'undefined') ? SAMPLE_POSTS : getBuiltinSamples();
         initBlog();
       });
   }
 
-  function parseSheetData(rows) {
-    return rows.map(function(row, i) {
-      return {
-        id: row['ID'] || ('post-' + (i + 1)),
-        title: row['Title'] || '',
-        category: row['Category'] || 'AI Tools',
-        author: row['Author'] || 'KSpider Team',
-        date: row['Date'] || '',
-        thumbnail: row['Thumbnail URL'] || '',
-        content: row['Content'] || '',
-        tags: row['Tags'] ? row['Tags'].split(',').map(function(t){ return t.trim(); }) : [],
-        featured: (row['Featured'] || '').toLowerCase() === 'true',
-        excerpt: row['Excerpt'] || (row['Content'] || '').substring(0, 160) + '...'
-      };
-    }).filter(function(p){ return p.title; })
-      .sort(function(a, b){ return new Date(b.date) - new Date(a.date); });
+  function parseCSV(text) {
+    var lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
+    var result = [];
+    for(var i=0;i<lines.length;i++){
+      var row=[],line=lines[i],inQ=false,cur='';
+      for(var j=0;j<line.length;j++){
+        var ch=line[j];
+        if(ch==='"'){if(inQ&&line[j+1]==='"'){cur+='"';j++;}else{inQ=!inQ;}}
+        else if(ch===','&&!inQ){row.push(cur);cur='';}
+        else{cur+=ch;}
+      }
+      row.push(cur);
+      if(row.some(function(c){return c.trim();})) result.push(row);
+    }
+    return result;
   }
+
+  function csvRowsToPosts(rows) {
+    var hdrs = rows[0].map(function(h){return h.trim();});
+    return rows.slice(1).map(function(row,i){
+      var o={};
+      hdrs.forEach(function(h,idx){o[h]=(row[idx]||'').trim();});
+      if(!o['Title']) return null;
+      var content = o['Content']||'';
+      return {
+        id: o['ID']||('post-'+(i+1)),
+        title: o['Title'],
+        category: o['Category']||'AI Tools',
+        author: o['Author']||'KSpider Team',
+        date: o['Date']||'',
+        thumbnail: o['Thumbnail URL']||'',
+        content: content,
+        tags: o['Tags']?o['Tags'].split(',').map(function(t){return t.trim();}):[],
+        featured: (o['Featured']||'').toLowerCase()==='true',
+        excerpt: o['Excerpt']||content.replace(/<[^>]*>/g,' ').substring(0,180).trim()+'...'
+      };
+    }).filter(Boolean).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
+  }
+
+  function parseSheetData(rows){return rows;}
 
   /* ── BUILT-IN SAMPLE POSTS (fallback) ── */
   function getBuiltinSamples() {
