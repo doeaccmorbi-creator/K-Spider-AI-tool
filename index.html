@@ -1560,30 +1560,39 @@ function fetchUserFromFirebase(email, callback) {
   .catch(function() { callback(null); });
 }
 
-// ⚠️  IMPORTANT: EmailJS pe EK NAYA TEMPLATE banao naam: template_otp_kspider
-// Template variables:
-//   {{to_name}}    → User ka naam
-//   {{to_email}}   → User ka email (TO field mein bhi yahi daalo)
-//   {{otp_code}}   → 6-digit OTP
-// 
-// Template body example:
-// Subject: Your K Spider AI OTP: {{otp_code}}
-// Body:
-//   Namaste {{to_name}}! 🕷️
-//   
-//   Aapka OTP hai:
-//   
-//   ► {{otp_code}} ◄
-//   
-//   Yeh OTP 5 minutes tak valid hai.
-//   Kisi ke saath share mat kijiye.
-//   
-//   - K Spider AI Tool Team
-//   www.kspiderai.in
-var EJS_OTP_TEMPLATE   = 'template_uid677j';  // ✅ User ko OTP bhejne ka template
-
-// Admin notification (purana template theek hai iske liye)
-var EJS_ADMIN_TEMPLATE = 'template_uid677j';
+// ══════════════════════════════════════════════════════
+// EMAILJS TEMPLATE IDs — DO ALAG TEMPLATES CHAHIYE
+// ══════════════════════════════════════════════════════
+//
+// TEMPLATE 1: EJS_OTP_TEMPLATE  → User ko OTP + Welcome email
+//   EmailJS pe Template ID copy karke yahan daalo
+//   Template "To Email" field: {{to_email}}
+//   Required variables:
+//     {{to_name}}     → User ka naam
+//     {{to_email}}    → User ka email address
+//     {{otp_code}}    → 6-digit OTP number
+//     {{user_mobile}} → User ka mobile number
+//     {{user_city}}   → User ka city
+//     {{reg_date}}    → Registration date/time
+//
+// TEMPLATE 2: EJS_ADMIN_TEMPLATE → Admin ko alert email
+//   EmailJS pe Template ID copy karke yahan daalo
+//   Template "To Email" field: kspider221206@gmail.com (fixed)
+//   Required variables:
+//     {{alert_type}}  → NEW REGISTRATION / EMAIL VERIFIED / TOOL LAUNCHED
+//     {{user_name}}   → User ka naam
+//     {{user_email}}  → User ka email
+//     {{user_mobile}} → User ka mobile
+//     {{user_city}}   → User ka city
+//     {{reg_date}}    → Date/time
+//     {{extra_info}}  → Extra details (tool name, OTP sent etc.)
+// ══════════════════════════════════════════════════════
+var EJS_OTP_TEMPLATE   = 'template_uid677j';   // ✅ User ko OTP + Features email
+var EJS_ADMIN_TEMPLATE = 'template_qjffh29';  // ✅ Admin ko New Reg / Verified / Tool Launch alert
+//
+// ⚠️  IMPORTANT: Dono template IDs ALAG hone chahiye!
+// EmailJS → Email Templates → Create Template → Template ID copy karo
+// ══════════════════════════════════════════════════════
 
 /* ══════════════════════════════════════════════════════
    TOOLS DATA REGISTRY
@@ -1749,7 +1758,7 @@ var TD = [
     cat: 'education', icon: '🧠', status: 'live', cls: 'tc-w',
     feats: ['GK quizzes', 'Math challenges', 'Science learning', 'Fun educational gameplay'],
     tags: ['quiz', 'gk', 'education', 'learning', 'students'],
-    file: 'tools/KnowledgeSpider.html'
+    file: 'KnowledgeSpider.html'
   }
 ];
 
@@ -1899,73 +1908,110 @@ function showOtpOnScreen(otp, email) {
   console.log('[KSpider] OTP:', otp);
 }
 
+/* ══════════════════════════════════════════════════════
+   ADMIN ALERT HELPER — Har event pe admin ko email bhejo
+   alert_type: 'NEW_REGISTRATION' | 'EMAIL_VERIFIED' | 'TOOL_LAUNCHED'
+   ══════════════════════════════════════════════════════ */
+function sendAdminAlert(alertType, userData, extraInfo) {
+  if (typeof emailjs === 'undefined') return;
+  var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+
+  var alertEmoji = {
+    'NEW_REGISTRATION': '🆕',
+    'EMAIL_VERIFIED':   '✅',
+    'TOOL_LAUNCHED':    '🚀'
+  }[alertType] || '📩';
+
+  var adminParams = {
+    alert_type:  alertEmoji + ' ' + alertType + ' — K Spider AI Tool',
+    user_name:   userData.name  || 'N/A',
+    user_email:  userData.email || 'N/A',
+    user_mobile: userData.mobile || 'N/A',
+    user_city:   userData.city  || 'N/A',
+    reg_date:    dateStr,
+    extra_info: [
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      alertEmoji + ' ' + alertType,
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
+      'Name    : ' + (userData.name   || 'N/A'),
+      'Email   : ' + (userData.email  || 'N/A'),
+      'Mobile  : ' + (userData.mobile || 'N/A'),
+      'City    : ' + (userData.city   || 'N/A'),
+      'Language: ' + (userData.language || 'en'),
+      'Date    : ' + dateStr,
+      'Info    : ' + (extraInfo || 'N/A'),
+      'Source  : www.kspiderai.in',
+      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
+    ].join('\n')
+  };
+
+  emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
+    .then(function() { console.log('[KSpider] Admin alert sent ✅ | Type:', alertType); })
+    .catch(function(err) { console.warn('[KSpider] Admin alert failed:', alertType, err); });
+}
+
+/* ══════════════════════════════════════════════════════
+   sendOTPEmail — User ko OTP + Features email bhejo
+   FIXED: to_email dynamically set, template variables correct
+   ══════════════════════════════════════════════════════ */
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  console.log('[KSpider] OTP:', otp, '| To:', email);
+  console.log('[KSpider] Sending OTP:', otp, '→ To:', email);
 
   // HAMESHA pehle OTP screen pe dikhao — email sirf bonus hai
   showOtpOnScreen(otp, email);
 
   // file:// ya EmailJS missing → screen OTP kaafi hai
   if (typeof emailjs === 'undefined' || window.location.protocol === 'file:') {
-    console.warn('[KSpider] EmailJS unavailable or file:// — screen OTP shown.');
+    console.warn('[KSpider] EmailJS unavailable or file:// — screen OTP shown only.');
     return;
   }
 
   var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
-  // ── USER KO OTP EMAIL (template_uid677j ke variables) ──
+  // ── USER KO OTP + FEATURES EMAIL ──
+  // Template "To Email" field mein {{to_email}} daalna ZAROORI hai EmailJS template settings mein
   var userParams = {
-    user_name:         name,
-    user_email:        email,        // TO field — user ka email
-    to_name:           name,         // fallback var
-    to_email:          email,        // fallback var
-    reply_to:          email,
-    otp_code:          otp,
-    user_mobile:       mobile,
-    user_city:         city || 'N/A',
-    registration_date: dateStr,
-    platform:          'OTP Code: ' + otp + ' | K Spider AI Tool — www.kspiderai.in | ' + dateStr
+    to_name:       name,
+    to_email:      email,          // ← EmailJS template TO field: {{to_email}}
+    user_name:     name,           // fallback
+    user_email:    email,          // fallback
+    reply_to:      'kspider221206@gmail.com',
+    otp_code:      otp,
+    user_mobile:   mobile,
+    user_city:     city    || 'N/A',
+    reg_date:      dateStr,
+    // Site features — template mein {{features_list}} use karo
+    features_list: [
+      '🖼️ Image Master Pro — Convert, compress, passport photo',
+      '📄 Resume Builder — ATS-friendly AI resume generator',
+      '💬 WhatsApp Bulk Sender — Marketing tool',
+      '🎓 AI Teacher — NEET, JEE, UPSC, CBSE prep',
+      '💼 AI Business Consultant — Idea to plan in minutes',
+      '🧠 AI Prompt Engine — ChatGPT/Gemini prompts',
+      '🔄 Universal File Converter — Image, doc, audio, video',
+      '🩺 Doctor Elite Pro Max — Medical prescription tool',
+      '💊 Pharmacy Master Pro — GST billing & inventory',
+      '🕷️ 400+ Tools Collection — All in one platform',
+      '...aur bahut saare tools coming soon! 600+ planned!'
+    ].join('\n'),
+    site_url:      'https://www.kspiderai.in'
   };
 
-  // Try OTP template → user ko OTP jaaye
   emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
     .then(function(r) {
-      console.log('[KSpider] OTP Email sent to user! Status:', r.status);
-      showOtpStatus('✅ OTP <strong>' + email + '</strong> par bhi bheja gaya! Inbox + Spam check karo.<br>Ya neeche dikha OTP seedha use karo.', false);
+      console.log('[KSpider] OTP Email sent to user ✅ Status:', r.status);
+      showOtpStatus('✅ OTP <strong>' + email + '</strong> par bheja gaya! Inbox + Spam folder check karo.<br>Ya neeche screen pe dikhaya OTP seedha use karo.', false);
     })
     .catch(function(err) {
-      console.error('[KSpider] OTP Email failed. Status:', err.status, '| Reason:', err.text);
-      // Screen OTP already shown — sirf log karo, user ke liye OTP screen pe visible hai
+      console.error('[KSpider] OTP Email FAILED. Status:', err.status, '| Text:', err.text);
+      showOtpStatus('⚠️ Email nahi gaya — screen pe dikhaya OTP use karo neeche.', true);
     });
 
-  // ── ADMIN KO NOTIFICATION (naya registration alert) ──
-  var adminParams = {
-    user_name:         '🆕 NEW REGISTRATION — K Spider AI Tool',
-    user_email:        'kspider221206@gmail.com',  // Admin ka email
-    to_name:           'K Spider Admin',
-    to_email:          'kspider221206@gmail.com',
-    reply_to:          email,
-    user_mobile:       mobile,
-    otp_code:          '(Admin Notification)',
-    registration_date: dateStr,
-    platform: [
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      '🆕 NEW USER REGISTERED',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      'Name: ' + name,
-      'Email: ' + email,
-      'Mobile: ' + mobile,
-      'City: ' + (city || 'N/A'),
-      'Language: ' + (language || 'en'),
-      'Date: ' + dateStr,
-      'OTP Sent: ' + otp,
-      'Source: www.kspiderai.in',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-    ].join('\n')
-  };
-  emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
-    .then(function() { console.log('[KSpider] Admin notified ✅'); })
-    .catch(function(err) { console.warn('[KSpider] Admin notification failed:', err); });
+  // ── ADMIN KO NEW REGISTRATION ALERT ──
+  sendAdminAlert('NEW_REGISTRATION',
+    { name: name, email: email, mobile: mobile, city: city, language: language },
+    'OTP Sent: ' + otp
+  );
 }
 
 function verifyOTP() {
@@ -1992,24 +2038,8 @@ function verifyOTP() {
 
   closeM('otp-ov');
 
-  // Admin ko verified alert
-  if (typeof emailjs !== 'undefined') {
-    var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, {
-      user_name:  '✅ EMAIL VERIFIED — K Spider AI Tool',
-      user_email: 'kspider221206@gmail.com',
-      user_mobile: _pendingUser.mobile,
-      registration_date: dateStr,
-      platform: [
-        'USER VERIFIED SUCCESSFULLY:',
-        'Name: ' + _pendingUser.name,
-        'Email: ' + _pendingUser.email,
-        'Mobile: ' + _pendingUser.mobile,
-        'City: ' + (_pendingUser.city || 'N/A'),
-        'Verified At: ' + dateStr
-      ].join('\n')
-    }).catch(function(){});
-  }
+  // Admin ko EMAIL_VERIFIED alert — alag admin template se
+  sendAdminAlert('EMAIL_VERIFIED', _pendingUser, 'User ne OTP verify kiya successfully');
 
   updateUW();
   toast('🎉 Welcome, ' + _pendingUser.name + '! Email verify ho gaya — K Spider AI Tools access karo!', 'success', 7000);
@@ -2137,6 +2167,10 @@ function launchTool(url, toolId) {
   if (!u || !u.verified) { openM('gate-ov'); return false; }
   u.toolsUsed = (u.toolsUsed || 0) + 1;
   saveUser(u);
+
+  // Admin ko TOOL_LAUNCHED alert bhejo
+  sendAdminAlert('TOOL_LAUNCHED', u, 'Tool: ' + toolId + ' | URL: ' + url + ' | Total used: ' + u.toolsUsed);
+
   if (typeof gtag !== 'undefined') {
     gtag('event', 'tool_click', { event_category: 'kspider', event_label: toolId });
   }
