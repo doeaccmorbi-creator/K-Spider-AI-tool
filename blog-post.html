@@ -132,6 +132,13 @@
     .art-content hr{border:none;border-top:1px solid var(--br);margin:2em 0;}
     .in-content-ad{margin:2em 0;}
 
+    /* ── YOUTUBE EMBED ── */
+    .yt-embed-wrap{position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:var(--r12);margin:1.8em 0;background:#000;box-shadow:0 4px 24px rgba(0,0,0,.15);}
+    .yt-embed-wrap iframe{position:absolute;top:0;left:0;width:100%;height:100%;border:0;border-radius:var(--r12);}
+    .art-content iframe{max-width:100%;border-radius:var(--r8);}
+    /* Responsive iframe inside art-content even without wrapper */
+    .art-content > iframe, .art-content div > iframe{width:100%;}
+
     /* TAGS */
     .art-tags{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:28px 0;padding-top:20px;border-top:1px solid var(--br);}
     .art-tags-label{font-size:.72rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.5px;}
@@ -609,7 +616,7 @@
     var catEmoji = getCatEmoji(post.category);
     var readTime = calcReadTime(post.content);
     var initial = (post.author||'K')[0].toUpperCase();
-    var contentHtml = post.content || ('<p>' + escHtml(post.excerpt||'') + '</p>');
+    var contentHtml = autoEmbedYouTube(post.content || ('<p>' + escHtml(post.excerpt||'') + '</p>'));
     var headings = extractHeadings(post.content || '');
 
     var shareSection = '<div class="share-section">'
@@ -756,6 +763,21 @@
     var i = 0;
     return html.replace(/<(h[23])([^>]*)>/gi, function(m, tag, attrs) {
       return '<' + tag + attrs + ' id="h-' + (i++) + '">';
+    });
+  }
+
+  /* Auto-convert plain YouTube URLs in content to embedded players */
+  function autoEmbedYouTube(html) {
+    if (!html) return html;
+    /* Already has iframe — skip */
+    if (html.indexOf('<iframe') !== -1) return html;
+    /* Convert bare YouTube URLs on their own line/paragraph */
+    var ytPattern = /(?:<p>)?(https?:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([a-zA-Z0-9_-]{11})[^<\s]*)(?:<\/p>)?/g;
+    return html.replace(ytPattern, function(match, url, videoId) {
+      return '<div class="yt-embed-wrap">'
+        + '<iframe src="https://www.youtube.com/embed/' + videoId + '" '
+        + 'allowfullscreen loading="lazy" title="YouTube Video"></iframe>'
+        + '</div>';
     });
   }
   function scrollToH(i) {
