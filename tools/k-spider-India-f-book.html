@@ -2803,6 +2803,17 @@ ul { list-style: none; }
       <span style="color:#ef4444;font-weight:800">🛡️ Admin Panel</span>
       <span id="admin-pending-badge" style="background:#ef4444;color:#fff;font-size:9px;font-weight:800;border-radius:999px;padding:2px 6px;margin-left:4px;display:none">0</span>
     </div>
+    <!-- TIER 2 NAV ITEMS -->
+    <div class="nav-item" id="nav-leaderboard" onclick="navigateTo('leaderboard')">
+      <span class="nav-icon">🏆</span> Leaderboard
+    </div>
+    <div class="nav-item" id="nav-rewards" onclick="navigateTo('rewards')">
+      <span class="nav-icon">🎁</span> Daily Rewards
+      <span id="rewards-badge" style="background:#F59E0B;color:#fff;font-size:9px;font-weight:800;border-radius:999px;padding:2px 6px;margin-left:auto">NEW</span>
+    </div>
+    <div class="nav-item" id="nav-aiwriter" onclick="navigateTo('aiwriter')">
+      <span class="nav-icon">🤖</span> AI Post Writer
+    </div>
     <div class="nav-item" onclick="openPremiumModal()">
       <span class="nav-icon">⭐</span> Go Premium
     </div>
@@ -3372,6 +3383,133 @@ ul { list-style: none; }
           <div id="hashtag-check-result" style="margin-top:10px; display:none;"></div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         🏆 LEADERBOARD PAGE
+    ═══════════════════════════════════════ -->
+    <div id="page-leaderboard" class="page hidden">
+      <div style="max-width:700px;margin:0 auto;padding:20px 16px">
+        <div style="background:linear-gradient(135deg,#F59E0B,#D97706);border-radius:16px;padding:24px;margin-bottom:20px;color:#fff;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:6px">🏆</div>
+          <div style="font-size:1.4rem;font-weight:800">K Spider Leaderboard</div>
+          <div style="font-size:12px;opacity:.85;margin-top:4px">Top creators — live rankings!</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px">
+            <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px"><div style="font-size:1.3rem;font-weight:800" id="lb-stat-posts">-</div><div style="font-size:10px;opacity:.8">Total Posts</div></div>
+            <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px"><div style="font-size:1.3rem;font-weight:800" id="lb-stat-users">-</div><div style="font-size:10px;opacity:.8">Active Users</div></div>
+            <div style="background:rgba(255,255,255,.15);border-radius:10px;padding:10px"><div style="font-size:1.3rem;font-weight:800" id="lb-stat-likes">-</div><div style="font-size:10px;opacity:.8">Total Likes</div></div>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px">
+          <button onclick="loadLeaderboard('posts')" id="lb-tab-posts" style="flex:1;padding:9px;border-radius:999px;border:none;background:#F59E0B;color:#fff;font-weight:700;font-size:12px;cursor:pointer">📝 Top Posters</button>
+          <button onclick="loadLeaderboard('likes')" id="lb-tab-likes" style="flex:1;padding:9px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-weight:700;font-size:12px;cursor:pointer">❤️ Most Liked</button>
+          <button onclick="loadLeaderboard('streak')" id="lb-tab-streak" style="flex:1;padding:9px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-weight:700;font-size:12px;cursor:pointer">🔥 Streaks</button>
+        </div>
+        <div id="leaderboard-list"><div style="text-align:center;padding:30px;color:var(--text-muted)">⏳ Loading rankings...</div></div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         🎁 DAILY REWARDS PAGE
+    ═══════════════════════════════════════ -->
+    <div id="page-rewards" class="page hidden">
+      <div style="max-width:600px;margin:0 auto;padding:20px 16px">
+        <div style="background:linear-gradient(135deg,#7C3AED,#4F46E5);border-radius:16px;padding:28px;margin-bottom:20px;color:#fff;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:8px">🎁</div>
+          <div style="font-size:1.4rem;font-weight:800">Daily Rewards</div>
+          <div style="font-size:12px;opacity:.85;margin-top:4px">Login every day — earn K Spider Points!</div>
+          <div style="background:rgba(255,255,255,.15);border-radius:12px;padding:14px;margin-top:16px;display:inline-block;min-width:160px">
+            <div style="font-size:2rem;font-weight:900" id="reward-points">0</div>
+            <div style="font-size:11px;opacity:.8">K Spider Points 🪙</div>
+          </div>
+        </div>
+        <div style="background:var(--bg-card);border:1.5px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px;text-align:center">
+          <div style="font-size:1.8rem;margin-bottom:4px">🔥</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--text-primary)" id="reward-streak">0</div>
+          <div style="font-size:12px;color:var(--text-muted)">Day Streak</div>
+        </div>
+        <div style="background:var(--bg-card);border:1.5px solid var(--border);border-radius:16px;padding:20px;margin-bottom:16px">
+          <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);margin-bottom:14px;text-align:center">📅 This Week</div>
+          <div id="reward-calendar" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px"></div>
+        </div>
+        <button id="reward-claim-btn" onclick="claimDailyReward()" style="width:100%;padding:16px;background:linear-gradient(135deg,#7C3AED,#4F46E5);color:#fff;border:none;border-radius:14px;font-size:1rem;font-weight:800;cursor:pointer;box-shadow:0 4px 20px rgba(124,58,237,.4)">🎁 Claim Today's Reward</button>
+        <div style="margin-top:20px;display:flex;flex-direction:column;gap:8px">
+          <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);margin-bottom:4px">🪙 How to Earn Points</div>
+          ${[['📅','Daily Login','+10 points every day','+10'],['📝','Create a Post','+5 points per post','+5'],['🔥','7-Day Streak','Bonus 50 points!','+50'],['❤️','Get 10 Likes','+20 points milestone','+20']].map(([icon,title,desc,pts])=>`
+          <div style="background:var(--bg-card);border:1.5px solid var(--border);border-radius:12px;padding:14px;display:flex;align-items:center;gap:12px">
+            <div style="font-size:22px">${icon}</div>
+            <div><div style="font-weight:700;font-size:.85rem">${title}</div><div style="font-size:11px;color:var(--text-muted)">${desc}</div></div>
+            <div style="margin-left:auto;font-weight:800;color:#F59E0B">${pts} 🪙</div>
+          </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════
+         🤖 AI POST WRITER PAGE
+    ═══════════════════════════════════════ -->
+    <div id="page-aiwriter" class="page hidden">
+      <div style="max-width:700px;margin:0 auto;padding:20px 16px">
+        <div style="background:linear-gradient(135deg,#10B981,#059669);border-radius:16px;padding:24px;margin-bottom:20px;color:#fff">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div style="width:48px;height:48px;background:rgba(255,255,255,.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:24px">🤖</div>
+            <div><div style="font-size:1.3rem;font-weight:800">AI Post Writer</div><div style="font-size:12px;opacity:.85">K Spider AI likhega aapke liye — Hindi, English, Gujarati!</div></div>
+          </div>
+        </div>
+        <div style="background:var(--bg-card);border:1.5px solid var(--border);border-radius:16px;padding:20px;margin-bottom:14px">
+          <div style="font-weight:800;font-size:.9rem;margin-bottom:12px">✍️ Topic likho:</div>
+          <input id="ai-topic" type="text" placeholder="e.g. Independence Day, Cricket, Motivational, Business..." style="width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;color:var(--text-primary);background:var(--bg-input);outline:none;margin-bottom:10px">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px">🌍 Language</label>
+              <select id="ai-lang" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-primary);background:var(--bg-card);outline:none">
+                <option value="English">🇺🇸 English</option>
+                <option value="Hindi">🇮🇳 Hindi (हिंदी)</option>
+                <option value="Gujarati">🇮🇳 Gujarati (ગુજરાતી)</option>
+                <option value="Marathi">🇮🇳 Marathi (मराठी)</option>
+                <option value="Hinglish">🇮🇳 Hinglish</option>
+              </select>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:5px">🎭 Tone</label>
+              <select id="ai-tone" style="width:100%;padding:9px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;color:var(--text-primary);background:var(--bg-card);outline:none">
+                <option value="motivational">💪 Motivational</option>
+                <option value="funny">😂 Funny</option>
+                <option value="informative">📚 Informative</option>
+                <option value="emotional">❤️ Emotional</option>
+                <option value="professional">💼 Professional</option>
+                <option value="promotional">📢 Promotional</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-bottom:14px">
+            <label style="font-size:11px;font-weight:700;color:var(--text-muted);display:block;margin-bottom:6px">📱 Post Type</label>
+            <div style="display:flex;gap:7px;flex-wrap:wrap">
+              <button onclick="selectPostType(this,'social')" class="ai-type-btn" style="padding:7px 14px;border-radius:999px;border:1.5px solid #10B981;background:#ECFDF5;color:#059669;font-size:11px;font-weight:700;cursor:pointer">📱 Social</button>
+              <button onclick="selectPostType(this,'caption')" class="ai-type-btn" style="padding:7px 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:11px;font-weight:700;cursor:pointer">📸 Caption</button>
+              <button onclick="selectPostType(this,'story')" class="ai-type-btn" style="padding:7px 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:11px;font-weight:700;cursor:pointer">📖 Story</button>
+              <button onclick="selectPostType(this,'hashtag')" class="ai-type-btn" style="padding:7px 14px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:11px;font-weight:700;cursor:pointer"># Hashtags</button>
+            </div>
+          </div>
+          <button onclick="generateAIPost()" id="ai-generate-btn" style="width:100%;padding:14px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:12px;font-size:.95rem;font-weight:800;cursor:pointer">🤖 Generate Post with AI</button>
+        </div>
+        <div id="ai-output-box" style="display:none;background:var(--bg-card);border:1.5px solid #10B981;border-radius:16px;padding:20px;margin-bottom:14px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+            <div style="font-weight:800;font-size:.9rem;color:#10B981">✅ AI Generated Post</div>
+            <button onclick="generateAIPost()" style="padding:5px 12px;background:#ECFDF5;color:#059669;border:1.5px solid #10B981;border-radius:999px;font-size:10px;font-weight:700;cursor:pointer">🔄 Regenerate</button>
+          </div>
+          <div id="ai-output-text" style="font-size:13.5px;color:var(--text-primary);line-height:1.8;white-space:pre-wrap;background:var(--bg-input);border-radius:10px;padding:14px;min-height:80px"></div>
+          <div style="display:flex;gap:8px;margin-top:12px">
+            <button onclick="copyAIPost()" style="flex:1;padding:10px;background:var(--bg-hover);color:var(--text-primary);border:1.5px solid var(--border);border-radius:10px;font-weight:700;font-size:12px;cursor:pointer">📋 Copy</button>
+            <button onclick="postAIToFeed()" style="flex:2;padding:10px;background:linear-gradient(135deg,#1877F2,#1558b0);color:#fff;border:none;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer">📤 Post to Feed</button>
+            <button onclick="shareAIToWhatsApp()" style="flex:1;padding:10px;background:#25D366;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer">📱 WA</button>
+          </div>
+        </div>
+        <div style="background:var(--bg-card);border:1.5px solid var(--border);border-radius:14px;padding:16px">
+          <div style="font-weight:800;font-size:.85rem;margin-bottom:10px">💡 Quick Topics</div>
+          <div style="display:flex;flex-wrap:wrap;gap:7px" id="ai-quick-topics"></div>
+        </div>
       </div>
     </div>
 
@@ -4204,6 +4342,9 @@ function navigateTo(page) {
   if(page === 'explore') renderExplore();
   if(page === 'reels') renderReels();
   if(page === 'analytics') setTimeout(renderAnalyticsPage, 100);
+  if(page === 'leaderboard') setTimeout(()=>loadLeaderboard('posts'), 100);
+  if(page === 'rewards') setTimeout(initRewardsPage, 100);
+  if(page === 'aiwriter') setTimeout(initAIWriter, 100);
 }
 
 /* ============================================================
@@ -7289,6 +7430,375 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
   }, 1500);
+});
+
+/* ============================================================
+   🏆 TIER 2 — FEATURE 1: LEADERBOARD
+============================================================ */
+let _lbTab = 'posts';
+
+async function loadLeaderboard(tab) {
+  _lbTab = tab;
+  // Style tabs
+  ['posts','likes','streak'].forEach(t => {
+    const el = document.getElementById('lb-tab-' + t);
+    if (el) { el.style.background = t===tab?'#F59E0B':'var(--bg-card)'; el.style.color = t===tab?'#fff':'var(--text-primary)'; el.style.border = t===tab?'none':'1.5px solid var(--border)'; }
+  });
+
+  const list = document.getElementById('leaderboard-list');
+  if (!list) return;
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">⏳ Loading...</div>';
+
+  if (!FB_READY) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Firebase required for leaderboard</div>';
+    return;
+  }
+
+  try {
+    let snap;
+    if (tab === 'posts') {
+      snap = await DB.collection('posts').get();
+    } else {
+      snap = await DB.collection('posts').get();
+    }
+
+    // Aggregate by author
+    const authorMap = {};
+    snap.forEach(doc => {
+      const p = doc.data();
+      if (!p.authorId) return;
+      if (!authorMap[p.authorId]) {
+        authorMap[p.authorId] = { name: p.authorName || 'Unknown', avatar: p.authorAvatar || '', posts: 0, likes: 0 };
+      }
+      authorMap[p.authorId].posts++;
+      authorMap[p.authorId].likes += (p.likes || 0);
+    });
+
+    let ranked = Object.entries(authorMap).map(([uid, d]) => ({ uid, ...d }));
+    if (tab === 'posts') ranked.sort((a,b) => b.posts - a.posts);
+    else if (tab === 'likes') ranked.sort((a,b) => b.likes - a.likes);
+    else ranked.sort((a,b) => b.posts - a.posts); // streak uses posts as proxy
+
+    // Update stats
+    const totalPosts = snap.size;
+    const totalUsers = ranked.length;
+    const totalLikes = ranked.reduce((s,u) => s + u.likes, 0);
+    const lbPosts = document.getElementById('lb-stat-posts');
+    const lbUsers = document.getElementById('lb-stat-users');
+    const lbLikes = document.getElementById('lb-stat-likes');
+    if (lbPosts) lbPosts.textContent = totalPosts;
+    if (lbUsers) lbUsers.textContent = totalUsers;
+    if (lbLikes) lbLikes.textContent = totalLikes;
+
+    if (ranked.length === 0) {
+      list.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:36px">🏆</div><div style="margin-top:8px;font-weight:700">No posts yet — be the first!</div></div>';
+      return;
+    }
+
+    const medals = ['🥇','🥈','🥉'];
+    const myId = STATE.currentUser?.id;
+    list.innerHTML = ranked.slice(0, 20).map((u, i) => {
+      const isMe = u.uid === myId;
+      const medal = medals[i] || `#${i+1}`;
+      const score = tab === 'likes' ? `❤️ ${u.likes} likes` : `📝 ${u.posts} posts`;
+      return `
+        <div style="background:${isMe?'linear-gradient(135deg,#EEF3FF,#E0EAFF)':'var(--bg-card)'};border:1.5px solid ${isMe?'#1877F2':'var(--border)'};border-radius:14px;padding:14px;margin-bottom:8px;display:flex;align-items:center;gap:12px">
+          <div style="font-size:${i<3?'1.5rem':'1rem'};font-weight:800;min-width:32px;text-align:center">${medal}</div>
+          <img src="${u.avatar||`https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;border:2px solid ${i===0?'#F59E0B':i===1?'#9CA3AF':i===2?'#CD7F32':'var(--border)'}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'">
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary)">${u.name} ${isMe?'<span style="font-size:10px;background:#1877F2;color:#fff;border-radius:999px;padding:1px 7px">You</span>':''}</div>
+            <div style="font-size:11px;color:var(--text-muted)">${score}</div>
+          </div>
+          ${i<3?`<div style="font-size:11px;font-weight:800;color:${i===0?'#F59E0B':i===1?'#9CA3AF':'#CD7F32'}">${i===0?'Champion':i===1?'Runner Up':'3rd Place'}</div>`:''}
+        </div>`;
+    }).join('');
+
+  } catch(e) {
+    list.innerHTML = `<div style="color:#DC2626;padding:20px;text-align:center">❌ Error: ${e.message}</div>`;
+  }
+}
+
+/* ============================================================
+   🎁 TIER 2 — FEATURE 2: DAILY REWARDS & STREAK
+============================================================ */
+function getRewardData() {
+  const uid = STATE.currentUser?.id || 'guest';
+  const key = 'ks_rewards_' + uid;
+  const saved = localStorage.getItem(key);
+  if (saved) return JSON.parse(saved);
+  return { points: 0, streak: 0, lastClaim: null, history: [] };
+}
+
+function saveRewardData(data) {
+  const uid = STATE.currentUser?.id || 'guest';
+  localStorage.setItem('ks_rewards_' + uid, JSON.stringify(data));
+  // Also sync to Firebase
+  if (FB_READY && STATE.currentUser?.isFirebase) {
+    DB.collection('users').doc(STATE.currentUser.id).update({
+      rewardPoints: data.points,
+      streak: data.streak,
+      lastClaim: data.lastClaim
+    }).catch(()=>{});
+  }
+}
+
+function initRewardsPage() {
+  const data = getRewardData();
+  const pointsEl = document.getElementById('reward-points');
+  const streakEl = document.getElementById('reward-streak');
+  if (pointsEl) pointsEl.textContent = data.points;
+  if (streakEl) streakEl.textContent = data.streak;
+
+  // Render 7-day calendar
+  const cal = document.getElementById('reward-calendar');
+  if (cal) {
+    const days = ['M','T','W','T','F','S','S'];
+    const today = new Date().getDay();
+    cal.innerHTML = days.map((d, i) => {
+      const claimed = data.streak > 0 && i < Math.min(data.streak, 7);
+      return `<div style="text-align:center;padding:8px 4px;border-radius:10px;background:${claimed?'linear-gradient(135deg,#7C3AED,#4F46E5)':'var(--bg-hover)'};border:1.5px solid ${claimed?'transparent':'var(--border)'}">
+        <div style="font-size:14px">${claimed?'✅':'⬜'}</div>
+        <div style="font-size:9px;font-weight:700;color:${claimed?'#fff':'var(--text-muted)'};margin-top:2px">${d}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // Check if already claimed today
+  const btn = document.getElementById('reward-claim-btn');
+  if (btn && data.lastClaim) {
+    const last = new Date(data.lastClaim);
+    const now = new Date();
+    const sameDay = last.toDateString() === now.toDateString();
+    if (sameDay) {
+      btn.textContent = '✅ Already claimed today! Come back tomorrow';
+      btn.style.background = '#6B7280';
+      btn.disabled = true;
+    }
+  }
+}
+
+function claimDailyReward() {
+  const data = getRewardData();
+  const now = new Date();
+
+  if (data.lastClaim) {
+    const last = new Date(data.lastClaim);
+    if (last.toDateString() === now.toDateString()) {
+      showToast('✅ Already claimed today! Come back tomorrow 😊', 'info');
+      return;
+    }
+    // Check if streak continues (claimed yesterday)
+    const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1);
+    if (last.toDateString() === yesterday.toDateString()) {
+      data.streak++;
+    } else {
+      data.streak = 1; // reset streak
+    }
+  } else {
+    data.streak = 1;
+  }
+
+  // Calculate points
+  let points = 10; // base daily
+  if (data.streak === 7) { points += 50; showToast('🔥 7-DAY STREAK BONUS! +50 extra points!', 'success'); }
+  else if (data.streak % 7 === 0) { points += 30; }
+  
+  data.points += points;
+  data.lastClaim = now.toISOString();
+  data.history = data.history || [];
+  data.history.unshift({ date: now.toDateString(), points, streak: data.streak });
+  saveRewardData(data);
+
+  // Update UI
+  const pointsEl = document.getElementById('reward-points');
+  const streakEl = document.getElementById('reward-streak');
+  if (pointsEl) pointsEl.textContent = data.points;
+  if (streakEl) streakEl.textContent = data.streak;
+
+  const btn = document.getElementById('reward-claim-btn');
+  if (btn) { btn.textContent = `✅ Claimed! +${points} points`; btn.style.background = '#10B981'; btn.disabled = true; }
+
+  // Celebration
+  showToast(`🎁 +${points} points! Streak: ${data.streak} days 🔥`, 'success');
+  initRewardsPage();
+
+  // Award points for post creation
+  STATE.currentUser._rewardPoints = data.points;
+}
+
+// Give reward points when user posts
+function awardPostPoints() {
+  if (!STATE.currentUser?.id) return;
+  const data = getRewardData();
+  data.points += 5;
+  saveRewardData(data);
+}
+
+/* ============================================================
+   🤖 TIER 2 — FEATURE 3: AI POST WRITER
+============================================================ */
+let _aiPostType = 'social';
+const AI_QUICK_TOPICS = [
+  '🇮🇳 Independence Day','🏏 Cricket','💪 Motivation','🌅 Good Morning',
+  '🎂 Birthday','💼 Business','🌿 Health & Fitness','📚 Education',
+  '❤️ Love & Friendship','🎊 Festival','🌧️ Monsoon','🙏 Spiritual',
+  '💰 Money & Success','🤖 Technology','🌍 Environment','👨‍👩‍👧 Family'
+];
+
+function initAIWriter() {
+  const topicsEl = document.getElementById('ai-quick-topics');
+  if (topicsEl && !topicsEl.children.length) {
+    topicsEl.innerHTML = AI_QUICK_TOPICS.map(t =>
+      `<button onclick="document.getElementById('ai-topic').value='${t.replace(/['"]/g,'')}'" style="padding:6px 12px;border-radius:999px;border:1.5px solid var(--border);background:var(--bg-card);color:var(--text-primary);font-size:11px;font-weight:600;cursor:pointer;transition:all .15s" onmouseover="this.style.borderColor='#10B981';this.style.color='#059669'" onmouseout="this.style.borderColor='';this.style.color=''">${t}</button>`
+    ).join('');
+  }
+}
+
+function selectPostType(btn, type) {
+  _aiPostType = type;
+  document.querySelectorAll('.ai-type-btn').forEach(b => {
+    b.style.borderColor = 'var(--border)';
+    b.style.background = 'var(--bg-card)';
+    b.style.color = 'var(--text-primary)';
+  });
+  btn.style.borderColor = '#10B981';
+  btn.style.background = '#ECFDF5';
+  btn.style.color = '#059669';
+}
+
+// AI Post templates — used as fallback when no API
+const AI_TEMPLATES = {
+  motivational: {
+    English: [
+      "🌟 Every morning is a new opportunity to become better than yesterday!\n\n💪 Success doesn't come overnight, but every small step counts.\n\nKeep moving, keep growing! You've got this! 🚀\n\n#Motivation #Success #KSpiderAI #NeverGiveUp",
+      "✨ The only limit is the one you set for yourself!\n\n🔥 Dream big, work hard, stay humble.\n\nYour comeback story starts TODAY! 💯\n\n#Inspiration #Mindset #KSpiderAI #Goals",
+    ],
+    Hindi: [
+      "🌟 हर सुबह एक नई शुरुआत है!\n\n💪 सफलता रातोंरात नहीं मिलती, लेकिन हर छोटा कदम मायने रखता है।\n\nचलते रहो, बढ़ते रहो! तुम यह कर सकते हो! 🚀\n\n#प्रेरणा #सफलता #KSpiderAI",
+      "✨ जीवन में आगे बढ़ना है तो खुद पर विश्वास रखो!\n\n🔥 मेहनत कभी झूठ नहीं बोलती।\n\nआज से शुरुआत करो! 💯\n\n#हिंदी #मोटिवेशन #KSpiderAI",
+    ],
+    Gujarati: [
+      "🌟 દરેક સવાર એ નવી શરૂઆત છે!\n\n💪 સફળતા એ રાતોરાત નથી મળતી, પણ દરેક નાનો કદમ મહત્વનો છે.\n\nચાલતા રહો, વધતા રહો! 🚀\n\n#પ્રેરણા #સફળતા #KSpiderAI",
+    ],
+    Hinglish: [
+      "🌟 Yaar, har subah ek naya chance hai kuch great karne ka!\n\n💪 Life mein shortcuts nahi hote, but consistency zaroor kaam aati hai!\n\nChallo bhai, aaj se shuru karo! 🔥\n\n#Motivation #Hinglish #KSpiderAI",
+    ],
+  },
+  funny: {
+    English: ["😂 My WiFi password is the motivation I need every morning! 📶\n\nJust kidding — it's actually my alarm snooze count! 😴\n\n#Funny #Relatable #KSpiderAI #Mood"],
+    Hindi: ["😂 जब boss बोलता है 'थोड़ा और काम करो' और मेरा दिमाग बोलता है 'थोड़ी और छुट्टी लो'! 😴\n\n#हास्य #Relatable #KSpiderAI"],
+    Gujarati: ["😂 ઘરે pizza order કર્યો, delivery man ઘર ન મળ્યું! 🍕\n\nBhai, Google Maps update karo! 😅\n\n#ગુજરાતી #Funny #KSpiderAI"],
+    Hinglish: ["😂 Exam ke din: 'Kal se padhunga'\nResult ke din: 'Kal se padhunga'\nLife mein: 'KAL SE PADHUNGA'! 😴\n\n#Relatable #Funny #KSpiderAI"],
+  },
+  informative: {
+    English: ["📚 Did you know? {topic} is one of the most trending topics right now!\n\n🔍 Here are 3 key facts you should know:\n1️⃣ It affects millions of people daily\n2️⃣ Experts say it's growing fast\n3️⃣ You can benefit from learning about it!\n\n#Facts #KnowledgeIsPower #KSpiderAI"],
+    Hindi: ["📚 क्या आप जानते हैं? {topic} आजकल बहुत ट्रेंडिंग है!\n\n🔍 जानिए 3 महत्वपूर्ण बातें:\n1️⃣ यह लाखों लोगों को प्रभावित करता है\n2️⃣ विशेषज्ञों के अनुसार यह तेजी से बढ़ रहा है\n3️⃣ आप इससे फायदा उठा सकते हैं!\n\n#ज्ञान #KSpiderAI"],
+    Gujarati: ["📚 શું તમે જાણો છો? {topic} આ દિવસોમાં ખૂબ ટ્રેન્ડ છે!\n\n#જ્ઞાન #KSpiderAI"],
+    Hinglish: ["📚 Yaar! {topic} ke baare mein yeh 3 cheezein jaanno:\n1️⃣ Yeh bahut fast grow kar raha hai\n2️⃣ Experts bhi hairan hain\n3️⃣ Tum bhi iska fayda utha sakte ho!\n\n#Facts #KSpiderAI"],
+  },
+  promotional: {
+    English: ["🚀 Exciting news! K Spider AI has just launched something AMAZING!\n\n✨ 400+ FREE AI Tools at your fingertips\n💡 No subscription needed\n🌐 Works on any device\n\nTry it NOW 👉 kspiderai.in\n\n#KSpiderAI #FreeTools #India #AI"],
+    Hindi: ["🚀 खुशखबरी! K Spider AI पर अब 400+ मुफ्त AI टूल्स!\n\n✨ कोई सब्सक्रिप्शन नहीं\n💡 किसी भी डिवाइस पर काम करता है\n\nअभी देखें 👉 kspiderai.in\n\n#KSpiderAI #मुफ्तटूल्स #भारत"],
+    Gujarati: ["🚀 ખુશખબર! K Spider AI પર 400+ ફ્રી AI ટૂલ્સ!\n\n✨ કોઈ subscription નહીં\n\nહમણાં જ જુઓ 👉 kspiderai.in\n\n#KSpiderAI #ગુજરાત"],
+    Hinglish: ["🚀 Bhai! K Spider AI ne kuch ZABARDAST launch kiya hai!\n\n400+ FREE AI tools - koi subscription nahi!\n\nAbhi try karo 👉 kspiderai.in\n\n#KSpiderAI #Free #India"],
+  },
+};
+
+function getAITemplate(lang, tone, topic) {
+  const toneTemplates = AI_TEMPLATES[tone] || AI_TEMPLATES.motivational;
+  const langTemplates = toneTemplates[lang] || toneTemplates.English || toneTemplates[Object.keys(toneTemplates)[0]];
+  let post = langTemplates[Math.floor(Math.random() * langTemplates.length)];
+  // Replace {topic} placeholder
+  if (topic) post = post.replace(/\{topic\}/g, topic);
+  // Inject topic into post if not already mentioned
+  if (topic && !post.toLowerCase().includes(topic.toLowerCase().slice(0,5))) {
+    post = `✨ ${topic} ke baare mein:\n\n` + post;
+  }
+  return post;
+}
+
+function generateAIPost() {
+  const topic = document.getElementById('ai-topic')?.value?.trim() || 'K Spider AI';
+  const lang = document.getElementById('ai-lang')?.value || 'English';
+  const tone = document.getElementById('ai-tone')?.value || 'motivational';
+  const btn = document.getElementById('ai-generate-btn');
+
+  if (btn) { btn.disabled = true; btn.textContent = '🤖 Generating...'; }
+
+  // Simulate AI thinking
+  setTimeout(() => {
+    const post = getAITemplate(lang, tone, topic);
+    const outputBox = document.getElementById('ai-output-box');
+    const outputText = document.getElementById('ai-output-text');
+    if (outputText) outputText.textContent = post;
+    if (outputBox) outputBox.style.display = 'block';
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Generate Post with AI'; }
+    outputBox?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    showToast('✅ Post generated!', 'success');
+  }, 1200);
+}
+
+function copyAIPost() {
+  const text = document.getElementById('ai-output-text')?.textContent;
+  if (!text) return;
+  navigator.clipboard?.writeText(text).then(() => showToast('📋 Copied!', 'success')).catch(() => {});
+}
+
+async function postAIToFeed() {
+  const text = document.getElementById('ai-output-text')?.textContent;
+  if (!text) { showToast('❌ Generate a post first!', 'error'); return; }
+  const input = document.getElementById('post-text-input');
+  if (input) {
+    input.value = text;
+    navigateTo('feed');
+    setTimeout(() => { window.submitPost(); }, 300);
+    awardPostPoints();
+  }
+}
+
+function shareAIToWhatsApp() {
+  const text = document.getElementById('ai-output-text')?.textContent;
+  if (!text) { showToast('❌ Generate a post first!', 'error'); return; }
+  const msg = encodeURIComponent(text + '\n\n🚀 Created with K Spider AI — kspiderai.in');
+  window.open('https://wa.me/?text=' + msg, '_blank');
+}
+
+/* ============================================================
+   📊 TIER 2 — FEATURE 4: POST ANALYTICS (view count tracking)
+============================================================ */
+function trackPostView(postId) {
+  if (!FB_READY || !postId) return;
+  const myId = STATE.currentUser?.id;
+  // Use set with merge so each user only counts once per post
+  DB.collection('posts').doc(postId).collection('views').doc(myId || 'anon_' + Date.now()).set({
+    uid: myId || null, ts: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true }).then(() => {
+    DB.collection('posts').doc(postId).update({ views: firebase.firestore.FieldValue.increment(1) }).catch(()=>{});
+  }).catch(()=>{});
+}
+
+// Hook into renderPosts to track views
+const _origRenderPosts = window.renderPosts;
+if (typeof renderPosts === 'function') {
+  window._renderPostsHooked = true;
+}
+
+// Initialize all Tier 2 features on page load
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    // Auto-claim check on load
+    const data = getRewardData();
+    if (data.lastClaim) {
+      const last = new Date(data.lastClaim);
+      const now = new Date();
+      const daysSince = Math.floor((now - last) / (1000*60*60*24));
+      if (daysSince >= 1 && daysSince < 2) {
+        // Show reminder badge
+        const badge = document.getElementById('rewards-badge');
+        if (badge) { badge.textContent = '🎁 CLAIM'; badge.style.background = '#7C3AED'; }
+      }
+    }
+  }, 2000);
 });
 
 // Firebase init handles DOMContentLoaded above
