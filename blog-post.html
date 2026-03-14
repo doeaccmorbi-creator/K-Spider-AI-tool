@@ -465,15 +465,24 @@
     var id = getPostId();
     if (!id) { showError('No post specified.', 'Go to Blog'); return; }
 
+    /* STEP 1: Load sample data immediately so article renders fast */
+    ALL_POSTS = (typeof SAMPLE_POSTS !== 'undefined' && Array.isArray(SAMPLE_POSTS) && SAMPLE_POSTS.length)
+                  ? SAMPLE_POSTS
+                  : getBuiltinSamples();
+    renderArticle(id);
+
+    /* STEP 2: Try Google Sheet in background — update if found */
     ksFetchCSV(
       function(csv) {
         var rows = parseCSV(csv);
-        ALL_POSTS = csvRowsToPosts(rows);
-        renderArticle(id);
+        var posts = csvRowsToPosts(rows);
+        if (posts.length) {
+          ALL_POSTS = posts;
+          renderArticle(id); /* Re-render with real data */
+        }
       },
       function() {
-        ALL_POSTS = (typeof SAMPLE_POSTS !== 'undefined' && SAMPLE_POSTS) ? SAMPLE_POSTS : getBuiltinSamples();
-        renderArticle(id);
+        /* Already showing sample data — nothing to do */
       }
     );
   }
