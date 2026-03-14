@@ -1331,48 +1331,54 @@
   }
 
   /* ══ FETCH FROM GOOGLE SHEET (CSV) with CORS Proxy Fallbacks ══ */
-  var CORS_PROXIES = [
-    '',  // Direct first
+  var KS_PROXIES = [
+    '',
     'https://api.allorigins.win/raw?url=',
     'https://corsproxy.io/?url=',
     'https://api.codetabs.com/v1/proxy?quest='
-    'https://thingproxy.freeboard.io/fetch/'
   ];
   var _proxyIdx = 0;
 
   function fetchBlogPosts() {
-    showSkeletons();
+    /* STEP 1: Show sample data IMMEDIATELY — page is never blank */
+    ALL_POSTS = (typeof SAMPLE_POSTS !== 'undefined' && Array.isArray(SAMPLE_POSTS) && SAMPLE_POSTS.length)
+                  ? SAMPLE_POSTS
+                  : getBuiltinSamples();
+    initBlog();
+    /* STEP 2: Try to fetch real Google Sheet data in background */
     _proxyIdx = 0;
-    tryFetch();
+    _tryFetch();
   }
 
-  function tryFetch() {
-    if (_proxyIdx >= CORS_PROXIES.length) {
-      _log.warn('KSpider Blog: All fetch attempts failed. Using sample data.');
-      ALL_POSTS = (typeof SAMPLE_POSTS !== 'undefined') ? SAMPLE_POSTS : getBuiltinSamples();
-      initBlog();
+  function _tryFetch() {
+    if (_proxyIdx >= KS_PROXIES.length) {
+      _log.warn('All fetch attempts failed — showing sample data.');
       return;
     }
-    var proxy = CORS_PROXIES[_proxyIdx];
+    var proxy = KS_PROXIES[_proxyIdx];
     var url = proxy ? proxy + encodeURIComponent(BLOG_CONFIG.csvUrl) : BLOG_CONFIG.csvUrl;
-    fetch(url, { cache: 'no-cache' })
+    var attempt = _proxyIdx;
+    fetch(url, { method: 'GET', cache: 'no-cache' })
       .then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();
       })
       .then(function(csv) {
+        if (!csv || csv.length < 20 || csv.indexOf(',') === -1) {
+          throw new Error('Response is not valid CSV');
+        }
         var rows = parseCSV(csv);
-        if (!rows || rows.length < 2) throw new Error('Empty/invalid CSV');
+        if (!rows || rows.length < 2) throw new Error('Empty CSV');
         var posts = csvRowsToPosts(rows);
-        if (!posts.length) throw new Error('No valid posts parsed');
+        if (!posts.length) throw new Error('No valid posts in sheet');
         ALL_POSTS = posts;
         initBlog();
-        if (_proxyIdx > 0) _log.log('KSpider Blog: Loaded via proxy #' + _proxyIdx);
+        if (attempt > 0) _log.log('Loaded via proxy #' + attempt);
       })
       .catch(function(err) {
-        _log.warn('KSpider Blog: Attempt ' + (_proxyIdx + 1) + ' failed (' + err.message + '). Trying next...');
+        _log.warn('Attempt ' + (attempt + 1) + ' failed: ' + err.message);
         _proxyIdx++;
-        tryFetch();
+        _tryFetch();
       });
   }
 
