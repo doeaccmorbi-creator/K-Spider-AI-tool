@@ -684,7 +684,7 @@
     </div>
 
     <!-- ══ GOOGLE SHEET SETUP PANEL ══ -->
-    <div id="ks-setup-wrap" style="padding:12px 24px 0;">
+    <div id="ks-setup-wrap" style="display:none;padding:12px 24px 0;">
       <div id="ks-setup-panel" style="background:linear-gradient(135deg,#fffbeb,#fef3c7);border:2px solid #f59e0b;border-radius:14px;padding:18px 20px;font-size:.8rem;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
           <span style="font-weight:800;font-size:.9rem;color:#92400e;">⚙️ Google Sheet Setup — Blog Data Yahan Se Aata Hai</span>
@@ -1886,17 +1886,15 @@
       });
   }
 
-  /* On page load — restore saved URL and auto-load */
+  /* On page load — always use hardcoded GAS URL, setup panel hidden */
   document.addEventListener('DOMContentLoaded', function() {
-    var savedUrl = localStorage.getItem('ks_blog_csv_url') || _KS_CSV;
-    var inp = document.getElementById('ks-csv-input');
-    if (inp) inp.value = savedUrl;
-
-    /* Hide setup panel if already configured before */
-    if (localStorage.getItem('ks_setup_hidden') === '1') {
-      var sw = document.getElementById('ks-setup-wrap');
-      if (sw) sw.style.display = 'none';
+    /* Always override with hardcoded GAS URL — no localStorage dependency */
+    if (typeof _GAS_URL !== 'undefined' && _GAS_URL) {
+      if (typeof BLOG_CONFIG !== 'undefined') BLOG_CONFIG.gasUrl = _GAS_URL;
     }
+    /* Keep setup panel hidden always */
+    var sw = document.getElementById('ks-setup-wrap');
+    if (sw) sw.style.display = 'none';
   });
   </script>
 </body>
