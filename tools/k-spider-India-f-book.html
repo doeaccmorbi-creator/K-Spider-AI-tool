@@ -5942,13 +5942,14 @@ const _analyticsPageHook = () => { setTimeout(renderAnalyticsPage, 100); };
    STEP 5: Enable Realtime Database (start in test mode)
    ──────────────────────────────────────────────────────── */
 const FB_CONFIG = {
-  apiKey:            "PASTE_YOUR_API_KEY_HERE",
-  authDomain:        "PASTE_YOUR_PROJECT_ID.firebaseapp.com",
-  databaseURL:       "https://PASTE_YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-  projectId:         "PASTE_YOUR_PROJECT_ID",
-  storageBucket:     "PASTE_YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "PASTE_YOUR_SENDER_ID",
-  appId:             "PASTE_YOUR_APP_ID"
+  apiKey:            "AIzaSyBR84eviPn7JRtgAF02OyXQphjCLy3-RKY",
+  authDomain:        "k-spider-social-media.firebaseapp.com",
+  databaseURL:       "https://k-spider-social-media-default-rtdb.firebaseio.com",
+  projectId:         "k-spider-social-media",
+  storageBucket:     "k-spider-social-media.firebasestorage.app",
+  messagingSenderId: "1063536440954",
+  appId:             "1:1063536440954:web:9a27a9c116132539bcadc3",
+  measurementId:     "G-CH0RSTGBRS"
 };
 
 /* ── FIREBASE STATE ── */
@@ -6287,37 +6288,61 @@ function showAuthError(msg) {
 }
 
 async function fbLogin() {
+  const errBox = document.getElementById('auth-err');
+  errBox.classList.remove('show');
+
   if (!FB_READY) { showAuthError('Firebase not configured. Please add your Firebase config.'); return; }
+
   const email    = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
-  if (!email || !password) { showAuthError('Please enter email and password.'); return; }
+
+  if (!email)    { showAuthError('Please enter your email address.'); return; }
+  if (!password) { showAuthError('Please enter your password.'); return; }
+
   const btn = document.getElementById('login-btn');
   btn.disabled = true; btn.textContent = '⏳ Logging in...';
+
   try {
+    console.log('🔄 Logging in:', email);
     await AUTH.signInWithEmailAndPassword(email, password);
+    console.log('✅ Login success');
     // onAuthStateChanged handles rest
   } catch(e) {
-    showAuthError(firebaseErrMsg(e.code));
+    console.error('❌ Login error:', e.code, e.message);
+    showAuthError(firebaseErrMsg(e.code) + ' [' + e.code + ']');
     btn.disabled = false; btn.textContent = '🚀 Login to K Spider AI';
   }
 }
 
 async function fbRegister() {
+  const errBox = document.getElementById('auth-err');
+  errBox.classList.remove('show');
+
   if (!FB_READY) { showAuthError('Firebase not configured. Please add your Firebase config.'); return; }
+
   const fname    = document.getElementById('reg-fname').value.trim();
   const lname    = document.getElementById('reg-lname').value.trim();
   const email    = document.getElementById('reg-email').value.trim();
   const password = document.getElementById('reg-password').value;
-  if (!fname || !email || !password) { showAuthError('Please fill all fields.'); return; }
+
+  if (!fname)    { showAuthError('Please enter your first name.'); return; }
+  if (!email)    { showAuthError('Please enter your email address.'); return; }
+  if (!password) { showAuthError('Please enter a password.'); return; }
   if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
+
   const btn = document.getElementById('reg-btn');
   btn.disabled = true; btn.textContent = '⏳ Creating account...';
+
   try {
+    console.log('🔄 Registering:', email);
     const cred = await AUTH.createUserWithEmailAndPassword(email, password);
+    console.log('✅ User created:', cred.user.uid);
     await cred.user.updateProfile({ displayName: fname + (lname ? ' ' + lname : '') });
-    // onAuthStateChanged handles rest
+    console.log('✅ Profile updated');
+    // onAuthStateChanged handles the rest
   } catch(e) {
-    showAuthError(firebaseErrMsg(e.code));
+    console.error('❌ Register error:', e.code, e.message);
+    showAuthError(firebaseErrMsg(e.code) + ' [' + e.code + ']');
     btn.disabled = false; btn.textContent = '🎉 Create Account';
   }
 }
