@@ -593,6 +593,9 @@ body {
 
 .rv { opacity: 0; transform: translateY(24px); transition: opacity .65s var(--ease), transform .65s var(--ease); }
 .rv.v { opacity: 1; transform: translateY(0); }
+/* Tool cards get stagger animation directly — no rv hiding */
+.tcard { animation: cardIn .4s var(--ease) both; }
+@keyframes cardIn { from { opacity:0; transform:translateY(18px); } to { opacity:1; transform:translateY(0); } }
 .rv1 { transition-delay: .1s; } .rv2 { transition-delay: .2s; } .rv3 { transition-delay: .3s; }
 .rvl { opacity: 0; transform: translateX(-24px); transition: opacity .65s var(--ease), transform .65s var(--ease); }
 .rvl.v { opacity: 1; transform: translateX(0); }
@@ -2595,14 +2598,14 @@ function renderTools(filter) {
   filter = filter || 'all';
   var g = document.getElementById('tg');
   var td = (filter === 'all' ? TD : TD.filter(function(t) { return t.cat === filter; })).slice().sort(function(a, b) { return (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1); });
-  g.innerHTML = td.map(function(t) {
+  g.innerHTML = td.map(function(t, i) {
     var badge = t.status === 'live' ? '<span class="bdg blive">LIVE</span>' : '<span class="bdg bsoon">SOON</span>';
     var actionBtn = t.status === 'live'
       ? '<a href="#" class="cbtn" onclick="return launchTool(\'' + t.file + '\',\'' + t.id + '\')">Launch Tool →</a>'
       : '<span class="cdis">🔜 Coming Soon</span>';
     var feats = t.feats.map(function(f) { return '<li>' + f + '</li>'; }).join('');
     var tags  = t.tags.map(function(tg) { return '<span class="ctag">#' + tg + '</span>'; }).join('');
-    return '<div class="tcard ' + t.cls + ' rv" data-cat="' + t.cat + '" role="listitem">' +
+    return '<div class="tcard ' + t.cls + '" style="animation-delay:' + (i * 0.04) + 's" data-cat="' + t.cat + '" role="listitem">' +
       '<div class="ctop"><div class="ciw">' + t.icon + '</div><div class="cbadges">' + badge + '</div></div>' +
       '<div class="cname">' + t.name + '</div><div class="cdesc">' + t.desc + '</div>' +
       '<ul class="cfeats">' + feats + '</ul>' +
@@ -2942,8 +2945,23 @@ function submitF(e) {
 function initRv() {
   var obs = new IntersectionObserver(function(entries) {
     entries.forEach(function(entry) { if (entry.isIntersecting) { entry.target.classList.add('v'); obs.unobserve(entry.target); } });
-  }, { threshold: 0.08 });
-  document.querySelectorAll('.rv:not(.v),.rvl:not(.v)').forEach(function(el) { obs.observe(el); });
+  }, { threshold: 0.05, rootMargin: '0px 0px 60px 0px' });
+  document.querySelectorAll('.rv:not(.v),.rvl:not(.v)').forEach(function(el) {
+    // If already in viewport, show immediately without waiting for scroll
+    var rect = el.getBoundingClientRect();
+    if (rect.top < window.innerHeight && rect.bottom >= 0) {
+      el.classList.add('v');
+    } else {
+      obs.observe(el);
+    }
+  });
+  // Fallback: after 400ms force-show any still-hidden rv elements in viewport
+  setTimeout(function() {
+    document.querySelectorAll('.rv:not(.v)').forEach(function(el) {
+      var rect = el.getBoundingClientRect();
+      if (rect.top < window.innerHeight + 100) { el.classList.add('v'); }
+    });
+  }, 400);
 }
 
 window.addEventListener('scroll', function() {
@@ -3013,9 +3031,9 @@ document.addEventListener('DOMContentLoaded', function() {
       });
       var g = document.getElementById('tg');
       if (!f.length) { g.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:56px;color:var(--t3)"><div style="font-size:2.8rem;margin-bottom:12px">🔍</div><p>No tools found for "<strong>' + san(q) + '</strong>"</p><p style="font-size:.78rem;margin-top:7px;color:var(--t4)">Aur tools aa rahe hain!</p></div>'; return; }
-      g.innerHTML = f.map(function(t) {
+      g.innerHTML = f.map(function(t, i) {
         var badge = t.status === 'live' ? '<span class="bdg blive">LIVE</span>' : '<span class="bdg bsoon">SOON</span>';
-        return '<div class="tcard ' + t.cls + ' rv" data-cat="' + t.cat + '">' +
+        return '<div class="tcard ' + t.cls + '" style="animation-delay:' + (i * 0.04) + 's" data-cat="' + t.cat + '">' +
           '<div class="ctop"><div class="ciw">' + t.icon + '</div><div class="cbadges">' + badge + '</div></div>' +
           '<div class="cname">' + t.name + '</div><div class="cdesc">' + t.desc + '</div>' +
           '<div class="cfoot">' +
