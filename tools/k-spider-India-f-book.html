@@ -6821,17 +6821,32 @@ let _bannedUsers = new Set();
 
 /* Check if current user is admin */
 function isAdmin() {
-  const email = STATE.currentUser?.email || '';
-  return ADMIN_EMAILS.includes(email.toLowerCase());
+  // Check STATE email
+  const stateEmail = (STATE.currentUser?.email || '').toLowerCase();
+  // Also check Firebase Auth directly
+  const authEmail = (AUTH?.currentUser?.email || '').toLowerCase();
+  const uid = STATE.currentUser?.id || '';
+  
+  return ADMIN_EMAILS.includes(stateEmail) || 
+         ADMIN_EMAILS.includes(authEmail) ||
+         ADMIN_EMAILS.some(e => uid.includes(e.split('@')[0]));
 }
 
 /* Show/hide admin nav based on login */
 function checkAdminAccess() {
   const adminNav = document.getElementById('nav-admin');
   if (!adminNav) return;
+  
+  // Retry after short delay if STATE not ready
+  if (!STATE.currentUser?.email && AUTH?.currentUser?.email) {
+    STATE.currentUser = STATE.currentUser || {};
+    STATE.currentUser.email = AUTH.currentUser.email;
+  }
+  
   if (isAdmin()) {
     adminNav.style.display = 'flex';
     loadAdminReportsBadge();
+    showToast('🛡️ Admin mode active!', 'success');
   } else {
     adminNav.style.display = 'none';
   }
