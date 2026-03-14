@@ -6101,9 +6101,16 @@ function listenAuthState() {
       document.getElementById('fb-auth-overlay').classList.add('hidden');
       await setupFirebaseUser(user);
       subscribeToPostsRT();
-      setupPresence(user.uid, STATE.currentUser.name, STATE.currentUser.avatar);
+      // Use multiple fallbacks to prevent "undefined"
+      const presenceName = STATE.currentUser?.name || 
+                           user.displayName || 
+                           user.email?.split('@')[0] || 
+                           'K Spider User';
+      const presenceAvatar = STATE.currentUser?.avatar || 
+                             `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`;
+      setupPresence(user.uid, presenceName, presenceAvatar);
       subscribeToOnlineUsers();
-      showToast(`✅ Welcome back, ${STATE.currentUser.name}!`, 'success');
+      showToast(`✅ Welcome back, ${presenceName}!`, 'success');
     } else if (!_isGuest) {
       // Not logged in and not guest — show login
       document.getElementById('fb-auth-overlay').classList.remove('hidden');
@@ -6479,8 +6486,9 @@ async function fbGuest() {
     name: 'Guest User',
     handle: '@guest',
     bio: 'Browsing as guest',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
-    isGuest: true
+    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest' + Date.now(),
+    isGuest: true,
+    email: ''
   };
   applyUserProfile();
   updateNavUserChip();
