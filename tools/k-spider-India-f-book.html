@@ -2711,10 +2711,9 @@ ul { list-style: none; }
   </div>
 
   <div class="nav-actions">
-    <div id="theme-toggle" onclick="toggleTheme()" title="Toggle theme">
-      <div class="toggle-track"><div class="toggle-thumb"></div></div>
-      <i class="fas fa-sun toggle-icon"></i>
-    </div>
+    <button class="nav-btn" onclick="openSettingsModal()" title="Settings" style="flex-shrink:0"><i class="fas fa-cog"></i></button>
+    <button class="nav-btn" onclick="openThemePicker()" title="Theme" style="flex-shrink:0"><i class="fas fa-palette"></i></button>
+    <button class="nav-btn" onclick="openLangPicker()" title="Language" style="flex-shrink:0"><i class="fas fa-language"></i></button>
     <button class="nav-btn" onclick="navigateTo('feed')" title="Home"><i class="fas fa-home"></i></button>
     <button class="nav-btn" onclick="navigateTo('messages')" title="Messages">
       <i class="fas fa-comment-dots"></i>
@@ -4899,17 +4898,60 @@ function triggerAvatarUpload() {
   document.getElementById('avatar-upload').click();
 }
 
-function handleAvatarUpload(e) {
+async function handleAvatarUpload(e) {
   const file = e.target.files[0];
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    STATE.currentUser.avatar = ev.target.result;
-    applyUserProfile();
-    saveState();
-    showToast('Profile photo updated!', 'success');
-  };
-  reader.readAsDataURL(file);
+  if (!file) return;
+
+  // Validate file
+  if (!file.type.startsWith('image/')) { showToast('❌ Please select an image file', 'error'); return; }
+  if (file.size > 5 * 1024 * 1024) { showToast('❌ Image must be under 5MB', 'error'); return; }
+
+  showToast('⏳ Uploading photo...', 'info');
+
+  try {
+    // Upload to Cloudinary (free tier — 25GB/month)
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('upload_preset', 'kspider_social'); // Create this in Cloudinary
+    formData.append('folder', 'avatars');
+
+    const res = await fetch('https://api.cloudinary.com/v1_1/kspiderai/image/upload', {
+      method: 'POST', body: formData
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const url = data.secure_url;
+      STATE.currentUser.avatar = url;
+      applyUserProfile();
+      updateNavUserChip();
+      // Save to Firestore
+      if (FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
+        await DB.collection('users').doc(STATE.currentUser.id).update({ avatar: url });
+        // Update presence
+        if (_myPresenceRef) await _myPresenceRef.update({ avatar: url });
+      }
+      saveState();
+      showToast('✅ Profile photo updated!', 'success');
+    } else {
+      throw new Error('Cloudinary upload failed');
+    }
+  } catch(err) {
+    // Fallback to base64 local if Cloudinary not set up
+    console.warn('Cloudinary failed, using local:', err);
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      STATE.currentUser.avatar = ev.target.result;
+      applyUserProfile();
+      updateNavUserChip();
+      if (FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
+        try { await DB.collection('users').doc(STATE.currentUser.id).update({ avatar: ev.target.result }); } catch(e) {}
+      }
+      saveState();
+      showToast('✅ Profile photo updated!', 'success');
+    };
+    reader.readAsDataURL(file);
+  }
 }
 
 function updateProfileStats() {
@@ -6807,6 +6849,448 @@ function ksDirect(){
   if(!ph||ph.length<10){try{showToast('Enter a valid phone number','error');}catch(e){alert('Please enter a valid number');}return;}
   window.open(`https://wa.me/${ph.startsWith('91')?ph:'91'+ph}?text=${encodeURIComponent(ksMsg(_KS_OUT))}`,'_blank');
 }
+/* ============================================================
+   🎨 TIER 1 — FEATURE 1: 5 COLOR THEMES
+============================================================ */
+const KS_THEMES = {
+  facebook:  { name: '📘 Facebook Blue', primary: '#1877F2', dark: '#1558b0', navbar: '#1877F2' },
+  kspider:   { name: '🕷️ K Spider Cyan', primary: '#00d4ff', dark: '#0099cc', navbar: '#0a0e1a' },
+  india:     { name: '🇮🇳 India Saffron', primary: '#FF9933', dark: '#e6861a', navbar: '#FF9933' },
+  green:     { name: '💚 WhatsApp Green', primary: '#25D366', dark: '#1da850', navbar: '#075E54' },
+  purple:    { name: '💜 Royal Purple',   primary: '#7C3AED', dark: '#6d28d9', navbar: '#4C1D95' },
+};
+
+function applyKSTheme(themeKey) {
+  const t = KS_THEMES[themeKey];
+  if (!t) return;
+  document.documentElement.style.setProperty('--primary', t.primary);
+  document.documentElement.style.setProperty('--primary-dark', t.dark);
+  document.documentElement.style.setProperty('--glow', `0 0 20px ${t.primary}40`);
+  // Update navbar color
+  const navbar = document.getElementById('navbar');
+  if (navbar) navbar.style.background = t.navbar;
+  // Save preference
+  localStorage.setItem('ks_theme_key', themeKey);
+  if (STATE.currentUser && FB_READY && !STATE.currentUser.isGuest) {
+    DB.collection('users').doc(STATE.currentUser.id).update({ themeKey }).catch(()=>{});
+  }
+  showToast(`${t.name} theme applied!`, 'success');
+  // Close modal
+  document.getElementById('theme-picker-modal')?.remove();
+}
+
+function openThemePicker() {
+  let existing = document.getElementById('theme-picker-modal');
+  if (existing) { existing.remove(); return; }
+  const modal = document.createElement('div');
+  modal.id = 'theme-picker-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--bg-secondary);border-radius:20px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+      <div style="font-size:1.1rem;font-weight:800;color:var(--text-primary);margin-bottom:4px">🎨 Choose Theme</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:18px">Personalize your K Spider experience</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        ${Object.entries(KS_THEMES).map(([key, t]) => `
+          <button onclick="applyKSTheme('${key}')" style="display:flex;align-items:center;gap:14px;padding:14px 16px;border:2px solid var(--border);border-radius:14px;background:var(--bg-card);cursor:pointer;text-align:left;transition:all .2s" onmouseover="this.style.borderColor='${t.primary}'" onmouseout="this.style.borderColor=''">
+            <div style="width:36px;height:36px;border-radius:10px;background:${t.primary};flex-shrink:0;box-shadow:0 3px 10px ${t.primary}50"></div>
+            <div style="font-weight:700;font-size:.9rem;color:var(--text-primary)">${t.name}</div>
+          </button>`).join('')}
+      </div>
+      <button onclick="document.getElementById('theme-picker-modal').remove()" style="width:100%;margin-top:14px;padding:11px;border:none;background:var(--bg-hover);border-radius:10px;color:var(--text-muted);font-weight:700;cursor:pointer">Cancel</button>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+// Load saved theme on start
+(function loadSavedTheme() {
+  const saved = localStorage.getItem('ks_theme_key');
+  if (saved && KS_THEMES[saved]) {
+    setTimeout(() => applyKSTheme(saved), 500);
+  }
+})();
+
+/* ============================================================
+   🌍 TIER 1 — FEATURE 2: HINDI / GUJARATI / MULTI-LANGUAGE UI
+============================================================ */
+const KS_LANG = {
+  en: {
+    home: 'Home Feed', explore: 'Explore', messages: 'Messages',
+    notifications: 'Notifications', profile: 'My Profile',
+    whatsOnMind: "What's on your mind?", postNow: 'Post Now',
+    onlineNow: '🟢 Online Now', welcome: 'Welcome back',
+    postSuccess: '✅ Post shared with everyone!',
+    reportTitle: '🚨 Report Post', reportSuccess: '✅ Report submitted!',
+    earning: 'Earn Online', groups: 'Groups', events: 'Events',
+  },
+  hi: {
+    home: '🏠 होम फीड', explore: '🔍 खोजें', messages: '💬 संदेश',
+    notifications: '🔔 सूचनाएं', profile: '👤 मेरी प्रोफाइल',
+    whatsOnMind: 'आप क्या सोच रहे हैं?', postNow: '📤 पोस्ट करें',
+    onlineNow: '🟢 अभी ऑनलाइन', welcome: 'स्वागत है',
+    postSuccess: '✅ पोस्ट सबके साथ शेयर हो गई!',
+    reportTitle: '🚨 पोस्ट रिपोर्ट करें', reportSuccess: '✅ रिपोर्ट भेज दी गई!',
+    earning: '💰 ऑनलाइन कमाई', groups: '👥 ग्रुप', events: '📅 इवेंट',
+  },
+  gu: {
+    home: '🏠 હોમ ફીડ', explore: '🔍 શોધો', messages: '💬 સંદેશ',
+    notifications: '🔔 સૂચનાઓ', profile: '👤 મારી પ્રોફાઇલ',
+    whatsOnMind: 'તમે શું વિચારી રહ્યા છો?', postNow: '📤 પોસ્ટ કરો',
+    onlineNow: '🟢 હમણાં ઓનલાઇન', welcome: 'સ્વાગત છે',
+    postSuccess: '✅ પોસ્ટ બધા સાથે શેર થઈ!',
+    reportTitle: '🚨 પોસ્ટ રિપોર્ટ કરો', reportSuccess: '✅ રિપોર્ट મોકલી!',
+    earning: '💰 ઓનલાઇન કમાણી', groups: '👥 ગ્રુપ', events: '📅 ઇવેન્ટ',
+  },
+  mr: {
+    home: '🏠 होम फीड', explore: '🔍 शोधा', messages: '💬 संदेश',
+    notifications: '🔔 सूचना', profile: '👤 माझी प्रोफाइल',
+    whatsOnMind: 'तुम्ही काय विचार करत आहात?', postNow: '📤 पोस्ट करा',
+    onlineNow: '🟢 आता ऑनलाइन', welcome: 'स्वागत',
+    postSuccess: '✅ पोस्ट सर्वांसह शेअर झाली!',
+    reportTitle: '🚨 पोस्ट रिपोर्ट करा', reportSuccess: '✅ रिपोर्ट पाठवली!',
+    earning: '💰 ऑनलाइन कमाई', groups: '👥 गट', events: '📅 कार्यक्रम',
+  },
+};
+
+let _currentLang = localStorage.getItem('ks_lang') || 'en';
+
+function t(key) {
+  return KS_LANG[_currentLang]?.[key] || KS_LANG.en[key] || key;
+}
+
+function setLanguage(lang) {
+  _currentLang = lang;
+  localStorage.setItem('ks_lang', lang);
+  // Update key UI strings
+  const postInput = document.getElementById('post-text-input');
+  if (postInput) postInput.placeholder = t('whatsOnMind');
+  const onlineTitle = document.getElementById('online-panel-title');
+  if (onlineTitle) onlineTitle.textContent = t('onlineNow');
+  // Update nav items text
+  const navMap = { feed: 'home', explore: 'explore', messages: 'messages', notifications: 'notifications', profile: 'profile' };
+  Object.entries(navMap).forEach(([page, key]) => {
+    const el = document.querySelector(`#nav-${page} span:last-child`);
+    if (el && el.tagName !== 'I') el.textContent = ' ' + t(key);
+  });
+  document.getElementById('lang-picker-modal')?.remove();
+  showToast('🌍 Language updated!', 'success');
+}
+
+function openLangPicker() {
+  let existing = document.getElementById('lang-picker-modal');
+  if (existing) { existing.remove(); return; }
+  const langs = [
+    { code: 'en', name: '🇺🇸 English' },
+    { code: 'hi', name: '🇮🇳 हिंदी (Hindi)' },
+    { code: 'gu', name: '🇮🇳 ગુજરાતી (Gujarati)' },
+    { code: 'mr', name: '🇮🇳 मराठी (Marathi)' },
+  ];
+  const modal = document.createElement('div');
+  modal.id = 'lang-picker-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--bg-secondary);border-radius:20px;padding:24px;max-width:340px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4)">
+      <div style="font-size:1.1rem;font-weight:800;color:var(--text-primary);margin-bottom:4px">🌍 Choose Language</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">भाषा चुनें / ભાષા પસંદ કરો</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        ${langs.map(l => `
+          <button onclick="setLanguage('${l.code}')" style="padding:13px 16px;border:2px solid ${_currentLang===l.code?'#1877F2':'var(--border)'};border-radius:12px;background:${_currentLang===l.code?'#EEF3FF':'var(--bg-card)'};cursor:pointer;text-align:left;font-size:.9rem;font-weight:700;color:var(--text-primary)">
+            ${l.name} ${_currentLang===l.code?'✅':''}
+          </button>`).join('')}
+      </div>
+      <button onclick="document.getElementById('lang-picker-modal').remove()" style="width:100%;margin-top:12px;padding:10px;border:none;background:var(--bg-hover);border-radius:10px;color:var(--text-muted);font-weight:700;cursor:pointer">Cancel</button>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+/* ============================================================
+   💬 TIER 1 — FEATURE 3: REAL FIREBASE MESSAGES
+============================================================ */
+let _activeConvoId = null;
+let _msgListener = null;
+
+/* Start a real conversation between two users */
+function getConvoId(uid1, uid2) {
+  return [uid1, uid2].sort().join('_');
+}
+
+async function startRealChat(targetUid, targetName, targetAvatar) {
+  if (!FB_READY || !STATE.currentUser?.isFirebase) {
+    showToast('💬 Login required to send messages', 'error'); return;
+  }
+  const myId = STATE.currentUser.id;
+  const convoId = getConvoId(myId, targetUid);
+  _activeConvoId = convoId;
+
+  // Create/update conversation doc
+  await DB.collection('conversations').doc(convoId).set({
+    participants: [myId, targetUid],
+    participantNames: { [myId]: STATE.currentUser.name, [targetUid]: targetName },
+    participantAvatars: { [myId]: STATE.currentUser.avatar, [targetUid]: targetAvatar },
+    lastMessage: '',
+    lastMessageTime: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  navigateTo('messages');
+  openRealChat(convoId, targetName, targetAvatar);
+}
+
+function openRealChat(convoId, name, avatar) {
+  _activeConvoId = convoId;
+  if (_msgListener) _msgListener();
+
+  const header = document.getElementById('chat-header');
+  const activeChat = document.getElementById('active-chat');
+  const placeholder = document.getElementById('chat-placeholder');
+  if (placeholder) placeholder.style.display = 'none';
+  if (activeChat) activeChat.classList.remove('hidden');
+
+  if (header) header.innerHTML = `
+    <div class="chat-header-avatar"><img src="${avatar}" alt="${name}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'"></div>
+    <div>
+      <div class="chat-header-name">${name}</div>
+      <div class="chat-header-status"><i class="fas fa-circle" style="font-size:.5rem;color:#42B72A"></i> Active now</div>
+    </div>`;
+
+  // Listen real-time to messages
+  const msgs = document.getElementById('chat-messages');
+  if (msgs) msgs.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">Loading messages...</div>';
+
+  _msgListener = DB.collection('conversations').doc(convoId)
+    .collection('messages').orderBy('timestamp', 'asc').limit(50)
+    .onSnapshot(snap => {
+      if (!msgs) return;
+      if (snap.empty) {
+        msgs.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:12px">👋 Say hello!</div>';
+        return;
+      }
+      const myId = STATE.currentUser?.id;
+      msgs.innerHTML = '';
+      snap.forEach(doc => {
+        const m = doc.data();
+        const isMine = m.senderId === myId;
+        const ts = m.timestamp?.toDate?.()?.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) || '';
+        const div = document.createElement('div');
+        div.style.cssText = `display:flex;justify-content:${isMine?'flex-end':'flex-start'};margin-bottom:8px`;
+        div.innerHTML = `
+          <div style="max-width:72%;padding:10px 14px;border-radius:${isMine?'18px 18px 4px 18px':'18px 18px 18px 4px'};background:${isMine?'#1877F2':'var(--bg-card)'};color:${isMine?'#fff':'var(--text-primary)'};font-size:13px;line-height:1.5;box-shadow:0 1px 3px rgba(0,0,0,.1)">
+            ${m.text}
+            <div style="font-size:9px;opacity:.6;margin-top:4px;text-align:${isMine?'right':'left'}">${ts}</div>
+          </div>`;
+        msgs.appendChild(div);
+      });
+      msgs.scrollTop = msgs.scrollHeight;
+    });
+}
+
+async function sendRealMessage() {
+  if (!_activeConvoId || !FB_READY) return;
+  const input = document.getElementById('msg-input') || document.querySelector('.msg-input-field');
+  const text = input?.value?.trim();
+  if (!text) return;
+  input.value = '';
+
+  const myId = STATE.currentUser?.id;
+  const msgData = {
+    text,
+    senderId: myId,
+    senderName: STATE.currentUser?.name,
+    senderAvatar: STATE.currentUser?.avatar,
+    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+
+  try {
+    await DB.collection('conversations').doc(_activeConvoId)
+      .collection('messages').add(msgData);
+    // Update conversation preview
+    await DB.collection('conversations').doc(_activeConvoId).update({
+      lastMessage: text,
+      lastMessageTime: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+  } catch(e) {
+    showToast('❌ Message failed: ' + e.message, 'error');
+  }
+}
+
+// Override send message button
+document.addEventListener('DOMContentLoaded', () => {
+  // Intercept send button
+  setTimeout(() => {
+    const sendBtn = document.querySelector('.msg-send-btn');
+    if (sendBtn) {
+      sendBtn.onclick = () => {
+        if (_activeConvoId && FB_READY) sendRealMessage();
+        else sendMessage(); // fallback to original
+      };
+    }
+    // Enter key in message input
+    const msgInput = document.getElementById('msg-input') || document.querySelector('.msg-input-field');
+    if (msgInput) {
+      msgInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          if (_activeConvoId && FB_READY) sendRealMessage();
+          else sendMessage();
+        }
+      });
+    }
+  }, 2000);
+});
+
+/* Load real conversations list */
+async function loadRealConversations() {
+  if (!FB_READY || !STATE.currentUser?.isFirebase) return;
+  const myId = STATE.currentUser.id;
+  try {
+    const snap = await DB.collection('conversations')
+      .where('participants', 'array-contains', myId)
+      .orderBy('updatedAt', 'desc').limit(20).get();
+
+    const container = document.getElementById('message-threads');
+    if (!container || snap.empty) return;
+
+    let html = '';
+    snap.forEach(doc => {
+      const c = doc.data();
+      const otherId = c.participants.find(p => p !== myId);
+      const otherName = c.participantNames?.[otherId] || 'User';
+      const otherAvatar = c.participantAvatars?.[otherId] || `https://api.dicebear.com/7.x/avataaars/svg?seed=${otherId}`;
+      const preview = c.lastMessage || 'Say hello!';
+      html += `
+        <div class="msg-thread-item" onclick="openRealChat('${doc.id}','${otherName}','${otherAvatar}')">
+          <div class="msg-thread-avatar"><img src="${otherAvatar}" alt="${otherName}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'"></div>
+          <div class="msg-thread-info">
+            <div class="msg-thread-name">${otherName}</div>
+            <div class="msg-thread-preview">${preview.slice(0,40)}</div>
+          </div>
+        </div>`;
+    });
+    if (html) container.innerHTML = html;
+  } catch(e) { console.warn('Load conversations error:', e); }
+}
+
+/* ============================================================
+   🔔 TIER 1 — FEATURE 4: PUSH NOTIFICATIONS (Firebase FCM)
+============================================================ */
+async function requestPushPermission() {
+  if (!('Notification' in window)) {
+    showToast('❌ Browser does not support notifications', 'error'); return;
+  }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast('🔔 Notifications enabled!', 'success');
+    localStorage.setItem('ks_notif', 'granted');
+    // Show a test notification
+    setTimeout(() => {
+      new Notification('🕷️ K Spider Social AI', {
+        body: 'Notifications enabled! You will get alerts for new posts & messages.',
+        icon: 'https://kspiderai.in/favicon.ico',
+        badge: 'https://kspiderai.in/favicon.ico',
+      });
+    }, 1000);
+  } else {
+    showToast('⚠️ Notifications blocked. Enable from browser settings.', 'warning');
+  }
+}
+
+function sendBrowserNotification(title, body, onclick) {
+  if (Notification.permission !== 'granted') return;
+  if (document.visibilityState === 'visible') return; // Only when tab is hidden
+  const n = new Notification(title, {
+    body, icon: 'https://kspiderai.in/favicon.ico',
+  });
+  if (onclick) n.onclick = onclick;
+}
+
+/* ============================================================
+   🎨 TIER 1 — SETTINGS MODAL (Theme + Language + Notifications)
+============================================================ */
+function openSettingsModal() {
+  let existing = document.getElementById('ks-settings-modal');
+  if (existing) { existing.remove(); return; }
+  const modal = document.createElement('div');
+  modal.id = 'ks-settings-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99990;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `
+    <div style="background:var(--bg-secondary);border-radius:20px;padding:28px;max-width:400px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.4);max-height:90vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+        <div style="font-size:1.2rem;font-weight:800;color:var(--text-primary)">⚙️ Settings</div>
+        <button onclick="document.getElementById('ks-settings-modal').remove()" style="background:none;border:none;font-size:20px;color:var(--text-muted);cursor:pointer">✕</button>
+      </div>
+
+      <!-- Theme -->
+      <div style="margin-bottom:20px">
+        <div style="font-weight:800;font-size:.85rem;color:var(--text-primary);margin-bottom:10px">🎨 Color Theme</div>
+        <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">
+          ${Object.entries(KS_THEMES).map(([key,t]) => `
+            <button onclick="applyKSTheme('${key}')" title="${t.name}" style="height:40px;border-radius:10px;border:2px solid transparent;background:${t.primary};cursor:pointer;transition:all .2s;box-shadow:0 2px 8px ${t.primary}50" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'"></button>
+          `).join('')}
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+          ${Object.entries(KS_THEMES).map(([key,t]) => `<span style="font-size:10px;color:var(--text-muted)">${t.name}</span>`).join(' · ')}
+        </div>
+      </div>
+
+      <!-- Language -->
+      <div style="margin-bottom:20px">
+        <div style="font-weight:800;font-size:.85rem;color:var(--text-primary);margin-bottom:10px">🌍 Language / भाषा / ભાષા</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          ${[['en','🇺🇸 English'],['hi','🇮🇳 हिंदी'],['gu','🇮🇳 ગુજરાતી'],['mr','🇮🇳 मराठी']].map(([code,name]) => `
+            <button onclick="setLanguage('${code}')" style="padding:10px;border:2px solid ${_currentLang===code?'#1877F2':'var(--border)'};border-radius:10px;background:${_currentLang===code?'#EEF3FF':'var(--bg-card)'};cursor:pointer;font-size:12px;font-weight:700;color:var(--text-primary)">${name}</button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Notifications -->
+      <div style="margin-bottom:20px">
+        <div style="font-weight:800;font-size:.85rem;color:var(--text-primary);margin-bottom:10px">🔔 Push Notifications</div>
+        <button onclick="requestPushPermission()" style="width:100%;padding:12px;background:linear-gradient(135deg,#1877F2,#1558b0);color:#fff;border:none;border-radius:12px;font-weight:700;font-size:13px;cursor:pointer">
+          ${localStorage.getItem('ks_notif')==='granted' ? '✅ Notifications Enabled' : '🔔 Enable Notifications'}
+        </button>
+      </div>
+
+      <!-- Profile Photo -->
+      <div style="margin-bottom:16px">
+        <div style="font-weight:800;font-size:.85rem;color:var(--text-primary);margin-bottom:10px">📸 Profile Photo</div>
+        <button onclick="triggerAvatarUpload();document.getElementById('ks-settings-modal').remove()" style="width:100%;padding:12px;background:var(--bg-hover);color:var(--text-primary);border:2px solid var(--border);border-radius:12px;font-weight:700;font-size:13px;cursor:pointer">📷 Change Profile Photo</button>
+      </div>
+
+      <!-- Account -->
+      <div>
+        <div style="font-weight:800;font-size:.85rem;color:var(--text-primary);margin-bottom:10px">👤 Account</div>
+        <button onclick="fbLogout()" style="width:100%;padding:12px;background:#FEF2F2;color:#DC2626;border:2px solid rgba(220,38,38,.2);border-radius:12px;font-weight:700;font-size:13px;cursor:pointer">🚪 Logout</button>
+      </div>
+    </div>`;
+  modal.addEventListener('click', e => { if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+/* Hook settings gear icon in navbar to open settings */
+document.addEventListener('DOMContentLoaded', () => {
+  setTimeout(() => {
+    // Find gear/settings button in navbar
+    const gearBtns = document.querySelectorAll('.nav-btn');
+    gearBtns.forEach(btn => {
+      if (btn.querySelector('.fa-cog') || btn.title?.includes('setting') || btn.title?.includes('Setting')) {
+        btn.onclick = openSettingsModal;
+      }
+    });
+    // Apply saved language
+    if (_currentLang !== 'en') setLanguage(_currentLang);
+    // Load real conversations when messages page opens
+    const origNav = window.navigateTo;
+    if (origNav && typeof origNav === 'function') {
+      const _prevNav = origNav;
+      window.navigateTo = function(page) {
+        _prevNav(page);
+        if (page === 'messages' && FB_READY) loadRealConversations();
+      };
+    }
+  }, 1500);
+});
+
 // Firebase init handles DOMContentLoaded above
 
 /* ============================================================
