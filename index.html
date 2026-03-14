@@ -397,12 +397,14 @@ body {
 
 .fbar {
   display: flex; gap: 6px; flex-wrap: wrap;
-  margin-bottom: 44px; padding: 5px;
+  margin: 0 auto 44px auto;
+  padding: 5px;
   background: var(--bg2);
   border: 1px solid var(--br);
   border-radius: var(--r24);
   box-shadow: 0 2px 12px rgba(0,0,0,.06);
   width: fit-content; max-width: 100%;
+  justify-content: center;
 }
 .fchip {
   padding: 7px 16px; border-radius: 100px;
@@ -1156,12 +1158,12 @@ body {
 <!-- TOOLS SECTION -->
 <section class="sec sp" id="tools" style="background:var(--bg2)">
   <div class="con">
-    <div class="sh c rv">
+    <div class="sh c">
       <div class="sh-eye">AI Tools</div>
       <h2 class="sh-t">Powerful Tools,<br><span class="g">Always Free</span></h2>
       <p class="sh-s">Professional-grade AI tools — free for registered users forever. <span style="color:var(--pur);font-weight:700">💎 Premium tools</span> launching soon for power users who need more.</p>
     </div>
-    <div class="fbar rv" role="group" aria-label="Filter tools by category">
+    <div class="fbar" role="group" aria-label="Filter tools by category">
       <button class="fchip a" onclick="fc('all',this)">🌐 All</button>
       <button class="fchip" onclick="fc('marketing',this)">📣 Marketing</button>
       <button class="fchip" onclick="fc('career',this)">💼 Career</button>
@@ -2944,24 +2946,28 @@ function submitF(e) {
 
 function initRv() {
   var obs = new IntersectionObserver(function(entries) {
-    entries.forEach(function(entry) { if (entry.isIntersecting) { entry.target.classList.add('v'); obs.unobserve(entry.target); } });
-  }, { threshold: 0.05, rootMargin: '0px 0px 60px 0px' });
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) { entry.target.classList.add('v'); obs.unobserve(entry.target); }
+    });
+  }, { threshold: 0.01, rootMargin: '0px 0px 100px 0px' });
+
   document.querySelectorAll('.rv:not(.v),.rvl:not(.v)').forEach(function(el) {
-    // If already in viewport, show immediately without waiting for scroll
     var rect = el.getBoundingClientRect();
-    if (rect.top < window.innerHeight && rect.bottom >= 0) {
+    // Show immediately if in or near viewport
+    if (rect.top < window.innerHeight + 200) {
       el.classList.add('v');
     } else {
       obs.observe(el);
     }
   });
-  // Fallback: after 400ms force-show any still-hidden rv elements in viewport
+
+  // Fallback: force-show any still-hidden rv elements visible on screen after short delay
   setTimeout(function() {
     document.querySelectorAll('.rv:not(.v)').forEach(function(el) {
       var rect = el.getBoundingClientRect();
-      if (rect.top < window.innerHeight + 100) { el.classList.add('v'); }
+      if (rect.top < window.innerHeight + 300) { el.classList.add('v'); }
     });
-  }, 400);
+  }, 300);
 }
 
 window.addEventListener('scroll', function() {
