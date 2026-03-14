@@ -294,47 +294,53 @@
     csvUrl: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRFctGZgpDCTM3h8Y8l4QL3d4MQzxg5D6UM19LaWzgIjbCBph-VHvthsN2SWRNaCjnkKRXh-bVw55Df/pub?output=csv'
   };
 
-  /* ── CORS PROXY CHAIN ── */
-  var KS_PROXIES = [
-    '',
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?url=',
-    'https://api.codetabs.com/v1/proxy?quest='
-  ];
-  var _proxyIdx = 0;
+  /* ── GOOGLE APPS SCRIPT URL (most reliable) ── */
+  var _GAS_URL = 'https://script.google.com/macros/s/AKfycbwNolRlHYsLUgi8lsEcTkUvxPG9cjk-n_d5B_hPm-CFJ-DFWXAAYekrXUvRIsD91ldQdg/exec';
 
-  function ksFetchCSV(onSuccess, onFallback) {
-    _proxyIdx = 0;
-    _tryFetch(onSuccess, onFallback);
+  /* ── FETCH STRATEGIES ── */
+  var _fetchDone = false;
+
+  function _getStrategies() {
+    var csvUrl = BLOG_CONFIG.csvUrl;
+    var enc = encodeURIComponent(csvUrl);
+    var sheetId = ''; var m = csvUrl.match(/\/d\/e\/([^/]+)\//); if (m) sheetId = m[1];
+    var list = [];
+    if (_GAS_URL && _GAS_URL.indexOf('script.google.com') !== -1) {
+      list.push({ label: 'Apps Script', url: _GAS_URL + '?action=getCsv', type: 'csv' });
+    }
+    list.push({ label: 'allorigins-json', url: 'https://api.allorigins.win/get?url=' + enc, type: 'allorigins-json' });
+    list.push({ label: 'allorigins-raw',  url: 'https://api.allorigins.win/raw?url=' + enc, type: 'csv' });
+    list.push({ label: 'corsproxy',       url: 'https://corsproxy.io/?' + enc, type: 'csv' });
+    if (sheetId) list.push({ label: 'opensheet', url: 'https://opensheet.elk.sh/' + sheetId + '/Sheet1', type: 'json-array' });
+    return list;
   }
 
-  function _tryFetch(onSuccess, onFallback) {
-    if (_proxyIdx >= KS_PROXIES.length) {
-      _log.warn('All fetch attempts failed. Loading built-in sample data.');
-      onFallback();
-      return;
+  function ksFetchCSV(onSuccess, onFallback) {
+    var strategies = _getStrategies();
+    var idx = 0;
+    function tryNext() {
+      if (idx >= strategies.length) { onFallback(); return; }
+      var strat = strategies[idx++];
+      fetch(strat.url, { method: 'GET', cache: 'no-cache' })
+        .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+        .then(function(body) {
+          var csv = body;
+          if (strat.type === 'allorigins-json') {
+            var p = JSON.parse(body); csv = p.contents || ''; if (!csv || csv.length < 20) throw new Error('Empty');
+          } else if (strat.type === 'json-array') {
+            var arr = JSON.parse(body); if (!Array.isArray(arr) || !arr.length) throw new Error('Empty');
+            onSuccess(null, arr); return;
+          }
+          if (!csv || csv.length < 20 || csv.indexOf(',') === -1) throw new Error('Not valid CSV');
+          console.log('[KSpider] ✅ Post loaded via ' + strat.label);
+          onSuccess(csv, null);
+        })
+        .catch(function(err) {
+          console.warn('[KSpider] ' + strat.label + ' failed: ' + err.message);
+          setTimeout(tryNext, 400);
+        });
     }
-    var proxy = KS_PROXIES[_proxyIdx];
-    var url = proxy ? proxy + encodeURIComponent(BLOG_CONFIG.csvUrl) : BLOG_CONFIG.csvUrl;
-    var attempt = _proxyIdx;
-
-    fetch(url, { method: 'GET', cache: 'no-cache' })
-      .then(function(r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.text();
-      })
-      .then(function(text) {
-        if (!text || text.length < 10 || (!text.includes(',') && !text.includes('\n'))) {
-          throw new Error('Response does not look like CSV');
-        }
-        if (attempt > 0) _log.log('Loaded via proxy #' + attempt);
-        onSuccess(text);
-      })
-      .catch(function(err) {
-        _log.warn('Attempt ' + (attempt + 1) + ' failed (' + err.message + '). Trying next...');
-        _proxyIdx++;
-        _tryFetch(onSuccess, onFallback);
-      });
+    tryNext();
   }
 
   /* ── STATE ── */
@@ -461,29 +467,66 @@
     return params.get('id') || '';
   }
 
+  function _ytId(url) {
+    if (!url) return null;
+    var p = [/youtu\.be\/([a-zA-Z0-9_-]{11})/, /youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/, /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/];
+    for (var i = 0; i < p.length; i++) { var m = url.match(p[i]); if (m) return m[1]; } return null;
+  }
+  function _ytThumb(url) { var id = _ytId(url); return id ? 'https://i.ytimg.com/vi/' + id + '/hqdefault.jpg' : ''; }
+
+  function _fixThumbnail(post) {
+    /* If thumbnail is a YouTube URL, convert to direct image URL */
+    if (post.thumbnail && post.thumbnail.indexOf('youtu') !== -1) {
+      if (!post.youtube) post.youtube = post.thumbnail;
+      post.thumbnail = _ytThumb(post.thumbnail);
+    }
+    /* If no thumbnail but YouTube link exists, generate thumbnail */
+    if (!post.thumbnail && post.youtube) {
+      post.thumbnail = _ytThumb(post.youtube);
+    }
+    return post;
+  }
+
   function loadPost() {
     var id = getPostId();
     if (!id) { showError('No post specified.', 'Go to Blog'); return; }
 
-    /* STEP 1: Load sample data immediately so article renders fast */
+    /* STEP 1: Show sample data immediately */
     ALL_POSTS = (typeof SAMPLE_POSTS !== 'undefined' && Array.isArray(SAMPLE_POSTS) && SAMPLE_POSTS.length)
-                  ? SAMPLE_POSTS
-                  : getBuiltinSamples();
+                  ? SAMPLE_POSTS : getBuiltinSamples();
     renderArticle(id);
 
-    /* STEP 2: Try Google Sheet in background — update if found */
+    /* STEP 2: Fetch real data from Google Sheet */
     ksFetchCSV(
-      function(csv) {
-        var rows = parseCSV(csv);
-        var posts = csvRowsToPosts(rows);
+      function(csv, jsonArr) {
+        var posts = [];
+        if (jsonArr) {
+          /* opensheet JSON array */
+          posts = jsonArr.map(function(o, i) {
+            if (!o['Title']) return null;
+            var p = {
+              id: o['ID'] || ('post-' + (i+1)),
+              title: o['Title'], category: o['Category'] || 'AI Tools',
+              author: o['Author'] || 'KSpider Team', date: o['Date'] || '',
+              thumbnail: o['Thumbnail URL'] || '', youtube: o['YouTube'] || '',
+              content: o['Content'] || '',
+              tags: o['Tags'] ? o['Tags'].split(',').map(function(t){return t.trim();}) : [],
+              featured: (o['Featured']||'').toLowerCase() === 'true',
+              excerpt: o['Excerpt'] || ''
+            };
+            return _fixThumbnail(p);
+          }).filter(Boolean);
+        } else {
+          /* CSV */
+          var rows = parseCSV(csv);
+          posts = csvRowsToPosts(rows).map(_fixThumbnail);
+        }
         if (posts.length) {
           ALL_POSTS = posts;
-          renderArticle(id); /* Re-render with real data */
+          renderArticle(id);
         }
       },
-      function() {
-        /* Already showing sample data — nothing to do */
-      }
+      function() { /* already showing sample data */ }
     );
   }
 
@@ -512,18 +555,24 @@
       var o={};
       hdrs.forEach(function(h,idx){o[h]=(row[idx]||'').trim();});
       if(!o['Title']) return null;
-      var content = o['Content']||'';
+      var content  = o['Content'] || '';
+      var rawThumb = o['Thumbnail URL'] || '';
+      var ytLink   = o['YouTube'] || '';
+      var thumb    = rawThumb;
+      if (rawThumb && rawThumb.indexOf('youtu') !== -1) { if (!ytLink) ytLink = rawThumb; thumb = _ytThumb(rawThumb); }
+      if (!thumb && ytLink) thumb = _ytThumb(ytLink);
       return {
-        id: o['ID']||('post-'+(i+1)),
+        id: o['ID'] || ('post-' + (i+1)),
         title: o['Title'],
-        category: o['Category']||'AI Tools',
-        author: o['Author']||'KSpider Team',
-        date: o['Date']||'',
-        thumbnail: o['Thumbnail URL']||'',
+        category: o['Category'] || 'AI Tools',
+        author: o['Author'] || 'KSpider Team',
+        date: o['Date'] || '',
+        thumbnail: thumb,
+        youtube: ytLink,
         content: content,
-        tags: o['Tags']?o['Tags'].split(',').map(function(t){return t.trim();}):[],
-        featured: (o['Featured']||'').toLowerCase()==='true',
-        excerpt: o['Excerpt']||content.replace(/<[^>]*>/g,' ').substring(0,180).trim()+'...'
+        tags: o['Tags'] ? o['Tags'].split(',').map(function(t){return t.trim();}) : [],
+        featured: (o['Featured']||'').toLowerCase() === 'true',
+        excerpt: o['Excerpt'] || content.replace(/<[^>]*>/g,' ').substring(0,180).trim() + '...'
       };
     }).filter(Boolean).sort(function(a,b){return new Date(b.date)-new Date(a.date);});
   }
@@ -805,7 +854,7 @@
               <a href="https://t.me/+jPVF39C2yCQ3ZDhl" target="_blank" rel="noopener" class="fsoc-btn" title="Telegram">✈️</a>
               <a href="https://whatsapp.com/channel/0029Vb7bJKz5PO15U1NeML3I" target="_blank" rel="noopener" class="fsoc-btn" title="WhatsApp">💬</a>
               <a href="https://pin.it/tR3P9VFfc" target="_blank" rel="noopener" class="fsoc-btn" title="Pinterest">📌</a>
-              <a href="mailto:kspider221206@gmail.com" class="fsoc-btn" title="Email">📧</a>
+              <a href="/cdn-cgi/l/email-protection#204b53504944455212121112101660474d41494c0e434f4d" class="fsoc-btn" title="Email">📧</a>
             </div>
           </div>
           <div class="footer-col">
@@ -822,7 +871,7 @@
             <a href="https://whatsapp.com/channel/0029Vb7bJKz5PO15U1NeML3I" target="_blank" rel="noopener">💬 WhatsApp Channel</a>
             <a href="https://t.me/+jPVF39C2yCQ3ZDhl" target="_blank" rel="noopener">✈️ Telegram</a>
             <a href="https://www.instagram.com/gaurang.m.raval" target="_blank" rel="noopener">📸 Instagram</a>
-            <a href="mailto:kspider221206@gmail.com">📧 Email Us</a>
+            <a href="/cdn-cgi/l/email-protection#8ae1f9fae3eeeff8b8b8bbb8babccaede7ebe3e6a4e9e5e7">📧 Email Us</a>
           </div>
           <div class="footer-col">
             <h5>Legal</h5>
@@ -835,11 +884,4 @@
         </div>
         <div class="footer-bottom">
           <div class="footer-copy">© 2024 K Spider for Kreation · <a href="https://kspiderai.in">kspiderai.in</a> · Developed by Gaurang Raval &amp; Khush Raval</div>
-          <div class="footer-badge">🆓 K Spider AI — Free Forever</div>
-        </div>
-      </div>
-    </footer>
-  </div>
-
-</body>
-</html>
+          <div class="footer-badge">🆓 K Spider AI
