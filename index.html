@@ -3659,3 +3659,270 @@ function ksFaqToggle(btn) {
 
 <!-- K Spider Security (NEW) -->
 <script src="security.js"></script>
+
+
+<!-- ════════════════════════════════════════════════════
+     K SPIDER AI — MAXIMUM SECURITY SYSTEM v2.0
+     Free Platform | Production Ready
+════════════════════════════════════════════════════ -->
+<script>
+(function KSpiderMaxSecurity(){
+  'use strict';
+
+  // ── 1. DISABLE RIGHT CLICK ──
+  document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+
+  // ── 2. DISABLE ALL KEYBOARD SHORTCUTS ──
+  document.addEventListener('keydown', function(e){
+    var k = e.key, c = e.ctrlKey, s = e.shiftKey, a = e.altKey;
+    var tag = (document.activeElement.tagName||'').toLowerCase();
+    var isInput = tag==='input'||tag==='textarea'||tag==='select';
+
+    // Block all developer/copy shortcuts
+    if(c && k==='u')  { e.preventDefault(); return false; } // View Source
+    if(c && k==='s')  { e.preventDefault(); return false; } // Save
+    if(c && k==='p')  { e.preventDefault(); return false; } // Print
+    if(c && s && k==='I'){ e.preventDefault(); return false; } // DevTools
+    if(c && s && k==='J'){ e.preventDefault(); return false; } // Console
+    if(c && s && k==='C'){ e.preventDefault(); return false; } // Inspector
+    if(c && s && k==='K'){ e.preventDefault(); return false; } // Browser console
+    if(k==='F12')      { e.preventDefault(); return false; } // DevTools
+    if(k==='F5' && c)  { e.preventDefault(); return false; } // Hard refresh
+    if(c && a && k==='I'){ e.preventDefault(); return false; } // Alt DevTools
+
+    // Block copy/cut/paste outside inputs
+    if(!isInput){
+      if(c && k==='c'){ e.preventDefault(); return false; } // Copy
+      if(c && k==='x'){ e.preventDefault(); return false; } // Cut
+      if(c && k==='a'){ e.preventDefault(); return false; } // Select All
+    }
+  });
+
+  // ── 3. BLOCK COPY EVENT ──
+  document.addEventListener('copy', function(e){
+    var tag = (document.activeElement.tagName||'').toLowerCase();
+    if(tag!=='input' && tag!=='textarea'){
+      e.preventDefault();
+      e.clipboardData && e.clipboardData.setData('text/plain','© K Spider AI Tool — kspiderai.in');
+      return false;
+    }
+  });
+
+  // ── 4. BLOCK CUT ──
+  document.addEventListener('cut', function(e){
+    var tag = (document.activeElement.tagName||'').toLowerCase();
+    if(tag!=='input' && tag!=='textarea'){ e.preventDefault(); return false; }
+  });
+
+  // ── 5. DISABLE TEXT SELECTION ──
+  document.addEventListener('selectstart', function(e){
+    var tag = (e.target.tagName||'').toLowerCase();
+    if(tag!=='input' && tag!=='textarea'){ e.preventDefault(); return false; }
+  });
+
+  // ── 6. DISABLE DRAG ──
+  document.addEventListener('dragstart', function(e){ e.preventDefault(); return false; });
+
+  // ── 7. DISABLE IMAGE DRAG & SAVE ──
+  document.addEventListener('DOMContentLoaded', function(){
+    document.querySelectorAll('img').forEach(function(img){
+      img.setAttribute('draggable','false');
+      img.style.cssText += ';user-select:none;-webkit-user-select:none;pointer-events:none;';
+      img.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+    });
+    // Disable pointer events on all text but keep clicks
+    document.querySelectorAll('p,h1,h2,h3,h4,h5,h6,span,div,li,td,th').forEach(function(el){
+      el.style.userSelect = 'none';
+      el.style.webkitUserSelect = 'none';
+    });
+  });
+
+  // ── 8. DEVTOOLS DETECTION ──
+  var _devOpen = false;
+  var _devThreshold = 160;
+  
+  function checkDevTools(){
+    var widthDiff  = window.outerWidth  - window.innerWidth;
+    var heightDiff = window.outerHeight - window.innerHeight;
+    if(widthDiff > _devThreshold || heightDiff > _devThreshold){
+      if(!_devOpen){
+        _devOpen = true;
+        document.body.style.filter = 'blur(8px)';
+        document.body.style.pointerEvents = 'none';
+        showSecurityWarning();
+      }
+    } else {
+      if(_devOpen){
+        _devOpen = false;
+        document.body.style.filter = '';
+        document.body.style.pointerEvents = '';
+        var warn = document.getElementById('ks-security-warn');
+        if(warn) warn.remove();
+      }
+    }
+  }
+  setInterval(checkDevTools, 800);
+
+  function showSecurityWarning(){
+    var existing = document.getElementById('ks-security-warn');
+    if(existing) return;
+    var warn = document.createElement('div');
+    warn.id = 'ks-security-warn';
+    warn.style.cssText = [
+      'position:fixed','inset:0','z-index:2147483647',
+      'background:rgba(15,15,15,.97)',
+      'display:flex','align-items:center','justify-content:center',
+      'flex-direction:column','gap:16px',
+      'font-family:DM Sans,-apple-system,sans-serif',
+      'pointer-events:all'
+    ].join(';');
+    warn.innerHTML = [
+      '<div style="font-size:4rem">🔐</div>',
+      '<div style="font-size:1.4rem;font-weight:800;color:#e8520a">Security Alert</div>',
+      '<div style="font-size:.95rem;color:#888;text-align:center;max-width:320px;line-height:1.6">',
+      'Developer tools are not allowed on K Spider AI.<br>',
+      'Please close DevTools to continue.',
+      '</div>',
+      '<div style="font-size:.75rem;color:#555;margin-top:8px">© K Spider AI Tool — kspiderai.in</div>'
+    ].join('');
+    document.body.appendChild(warn);
+  }
+
+  // ── 9. CONSOLE OVERRIDE — Stop JS reading ──
+  try {
+    var _c = console;
+    console.log   = function(){};
+    console.warn  = function(){};
+    console.error = function(){};
+    console.info  = function(){};
+    console.debug = function(){};
+    console.table = function(){};
+    console.dir   = function(){};
+    // Keep internal KSpider logs disabled
+  } catch(e){}
+
+  // ── 10. ANTI IFRAME ──
+  try {
+    if(window.top !== window.self){
+      // Only block if on actual website, not local file
+      if(window.location.protocol !== 'file:' && window.location.hostname !== ''){
+        try {
+          window.top.location.href = window.self.location.href;
+        } catch(e) {
+          // If cross-origin iframe — hide content
+          document.body.style.display = 'none';
+        }
+      }
+    }
+  } catch(e) { /* Safe ignore */ }
+
+  // ── 11. DEBUGGER TRAP ──
+  // Only on live site
+  if(window.location.protocol !== 'file:') {
+    setInterval(function(){
+      try{
+        (function(d){
+          if(('' + d / d).length !== 1 || d % 20 === 0){ (function(){}).constructor('debugger')(); }
+          else { (function(){}).constructor('debugger')(); }
+        }(+new Date()));
+      } catch(e){}
+    }, 3000);
+  }
+
+  // ── 12. SOURCE CODE OBFUSCATION WARNING ──
+  Object.defineProperty(document, 'oncontextmenu', {
+    value: function(){ return false; },
+    writable: false
+  });
+
+  // ── 13. PRINT DISABLE ──
+  window.addEventListener('beforeprint', function(e){
+    e.preventDefault();
+    document.body.style.display = 'none';
+    setTimeout(function(){ document.body.style.display = ''; }, 1000);
+  });
+
+  // ── 14. WATERMARK ON SCREENSHOT ATTEMPT ──
+  // (Detects Alt+PrintScreen type behavior)
+  document.addEventListener('keyup', function(e){
+    if(e.key === 'PrintScreen'){
+      navigator.clipboard && navigator.clipboard.writeText('© K Spider AI Tool — kspiderai.in — Unauthorized use prohibited');
+    }
+  });
+
+  // ── 15. ANTI SCRAPING — Slow down bots ──
+  var _reqCount = 0;
+  var _reqWindow = Date.now();
+  window.KS_rateLimit = function(){
+    var now = Date.now();
+    if(now - _reqWindow > 60000){ _reqCount = 0; _reqWindow = now; }
+    _reqCount++;
+    return _reqCount <= 30;
+  };
+
+  // ── 16. CONSOLE BRANDING ──
+  setTimeout(function(){
+    try{
+      console.log('%c🕷️ K Spider AI Tool', 'color:#e8520a;font-size:2rem;font-weight:900;');
+      console.log('%c⛔ WARNING: This is a secured zone.\nDo not paste any code here. Attackers use this to steal your data.', 'color:#dc2626;font-size:.9rem;font-weight:700;background:#fff0f0;padding:8px;');
+      console.log('%c© 2025 K Spider for Kreation | www.kspiderai.in', 'color:#888;font-size:.8rem;');
+    }catch(e){}
+  }, 100);
+
+  // ── 17. SESSION SECURITY ──
+  // Auto-logout after 8 hours
+  var SESSION_KEY = 'ks_session_start';
+  var SESSION_MAX = 8 * 60 * 60 * 1000;
+  if(!sessionStorage.getItem(SESSION_KEY)){
+    sessionStorage.setItem(SESSION_KEY, Date.now().toString());
+  }
+  setInterval(function(){
+    var start = parseInt(sessionStorage.getItem(SESSION_KEY)||'0');
+    if(start && (Date.now() - start > SESSION_MAX)){
+      sessionStorage.clear();
+      localStorage.removeItem('ks_u');
+      window.location.reload();
+    }
+  }, 60000);
+
+  // ── 18. BOT DETECTION ──
+  if(window.location.protocol !== 'file:') {
+    var _humanDetected = false;
+    ['mousemove','touchstart','keypress','scroll','click'].forEach(function(evt){
+      document.addEventListener(evt, function(){ _humanDetected = true; }, { once: true, passive: true });
+    });
+    setTimeout(function(){
+      if(!_humanDetected){
+        document.body.style.display = 'none';
+        setTimeout(function(){ document.body.style.display = ''; }, 5000);
+      }
+    }, 3000);
+  }
+
+})();
+</script>
+
+<!-- ── CSS: Disable selection globally ── -->
+<style>
+*, *::before, *::after {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+}
+input, textarea, select, [contenteditable] {
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  user-select: text !important;
+}
+img {
+  -webkit-user-drag: none !important;
+  pointer-events: none !important;
+}
+/* Disable print */
+@media print {
+  body { display: none !important; }
+}
+</style>
+
