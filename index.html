@@ -2600,34 +2600,23 @@ function startOTPTimer() {
    EmailJS template mein {{to_name}}, {{to_email}}, {{otp_code}} use karo
    ══════════════════════════════════════════════════════ */
 function showOtpOnScreen(otp, email) {
+  // ⛔ SECURITY FIX: OTP screen pe nahi dikhayenge
+  // OTP sirf email pe jayega — screen pe nahi
   var box = document.getElementById('otp-status-box');
   var msgEl = document.getElementById('otp-status-msg');
   var iconEl = document.getElementById('otp-status-icon');
   if (box && msgEl) {
-    if (iconEl) iconEl.textContent = '🔐';
-    var otpDiv = document.createElement('div');
-    otpDiv.style.cssText = 'font-size:2rem;font-weight:900;letter-spacing:.3em;color:#b8792a;background:#fff8ee;border:2px dashed #b8792a;border-radius:10px;padding:10px 0;margin:8px 0;text-align:center;cursor:pointer;';
-    otpDiv.textContent = otp;
-    otpDiv.title = 'Click to copy';
-    otpDiv.addEventListener('click', function() {
-      if (navigator.clipboard) { navigator.clipboard.writeText(otp); toast('OTP copy ho gaya!', 'success'); }
-    });
-    msgEl.innerHTML = '<div style="font-weight:700;font-size:.88rem;margin-bottom:8px">Aapka OTP hai:</div>';
-    msgEl.appendChild(otpDiv);
-    var hint = document.createElement('div');
-    hint.style.cssText = 'font-size:.75rem;color:#7a7468;margin-top:4px';
-    hint.textContent = String.fromCodePoint(0x1F446) + ' OTP pe click karke copy karo, phir neeche box mein paste karo';
-    msgEl.appendChild(hint);
+    if (iconEl) iconEl.textContent = '📧';
+    msgEl.innerHTML = '<div style="font-weight:600;font-size:.88rem;">OTP aapki email <strong>' + email + '</strong> par bheja gaya hai.<br><span style="font-size:.78rem;color:var(--t3);">Inbox aur Spam folder check karo.</span></div>';
     box.classList.add('show');
     box.classList.remove('err');
-    box.style.cssText += ';background:rgba(184,121,42,.08);border-color:rgba(184,121,42,.5);color:var(--t1)';
   }
   var inp = document.getElementById('otp-input');
   if (inp) {
-    inp.value = otp;
-    inp.style.background = '#fffbf0';
-    inp.style.borderColor = '#b8792a';
-    inp.style.boxShadow = '0 0 0 3px rgba(184,121,42,.15)';
+    inp.value = '';
+    inp.style.background = '';
+    inp.style.borderColor = '';
+    inp.style.boxShadow = '';
   }
   console.log('[KSpider] OTP:', otp);
 }
@@ -2679,7 +2668,7 @@ function sendAdminAlert(alertType, userData, extraInfo) {
    FIXED: to_email dynamically set, template variables correct
    ══════════════════════════════════════════════════════ */
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  console.log('[KSpider] Sending OTP:', otp, '→ To:', email);
+  console.log('[KSpider] Sending OTP → To:', email); // OTP hidden from logs
 
   // HAMESHA pehle OTP screen pe dikhao — email sirf bonus hai
   showOtpOnScreen(otp, email);
@@ -2725,11 +2714,11 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
   emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
     .then(function(r) {
       console.log('[KSpider] OTP Email sent to user ✅ Status:', r.status);
-      showOtpStatus('✅ OTP <strong>' + email + '</strong> par bheja gaya! Inbox + Spam folder check karo.<br>Ya neeche screen pe dikhaya OTP seedha use karo.', false);
+      showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam folder check karo.', false);
     })
     .catch(function(err) {
       console.error('[KSpider] OTP Email FAILED. Status:', err.status, '| Text:', err.text);
-      showOtpStatus('⚠️ Email nahi gaya — screen pe dikhaya OTP use karo neeche.', true);
+      showOtpStatus('⚠️ Email send mein dikkat aayi. Resend OTP try karo.', true);
     });
 
   // ── ADMIN KO NEW REGISTRATION ALERT ──
