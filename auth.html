@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login / Register — K Spider AI Tool</title>
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://www.kspiderai.in/auth.html">
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+  <!-- K Spider Firebase Config -->
+  <script src="firebase-config.js"></script>
+
+  <style>
+    /* ── INHERIT K SPIDER DESIGN TOKENS ── */
+    :root {
+      --bg:    #f8f7f4; --bg2: #ffffff; --bg3: #f2f0eb;
+      --gold:  #b8792a; --gold2: #d4922e; --gold3: #f5c259;
+      --gold-s: rgba(184,121,42,.09); --gold-b: rgba(184,121,42,.22);
+      --blue:  #2563eb; --blue2: #3b82f6;
+      --neon:  #059669; --red: #dc2626;
+      --t1: #1a1814; --t2: #4a4639; --t3: #7a7468; --t4: #aea89e;
+      --br: rgba(0,0,0,.07); --br2: rgba(0,0,0,.12);
+      --r8: 12px; --r12: 18px; --r16: 24px;
+      --ease: cubic-bezier(.22,1,.36,1);
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--t1);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    /* ── AUTH CARD ── */
+    .auth-wrap {
+      width: 100%;
+      max-width: 460px;
+    }
+    .auth-logo {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .auth-logo a {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+      color: var(--t1);
+      font-size: 1.4rem;
+      font-weight: 700;
+      font-family: 'Syne', sans-serif;
+    }
+    .auth-logo .spider-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    }
+    .auth-card {
+      background: var(--bg2);
+      border: 1px solid var(--br2);
+      border-radius: var(--r16);
+      padding: 40px 36px;
+      box-shadow: 0 8px 40px rgba(0,0,0,.06);
+    }
+    .auth-tabs {
+      display: flex;
+      background: var(--bg3);
+      border-radius: var(--r8);
+      padding: 4px;
+      margin-bottom: 28px;
+      gap: 4px;
+    }
+    .auth-tab {
+      flex: 1;
+      padding: 10px;
+      text-align: center;
+      border-radius: 9px;
+      cursor: pointer;
+      font-size: .9rem;
+      font-weight: 500;
+      color: var(--t3);
+      border: none;
+      background: transparent;
+      transition: all .2s var(--ease);
+    }
+    .auth-tab.active {
+      background: var(--bg2);
+      color: var(--gold);
+      font-weight: 600;
+      box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    }
+
+    /* ── PANELS ── */
+    .auth-panel { display: none; }
+    .auth-panel.active { display: block; }
+
+    .auth-title {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: var(--t1);
+      margin-bottom: 6px;
+    }
+    .auth-sub {
+      font-size: .88rem;
+      color: var(--t3);
+      margin-bottom: 24px;
+      line-height: 1.5;
+    }
+
+    /* ── FORM ── */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--t2);
+      margin-bottom: 6px;
+      letter-spacing: .02em;
+      text-transform: uppercase;
+    }
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1.5px solid var(--br2);
+      border-radius: var(--r8);
+      font-size: .95rem;
+      color: var(--t1);
+      background: var(--bg);
+      outline: none;
+      transition: border-color .2s var(--ease), box-shadow .2s var(--ease);
+      font-family: inherit;
+    }
+    .form-input:focus {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 3px var(--gold-s);
+    }
+    .form-input.error {
+      border-color: var(--red);
+      box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+    }
+    .form-error {
+      font-size: .8rem;
+      color: var(--red);
+      margin-top: 5px;
+      display: none;
+    }
+    .form-error.show { display: block; }
+
+    /* Password toggle */
+    .pw-wrap { position: relative; }
+    .pw-toggle {
+      position: absolute; right: 14px; top: 50%;
+      transform: translateY(-50%);
+      background: none; border: none;
+      cursor: pointer; font-size: 1rem;
+      color: var(--t4); padding: 0;
+    }
+
+    /* OTP input row */
+    .otp-row {
+      display: flex;
+      gap: 8px;
+    }
+    .otp-input {
+      width: 48px; height: 52px;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 700;
+      border: 1.5px solid var(--br2);
+      border-radius: var(--r8);
+      background: var(--bg);
+      color: var(--t1);
+      outline: none;
+      transition: border-color .2s;
+    }
+    .otp-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px var(--gold-s); }
+    .otp-resend {
+      text-align: right;
+      margin-top: 8px;
+      font-size: .82rem;
+      color: var(--t3);
+    }
+    .otp-resend a {
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .otp-timer { color: var(--t4); font-size: .8rem; }
+
+    /* Buttons */
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #fff;
+      border: none;
+      border-radius: var(--r8);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .2s, transform .2s;
+      margin-top: 8px;
+      letter-spacing: .01em;
+    }
+    .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .btn-secondary {
+      width: 100%;
+      padding: 12px;
+      background: transparent;
+      color: var(--t2);
+      border: 1.5px solid var(--br2);
+      border-radius: var(--r8);
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      margin-top: 8px;
+      font-family: inherit;
+    }
+    .btn-secondary:hover { border-color: var(--gold-b); color: var(--gold); background: var(--gold-s); }
+
+    /* Divider */
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin: 20px 0;
+      color: var(--t4);
+      font-size: .82rem;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--br);
+    }
+
+    /* Google sign-in btn */
+    .btn-google {
+      width: 100%;
+      padding: 12px;
+      background: var(--bg2);
+      color: var(--t1);
+      border: 1.5px solid var(--br2);
+      border-radius: var(--r8);
+      font-size: .9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      font-family: inherit;
+    }
+    .btn-google:hover { border-color: var(--gold-b); background: var(--gold-s); }
+    .btn-google img { width: 18px; height: 18px; }
+
+    /* Terms */
+    .auth-terms {
+      font-size: .78rem;
+      color: var(--t4);
+      text-align: center;
+      margin-top: 16px;
+      line-height: 1.5;
+    }
+    .auth-terms a { color: var(--gold); text-decoration: none; }
+
+    /* Alert */
+    .auth-alert {
+      padding: 12px 16px;
+      border-radius: var(--r8);
+      font-size: .85rem;
+      font-weight: 500;
+      margin-bottom: 16px;
+      display: none;
+      align-items: center;
+      gap: 8px;
+    }
+    .auth-alert.show { display: flex; }
+    .auth-alert.success { background: rgba(5,150,105,.1); color: #059669; border: 1px solid rgba(5,150,105,.2); }
+    .auth-alert.error   { background: rgba(220,38,38,.1); color: #dc2626; border: 1px solid rgba(220,38,38,.2); }
+    .auth-alert.info    { background: rgba(37,99,235,.1); color: #2563eb; border: 1px solid rgba(37,99,235,.2); }
+
+    /* Loader spinner */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Step indicator */
+    .step-indicator {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+    }
+    .step-dot {
+      flex: 1; height: 3px;
+      border-radius: 2px;
+      background: var(--br2);
+      transition: background .3s;
+    }
+    .step-dot.active { background: var(--gold2); }
+    .step-dot.done   { background: var(--neon); }
+
+    /* Verified badge */
+    .verified-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(5,150,105,.1);
+      color: #059669;
+      border: 1px solid rgba(5,150,105,.2);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: .78rem;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+
+    /* Strength bar */
+    .pw-strength { height: 3px; border-radius: 2px; margin-top: 6px; background: var(--br); }
+    .pw-strength-bar { height: 100%; border-radius: 2px; width: 0; transition: width .3s, background .3s; }
+
+    /* Back link */
+    .auth-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--t3);
+      font-size: .85rem;
+      cursor: pointer;
+      margin-bottom: 20px;
+      width: fit-content;
+    }
+    .auth-back:hover { color: var(--gold); }
+
+    /* Fonts */
+    @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+
+    @media (max-width: 480px) {
+      .auth-card { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-wrap">
+  <!-- Logo -->
+  <div class="auth-logo">
+    <a href="https://www.kspiderai.in">
+      <span class="spider-icon">🕷️</span>
+      K Spider AI Tool
+    </a>
+  </div>
+
+  <!-- Auth Card -->
+  <div class="auth-card">
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="switchTab('login')" id="tab-login">Sign In</button>
+      <button class="auth-tab" onclick="switchTab('register')" id="tab-register">Register</button>
+    </div>
+
+    <!-- ═══ ALERT BOX ═══ -->
+    <div class="auth-alert" id="auth-alert"></div>
+
+    <!-- ═══════════════════════════════
+         PANEL 1 — LOGIN
+    ═══════════════════════════════ -->
+    <div class="auth-panel active" id="panel-login">
+      <div class="auth-title">Welcome back 👋</div>
+      <div class="auth-sub">Sign in to access your K Spider AI tools.</div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="login-email" placeholder="you@example.com" autocomplete="email">
+        <div class="form-error" id="login-email-err"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="pw-wrap">
+          <input type="password" class="form-input" id="login-pw" placeholder="Enter your password" autocomplete="current-password">
+          <button class="pw-toggle" onclick="togglePw('login-pw', this)" type="button">👁️</button>
+        </div>
+        <div class="form-error" id="login-pw-err"></div>
+      </div>
+
+      <div style="text-align:right; margin-bottom:4px;">
+        <a href="#" onclick="switchPanel('forgot')" style="font-size:.82rem; color:var(--gold); text-decoration:none; font-weight:600;">Forgot Password?</a>
+      </div>
+
+      <button class="btn-primary" id="btn-login" onclick="doLogin()">Sign In</button>
+
+      <div class="auth-divider">or</div>
+      <button class="btn-google" onclick="doGoogleSignIn()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+        Continue with Google
+      </button>
+
+      <div class="auth-terms">
+        Don't have an account? <a href="#" onclick="switchTab('register')">Create one free</a>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════
+         PANEL 2 — REGISTER (Step 1: Details)
+    ═══════════════════════════════ -->
+    <div class="auth-panel" id="panel-register">
+      <div class="step-indicator">
+        <div class="step-dot active" id="step1"></div>
+        <div class="step-dot" id="step2"></div>
+        <div class="step-dot" id="step3"></div>
+      </div>
+
+      <div class="auth-title">Create Account 🚀</div>
+      <div class="auth-sub">Join 1000+ users using K Spider AI tools for free.</div>
+
+      <div class="form-group">
+        <label class="form-label">Full Name</label>
+        <input type="text" class="form-input" id="reg-name" placeholder="Gaurang Raval" autocomplete="name">
+        <div class="form-error" id="reg-name-err"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="reg-email" placeholder="you@example.com" autocomplete="email">
+        <div class="form-error" id="reg-email-err"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <div class="pw-wrap">
+          <input type="password" class="form-input" id="reg-pw" placeholder="Min 8 chars" autocomplete="new-password"
+            oninput="checkPwStrength(this.value)">
+          <button class="pw-toggle" onclick="togglePw('reg-pw', this)" type="button">👁️</button>
+        </div>
+        <div class="pw-strength"><div class="pw-strength-bar" id="pw-bar"></div></div>
+        <div class="form-error" id="reg-pw-err"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <div class="pw-wrap">
+          <input type="password" class="form-input" id="reg-pw2" placeholder="Repeat password" autocomplete="new-password">
+          <button class="pw-toggle" onclick="togglePw('reg-pw2', this)" type="button">👁️</button>
+        </div>
+        <div class="form-error" id="reg-pw2-err"></div>
+      </div>
+
+      <button class="btn-primary" id="btn-register" onclick="doRegister()">Create Account & Verify Email</button>
+
+      <div class="auth-divider">or</div>
+      <button class="btn-google" onclick="doGoogleSignIn()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+        Continue with Google
+      </button>
+
+      <div class="auth-terms">
+        By registering you agree to our
+        <a href="privacy.html" target="_blank">Privacy Policy</a> &
+        <a href="terms.html" target="_blank">Terms of Service</a>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════
+         PANEL 3 — OTP VERIFY
+    ═══════════════════════════════ -->
+    <div class="auth-panel" id="panel-otp">
+      <div class="step-indicator">
+        <div class="step-dot done"></div>
+        <div class="step-dot active"></div>
+        <div class="step-dot"></div>
+      </div>
+
+      <span class="auth-back" onclick="switchPanel('register')">← Back</span>
+      <div class="auth-title">Verify Your Email 📧</div>
+      <div class="auth-sub">We've sent a 6-digit OTP to <strong id="otp-email-display"></strong>. Enter it below.</div>
+
+      <div class="form-group">
+        <label class="form-label">Enter OTP Code</label>
+        <div class="otp-row">
+          <input type="text" class="otp-input" maxlength="1" id="otp1" oninput="otpMove(this,'otp2')" onkeydown="otpBack(event,this,'')">
+          <input type="text" class="otp-input" maxlength="1" id="otp2" oninput="otpMove(this,'otp3')" onkeydown="otpBack(event,this,'otp1')">
+          <input type="text" class="otp-input" maxlength="1" id="otp3" oninput="otpMove(this,'otp4')" onkeydown="otpBack(event,this,'otp2')">
+          <input type="text" class="otp-input" maxlength="1" id="otp4" oninput="otpMove(this,'otp5')" onkeydown="otpBack(event,this,'otp3')">
+          <input type="text" class="otp-input" maxlength="1" id="otp5" oninput="otpMove(this,'otp6')" onkeydown="otpBack(event,this,'otp4')">
+          <input type="text" class="otp-input" maxlength="1" id="otp6" oninput="otpMove(this,'')"   onkeydown="otpBack(event,this,'otp5')">
+        </div>
+        <div class="otp-resend">
+          <span class="otp-timer" id="otp-timer">Resend in <span id="otp-countdown">60</span>s</span>
+          <a id="otp-resend-btn" style="display:none" onclick="resendOTP()">Resend OTP</a>
+        </div>
+      </div>
+
+      <button class="btn-primary" id="btn-verify" onclick="verifyOTP()">Verify & Continue</button>
+    </div>
+
+    <!-- ═══════════════════════════════
+         PANEL 4 — FORGOT PASSWORD
+    ═══════════════════════════════ -->
+    <div class="auth-panel" id="panel-forgot">
+      <span class="auth-back" onclick="switchPanel('login')">← Back to Sign In</span>
+      <div class="auth-title">Reset Password 🔐</div>
+      <div class="auth-sub">Enter your registered email. We'll send a password reset link.</div>
+
+      <div class="form-group">
+        <label class="form-label">Email Address</label>
+        <input type="email" class="form-input" id="forgot-email" placeholder="you@example.com">
+        <div class="form-error" id="forgot-email-err"></div>
+      </div>
+
+      <button class="btn-primary" id="btn-forgot" onclick="doForgotPassword()">Send Reset Link</button>
+      <button class="btn-secondary" onclick="switchPanel('login')">Back to Login</button>
+    </div>
+
+    <!-- ═══════════════════════════════
+         PANEL 5 — SUCCESS
+    ═══════════════════════════════ -->
+    <div class="auth-panel" id="panel-success">
+      <div style="text-align:center; padding: 20px 0;">
+        <div style="font-size:4rem; margin-bottom:16px;">🎉</div>
+        <div class="auth-title" style="text-align:center;">You're In!</div>
+        <div class="auth-sub" style="text-align:center; margin-bottom:24px;">
+          Account verified successfully. Redirecting to K Spider AI tools...
+        </div>
+        <div style="width:48px;height:48px;border:3px solid var(--gold-b);border-top-color:var(--gold2);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 24px;"></div>
+      </div>
+    </div>
+
+  </div><!-- end auth-card -->
+
+  <div style="text-align:center; margin-top:20px; font-size:.78rem; color:var(--t4);">
+    🕷️ K Spider AI Tool · Developed by Gaurang Raval & Khush Raval ·
+    <a href="https://www.kspiderai.in" style="color:var(--gold);text-decoration:none;">www.kspiderai.in</a>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AUTH CONTROLLER — K Spider AI
+// ═══════════════════════════════════════════════════════════════
+
+var _currentPanel   = 'login';
+var _registerEmail  = '';
+var _registerOTP    = '';
+var _otpTimerID     = null;
+var _rateLimitAttempts = 0;
+var _rateLimitLock  = false;
+
+// ── On load: check if already signed in ──
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof firebase === 'undefined') {
+    showAlert('Firebase not loaded. Check your connection.', 'error');
+    return;
+  }
+
+  KS.auth.onAuthStateChanged(function(user) {
+    if (user && user.emailVerified) {
+      // Already logged in — update lastLogin and redirect
+      updateLastLogin(user.uid);
+      var redirect = getRedirectParam() || 'index.html';
+      setTimeout(function() { window.location.href = redirect; }, 500);
+    }
+  });
+});
+
+function getRedirectParam() {
+  var params = new URLSearchParams(window.location.search);
+  return params.get('redirect');
+}
+
+// ── Switch tabs ──
+function switchTab(tab) {
+  document.querySelectorAll('.auth-tab').forEach(function(t) { t.classList.remove('active'); });
+  document.getElementById('tab-' + tab).classList.add('active');
+  switchPanel(tab);
+}
+
+function switchPanel(panel) {
+  document.querySelectorAll('.auth-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('panel-' + panel).classList.add('active');
+  _currentPanel = panel;
+  clearAlert();
+}
+
+// ── Alert ──
+function showAlert(msg, type) {
+  var el = document.getElementById('auth-alert');
+  el.className = 'auth-alert show ' + (type || 'info');
+  el.innerHTML = (type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : 'ℹ️ ') + msg;
+}
+function clearAlert() {
+  var el = document.getElementById('auth-alert');
+  el.className = 'auth-alert';
+  el.innerHTML = '';
+}
+
+// ── Password toggle ──
+function togglePw(inputId, btn) {
+  var inp = document.getElementById(inputId);
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁️'; }
+}
+
+// ── Password strength ──
+function checkPwStrength(val) {
+  var bar = document.getElementById('pw-bar');
+  var strength = 0;
+  if (val.length >= 8) strength++;
+  if (/[A-Z]/.test(val)) strength++;
+  if (/[0-9]/.test(val)) strength++;
+  if (/[^A-Za-z0-9]/.test(val)) strength++;
+  var widths  = ['0%','25%','50%','75%','100%'];
+  var colors  = ['transparent','#dc2626','#f59e0b','#2563eb','#059669'];
+  bar.style.width      = widths[strength];
+  bar.style.background = colors[strength];
+}
+
+// ── Validation helpers ──
+function vEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function showErr(id, msg) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = msg;
+  el.classList.add('show');
+}
+function clearErr(id) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = '';
+  el.classList.remove('show');
+}
+
+// ── Rate limit ──
+function checkRateLimit() {
+  if (_rateLimitLock) {
+    showAlert('Too many attempts. Wait 30 seconds and try again.', 'error');
+    return false;
+  }
+  _rateLimitAttempts++;
+  if (_rateLimitAttempts >= 5) {
+    _rateLimitLock = true;
+    setTimeout(function() { _rateLimitLock = false; _rateLimitAttempts = 0; }, 30000);
+    showAlert('Too many attempts. Wait 30 seconds.', 'error');
+    return false;
+  }
+  return true;
+}
+
+// ═══════════════════════════
+// REGISTER
+// ═══════════════════════════
+function doRegister() {
+  if (!checkRateLimit()) return;
+
+  clearErr('reg-name-err'); clearErr('reg-email-err');
+  clearErr('reg-pw-err'); clearErr('reg-pw2-err'); clearAlert();
+
+  var name  = document.getElementById('reg-name').value.trim();
+  var email = document.getElementById('reg-email').value.trim().toLowerCase();
+  var pw    = document.getElementById('reg-pw').value;
+  var pw2   = document.getElementById('reg-pw2').value;
+  var valid = true;
+
+  if (name.length < 2)              { showErr('reg-name-err', 'Name must be at least 2 characters'); valid = false; }
+  if (!vEmail(email))               { showErr('reg-email-err', 'Enter a valid email address'); valid = false; }
+  if (pw.length < 8)                { showErr('reg-pw-err', 'Password must be at least 8 characters'); valid = false; }
+  if (!/[A-Z]/.test(pw))           { showErr('reg-pw-err', 'Include at least one uppercase letter'); valid = false; }
+  if (!/[0-9]/.test(pw))           { showErr('reg-pw-err', 'Include at least one number'); valid = false; }
+  if (pw !== pw2)                   { showErr('reg-pw2-err', 'Passwords do not match'); valid = false; }
+  if (!valid) return;
+
+  var btn = document.getElementById('btn-register');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Creating account...';
+
+  KS.auth.createUserWithEmailAndPassword(email, pw)
+    .then(function(cred) {
+      var user = cred.user;
+      // Send email verification
+      return user.sendEmailVerification().then(function() {
+        // Save user to Firestore
+        return KS.db.collection('users').doc(user.uid).set({
+          userID:           user.uid,
+          name:             name,
+          email:            email,
+          planType:         'free',
+          paymentStatus:    'none',
+          registrationDate: firebase.firestore.FieldValue.serverTimestamp(),
+          lastLogin:        firebase.firestore.FieldValue.serverTimestamp(),
+          emailVerified:    false,
+          isAdmin:          KS.isAdmin(email),
+          createdAt:        new Date().toISOString()
+        });
+      });
+    })
+    .then(function() {
+      _registerEmail = email;
+      // Show OTP panel (Firebase sends actual verification link — we simulate OTP UX)
+      document.getElementById('otp-email-display').textContent = email;
+      sendCustomOTP(email);
+      switchPanel('otp');
+      showAlert('Verification email sent! Check your inbox.', 'success');
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.innerHTML = 'Create Account & Verify Email';
+      var msg = err.code === 'auth/email-already-in-use'
+        ? 'Email already registered. Sign in instead.'
+        : err.code === 'auth/weak-password'
+        ? 'Password too weak. Use uppercase, number & special char.'
+        : err.message;
+      showAlert(msg, 'error');
+    });
+}
+
+// ─── Generate & store OTP ───
+function sendCustomOTP(email) {
+  var otp = Math.floor(100000 + Math.random() * 900000).toString();
+  _registerOTP = otp;
+  // Store OTP in sessionStorage (expires with browser session)
+  sessionStorage.setItem('ks_otp', btoa(otp + ':' + email + ':' + (Date.now() + 600000)));
+
+  // In production: send OTP via EmailJS or your email service
+  if (typeof emailjs !== 'undefined') {
+    emailjs.send('YOUR_EMAILJS_SERVICE_ID', 'YOUR_OTP_TEMPLATE_ID', {
+      to_email: email,
+      otp_code: otp
+    }).catch(function(e) { console.warn('[KSpider] OTP email failed:', e); });
+  }
+
+  startOTPTimer();
+  console.log('[KSpider] OTP generated for', email, '— OTP:', otp); // Remove in production
+}
+
+// ─── OTP timer ───
+function startOTPTimer() {
+  var secs = 60;
+  document.getElementById('otp-countdown').textContent = secs;
+  document.getElementById('otp-timer').style.display = 'inline';
+  document.getElementById('otp-resend-btn').style.display = 'none';
+
+  if (_otpTimerID) clearInterval(_otpTimerID);
+  _otpTimerID = setInterval(function() {
+    secs--;
+    document.getElementById('otp-countdown').textContent = secs;
+    if (secs <= 0) {
+      clearInterval(_otpTimerID);
+      document.getElementById('otp-timer').style.display = 'none';
+      document.getElementById('otp-resend-btn').style.display = 'inline';
+    }
+  }, 1000);
+}
+
+function resendOTP() {
+  sendCustomOTP(_registerEmail);
+  showAlert('New OTP sent to ' + _registerEmail, 'success');
+}
+
+// ─── OTP input navigation ───
+function otpMove(el, nextId) {
+  el.value = el.value.replace(/[^0-9]/g, '');
+  if (el.value && nextId) document.getElementById(nextId).focus();
+}
+function otpBack(e, el, prevId) {
+  if (e.key === 'Backspace' && !el.value && prevId) document.getElementById(prevId).focus();
+}
+function getOTPValue() {
+  return ['otp1','otp2','otp3','otp4','otp5','otp6']
+    .map(function(id) { return document.getElementById(id).value; })
+    .join('');
+}
+
+// ─── Verify OTP ───
+function verifyOTP() {
+  var entered = getOTPValue();
+  if (entered.length !== 6) { showAlert('Enter all 6 digits of OTP', 'error'); return; }
+
+  var stored = sessionStorage.getItem('ks_otp');
+  if (!stored) { showAlert('OTP expired. Request a new one.', 'error'); return; }
+
+  try {
+    var decoded = atob(stored).split(':');
+    var storedOTP   = decoded[0];
+    var storedEmail = decoded[1];
+    var expiry      = parseInt(decoded[2]);
+
+    if (Date.now() > expiry) { showAlert('OTP expired. Request a new one.', 'error'); return; }
+    if (entered !== storedOTP || storedEmail !== _registerEmail) {
+      showAlert('Incorrect OTP. Try again.', 'error'); return;
+    }
+  } catch(e) {
+    showAlert('OTP verification error. Try again.', 'error'); return;
+  }
+
+  var btn = document.getElementById('btn-verify');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Verifying...';
+
+  // Mark email as verified in Firestore
+  var user = KS.auth.currentUser;
+  if (user) {
+    KS.db.collection('users').doc(user.uid).update({ emailVerified: true })
+      .then(function() {
+        sessionStorage.removeItem('ks_otp');
+        switchPanel('success');
+        setTimeout(function() {
+          var redirect = getRedirectParam() || 'index.html';
+          window.location.href = redirect;
+        }, 2000);
+      });
+  } else {
+    // User already navigated — just redirect
+    switchPanel('success');
+    setTimeout(function() { window.location.href = 'index.html'; }, 2000);
+  }
+}
+
+// ═══════════════════════════
+// LOGIN
+// ═══════════════════════════
+function doLogin() {
+  if (!checkRateLimit()) return;
+
+  clearErr('login-email-err'); clearErr('login-pw-err'); clearAlert();
+
+  var email = document.getElementById('login-email').value.trim().toLowerCase();
+  var pw    = document.getElementById('login-pw').value;
+  var valid = true;
+
+  if (!vEmail(email)) { showErr('login-email-err', 'Enter a valid email'); valid = false; }
+  if (!pw)            { showErr('login-pw-err',    'Enter your password');  valid = false; }
+  if (!valid) return;
+
+  var btn = document.getElementById('btn-login');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Signing in...';
+
+  KS.auth.signInWithEmailAndPassword(email, pw)
+    .then(function(cred) {
+      var user = cred.user;
+      // Update lastLogin
+      updateLastLogin(user.uid);
+      showAlert('Login successful! Redirecting...', 'success');
+      setTimeout(function() {
+        var redirect = getRedirectParam() || 'index.html';
+        window.location.href = redirect;
+      }, 1000);
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.innerHTML = 'Sign In';
+      var msg = (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential')
+        ? 'Invalid email or password. Please try again.'
+        : err.code === 'auth/user-disabled'
+        ? 'This account has been disabled. Contact support.'
+        : err.code === 'auth/too-many-requests'
+        ? 'Too many failed attempts. Account temporarily locked.'
+        : err.message;
+      showAlert(msg, 'error');
+    });
+}
+
+// ═══════════════════════════
+// GOOGLE SIGN-IN
+// ═══════════════════════════
+function doGoogleSignIn() {
+  clearAlert();
+  var provider = new firebase.auth.GoogleAuthProvider();
+  provider.addScope('email');
+  provider.addScope('profile');
+
+  KS.auth.signInWithPopup(provider)
+    .then(function(result) {
+      var user = result.user;
+      var isNew = result.additionalUserInfo.isNewUser;
+
+      var userData = {
+        userID:        user.uid,
+        name:          user.displayName || '',
+        email:         user.email || '',
+        planType:      'free',
+        paymentStatus: 'none',
+        lastLogin:     firebase.firestore.FieldValue.serverTimestamp(),
+        emailVerified: true,
+        isAdmin:       KS.isAdmin(user.email)
+      };
+
+      if (isNew) {
+        userData.registrationDate = firebase.firestore.FieldValue.serverTimestamp();
+        userData.createdAt = new Date().toISOString();
+      }
+
+      return KS.db.collection('users').doc(user.uid).set(userData, { merge: true });
+    })
+    .then(function() {
+      showAlert('Google sign-in successful! Redirecting...', 'success');
+      setTimeout(function() {
+        var redirect = getRedirectParam() || 'index.html';
+        window.location.href = redirect;
+      }, 1000);
+    })
+    .catch(function(err) {
+      if (err.code !== 'auth/popup-closed-by-user') {
+        showAlert(err.message, 'error');
+      }
+    });
+}
+
+// ═══════════════════════════
+// FORGOT PASSWORD
+// ═══════════════════════════
+function doForgotPassword() {
+  clearErr('forgot-email-err'); clearAlert();
+
+  var email = document.getElementById('forgot-email').value.trim().toLowerCase();
+  if (!vEmail(email)) { showErr('forgot-email-err', 'Enter a valid email'); return; }
+
+  var btn = document.getElementById('btn-forgot');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Sending...';
+
+  KS.auth.sendPasswordResetEmail(email)
+    .then(function() {
+      btn.disabled = false;
+      btn.innerHTML = 'Send Reset Link';
+      showAlert('Password reset link sent to ' + email + '. Check your inbox!', 'success');
+    })
+    .catch(function(err) {
+      btn.disabled = false;
+      btn.innerHTML = 'Send Reset Link';
+      var msg = err.code === 'auth/user-not-found'
+        ? 'No account found with this email.' : err.message;
+      showAlert(msg, 'error');
+    });
+}
+
+// ═══════════════════════════
+// UPDATE LAST LOGIN
+// ═══════════════════════════
+function updateLastLogin(uid) {
+  if (!uid) return;
+  KS.db.collection('users').doc(uid).update({
+    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(function() {});
+}
+
+// ─── Session persistence: BROWSER SESSION only for security ───
+KS.auth.setPersistence(firebase.auth.Auth.Persistence.SESSION)
+  .catch(function(err) { console.warn('[KSpider] Persistence:', err); });
+
+</script>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</body>
+</html>

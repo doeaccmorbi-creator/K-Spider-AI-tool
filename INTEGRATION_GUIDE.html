@@ -1,0 +1,224 @@
+<!--
+═══════════════════════════════════════════════════════════════════════════
+K SPIDER AI TOOL — INTEGRATION SNIPPET
+File: INTEGRATION_GUIDE.html
+PURPOSE: Copy-paste these snippets into your EXISTING index.html
+DO NOT replace index.html — only ADD these snippets at specified locations
+═══════════════════════════════════════════════════════════════════════════
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SNIPPET 1: ADD IN <head> — AFTER existing Firebase scripts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Find this in your index.html:
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+ADD THESE LINES IMMEDIATELY AFTER:
+-->
+
+<!-- Firebase Auth SDK (NEW — add this) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+
+<!-- K Spider Firebase Config + Payment (NEW) -->
+<script src="firebase-config.js"></script>
+<script src="payment.js"></script>
+
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SNIPPET 2: ADD JUST BEFORE </body> — at end of index.html
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Find </body> tag at the end of your index.html.
+ADD these BEFORE it:
+-->
+
+<!-- K Spider Security (NEW) -->
+<script src="security.js"></script>
+
+<!-- K Spider Auth State UI Handler (NEW) -->
+<script>
+// ══════════════════════════════════════════════════════════
+// AUTH STATE HANDLER — Runs on every page load of index.html
+// Shows login/logout state in existing navigation
+// ══════════════════════════════════════════════════════════
+
+document.addEventListener('DOMContentLoaded', function() {
+  // Wait for Firebase + KS to be ready
+  var waitForKS = setInterval(function() {
+    if (typeof window.KS === 'undefined') return;
+    clearInterval(waitForKS);
+
+    KS.auth.onAuthStateChanged(function(user) {
+      if (user) {
+        // User is logged in — fetch their plan
+        KS.db.collection('users').doc(user.uid).get()
+          .then(function(doc) {
+            var data = doc.exists ? doc.data() : {};
+            window.KS_USER = data;
+            updateNavForUser(user, data);
+            unlockToolsForUser(data);
+          })
+          .catch(function() { updateNavForUser(user, {}); });
+      } else {
+        // Not logged in
+        updateNavForGuest();
+      }
+    });
+  }, 100);
+});
+
+// Update navigation to show user state
+function updateNavForUser(user, userData) {
+  var planType = userData.planType || 'free';
+  var name     = userData.name || user.displayName || user.email || 'User';
+  var isAdmin  = KS.isAdmin(userData.email);
+
+  // If your nav has a "Login" button with id="nav-login-btn", replace it
+  var loginBtn = document.getElementById('nav-login-btn');
+  if (loginBtn) {
+    loginBtn.outerHTML = `
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;" id="nav-user-menu" onclick="toggleUserMenu()">
+        <div style="width:32px;height:32px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.85rem;font-weight:700;color:#fff;flex-shrink:0;">
+          ${(name.charAt(0)||'U').toUpperCase()}
+        </div>
+        <span style="font-size:.85rem;font-weight:600;color:var(--t2);">${planType === 'premium' ? '💎' : planType === 'franchise' ? '🏢' : ''}${escHtml(name.split(' ')[0])}</span>
+      </div>
+      <div id="ks-user-dropdown" style="display:none;position:absolute;top:100%;right:0;background:var(--bg2);border:1px solid var(--br2);border-radius:12px;padding:8px;min-width:200px;box-shadow:0 8px 30px rgba(0,0,0,.1);z-index:9999;">
+        <div style="padding:8px 12px;border-bottom:1px solid var(--br);margin-bottom:6px;">
+          <div style="font-size:.85rem;font-weight:700;">${escHtml(name)}</div>
+          <div style="font-size:.75rem;color:var(--t3);">${escHtml(userData.email||'')}</div>
+          <span style="display:inline-block;margin-top:4px;padding:2px 8px;border-radius:10px;font-size:.68rem;font-weight:700;text-transform:uppercase;background:var(--gold-s);color:var(--gold2);border:1px solid var(--gold-b);">${planType}</span>
+        </div>
+        ${isAdmin ? '<a href="admin.html" style="display:flex;padding:9px 12px;border-radius:8px;color:var(--red);font-size:.85rem;font-weight:600;text-decoration:none;">👑 Admin Dashboard</a>' : ''}
+        <a href="#pricing" style="display:flex;padding:9px 12px;border-radius:8px;color:var(--t2);font-size:.85rem;font-weight:500;text-decoration:none;" onclick="closeDropdowns()">⬆️ Upgrade Plan</a>
+        <a href="#" onclick="KS_logout();return false;" style="display:flex;padding:9px 12px;border-radius:8px;color:var(--t3);font-size:.85rem;font-weight:500;text-decoration:none;">🚪 Logout</a>
+      </div>`;
+  }
+
+  // Show plan badge in header if element exists
+  var planBadge = document.getElementById('user-plan-badge');
+  if (planBadge) {
+    planBadge.textContent = planType.charAt(0).toUpperCase() + planType.slice(1);
+    planBadge.style.display = 'inline';
+  }
+}
+
+function updateNavForGuest() {
+  // Add login button if not present
+  var loginBtn = document.getElementById('nav-login-btn');
+  if (loginBtn) {
+    loginBtn.href = 'auth.html';
+    loginBtn.textContent = '🔑 Login / Register';
+  }
+}
+
+function toggleUserMenu() {
+  var d = document.getElementById('ks-user-dropdown');
+  if (d) d.style.display = d.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', function(e) {
+  var menu = document.getElementById('nav-user-menu');
+  var dd   = document.getElementById('ks-user-dropdown');
+  if (dd && menu && !menu.contains(e.target)) dd.style.display = 'none';
+});
+
+// Unlock/lock tool cards based on user plan
+function unlockToolsForUser(userData) {
+  var planType = userData.planType || 'free';
+
+  // Find all tool cards with data-plan="premium" attribute
+  document.querySelectorAll('[data-plan]').forEach(function(card) {
+    var requiredPlan = card.getAttribute('data-plan');
+    var toolId       = card.getAttribute('data-tool-id') || '';
+    var canAccess    = KS.canAccessTool(toolId, planType) || KS.isAdmin(userData.email);
+
+    var lockIcon = card.querySelector('.tool-lock-icon');
+    if (lockIcon) {
+      lockIcon.style.display = canAccess ? 'none' : 'flex';
+    }
+
+    // Add upgrade click handler for locked tools
+    if (!canAccess) {
+      card.style.cursor = 'pointer';
+      card.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (typeof KS_showPaymentModal === 'undefined') {
+          window.location.href = '#pricing';
+        } else {
+          openPricingModal(requiredPlan);
+        }
+      }, { once: false });
+    }
+  });
+}
+
+function escHtml(s) {
+  return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// Make KS_logout available globally
+window.KS_logout = function() {
+  if (typeof firebase !== 'undefined') {
+    firebase.auth().signOut().then(function() {
+      sessionStorage.clear();
+      window.location.reload();
+    });
+  }
+};
+</script>
+
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SNIPPET 3: TOOL CARDS — How to mark premium tools
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+In your existing tool cards, add these data attributes:
+
+For PREMIUM tools:
+  data-plan="premium"
+  data-tool-id="whatsapp-sender"
+
+For FREE tools (no change needed, but you can add):
+  data-plan="free"
+
+Example:
+<div class="tool-card" data-plan="premium" data-tool-id="whatsapp-sender">
+  ... existing content ...
+  <!-- Add lock overlay inside premium tool cards: -->
+  <div class="tool-lock-icon" style="display:none;position:absolute;inset:0;background:rgba(248,247,244,.85);backdrop-filter:blur(2px);border-radius:inherit;align-items:center;justify-content:center;flex-direction:column;gap:8px;z-index:10;">
+    <span style="font-size:2rem;">🔒</span>
+    <span style="font-size:.78rem;font-weight:700;color:var(--gold);text-align:center;">Upgrade to Premium</span>
+  </div>
+</div>
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SNIPPET 4: BUY BUTTONS — Connect to Razorpay
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Find your existing "Buy Premium" or pricing buttons.
+Replace onclick with:
+
+Premium Monthly:
+  onclick="KS_initPayment('premium', false)"
+
+Premium Yearly:
+  onclick="KS_initPayment('premium', true)"
+
+Franchise Monthly:
+  onclick="KS_initPayment('franchise', false)"
+
+Franchise Yearly:
+  onclick="KS_initPayment('franchise', true)"
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SNIPPET 5: ADD LOGIN BUTTON TO YOUR NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+In your existing nav/header, find where you want the login button.
+Add this element with id="nav-login-btn" — the JS above will replace it
+with the user menu when they're logged in:
+
+<a href="auth.html" id="nav-login-btn"
+   style="padding:8px 18px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;border-radius:8px;font-size:.85rem;font-weight:700;text-decoration:none;position:relative;">
+  🔑 Login
+</a>
+-->

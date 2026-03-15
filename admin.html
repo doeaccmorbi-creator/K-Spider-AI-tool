@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard — K Spider AI</title>
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <!-- Completely hidden from search engines -->
+
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+
+  <style>
+    :root {
+      --bg:#0f0e0c; --bg2:#1a1814; --bg3:#242019; --bg4:#2e2b24;
+      --gold:#b8792a; --gold2:#d4922e; --gold3:#f5c259;
+      --gold-s:rgba(184,121,42,.12); --gold-b:rgba(184,121,42,.3);
+      --neon:#059669; --red:#dc2626; --blue:#3b82f6;
+      --t1:#f0ede8; --t2:#c8c3ba; --t3:#8a8479; --t4:#5a5650;
+      --br:rgba(255,255,255,.07); --br2:rgba(255,255,255,.12);
+      --r8:12px; --r12:18px; --r16:24px;
+    }
+    *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+    html { scroll-behavior:smooth; }
+    body { font-family:'DM Sans',-apple-system,sans-serif; background:var(--bg); color:var(--t1); min-height:100vh; }
+
+    /* ── SIDEBAR ── */
+    .admin-layout { display:flex; min-height:100vh; }
+    .sidebar {
+      width: 240px; min-height:100vh;
+      background: var(--bg2);
+      border-right: 1px solid var(--br);
+      display:flex; flex-direction:column;
+      padding: 0;
+      position: fixed; left:0; top:0; bottom:0;
+      z-index: 100;
+      transition: transform .3s;
+    }
+    .sidebar-logo {
+      padding: 24px 20px;
+      border-bottom: 1px solid var(--br);
+      display:flex; align-items:center; gap:10px;
+    }
+    .sidebar-logo .icon { width:36px;height:36px;background:linear-gradient(135deg,var(--gold),var(--gold2));border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:1.1rem; }
+    .sidebar-logo .name { font-size:.9rem;font-weight:700;color:var(--t1); }
+    .sidebar-logo .badge { font-size:.65rem;font-weight:700;background:var(--red);color:#fff;padding:2px 6px;border-radius:4px;margin-left:4px; }
+
+    .nav-section { padding: 16px 12px 8px; }
+    .nav-label { font-size:.65rem;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.1em;padding: 0 8px;margin-bottom:6px; }
+    .nav-item {
+      display:flex; align-items:center; gap:10px;
+      padding: 10px 12px; border-radius:var(--r8);
+      color:var(--t3); font-size:.88rem; font-weight:500;
+      cursor:pointer; text-decoration:none;
+      transition: all .2s; margin-bottom:2px;
+    }
+    .nav-item:hover { background:var(--gold-s); color:var(--t1); }
+    .nav-item.active { background:var(--gold-s); color:var(--gold2); font-weight:600; border:1px solid var(--gold-b); }
+    .nav-item .nav-icon { font-size:1rem; width:20px;text-align:center; }
+    .nav-badge { margin-left:auto; background:var(--gold2); color:#fff; font-size:.65rem; font-weight:700; padding:2px 7px; border-radius:10px; }
+
+    .sidebar-footer { margin-top:auto; padding:16px; border-top:1px solid var(--br); }
+
+    /* ── MAIN CONTENT ── */
+    .admin-main {
+      margin-left: 240px;
+      flex: 1;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    /* ── TOP BAR ── */
+    .topbar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--br);
+      padding: 16px 28px;
+      display:flex; align-items:center; gap:16px;
+      position: sticky; top:0; z-index:50;
+    }
+    .topbar-title { font-size:1.1rem; font-weight:700; flex:1; }
+    .topbar-user { display:flex;align-items:center;gap:10px;font-size:.85rem;color:var(--t3); }
+    .topbar-avatar { width:34px;height:34px;background:var(--gold-s);border:1px solid var(--gold-b);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem; }
+
+    /* ── CONTENT AREA ── */
+    .content { padding: 28px; }
+
+    /* ── STAT CARDS ── */
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+    .stat-card {
+      background:var(--bg2); border:1px solid var(--br); border-radius:var(--r12);
+      padding: 20px; display:flex; align-items:flex-start; gap:14px;
+    }
+    .stat-icon { width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0; }
+    .stat-icon.gold  { background:var(--gold-s);border:1px solid var(--gold-b); }
+    .stat-icon.green { background:rgba(5,150,105,.12);border:1px solid rgba(5,150,105,.25); }
+    .stat-icon.blue  { background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.25); }
+    .stat-icon.red   { background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.25); }
+    .stat-val  { font-size:1.7rem;font-weight:800;color:var(--t1);line-height:1; }
+    .stat-lbl  { font-size:.78rem;color:var(--t3);margin-top:4px; }
+    .stat-chg  { font-size:.72rem;margin-top:6px;font-weight:600; }
+    .stat-chg.up   { color:var(--neon); }
+    .stat-chg.down { color:var(--red); }
+
+    /* ── TABLES ── */
+    .section-card {
+      background:var(--bg2); border:1px solid var(--br); border-radius:var(--r12);
+      margin-bottom:24px; overflow:hidden;
+    }
+    .section-head {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--br);
+      display:flex; align-items:center; gap:12px;
+    }
+    .section-title { font-size:1rem; font-weight:700; flex:1; }
+    .section-actions { display:flex; gap:8px; }
+
+    .table-wrap { overflow-x:auto; }
+    table { width:100%; border-collapse:collapse; }
+    th { padding:12px 20px; text-align:left; font-size:.72rem; font-weight:700; color:var(--t4); text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--br); white-space:nowrap; }
+    td { padding:12px 20px; font-size:.85rem; color:var(--t2); border-bottom:1px solid var(--br); vertical-align:middle; }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:rgba(255,255,255,.02); }
+
+    /* Plan badges */
+    .badge { display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em; }
+    .badge.free      { background:rgba(90,86,80,.3);color:var(--t3);border:1px solid var(--br); }
+    .badge.premium   { background:var(--gold-s);color:var(--gold2);border:1px solid var(--gold-b); }
+    .badge.franchise { background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3); }
+    .badge.success   { background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.3); }
+    .badge.failed    { background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3); }
+    .badge.pending   { background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3); }
+    .badge.admin     { background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.3); }
+
+    /* Buttons */
+    .btn { padding:8px 16px;border-radius:var(--r8);font-size:.8rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s; }
+    .btn-gold   { background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff; }
+    .btn-gold:hover { opacity:.85; }
+    .btn-ghost  { background:transparent;color:var(--t3);border:1px solid var(--br2); }
+    .btn-ghost:hover { border-color:var(--gold-b);color:var(--gold2); }
+    .btn-danger { background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3); }
+    .btn-danger:hover { background:rgba(220,38,38,.25); }
+    .btn-green  { background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.3); }
+    .btn-green:hover  { background:rgba(5,150,105,.25); }
+    .btn-sm { padding:5px 12px; font-size:.75rem; }
+
+    /* Search / Filter */
+    .filter-row { padding:16px 24px; display:flex; gap:12px; align-items:center; }
+    .search-input {
+      flex:1; padding:9px 16px;
+      background:var(--bg3); border:1px solid var(--br2);
+      border-radius:var(--r8); color:var(--t1); font-size:.85rem;
+      outline:none; font-family:inherit;
+    }
+    .search-input:focus { border-color:var(--gold-b); }
+    .filter-select {
+      padding:9px 14px; background:var(--bg3); border:1px solid var(--br2);
+      border-radius:var(--r8); color:var(--t2); font-size:.82rem;
+      outline:none; font-family:inherit; cursor:pointer;
+    }
+
+    /* Tabs */
+    .admin-tabs { display:flex; gap:4px; padding:20px 28px 0; border-bottom:1px solid var(--br); }
+    .admin-tab {
+      padding:10px 18px; border-radius:var(--r8) var(--r8) 0 0;
+      font-size:.85rem; font-weight:600; cursor:pointer;
+      color:var(--t3); border:none; background:transparent;
+      border-bottom:2px solid transparent; transition:all .2s;
+    }
+    .admin-tab.active { color:var(--gold2); border-bottom-color:var(--gold2); }
+    .admin-tab:hover  { color:var(--t1); }
+
+    /* Panel */
+    .admin-panel { display:none; }
+    .admin-panel.active { display:block; }
+
+    /* ── LOGIN OVERLAY ── */
+    #admin-login-overlay {
+      position:fixed; inset:0; z-index:9999;
+      background:var(--bg);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .admin-login-box {
+      background:var(--bg2); border:1px solid var(--br2);
+      border-radius:var(--r16); padding:40px 36px;
+      max-width:380px; width:90%; text-align:center;
+    }
+    .admin-login-box .icon { font-size:3rem; margin-bottom:16px; }
+    .admin-login-box h2 { font-size:1.3rem;font-weight:700;margin-bottom:6px; }
+    .admin-login-box p { font-size:.85rem;color:var(--t3);margin-bottom:24px; }
+    .form-input-dark {
+      width:100%; padding:11px 16px; margin-bottom:12px;
+      background:var(--bg3); border:1px solid var(--br2);
+      border-radius:var(--r8); color:var(--t1); font-size:.9rem;
+      outline:none; font-family:inherit;
+    }
+    .form-input-dark:focus { border-color:var(--gold-b); }
+
+    /* Toast */
+    #admin-toast {
+      position:fixed; bottom:24px; right:24px; z-index:9999;
+      background:var(--bg2); border:1px solid var(--br2);
+      border-radius:var(--r8); padding:12px 20px;
+      font-size:.85rem; font-weight:500;
+      box-shadow:0 8px 30px rgba(0,0,0,.3);
+      display:none; animation:toastIn .3s;
+    }
+    @keyframes toastIn { from{transform:translateY(10px);opacity:0} to{transform:none;opacity:1} }
+
+    /* Modal */
+    .modal-ov { position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center; }
+    .modal-ov.open { display:flex; }
+    .modal-box { background:var(--bg2);border:1px solid var(--br2);border-radius:var(--r16);padding:32px;max-width:400px;width:90%; }
+    .modal-title { font-size:1.1rem;font-weight:700;margin-bottom:16px; }
+    .modal-btns  { display:flex;gap:10px;margin-top:20px;justify-content:flex-end; }
+
+    @media (max-width: 900px) {
+      .sidebar { transform:translateX(-100%); }
+      .admin-main { margin-left:0; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 500px) {
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════════════════
+     ADMIN LOGIN OVERLAY
+════════════════════════════════ -->
+<div id="admin-login-overlay">
+  <div class="admin-login-box">
+    <div class="icon">🔐</div>
+    <h2>Admin Access</h2>
+    <p>This panel is restricted to authorized K Spider admins only.</p>
+    <div id="admin-login-alert" style="display:none;padding:10px;border-radius:8px;font-size:.82rem;margin-bottom:12px;background:rgba(220,38,38,.1);color:#f87171;border:1px solid rgba(220,38,38,.2);"></div>
+    <input type="email"    class="form-input-dark" id="admin-email-in"  placeholder="Admin email">
+    <input type="password" class="form-input-dark" id="admin-pw-in"     placeholder="Password">
+    <button class="btn btn-gold" style="width:100%;padding:12px;font-size:.95rem;" onclick="adminLogin()">
+      🔑 Sign In as Admin
+    </button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════
+     MAIN ADMIN LAYOUT
+════════════════════════════════ -->
+<div class="admin-layout" id="admin-layout" style="display:none;">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="icon">🕷️</div>
+      <div>
+        <div class="name">K Spider AI <span class="badge">ADMIN</span></div>
+      </div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Overview</div>
+      <a class="nav-item active" onclick="showPanel('dashboard')" href="#">
+        <span class="nav-icon">📊</span> Dashboard
+      </a>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Management</div>
+      <a class="nav-item" onclick="showPanel('users')" href="#">
+        <span class="nav-icon">👥</span> Users
+        <span class="nav-badge" id="users-count-badge">...</span>
+      </a>
+      <a class="nav-item" onclick="showPanel('payments')" href="#">
+        <span class="nav-icon">💳</span> Payments
+      </a>
+      <a class="nav-item" onclick="showPanel('franchise')" href="#">
+        <span class="nav-icon">🏢</span> Franchise
+        <span class="nav-badge" id="franchise-count-badge" style="background:var(--red);display:none;">!</span>
+      </a>
+      <a class="nav-item" onclick="showPanel('tools')" href="#">
+        <span class="nav-icon">🔧</span> Tools
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <a class="nav-item" href="index.html" target="_blank">
+        <span class="nav-icon">🌐</span> View Website
+      </a>
+      <a class="nav-item" onclick="adminLogout()" href="#">
+        <span class="nav-icon">🚪</span> Logout
+      </a>
+      <div style="font-size:.7rem;color:var(--t4);padding:8px 12px 0;text-align:center;">
+        K Spider Admin v1.0
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN CONTENT -->
+  <main class="admin-main">
+    <div class="topbar">
+      <div class="topbar-title" id="topbar-title">📊 Dashboard</div>
+      <div class="topbar-user">
+        <div class="topbar-avatar">👑</div>
+        <span id="admin-name-display">Admin</span>
+      </div>
+    </div>
+
+    <!-- ═══ DASHBOARD PANEL ═══ -->
+    <div class="admin-panel active content" id="panel-dashboard">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon gold">👥</div>
+          <div>
+            <div class="stat-val" id="stat-total-users">—</div>
+            <div class="stat-lbl">Total Users</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">💳</div>
+          <div>
+            <div class="stat-val" id="stat-total-payments">—</div>
+            <div class="stat-lbl">Total Payments</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon gold">💎</div>
+          <div>
+            <div class="stat-val" id="stat-premium-users">—</div>
+            <div class="stat-lbl">Premium Users</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon blue">🏢</div>
+          <div>
+            <div class="stat-val" id="stat-franchise-users">—</div>
+            <div class="stat-lbl">Franchise Users</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revenue stat -->
+      <div class="section-card">
+        <div class="section-head">
+          <div class="section-title">📈 Recent Activity (Last 10 transactions)</div>
+          <button class="btn btn-ghost btn-sm" onclick="loadRecentPayments()">🔄 Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Payment ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th>
+            </tr></thead>
+            <tbody id="recent-payments-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ USERS PANEL ═══ -->
+    <div class="admin-panel" id="panel-users">
+      <div class="filter-row">
+        <input class="search-input" type="text" placeholder="🔍 Search users by name or email..." id="user-search" oninput="filterUsers()">
+        <select class="filter-select" id="user-plan-filter" onchange="filterUsers()">
+          <option value="all">All Plans</option>
+          <option value="free">Free</option>
+          <option value="premium">Premium</option>
+          <option value="franchise">Franchise</option>
+        </select>
+        <button class="btn btn-gold btn-sm" onclick="loadUsers()">🔄 Refresh</button>
+      </div>
+      <div class="section-card" style="margin:0 28px 28px;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>User</th><th>Email</th><th>Plan</th><th>Status</th>
+              <th>Registered</th><th>Last Login</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="users-table-body">
+              <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PAYMENTS PANEL ═══ -->
+    <div class="admin-panel" id="panel-payments">
+      <div class="filter-row">
+        <input class="search-input" type="text" placeholder="🔍 Search by Payment ID or User ID..." id="pay-search" oninput="filterPayments()">
+        <select class="filter-select" id="pay-status-filter" onchange="filterPayments()">
+          <option value="all">All Status</option>
+          <option value="success">Success</option>
+          <option value="failed">Failed</option>
+        </select>
+        <button class="btn btn-gold btn-sm" onclick="loadPayments()">🔄 Refresh</button>
+      </div>
+      <div class="section-card" style="margin:0 28px 28px;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>Payment ID</th><th>User ID</th><th>Plan</th><th>Amount</th>
+              <th>Status</th><th>Date</th>
+            </tr></thead>
+            <tbody id="payments-table-body">
+              <tr><td colspan="6" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ FRANCHISE PANEL ═══ -->
+    <div class="admin-panel" id="panel-franchise">
+      <div style="padding:28px;">
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-title">🏢 Franchise Requests / Users</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>User</th><th>Email</th><th>Current Plan</th><th>Payment Status</th><th>Actions</th>
+              </tr></thead>
+              <tbody id="franchise-table-body">
+                <tr><td colspan="5" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TOOLS PANEL ═══ -->
+    <div class="admin-panel" id="panel-tools">
+      <div style="padding:28px;">
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-title">🔧 Tool Management</div>
+            <div class="section-actions">
+              <button class="btn btn-gold btn-sm" onclick="saveToolSettings()">💾 Save Changes</button>
+            </div>
+          </div>
+          <div id="tools-management" style="padding:20px;">
+            Loading tools...
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- UPGRADE USER MODAL -->
+<div class="modal-ov" id="upgrade-modal">
+  <div class="modal-box">
+    <div class="modal-title">Upgrade User Plan</div>
+    <p style="font-size:.85rem;color:var(--t3);margin-bottom:16px;">
+      User: <strong id="upgrade-user-email"></strong>
+    </p>
+    <select class="filter-select" id="upgrade-plan-select" style="width:100%;margin-bottom:12px;">
+      <option value="free">Free</option>
+      <option value="premium">Premium</option>
+      <option value="franchise">Franchise</option>
+    </select>
+    <input type="hidden" id="upgrade-user-id">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('upgrade-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="executeUpgrade()">Upgrade Plan</button>
+    </div>
+  </div>
+</div>
+
+<div id="admin-toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// ADMIN DASHBOARD CONTROLLER
+// ═══════════════════════════════════════════════════════════════
+
+var _allUsers    = [];
+var _allPayments = [];
+var _adminUser   = null;
+
+// ── TOOL DEFINITIONS ──
+var TOOLS_LIST = [
+  { id:'whatsapp-sender',   name:'WhatsApp Sender',     plan:'premium',  icon:'📱' },
+  { id:'wa-broadcast-pro',  name:'WA Broadcast Pro',    plan:'premium',  icon:'📡' },
+  { id:'resume-builder',    name:'Resume Builder',      plan:'premium',  icon:'📄' },
+  { id:'doctor-ai',         name:'Doctor AI',           plan:'premium',  icon:'🏥' },
+  { id:'ai-teacher',        name:'AI Teacher',          plan:'premium',  icon:'📚' },
+  { id:'passport-photo',    name:'Passport Photo Maker',plan:'premium',  icon:'📸' },
+  { id:'bg-remover',        name:'BG Remover',          plan:'premium',  icon:'🎨' },
+  { id:'image-editor',      name:'Image Editor',        plan:'premium',  icon:'🖼️'  },
+  { id:'image-compressor',  name:'Image Compressor',    plan:'free',     icon:'📦' },
+  { id:'qr-generator',      name:'QR Code Generator',   plan:'free',     icon:'📲' }
+];
+
+// ─── Admin Login ───
+function adminLogin() {
+  var email = document.getElementById('admin-email-in').value.trim().toLowerCase();
+  var pw    = document.getElementById('admin-pw-in').value;
+  var alert = document.getElementById('admin-login-alert');
+
+  if (!email || !pw) { showLoginAlert('Enter email and password'); return; }
+
+  KS.auth.signInWithEmailAndPassword(email, pw)
+    .then(function(cred) {
+      if (!KS.isAdmin(cred.user.email)) {
+        KS.auth.signOut();
+        showLoginAlert('Access denied. You are not an admin.');
+        return;
+      }
+      _adminUser = cred.user;
+      document.getElementById('admin-login-overlay').style.display = 'none';
+      document.getElementById('admin-layout').style.display = 'flex';
+      document.getElementById('admin-name-display').textContent = cred.user.displayName || email;
+      initDashboard();
+    })
+    .catch(function(err) {
+      showLoginAlert(err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'
+        ? 'Invalid credentials.' : err.message);
+    });
+}
+
+function showLoginAlert(msg) {
+  var el = document.getElementById('admin-login-alert');
+  el.style.display = 'block';
+  el.textContent = msg;
+}
+
+function adminLogout() {
+  KS.auth.signOut().then(function() {
+    window.location.reload();
+  });
+}
+
+// ─── Check existing auth ───
+document.addEventListener('DOMContentLoaded', function() {
+  KS.auth.onAuthStateChanged(function(user) {
+    if (user && KS.isAdmin(user.email)) {
+      _adminUser = user;
+      document.getElementById('admin-login-overlay').style.display = 'none';
+      document.getElementById('admin-layout').style.display = 'flex';
+      document.getElementById('admin-name-display').textContent = user.displayName || user.email;
+      initDashboard();
+    }
+  });
+});
+
+// ─── Init Dashboard ───
+function initDashboard() {
+  loadStats();
+  loadRecentPayments();
+  loadUsers();
+  loadPayments();
+  loadFranchise();
+  renderToolsManagement();
+}
+
+// ─── Load Stats ───
+function loadStats() {
+  KS.db.collection('users').get().then(function(snap) {
+    var total = snap.size;
+    var premium = 0, franchise = 0;
+    snap.forEach(function(doc) {
+      var d = doc.data();
+      if (d.planType === 'premium') premium++;
+      if (d.planType === 'franchise') franchise++;
+    });
+    document.getElementById('stat-total-users').textContent = total;
+    document.getElementById('stat-premium-users').textContent = premium;
+    document.getElementById('stat-franchise-users').textContent = franchise;
+    document.getElementById('users-count-badge').textContent = total;
+  });
+
+  KS.db.collection('payments').where('status','==','success').get().then(function(snap) {
+    document.getElementById('stat-total-payments').textContent = snap.size;
+  });
+}
+
+// ─── Load Users ───
+function loadUsers() {
+  document.getElementById('users-table-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>';
+
+  KS.db.collection('users').orderBy('registrationDate', 'desc').limit(200).get()
+    .then(function(snap) {
+      _allUsers = [];
+      snap.forEach(function(doc) { _allUsers.push({ id: doc.id, ...doc.data() }); });
+      renderUsers(_allUsers);
+    })
+    .catch(function(err) { console.error('[Admin] Users load error:', err); });
+}
+
+function renderUsers(users) {
+  var tbody = document.getElementById('users-table-body');
+  if (!users.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No users found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = users.map(function(u) {
+    var regDate  = u.registrationDate ? new Date(u.registrationDate.seconds * 1000).toLocaleDateString('en-IN') : '—';
+    var lastLogin= u.lastLogin        ? new Date(u.lastLogin.seconds * 1000).toLocaleDateString('en-IN') : '—';
+    var isAdmin  = KS.isAdmin(u.email);
+    return `<tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:30px;height:30px;background:var(--gold-s);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--gold2);font-weight:700;flex-shrink:0;">
+            ${(u.name||'U').charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <div style="font-weight:600;color:var(--t1);">${esc(u.name||'Unknown')}</div>
+            ${isAdmin ? '<span class="badge admin" style="font-size:.6rem;">ADMIN</span>' : ''}
+          </div>
+        </div>
+      </td>
+      <td style="color:var(--t3);">${esc(u.email||'')}</td>
+      <td><span class="badge ${u.planType||'free'}">${u.planType||'free'}</span></td>
+      <td><span class="badge ${u.paymentStatus==='paid'?'success':'pending'}">${u.paymentStatus||'none'}</span></td>
+      <td style="color:var(--t4);font-size:.78rem;">${regDate}</td>
+      <td style="color:var(--t4);font-size:.78rem;">${lastLogin}</td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="openUpgradeModal('${u.id}','${esc(u.email||'')}','${u.planType||'free'}')">⬆️ Upgrade</button>
+        <button class="btn btn-danger btn-sm" onclick="confirmDisableUser('${u.id}','${esc(u.name||'')}')">🚫 Disable</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function filterUsers() {
+  var q     = (document.getElementById('user-search').value||'').toLowerCase();
+  var plan  = document.getElementById('user-plan-filter').value;
+  var filtered = _allUsers.filter(function(u) {
+    var matchQ    = !q || (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
+    var matchPlan = plan === 'all' || u.planType === plan;
+    return matchQ && matchPlan;
+  });
+  renderUsers(filtered);
+}
+
+// ─── Load Payments ───
+function loadPayments() {
+  KS.db.collection('payments').orderBy('timestamp','desc').limit(200).get()
+    .then(function(snap) {
+      _allPayments = [];
+      snap.forEach(function(doc) { _allPayments.push({ id: doc.id, ...doc.data() }); });
+      renderPayments(_allPayments);
+    });
+}
+
+function renderPayments(payments) {
+  var tbody = document.getElementById('payments-table-body');
+  if (!payments.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--t4);padding:20px;">No payments found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = payments.map(function(p) {
+    var date = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleString('en-IN') : p.createdAt || '—';
+    return `<tr>
+      <td style="font-family:monospace;font-size:.78rem;">${esc(p.paymentID||'—')}</td>
+      <td style="font-family:monospace;font-size:.75rem;color:var(--t4);">${esc(p.userID||'').substring(0,12)}...</td>
+      <td><span class="badge ${p.planType||'free'}">${p.planType||'—'}</span></td>
+      <td style="font-weight:600;color:var(--gold2);">₹${(p.amount||0).toLocaleString('en-IN')}</td>
+      <td><span class="badge ${p.status||'pending'}">${p.status||'—'}</span></td>
+      <td style="font-size:.75rem;color:var(--t4);">${date}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterPayments() {
+  var q      = (document.getElementById('pay-search').value||'').toLowerCase();
+  var status = document.getElementById('pay-status-filter').value;
+  var filtered = _allPayments.filter(function(p) {
+    var matchQ = !q || (p.paymentID||'').toLowerCase().includes(q) || (p.userID||'').toLowerCase().includes(q);
+    var matchS = status === 'all' || p.status === status;
+    return matchQ && matchS;
+  });
+  renderPayments(filtered);
+}
+
+// ─── Load Recent Payments ───
+function loadRecentPayments() {
+  KS.db.collection('payments').orderBy('timestamp','desc').limit(10).get()
+    .then(function(snap) {
+      var rows = '';
+      snap.forEach(function(doc) {
+        var p = doc.data();
+        var date = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleString('en-IN') : '—';
+        rows += `<tr>
+          <td style="font-family:monospace;font-size:.75rem;">${esc(p.paymentID||'—')}</td>
+          <td style="font-size:.78rem;color:var(--t3);">${esc((p.userID||'').substring(0,12))}...</td>
+          <td><span class="badge ${p.planType||'free'}">${p.planType||'—'}</span></td>
+          <td style="font-weight:600;color:var(--gold2);">₹${(p.amount||0).toLocaleString('en-IN')}</td>
+          <td><span class="badge ${p.status||'pending'}">${p.status||'—'}</span></td>
+          <td style="font-size:.75rem;color:var(--t4);">${date}</td>
+        </tr>`;
+      });
+      document.getElementById('recent-payments-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;color:var(--t4);padding:20px;">No payments yet</td></tr>';
+    });
+}
+
+// ─── Load Franchise ───
+function loadFranchise() {
+  KS.db.collection('users').where('planType','in',['franchise','premium']).get()
+    .then(function(snap) {
+      var rows = '';
+      snap.forEach(function(doc) {
+        var u = doc.data();
+        rows += `<tr>
+          <td style="font-weight:600;">${esc(u.name||'Unknown')}</td>
+          <td style="color:var(--t3);">${esc(u.email||'')}</td>
+          <td><span class="badge ${u.planType||'free'}">${u.planType||'free'}</span></td>
+          <td><span class="badge ${u.paymentStatus==='paid'?'success':'pending'}">${u.paymentStatus||'none'}</span></td>
+          <td>
+            <button class="btn btn-green btn-sm" onclick="openUpgradeModal('${doc.id}','${esc(u.email||'')}','${u.planType||'free'}')">✏️ Change Plan</button>
+          </td>
+        </tr>`;
+      });
+      document.getElementById('franchise-table-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;color:var(--t4);padding:20px;">No franchise users yet</td></tr>';
+    });
+}
+
+// ─── Tools Management ───
+function renderToolsManagement() {
+  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">';
+  TOOLS_LIST.forEach(function(tool) {
+    html += `
+      <div style="background:var(--bg3);border:1px solid var(--br);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;">
+        <span style="font-size:1.5rem;">${tool.icon}</span>
+        <div style="flex:1;">
+          <div style="font-weight:600;font-size:.9rem;">${tool.name}</div>
+          <span class="badge ${tool.plan}" style="margin-top:4px;">${tool.plan}</span>
+        </div>
+        <div>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+            <input type="checkbox" checked id="tool-${tool.id}"
+              style="width:16px;height:16px;accent-color:var(--gold2);">
+            <span style="font-size:.78rem;color:var(--t3);">Active</span>
+          </label>
+        </div>
+      </div>`;
+  });
+  html += '</div>';
+  document.getElementById('tools-management').innerHTML = html;
+}
+
+function saveToolSettings() {
+  var settings = {};
+  TOOLS_LIST.forEach(function(tool) {
+    var checkbox = document.getElementById('tool-' + tool.id);
+    settings[tool.id] = checkbox ? checkbox.checked : true;
+  });
+  KS.db.collection('admin').doc('tool_settings').set(settings)
+    .then(function() { adminToast('✅ Tool settings saved!'); })
+    .catch(function(err) { adminToast('❌ Error: ' + err.message); });
+}
+
+// ─── Upgrade Modal ───
+function openUpgradeModal(uid, email, currentPlan) {
+  document.getElementById('upgrade-user-id').value = uid;
+  document.getElementById('upgrade-user-email').textContent = email;
+  document.getElementById('upgrade-plan-select').value = currentPlan;
+  document.getElementById('upgrade-modal').classList.add('open');
+}
+
+function executeUpgrade() {
+  var uid  = document.getElementById('upgrade-user-id').value;
+  var plan = document.getElementById('upgrade-plan-select').value;
+  if (!uid) return;
+
+  KS.db.collection('users').doc(uid).update({
+    planType:         plan,
+    paymentStatus:    plan === 'free' ? 'none' : 'paid',
+    manualUpgradeBy:  _adminUser ? _adminUser.email : 'admin',
+    manualUpgradeAt:  firebase.firestore.FieldValue.serverTimestamp()
+  })
+  .then(function() {
+    closeModal('upgrade-modal');
+    adminToast('✅ User plan updated to ' + plan);
+    loadUsers(); loadStats();
+  })
+  .catch(function(err) { adminToast('❌ ' + err.message); });
+}
+
+function confirmDisableUser(uid, name) {
+  if (!confirm('Disable user "' + name + '"? They will not be able to login.')) return;
+  KS.db.collection('users').doc(uid).update({ disabled: true, planType: 'free' })
+    .then(function() { adminToast('User disabled.'); loadUsers(); })
+    .catch(function(err) { adminToast('Error: ' + err.message); });
+}
+
+// ─── Panel Navigation ───
+function showPanel(name) {
+  document.querySelectorAll('.admin-panel').forEach(function(p) { p.classList.remove('active'); });
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+  event.currentTarget && event.currentTarget.classList && event.currentTarget.classList.add('active');
+
+  var titles = { dashboard:'📊 Dashboard', users:'👥 Users', payments:'💳 Payments', franchise:'🏢 Franchise', tools:'🔧 Tools' };
+  document.getElementById('topbar-title').textContent = titles[name] || name;
+}
+
+// ─── Helpers ───
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function esc(s) { return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function adminToast(msg) {
+  var t = document.getElementById('admin-toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(function() { t.style.display = 'none'; }, 3000);
+}
+</script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+</body>
+</html>

@@ -1,0 +1,122 @@
+// ═══════════════════════════════════════════════════════════════
+// K SPIDER AI TOOL — FIRESTORE SECURITY RULES
+// File: firestore.rules
+// Deploy: Firebase Console → Firestore → Rules → Paste → Publish
+// ═══════════════════════════════════════════════════════════════
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Helper Functions ──────────────────────────────────────
+
+    // Check if user is authenticated
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Check if request is from the resource's owner
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+
+    // Check if user is an admin
+    // Admin emails are stored in admin/config document
+    function isAdmin() {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/admin/config) &&
+        request.auth.token.email in
+          get(/databases/$(database)/documents/admin/config).data.adminEmails;
+    }
+
+    // Validate user data on write
+    function isValidUserData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userID', 'email', 'planType']) &&
+             data.planType in ['free', 'premium', 'franchise'] &&
+             data.email is string &&
+             data.email.size() > 0;
+    }
+
+    // Validate payment data
+    function isValidPaymentData() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['userID', 'paymentID', 'planType', 'amount', 'status']) &&
+             data.status in ['success', 'failed', 'pending'];
+    }
+
+    // ── USERS COLLECTION ─────────────────────────────────────
+    match /users/{userId} {
+      // Read: user can read own data, admin can read all
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Create: authenticated user can create own document
+      allow create: if isOwner(userId) && isValidUserData();
+
+      // Update: user can update own data (but NOT change planType or paymentStatus)
+      // Admin can update anything
+      allow update: if (
+        isOwner(userId) &&
+        // Users cannot upgrade their own plan (must go through payment)
+        (!request.resource.data.diff(resource.data).affectedKeys()
+          .hasAny(['planType', 'paymentStatus', 'isAdmin', 'manualUpgradeBy']))
+      ) || isAdmin();
+
+      // Delete: only admin can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ── PAYMENTS COLLECTION ───────────────────────────────────
+    match /payments/{paymentId} {
+      // Read: user can read their own payments, admin reads all
+      allow read: if isAuth() &&
+        (resource.data.userID == request.auth.uid || isAdmin());
+
+      // Create: any authenticated user can create a payment record
+      // (actual verification happens client-side via Razorpay)
+      allow create: if isAuth() &&
+        request.resource.data.userID == request.auth.uid &&
+        isValidPaymentData();
+
+      // Update/Delete: only admin (for corrections/refunds)
+      allow update, delete: if isAdmin();
+    }
+
+    // ── ADMIN COLLECTION ──────────────────────────────────────
+    match /admin/{document} {
+      // Only admins can read/write admin documents
+      allow read, write: if isAdmin();
+    }
+
+    match /admin/{document}/{subCollection}/{docId} {
+      allow read, write: if isAdmin();
+    }
+
+    // ── TOOL SETTINGS ─────────────────────────────────────────
+    match /tool_settings/{toolId} {
+      // Anyone can read tool settings (to check if tool is active)
+      allow read: if isAuth();
+      // Only admin can write
+      allow write: if isAdmin();
+    }
+
+    // ── NOTIFICATIONS / WAITLIST ──────────────────────────────
+    match /notifications/{docId} {
+      allow create: if isAuth();
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ── FRANCHISE REQUESTS ────────────────────────────────────
+    match /franchise_requests/{docId} {
+      allow create: if isAuth() &&
+        request.resource.data.userID == request.auth.uid;
+      allow read: if isOwner(resource.data.userID) || isAdmin();
+      allow update, delete: if isAdmin();
+    }
+
+    // ── DENY ALL OTHER ACCESS ─────────────────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
