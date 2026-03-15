@@ -1372,6 +1372,65 @@ body {
     <button class="nuser" id="nub" onclick="openM('reg-ov')" aria-label="Register or view profile">
       <span>🔐</span><span id="nul">Register</span>
     </button>
+
+    <!-- ── USER PROFILE DROPDOWN (shown when logged in) ── -->
+    <div id="ks-profile-wrap" style="display:none;position:relative;">
+      <button id="ks-profile-btn" onclick="toggleProfileMenu()" style="
+        display:flex;align-items:center;gap:8px;
+        background:var(--gold-s);border:1.5px solid var(--gold-b);
+        border-radius:40px;padding:6px 14px 6px 6px;
+        cursor:pointer;font-family:inherit;transition:all .2s;
+      ">
+        <div id="ks-avatar" style="
+          width:30px;height:30px;border-radius:50%;
+          background:linear-gradient(135deg,var(--gold),var(--gold2));
+          display:flex;align-items:center;justify-content:center;
+          font-size:.85rem;font-weight:700;color:#fff;flex-shrink:0;
+        ">G</div>
+        <span id="ks-uname" style="font-size:.85rem;font-weight:600;color:var(--t1);">User</span>
+        <span id="ks-plan-badge" style="
+          font-size:.6rem;font-weight:700;text-transform:uppercase;
+          background:var(--gold2);color:#fff;
+          padding:2px 7px;border-radius:10px;
+        ">FREE</span>
+      </button>
+
+      <!-- Dropdown Menu -->
+      <div id="ks-profile-menu" style="
+        display:none;position:absolute;top:calc(100% + 8px);right:0;
+        background:var(--bg2);border:1px solid var(--br2);
+        border-radius:16px;padding:8px;min-width:220px;
+        box-shadow:0 8px 30px rgba(0,0,0,.12);z-index:9999;
+        animation:fadeIn .2s ease;
+      ">
+        <!-- User Info -->
+        <div style="padding:10px 12px;border-bottom:1px solid var(--br);margin-bottom:6px;">
+          <div id="ks-menu-name" style="font-size:.9rem;font-weight:700;color:var(--t1);">User Name</div>
+          <div id="ks-menu-email" style="font-size:.75rem;color:var(--t3);margin-top:2px;">email@gmail.com</div>
+          <div id="ks-menu-plan" style="
+            display:inline-block;margin-top:6px;
+            padding:2px 10px;border-radius:10px;
+            font-size:.68rem;font-weight:700;text-transform:uppercase;
+            background:var(--gold-s);color:var(--gold2);border:1px solid var(--gold-b);
+          ">Free Plan</div>
+        </div>
+
+        <!-- Menu Items -->
+        <a href="#pricing" onclick="closeProfileMenu()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--t2);font-size:.85rem;font-weight:500;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='var(--gold-s)'" onmouseout="this.style.background='transparent'">
+          <span>⬆️</span> Upgrade Plan
+        </a>
+
+        <a href="admin.html" id="ks-admin-link" style="display:none;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--red);font-size:.85rem;font-weight:600;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(220,38,38,.08)'" onmouseout="this.style.background='transparent'">
+          <span>👑</span> Admin Dashboard
+        </a>
+
+        <div style="border-top:1px solid var(--br);margin:6px 0;"></div>
+
+        <a href="#" onclick="ksLogout();return false;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--t3);font-size:.85rem;font-weight:500;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background='transparent'">
+          <span>🚪</span> Logout
+        </a>
+      </div>
+    </div>
   </div>
 </nav>
 
@@ -2847,23 +2906,111 @@ function updateUW() {
   var u = getUser();
   var l = document.getElementById('nul');
   var b = document.getElementById('nub');
-  if (u && u.verified && l) {
-    l.textContent = u.name.split(' ')[0];
-    if (b) { b.onclick = function() { toast('Namaste ' + u.name + '! ✅ Verified | Tools used: ' + (u.toolsUsed || 0) + ' 🕷️', 'info'); }; }
-  } else if (u && !u.verified && l) {
-    l.textContent = 'Email Verify Karo';
+  var profileWrap = document.getElementById('ks-profile-wrap');
+
+  if (u && u.verified) {
+    // ── LOGGED IN — Show profile dropdown, hide register button ──
+    if (b) b.style.display = 'none';
+    if (profileWrap) profileWrap.style.display = 'flex';
+
+    // Update avatar letter
+    var avatar = document.getElementById('ks-avatar');
+    if (avatar) avatar.textContent = (u.name || 'U').charAt(0).toUpperCase();
+
+    // Update username
+    var uname = document.getElementById('ks-uname');
+    if (uname) uname.textContent = (u.name || 'User').split(' ')[0];
+
+    // Update plan badge
+    var planBadge = document.getElementById('ks-plan-badge');
+    var planType = u.planType || u.plan || 'free';
+    if (planBadge) {
+      planBadge.textContent = planType.toUpperCase();
+      if (planType === 'premium') {
+        planBadge.style.background = 'var(--gold2)';
+      } else if (planType === 'franchise') {
+        planBadge.style.background = 'var(--pur)';
+      } else {
+        planBadge.style.background = 'var(--t4)';
+      }
+    }
+
+    // Update dropdown info
+    var menuName = document.getElementById('ks-menu-name');
+    var menuEmail = document.getElementById('ks-menu-email');
+    var menuPlan = document.getElementById('ks-menu-plan');
+    if (menuName) menuName.textContent = u.name || 'User';
+    if (menuEmail) menuEmail.textContent = u.email || '';
+    if (menuPlan) menuPlan.textContent = planType.charAt(0).toUpperCase() + planType.slice(1) + ' Plan';
+
+    // Show admin link if admin
+    var adminLink = document.getElementById('ks-admin-link');
+    if (adminLink && u.email) {
+      var adminEmails = ['kspider221206@gmail.com'];
+      if (adminEmails.includes(u.email.toLowerCase())) {
+        adminLink.style.display = 'flex';
+      }
+    }
+
+  } else if (u && !u.verified) {
+    // Not verified
+    if (l) l.textContent = 'Verify Email';
     if (b) {
       b.onclick = function() {
-        // _pendingUser page refresh pe null hota hai, isliye re-register prompt karo
-        if (_pendingUser) {
-          openM('otp-ov');
-        } else {
-          toast('Dobara register karo — OTP bhejenge.', 'warn', 4000);
-          setTimeout(function(){ openM('reg-ov'); }, 500);
-        }
+        if (_pendingUser) { openM('otp-ov'); }
+        else { toast('Dobara register karo.', 'warn', 4000); setTimeout(function(){ openM('reg-ov'); }, 500); }
       };
     }
+  } else {
+    // Not logged in — show register button
+    if (b) b.style.display = 'flex';
+    if (profileWrap) profileWrap.style.display = 'none';
   }
+}
+
+// ── Profile menu toggle ──
+function toggleProfileMenu() {
+  var menu = document.getElementById('ks-profile-menu');
+  if (menu) menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+function closeProfileMenu() {
+  var menu = document.getElementById('ks-profile-menu');
+  if (menu) menu.style.display = 'none';
+}
+
+// Close menu on outside click
+document.addEventListener('click', function(e) {
+  var wrap = document.getElementById('ks-profile-wrap');
+  if (wrap && !wrap.contains(e.target)) closeProfileMenu();
+});
+
+// ── LOGOUT ──
+function ksLogout() {
+  // Clear localStorage
+  localStorage.removeItem('ks_u');
+  localStorage.removeItem('ks_last_email');
+
+  // Firebase signout if available
+  if (typeof firebase !== 'undefined' && firebase.auth) {
+    try { firebase.auth().signOut(); } catch(e) {}
+  }
+  if (typeof KS !== 'undefined' && KS.auth) {
+    try { KS.auth.signOut(); } catch(e) {}
+  }
+
+  // Clear session
+  sessionStorage.clear();
+
+  // UI reset
+  var b = document.getElementById('nub');
+  var l = document.getElementById('nul');
+  var profileWrap = document.getElementById('ks-profile-wrap');
+  if (b) { b.style.display = 'flex'; b.onclick = function(){ openM('reg-ov'); }; }
+  if (l) l.textContent = 'Register';
+  if (profileWrap) profileWrap.style.display = 'none';
+
+  toast('✅ Logout ho gaye! Dobara milenge 🕷️', 'success', 3000);
+  setTimeout(function() { window.location.reload(); }, 1500);
 }
 
 function renderTools(filter) {
