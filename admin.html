@@ -7,11 +7,66 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <!-- Completely hidden from search engines -->
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <script src="firebase-config.js"></script>
+  <!-- ═══════════════════════════════════════════════════════
+       FIREBASE BOOTSTRAP — works locally (file://) AND live
+       SDKs load dynamically so no CDN block on local files
+       ═══════════════════════════════════════════════════════ -->
+  <script>
+  (function() {
+    var _cfg = {
+      apiKey:            "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+      authDomain:        "kspideraimain.firebaseapp.com",
+      projectId:         "kspideraimain",
+      storageBucket:     "kspideraimain.firebasestorage.app",
+      messagingSenderId: "940003391760",
+      appId:             "1:940003391760:web:8617000465b6991d348d95"
+    };
+    var _admins = ['kspider221206@gmail.com'];
+
+    function initKS() {
+      if (!firebase.apps.length) firebase.initializeApp(_cfg);
+      window.KS = {
+        auth:    firebase.auth(),
+        db:      firebase.firestore(),
+        isAdmin: function(e){ return _admins.includes((e||'').toLowerCase().trim()); },
+        canAccessTool: function(toolId, plan){
+          if (!plan || plan === 'franchise') return true;
+          if (plan === 'premium') return true;
+          return true; // free
+        }
+      };
+      // Re-run auth check after KS is ready
+      if (typeof checkAdminAuth === 'function') checkAdminAuth();
+      console.log('[KSpider Admin] Firebase ready ✅');
+    }
+
+    function loadScript(src, cb) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = cb;
+      s.onerror = function(){ console.error('[KSpider] Failed to load:', src); cb(); };
+      document.head.appendChild(s);
+    }
+
+    var SDKS = [
+      'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js'
+    ];
+
+    function loadSequential(i) {
+      if (i >= SDKS.length) { initKS(); return; }
+      loadScript(SDKS[i], function(){ loadSequential(i + 1); });
+    }
+
+    // If Firebase SDKs already loaded (live server with normal tags), use them directly
+    if (typeof firebase !== 'undefined') {
+      initKS();
+    } else {
+      loadSequential(0);
+    }
+  })();
+  </script>
 
   <style>
     :root {
@@ -436,16 +491,167 @@
     <!-- ═══ TOOLS PANEL ═══ -->
     <div class="admin-panel" id="panel-tools">
       <div style="padding:28px;">
-        <div class="section-card">
-          <div class="section-head">
-            <div class="section-title">🔧 Tool Management</div>
-            <div class="section-actions">
-              <button class="btn btn-gold btn-sm" onclick="saveToolSettings()">💾 Save Changes</button>
+
+        <!-- Top Bar: Stats + Save -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;gap:12px;flex-wrap:wrap;">
+            <div style="background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:12px 20px;min-width:100px;text-align:center;">
+              <div style="font-size:1.4rem;font-weight:800;color:var(--neon)" id="ts-live-count">0</div>
+              <div style="font-size:.7rem;color:var(--t4);margin-top:2px;">LIVE Tools</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:12px 20px;min-width:100px;text-align:center;">
+              <div style="font-size:1.4rem;font-weight:800;color:var(--red)" id="ts-off-count">0</div>
+              <div style="font-size:.7rem;color:var(--t4);margin-top:2px;">OFF Tools</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:12px 20px;min-width:100px;text-align:center;">
+              <div style="font-size:1.4rem;font-weight:800;color:var(--gold2)" id="ts-premium-count">0</div>
+              <div style="font-size:.7rem;color:var(--t4);margin-top:2px;">Premium</div>
+            </div>
+            <div style="background:var(--bg2);border:1px solid var(--br);border-radius:10px;padding:12px 20px;min-width:100px;text-align:center;">
+              <div style="font-size:1.4rem;font-weight:800;color:var(--t3)" id="ts-free-count">0</div>
+              <div style="font-size:.7rem;color:var(--t4);margin-top:2px;">Free</div>
             </div>
           </div>
-          <div id="tools-management" style="padding:20px;">
-            Loading tools...
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" onclick="loadToolSettings()">🔄 Refresh</button>
+            <button class="btn btn-green btn-sm" onclick="setAllToolsLive()">✅ All Live</button>
+            <button class="btn btn-danger btn-sm" onclick="setAllToolsOff()">🚫 All Off</button>
+            <button class="btn btn-gold" onclick="saveToolSettings()">💾 Save All Changes</button>
           </div>
+        </div>
+
+        <!-- Search filter -->
+        <div style="margin-bottom:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <input class="search-input" type="text" id="tool-search" placeholder="🔍 Search tools..." oninput="filterToolsPanel()" style="max-width:260px;">
+          <select class="filter-select" id="tool-filter-plan" onchange="filterToolsPanel()">
+            <option value="all">All Plans</option>
+            <option value="free">Free</option>
+            <option value="premium">Premium</option>
+            <option value="franchise">Franchise</option>
+          </select>
+          <select class="filter-select" id="tool-filter-status" onchange="filterToolsPanel()">
+            <option value="all">All Status</option>
+            <option value="live">Live</option>
+            <option value="off">Off</option>
+            <option value="coming_soon">Coming Soon</option>
+          </select>
+        </div>
+
+        <!-- Tools Table -->
+        <div class="section-card">
+          <div class="table-wrap">
+            <table id="tools-admin-table">
+              <thead>
+                <tr>
+                  <th style="width:40px">#</th>
+                  <th>Tool</th>
+                  <th>Category</th>
+                  <th style="width:120px">Status</th>
+                  <th style="width:140px">Plan Type</th>
+                  <th style="width:130px">Price (₹/yr)</th>
+                  <th style="width:100px">Live / Off</th>
+                  <th style="width:80px">Action</th>
+                </tr>
+              </thead>
+              <tbody id="tools-admin-tbody">
+                <tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Unsaved changes notice -->
+        <div id="tools-unsaved-banner" style="display:none;margin-top:12px;padding:12px 20px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:10px;font-size:.83rem;color:#fbbf24;display:none;align-items:center;justify-content:space-between;">
+          <span>⚠️ Aapke paas <strong id="unsaved-count">0</strong> unsaved changes hain.</span>
+          <button class="btn btn-gold btn-sm" onclick="saveToolSettings()">💾 Save Now</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ TOOL EDIT MODAL ═══ -->
+    <div class="modal-ov" id="tool-edit-modal">
+      <div class="modal-box" style="max-width:480px;">
+        <div class="modal-title">✏️ Edit Tool Settings</div>
+        <input type="hidden" id="te-tool-id">
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Tool Name</label>
+          <input class="search-input" type="text" id="te-name" placeholder="Tool Name" style="width:100%;">
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Description</label>
+          <textarea id="te-desc" style="width:100%;padding:9px 16px;background:var(--bg3);border:1px solid var(--br2);border-radius:var(--r8);color:var(--t1);font-size:.85rem;font-family:inherit;resize:vertical;min-height:80px;outline:none;" placeholder="Short description..."></textarea>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Icon (emoji)</label>
+            <input class="search-input" type="text" id="te-icon" placeholder="🔧" style="width:100%;">
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Category</label>
+            <select class="filter-select" id="te-cat" style="width:100%;">
+              <option value="marketing">Marketing</option>
+              <option value="image">Image</option>
+              <option value="career">Career</option>
+              <option value="education">Education</option>
+              <option value="finance">Finance</option>
+              <option value="health">Health</option>
+              <option value="social">Social</option>
+              <option value="legal">Legal</option>
+              <option value="utility">Utility</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Status</label>
+            <select class="filter-select" id="te-status" style="width:100%;">
+              <option value="live">🟢 Live</option>
+              <option value="off">🔴 Off (Hidden)</option>
+              <option value="coming_soon">🟡 Coming Soon</option>
+              <option value="maintenance">🔧 Maintenance</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Plan Type</label>
+            <select class="filter-select" id="te-plan" style="width:100%;">
+              <option value="free">🆓 Free</option>
+              <option value="premium">💎 Premium</option>
+              <option value="franchise">🏢 Franchise</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Price (₹/year) <span style="color:var(--t4);font-size:.7rem;">0 = Free</span></label>
+            <input class="search-input" type="number" id="te-price" placeholder="0" min="0" style="width:100%;">
+          </div>
+          <div>
+            <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Original Price (₹) <span style="color:var(--t4);font-size:.7rem;">for strikethrough</span></label>
+            <input class="search-input" type="number" id="te-orig-price" placeholder="0" min="0" style="width:100%;">
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px;">
+          <label style="font-size:.78rem;color:var(--t3);display:block;margin-bottom:6px;">Custom Badge Text <span style="color:var(--t4);font-size:.7rem;">(optional, e.g. "NEW", "HOT")</span></label>
+          <input class="search-input" type="text" id="te-badge" placeholder="e.g. NEW, HOT, SALE" style="width:100%;" maxlength="15">
+        </div>
+
+        <div style="margin-bottom:20px;">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <input type="checkbox" id="te-featured" style="width:16px;height:16px;accent-color:var(--gold2);">
+            <span style="font-size:.85rem;color:var(--t2);">⭐ Mark as Featured (shows at top)</span>
+          </label>
+        </div>
+
+        <div class="modal-btns">
+          <button class="btn btn-ghost" onclick="closeModal('tool-edit-modal')">Cancel</button>
+          <button class="btn btn-gold" onclick="saveToolEdit()">💾 Save Changes</button>
         </div>
       </div>
     </div>
@@ -537,8 +743,11 @@ function adminLogout() {
   });
 }
 
-// ─── Check existing auth ───
-document.addEventListener('DOMContentLoaded', function() {
+// ─── Check existing auth (called by bootstrap once KS is ready) ───
+var _authCheckDone = false;
+function checkAdminAuth() {
+  if (_authCheckDone) return;
+  _authCheckDone = true;
   KS.auth.onAuthStateChanged(function(user) {
     if (user && KS.isAdmin(user.email)) {
       _adminUser = user;
@@ -548,6 +757,12 @@ document.addEventListener('DOMContentLoaded', function() {
       initDashboard();
     }
   });
+}
+
+// Fallback: if KS loaded synchronously before this script ran
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof KS !== 'undefined') checkAdminAuth();
+  // else bootstrap will call checkAdminAuth() after async load
 });
 
 // ─── Init Dashboard ───
@@ -557,7 +772,7 @@ function initDashboard() {
   loadUsers();
   loadPayments();
   loadFranchise();
-  renderToolsManagement();
+  loadToolSettings();
 }
 
 // ─── Load Stats ───
@@ -722,39 +937,293 @@ function loadFranchise() {
     });
 }
 
-// ─── Tools Management ───
-function renderToolsManagement() {
-  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;">';
-  TOOLS_LIST.forEach(function(tool) {
-    html += `
-      <div style="background:var(--bg3);border:1px solid var(--br);border-radius:12px;padding:16px;display:flex;align-items:center;gap:12px;">
-        <span style="font-size:1.5rem;">${tool.icon}</span>
-        <div style="flex:1;">
-          <div style="font-weight:600;font-size:.9rem;">${tool.name}</div>
-          <span class="badge ${tool.plan}" style="margin-top:4px;">${tool.plan}</span>
-        </div>
-        <div>
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;">
-            <input type="checkbox" checked id="tool-${tool.id}"
-              style="width:16px;height:16px;accent-color:var(--gold2);">
-            <span style="font-size:.78rem;color:var(--t3);">Active</span>
-          </label>
-        </div>
-      </div>`;
-  });
-  html += '</div>';
-  document.getElementById('tools-management').innerHTML = html;
+// ═══════════════════════════════════════════════════════
+// TOOLS MANAGEMENT — FULL ADMIN CONTROL
+// ═══════════════════════════════════════════════════════
+
+// Master tool definitions (base data — overrides come from Firestore)
+var TOOLS_LIST = [
+  { id:'whatsapp-bulk-sender', name:'WhatsApp Bulk Sender',          icon:'📱', cat:'marketing', status:'live',        plan:'premium', price:0, origPrice:0 },
+  { id:'wa-broadcast-pro',     name:'WA Broadcast Pro',              icon:'📡', cat:'marketing', status:'live',        plan:'premium', price:0, origPrice:0 },
+  { id:'resume-builder',       name:'Resume Builder + RSK Bharat',   icon:'📄', cat:'career',    status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'image-master-pro',     name:'Image Master Pro',              icon:'🖼️', cat:'image',     status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'ai-teacher',           name:'AI Teacher',                    icon:'🎓', cat:'education', status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'ai-business-consultant',name:'AI Business Consultant',       icon:'💼', cat:'finance',   status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'ai-prompt-engine',     name:'AI Universal Prompt Engine',    icon:'🧠', cat:'marketing', status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'ai-file-converter',    name:'AI Universal File Converter',   icon:'🔄', cat:'image',     status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'pharmacy-master',      name:'Pharmacy Master Pro',           icon:'💊', cat:'health',    status:'live',        plan:'premium', price:0, origPrice:0 },
+  { id:'india-fbook',          name:'K Spider India F-Book',         icon:'🇮🇳', cat:'social',   status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'linkshare',            name:'K Spider LinkShare',            icon:'🔗', cat:'marketing', status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'multipost',            name:'K Spider MultiPost',            icon:'📤', cat:'social',    status:'live',        plan:'free',    price:0, origPrice:0 },
+  { id:'social-captions',      name:'Social Media Caption AI',       icon:'✍️', cat:'social',    status:'coming_soon', plan:'free',    price:0, origPrice:0 },
+  { id:'biz-name-gen',         name:'Business Name Generator',       icon:'🏢', cat:'finance',   status:'coming_soon', plan:'free',    price:0, origPrice:0 },
+  { id:'health-checker',       name:'Health Symptom Checker',        icon:'🏥', cat:'health',    status:'coming_soon', plan:'free',    price:0, origPrice:0 },
+  { id:'contract-gen',         name:'Legal Contract Generator',      icon:'⚖️', cat:'legal',     status:'coming_soon', plan:'free',    price:0, origPrice:0 }
+];
+
+// Working copy — merged with Firestore overrides
+var _toolSettings = {};
+var _toolsRendered = [];   // filtered list currently showing
+var _unsavedCount  = 0;
+
+// ── Load tool settings from Firestore ──
+function loadToolSettings() {
+  document.getElementById('tools-admin-tbody').innerHTML =
+    '<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>';
+
+  KS.db.collection('admin').doc('tool_settings').get()
+    .then(function(doc) {
+      var saved = doc.exists ? doc.data() : {};
+      // Merge base list with saved overrides
+      _toolSettings = {};
+      TOOLS_LIST.forEach(function(t) {
+        var s = saved[t.id] || {};
+        _toolSettings[t.id] = {
+          id:        t.id,
+          name:      s.name      !== undefined ? s.name      : t.name,
+          icon:      s.icon      !== undefined ? s.icon      : t.icon,
+          cat:       s.cat       !== undefined ? s.cat       : t.cat,
+          desc:      s.desc      !== undefined ? s.desc      : (t.desc || ''),
+          status:    s.status    !== undefined ? s.status    : t.status,
+          plan:      s.plan      !== undefined ? s.plan      : t.plan,
+          price:     s.price     !== undefined ? s.price     : (t.price || 0),
+          origPrice: s.origPrice !== undefined ? s.origPrice : (t.origPrice || 0),
+          badge:     s.badge     !== undefined ? s.badge     : (t.badge || ''),
+          featured:  s.featured  !== undefined ? s.featured  : (t.featured || false)
+        };
+      });
+      _unsavedCount = 0;
+      updateUnsavedBanner();
+      filterToolsPanel();
+      updateToolStats();
+      adminToast('✅ Tool settings loaded from Firestore');
+    })
+    .catch(function(err) {
+      // Firestore not available yet — use base list
+      TOOLS_LIST.forEach(function(t) {
+        _toolSettings[t.id] = {
+          id: t.id, name: t.name, icon: t.icon, cat: t.cat, desc: t.desc || '',
+          status: t.status, plan: t.plan, price: t.price || 0,
+          origPrice: t.origPrice || 0, badge: t.badge || '', featured: t.featured || false
+        };
+      });
+      filterToolsPanel();
+      updateToolStats();
+      adminToast('⚠️ Firestore unavailable — showing defaults');
+    });
 }
 
-function saveToolSettings() {
-  var settings = {};
-  TOOLS_LIST.forEach(function(tool) {
-    var checkbox = document.getElementById('tool-' + tool.id);
-    settings[tool.id] = checkbox ? checkbox.checked : true;
+// ── Render tools table ──
+function renderToolsTable(list) {
+  _toolsRendered = list;
+  var tbody = document.getElementById('tools-admin-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">No tools match filter</td></tr>';
+    return;
+  }
+
+  var statusColors = {
+    live:         { dot:'#34d399', label:'🟢 LIVE' },
+    off:          { dot:'#f87171', label:'🔴 OFF' },
+    coming_soon:  { dot:'#fbbf24', label:'🟡 SOON' },
+    maintenance:  { dot:'#60a5fa', label:'🔧 MAINT.' }
+  };
+  var planColors = {
+    free:      'badge free',
+    premium:   'badge premium',
+    franchise: 'badge franchise'
+  };
+
+  tbody.innerHTML = list.map(function(t, i) {
+    var sc = statusColors[t.status] || statusColors['off'];
+    var isLive = t.status === 'live';
+    var priceDisplay = t.price > 0
+      ? '<span style="color:var(--gold2);font-weight:700;">₹' + t.price.toLocaleString('en-IN') + '</span>'
+        + (t.origPrice > t.price ? '<br><s style="color:var(--t4);font-size:.72rem;">₹' + t.origPrice.toLocaleString('en-IN') + '</s>' : '')
+      : '<span style="color:var(--neon);font-weight:600;">FREE</span>';
+
+    return '<tr id="tool-row-' + t.id + '">' +
+      '<td style="color:var(--t4);font-size:.78rem;">' + (i+1) + '</td>' +
+      '<td>' +
+        '<div style="display:flex;align-items:center;gap:8px;">' +
+          '<span style="font-size:1.4rem;">' + esc(t.icon) + '</span>' +
+          '<div>' +
+            '<div style="font-weight:600;color:var(--t1);font-size:.88rem;">' + esc(t.name) + '</div>' +
+            (t.badge ? '<span style="font-size:.6rem;font-weight:700;background:var(--red);color:#fff;padding:2px 6px;border-radius:4px;">' + esc(t.badge) + '</span>' : '') +
+            (t.featured ? '<span style="font-size:.6rem;font-weight:700;background:rgba(245,158,11,.2);color:#fbbf24;padding:2px 6px;border-radius:4px;margin-left:3px;">⭐ FEATURED</span>' : '') +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '<td><span style="font-size:.75rem;color:var(--t3);text-transform:capitalize;">' + esc(t.cat) + '</span></td>' +
+      '<td><span style="font-size:.77rem;font-weight:600;color:' + sc.dot + ';">' + sc.label + '</span></td>' +
+      '<td><span class="' + (planColors[t.plan] || 'badge free') + '">' + (t.plan || 'free').toUpperCase() + '</span></td>' +
+      '<td>' + priceDisplay + '</td>' +
+      '<td>' +
+        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
+          '<input type="checkbox"' + (isLive ? ' checked' : '') +
+            ' id="toggle-' + t.id + '"' +
+            ' data-toolid="' + t.id + '"' +
+            ' onchange="onToolLiveToggle(this)"' +
+            ' style="width:16px;height:16px;accent-color:var(--neon);">' +
+          '<span style="font-size:.78rem;color:' + (isLive ? 'var(--neon)' : 'var(--red)') + ';" id="toggle-lbl-' + t.id + '">' + (isLive ? 'Live' : 'Off') + '</span>' +
+        '</label>' +
+      '</td>' +
+      '<td>' +
+        '<button class="btn btn-ghost btn-sm" onclick="openToolEdit(\'' + t.id + '\')" title="Edit tool">✏️</button>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+}
+
+// ── Filter tools table ──
+function filterToolsPanel() {
+  if (!Object.keys(_toolSettings).length) return;
+  var q       = (document.getElementById('tool-search')        || {value:''}).value.toLowerCase();
+  var fPlan   = (document.getElementById('tool-filter-plan')   || {value:'all'}).value;
+  var fStatus = (document.getElementById('tool-filter-status') || {value:'all'}).value;
+
+  var all = Object.values(_toolSettings);
+  var filtered = all.filter(function(t) {
+    var mQ  = !q || t.name.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q);
+    var mP  = fPlan   === 'all' || t.plan   === fPlan;
+    var mS  = fStatus === 'all' || t.status === fStatus;
+    return mQ && mP && mS;
   });
-  KS.db.collection('admin').doc('tool_settings').set(settings)
-    .then(function() { adminToast('✅ Tool settings saved!'); })
-    .catch(function(err) { adminToast('❌ Error: ' + err.message); });
+
+  // Featured on top, then live, then rest
+  filtered.sort(function(a,b) {
+    if (a.featured && !b.featured) return -1;
+    if (!a.featured && b.featured)  return 1;
+    var order = {live:0, maintenance:1, coming_soon:2, off:3};
+    return (order[a.status]||9) - (order[b.status]||9);
+  });
+  renderToolsTable(filtered);
+  updateToolStats();
+}
+
+// ── Live/Off toggle (instant local change) ──
+function onToolLiveToggle(checkbox) {
+  var id  = checkbox.getAttribute('data-toolid');
+  var lbl = document.getElementById('toggle-lbl-' + id);
+  if (!_toolSettings[id]) return;
+
+  if (checkbox.checked) {
+    _toolSettings[id].status = 'live';
+    if (lbl) { lbl.textContent = 'Live'; lbl.style.color = 'var(--neon)'; }
+  } else {
+    _toolSettings[id].status = 'off';
+    if (lbl) { lbl.textContent = 'Off'; lbl.style.color = 'var(--red)'; }
+  }
+  _unsavedCount++;
+  updateUnsavedBanner();
+  updateToolStats();
+}
+
+// ── Set all live / all off ──
+function setAllToolsLive() {
+  if (!confirm('Sare tools LIVE kar dein?')) return;
+  Object.keys(_toolSettings).forEach(function(id) {
+    _toolSettings[id].status = 'live';
+  });
+  _unsavedCount = Object.keys(_toolSettings).length;
+  filterToolsPanel();
+  updateUnsavedBanner();
+}
+function setAllToolsOff() {
+  if (!confirm('Sare tools OFF kar dein?')) return;
+  Object.keys(_toolSettings).forEach(function(id) {
+    _toolSettings[id].status = 'off';
+  });
+  _unsavedCount = Object.keys(_toolSettings).length;
+  filterToolsPanel();
+  updateUnsavedBanner();
+}
+
+// ── Open tool edit modal ──
+function openToolEdit(id) {
+  var t = _toolSettings[id];
+  if (!t) return;
+  document.getElementById('te-tool-id').value      = id;
+  document.getElementById('te-name').value          = t.name    || '';
+  document.getElementById('te-desc').value          = t.desc    || '';
+  document.getElementById('te-icon').value          = t.icon    || '';
+  document.getElementById('te-cat').value           = t.cat     || 'marketing';
+  document.getElementById('te-status').value        = t.status  || 'live';
+  document.getElementById('te-plan').value          = t.plan    || 'free';
+  document.getElementById('te-price').value         = t.price   || 0;
+  document.getElementById('te-orig-price').value    = t.origPrice || 0;
+  document.getElementById('te-badge').value         = t.badge   || '';
+  document.getElementById('te-featured').checked    = t.featured || false;
+  document.getElementById('tool-edit-modal').classList.add('open');
+}
+
+// ── Save individual tool edit ──
+function saveToolEdit() {
+  var id = document.getElementById('te-tool-id').value;
+  if (!id || !_toolSettings[id]) { adminToast('❌ Tool not found'); return; }
+
+  _toolSettings[id].name      = document.getElementById('te-name').value.trim();
+  _toolSettings[id].desc      = document.getElementById('te-desc').value.trim();
+  _toolSettings[id].icon      = document.getElementById('te-icon').value.trim();
+  _toolSettings[id].cat       = document.getElementById('te-cat').value;
+  _toolSettings[id].status    = document.getElementById('te-status').value;
+  _toolSettings[id].plan      = document.getElementById('te-plan').value;
+  _toolSettings[id].price     = parseInt(document.getElementById('te-price').value) || 0;
+  _toolSettings[id].origPrice = parseInt(document.getElementById('te-orig-price').value) || 0;
+  _toolSettings[id].badge     = document.getElementById('te-badge').value.trim();
+  _toolSettings[id].featured  = document.getElementById('te-featured').checked;
+
+  _unsavedCount++;
+  updateUnsavedBanner();
+  closeModal('tool-edit-modal');
+  filterToolsPanel();
+  adminToast('✅ Tool updated locally — click Save All to apply.');
+}
+
+// ── Save all tool settings to Firestore ──
+function saveToolSettings() {
+  var toSave = {};
+  Object.keys(_toolSettings).forEach(function(id) {
+    toSave[id] = _toolSettings[id];
+  });
+
+  KS.db.collection('admin').doc('tool_settings').set(toSave)
+    .then(function() {
+      _unsavedCount = 0;
+      updateUnsavedBanner();
+      filterToolsPanel();
+      adminToast('✅ All tool settings saved to Firestore!');
+    })
+    .catch(function(err) { adminToast('❌ Save failed: ' + err.message); });
+}
+
+// ── Stats update ──
+function updateToolStats() {
+  var all = Object.values(_toolSettings);
+  var live = all.filter(function(t){ return t.status === 'live'; }).length;
+  var off  = all.filter(function(t){ return t.status === 'off'; }).length;
+  var prem = all.filter(function(t){ return t.plan === 'premium'; }).length;
+  var free = all.filter(function(t){ return t.plan === 'free'; }).length;
+  var liveEl = document.getElementById('ts-live-count');
+  var offEl  = document.getElementById('ts-off-count');
+  var premEl = document.getElementById('ts-premium-count');
+  var freeEl = document.getElementById('ts-free-count');
+  if (liveEl) liveEl.textContent = live;
+  if (offEl)  offEl.textContent  = off;
+  if (premEl) premEl.textContent = prem;
+  if (freeEl) freeEl.textContent = free;
+}
+
+function updateUnsavedBanner() {
+  var banner = document.getElementById('tools-unsaved-banner');
+  var cnt    = document.getElementById('unsaved-count');
+  if (!banner) return;
+  if (_unsavedCount > 0) {
+    if (cnt) cnt.textContent = _unsavedCount;
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 // ─── Upgrade Modal ───
@@ -798,8 +1267,10 @@ function showPanel(name) {
   document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
   event.currentTarget && event.currentTarget.classList && event.currentTarget.classList.add('active');
 
-  var titles = { dashboard:'📊 Dashboard', users:'👥 Users', payments:'💳 Payments', franchise:'🏢 Franchise', tools:'🔧 Tools' };
+  var titles = { dashboard:'📊 Dashboard', users:'👥 Users', payments:'💳 Payments', franchise:'🏢 Franchise', tools:'🔧 Tools Management' };
   document.getElementById('topbar-title').textContent = titles[name] || name;
+
+  if (name === 'tools') { loadToolSettings(); }
 }
 
 // ─── Helpers ───
