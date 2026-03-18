@@ -350,12 +350,61 @@
   <!-- Razorpay Payment SDK -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
-  <!-- Firebase -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-  <!-- ── K Spider Auth + Security (NEW) ── -->
-  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-  <script src="firebase-config.js"></script>
+  <!-- ═══════════════════════════════════════════════════════
+       FIREBASE BOOTSTRAP — works locally (file://) AND live
+       ═══════════════════════════════════════════════════════ -->
+  <script>
+  (function() {
+    var _cfg = {
+      apiKey:            "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+      authDomain:        "kspideraimain.firebaseapp.com",
+      projectId:         "kspideraimain",
+      storageBucket:     "kspideraimain.firebasestorage.app",
+      messagingSenderId: "940003391760",
+      appId:             "1:940003391760:web:8617000465b6991d348d95"
+    };
+    var _admins = ['kspider221206@gmail.com'];
+
+    function initKS() {
+      if (!firebase.apps.length) firebase.initializeApp(_cfg);
+      window.KS = {
+        auth:    firebase.auth(),
+        db:      firebase.firestore(),
+        isAdmin: function(e){ return _admins.includes((e||'').toLowerCase().trim()); },
+        canAccessTool: function(toolId, plan){
+          if (!plan) return true;
+          if (plan === 'franchise') return true;
+          return true;
+        }
+      };
+      // Reset tool settings cache so next render picks up fresh Firestore data
+      window._adminToolSettings = null;
+      console.log('[KSpider] Firebase ready ✅');
+    }
+
+    function loadScript(src, cb) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = cb;
+      s.onerror = function(){ cb(); };
+      document.head.appendChild(s);
+    }
+
+    var SDKS = [
+      'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js',
+      'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js'
+    ];
+
+    function loadSeq(i) {
+      if (i >= SDKS.length) { initKS(); return; }
+      loadScript(SDKS[i], function(){ loadSeq(i + 1); });
+    }
+
+    if (typeof firebase !== 'undefined') { initKS(); }
+    else { loadSeq(0); }
+  })();
+  </script>
   <script src="payment.js"></script>
 
   <!-- [Duplicate GA removed — using correct ID G-PLBHWMHEC1 in head above] -->
@@ -2202,7 +2251,7 @@ body {
         <p>Total liability shall not exceed the amount paid for the Pro plan in the preceding 12 months. We are not liable for indirect, incidental or consequential damages.</p>
         <h4 style="color:var(--t1);margin:14px 0 6px;font-size:.83rem">8. Governing Law</h4>
         <p>These Terms are governed by the laws of India. Disputes shall be resolved in courts of Gujarat, India.</p>
-        <p style="margin-top:18px;padding:12px;background:var(--bg3);border-radius:var(--r8);font-size:.72rem;color:var(--t3)">&#x1F4E7; kspider221206@gmail.com &middot; www.kspiderai.in &middot; &copy; 2024-2026 K Spider for Kreation.</p>
+        <p style="margin-top:18px;padding:12px;background:var(--bg3);border-radius:var(--r8);font-size:.72rem;color:var(--t3)">&#x1F4E7; <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="234850534a47465111111211131563444e424a4f0d404c4e">[email&#160;protected]</a> &middot; www.kspiderai.in &middot; &copy; 2024-2026 K Spider for Kreation.</p>
       </div>
       <button onclick="closeM('terms-ov')" style="width:100%;margin-top:16px;padding:11px;background:var(--t1);color:#fff;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.85rem;border:none;border-radius:var(--r8);cursor:pointer">&#x2705; I Understand — Close</button>
     </div>
@@ -2230,7 +2279,7 @@ body {
         <h4 style="color:var(--t1);margin:14px 0 6px;font-size:.83rem">4. Refund Denial Conditions</h4>
         <p>Refunds will NOT be issued if: (a) you have used Pro features extensively; (b) account was suspended for ToS violation; (c) fraudulent request; (d) account has previously received a refund.</p>
         <h4 style="color:var(--t1);margin:14px 0 6px;font-size:.83rem">5. How to Request</h4>
-        <p>Email <strong>kspider221206@gmail.com</strong> within 7 days with Subject: "Refund Request — Pro Plan", your email, and Razorpay payment ID. Refunds processed in 5-7 business days.</p>
+        <p>Email <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="90fbe3e0f9f4f5e2a2a2a1a2a0a6d0f7fdf1f9fcbef3fffd">[email&#160;protected]</a></strong> within 7 days with Subject: "Refund Request — Pro Plan", your email, and Razorpay payment ID. Refunds processed in 5-7 business days.</p>
         <p style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:var(--r8);font-size:.72rem;color:var(--t3)">&#x26A0;&#xFE0F; K Spider for Kreation reserves the right to amend this policy with notice via email.</p>
       </div>
       <button onclick="closeM('refund-ov')" style="width:100%;margin-top:16px;padding:11px;background:var(--t1);color:#fff;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.85rem;border:none;border-radius:var(--r8);cursor:pointer">&#x2705; I Understand — Close</button>
@@ -2298,7 +2347,7 @@ body {
      EmailJS Dashboard pe jaake template_otp_kspider banao
      (instructions neeche comment mein hain)
      ═══════════════════════════════════════════════════════════ -->
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 
 /* ══════════════════════════════════════════════════════
    EMAILJS CONFIG — AAPKE ACTUAL IDs
@@ -2323,6 +2372,11 @@ var _db    = null;
 
 function initFirebase() {
   try {
+    // KS bootstrap se pehle se init ho chuka hoga — usse use karo
+    if (typeof KS !== 'undefined' && KS.db) {
+      _db = KS.db;
+      return true;
+    }
     if (typeof firebase === 'undefined') { console.warn('[KSpider] Firebase SDK not loaded'); return false; }
     if (!_fbApp) {
       _fbApp = firebase.initializeApp(FB_CONFIG);
@@ -3046,6 +3100,40 @@ function launchTool(url, toolId) {
 }
 
 /* ══════════════════════════════════════════════════════
+   PREMIUM / FRANCHISE TOOL LAUNCH — plan check
+   ══════════════════════════════════════════════════════ */
+function launchPremiumTool(url, toolId, requiredPlan) {
+  var u = getUser();
+  if (!u || !u.verified) { openM('gate-ov'); return false; }
+
+  var planType = u.planType || u.plan || 'free';
+
+  // Use KS.canAccessTool if available, else manual check
+  var allowed = false;
+  if (typeof KS !== 'undefined' && KS.canAccessTool) {
+    allowed = KS.canAccessTool(toolId, planType);
+  } else {
+    if (requiredPlan === 'premium' && (planType === 'premium' || planType === 'franchise')) allowed = true;
+    if (requiredPlan === 'franchise' && planType === 'franchise') allowed = true;
+  }
+
+  if (!allowed) {
+    toast('💎 Yeh tool sirf ' + requiredPlan.toUpperCase() + ' users ke liye hai! Pro upgrade karo.', 'warn', 5000);
+    openProPayment();
+    return false;
+  }
+
+  u.toolsUsed = (u.toolsUsed || 0) + 1;
+  saveUser(u);
+  sendAdminAlert('TOOL_LAUNCHED', u, 'Premium Tool: ' + toolId + ' | Plan: ' + planType + ' | URL: ' + url);
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'tool_click', { event_category: 'kspider', event_label: toolId + '_premium' });
+  }
+  window.location.href = url;
+  return false;
+}
+
+/* ══════════════════════════════════════════════════════
    PRO PAYMENT MODAL — open with user details pre-filled
    ══════════════════════════════════════════════════════ */
 function openProPayment() {
@@ -3252,34 +3340,134 @@ function ksLogout() {
   setTimeout(function() { window.location.reload(); }, 1500);
 }
 
+/* ══════════════════════════════════════════════════════
+   TOOL SETTINGS — load from Firestore admin/tool_settings
+   ══════════════════════════════════════════════════════ */
+var _adminToolSettings = null;  // null = not loaded yet; {} = loaded (empty ok)
+
+function loadAdminToolSettings(cb) {
+  if (_adminToolSettings !== null) { cb(_adminToolSettings); return; }
+  try {
+    var db = (typeof KS !== 'undefined' && KS.db) ? KS.db : null;
+    if (!db) { initFirebase(); db = _db; }
+    if (!db) { _adminToolSettings = {}; cb({}); return; }
+    db.collection('admin').doc('tool_settings').get()
+      .then(function(doc) {
+        _adminToolSettings = doc.exists ? doc.data() : {};
+        cb(_adminToolSettings);
+      })
+      .catch(function() { _adminToolSettings = {}; cb({}); });
+  } catch(e) { _adminToolSettings = {}; cb({}); }
+}
+
+// ── Apply admin overrides to TD tool list ──
+function applyToolOverrides(settings) {
+  TD.forEach(function(t) {
+    var s = settings[t.id];
+    if (!s) return;
+    if (s.status    !== undefined) t.status    = s.status;
+    if (s.plan      !== undefined) t.plan      = s.plan;
+    if (s.price     !== undefined) t.price     = s.price;
+    if (s.origPrice !== undefined) t.origPrice = s.origPrice;
+    if (s.name      !== undefined && s.name)  t.name  = s.name;
+    if (s.icon      !== undefined && s.icon)  t.icon  = s.icon;
+    if (s.desc      !== undefined && s.desc)  t.desc  = s.desc;
+    if (s.badge     !== undefined) t.badge     = s.badge;
+    if (s.featured  !== undefined) t.featured  = s.featured;
+  });
+}
+
 function renderTools(filter) {
   filter = filter || 'all';
   var g = document.getElementById('tg');
-  var td = (filter === 'all' ? TD : TD.filter(function(t) { return t.cat === filter; })).slice().sort(function(a, b) { return (a.status === 'live' ? 0 : 1) - (b.status === 'live' ? 0 : 1); });
-  g.innerHTML = td.map(function(t, i) {
-    var badge = t.status === 'live' ? '<span class="bdg blive">LIVE</span>' : '<span class="bdg bsoon">SOON</span>';
-    var actionBtn = t.status === 'live'
-      ? '<a href="#" class="cbtn" onclick="return launchTool(\'' + t.file + '\',\'' + t.id + '\')">Launch Tool →</a>'
-      : '<span class="cdis">🔜 Coming Soon</span>';
-    var feats = t.feats.map(function(f) { return '<li>' + f + '</li>'; }).join('');
-    var tags  = t.tags.map(function(tg) { return '<span class="ctag">#' + tg + '</span>'; }).join('');
-    return '<div class="tcard ' + t.cls + '" style="animation-delay:' + (i * 0.04) + 's" data-cat="' + t.cat + '" role="listitem">' +
-      '<div class="ctop"><div class="ciw">' + t.icon + '</div><div class="cbadges">' + badge + '</div></div>' +
-      '<div class="cname">' + t.name + '</div><div class="cdesc">' + t.desc + '</div>' +
-      '<ul class="cfeats">' + feats + '</ul>' +
-      '<div class="ctags">' + tags + '<span class="ctag">🌐 Multi-lang</span></div>' +
-      '<div class="cfoot">' + actionBtn +
-      '<div class="cibtns">' +
-      '<button class="ibtn" title="Share this tool" onclick="openShareModal(\'' + t.id + '\')" aria-label="Share ' + t.name + '">📤</button>' +
-      '<button class="ibtn" title="Copy link" onclick="openShareModal(\'' + t.id + '\')" aria-label="Copy link">🔗</button>' +
-      '</div></div></div>';
-  }).join('');
-  initRv();
+  if (!g) return;
+  g.innerHTML = '<div style="text-align:center;padding:40px;color:var(--t3);">Loading tools...</div>';
+
+  loadAdminToolSettings(function(settings) {
+    applyToolOverrides(settings);
+
+    var filtered = (filter === 'all' ? TD : TD.filter(function(t) { return t.cat === filter; }))
+      .filter(function(t) { return t.status !== 'off'; })  // hide admin-disabled tools
+      .slice()
+      .sort(function(a, b) {
+        // featured first, then live, then rest
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured)  return 1;
+        var o = {live:0, coming_soon:1, maintenance:2};
+        return (o[a.status]||9) - (o[b.status]||9);
+      });
+
+    g.innerHTML = filtered.map(function(t, i) {
+      // Status badge
+      var badge;
+      if (t.status === 'live') {
+        badge = '<span class="bdg blive">LIVE</span>';
+      } else if (t.status === 'maintenance') {
+        badge = '<span class="bdg" style="background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3);">MAINT.</span>';
+      } else {
+        badge = '<span class="bdg bsoon">SOON</span>';
+      }
+      // Custom badge (e.g. NEW, HOT)
+      if (t.badge) {
+        badge += ' <span class="bdg" style="background:rgba(220,38,38,.8);color:#fff;margin-left:4px;">' + san(t.badge) + '</span>';
+      }
+
+      // Plan badge on card
+      var planBadge = '';
+      if (t.plan === 'premium') {
+        planBadge = '<span class="bdg" style="background:rgba(184,121,42,.2);color:var(--gold2);border:1px solid var(--gold-b);margin-left:4px;">💎 PREMIUM</span>';
+      } else if (t.plan === 'franchise') {
+        planBadge = '<span class="bdg" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3);margin-left:4px;">🏢 FRANCHISE</span>';
+      }
+
+      // Price display on card
+      var priceHtml = '';
+      if (t.price > 0) {
+        priceHtml = '<div style="margin-top:8px;font-size:.78rem;color:var(--gold2);font-weight:700;">₹' + t.price.toLocaleString('en-IN') + '/yr'
+          + (t.origPrice > t.price ? ' <s style="color:var(--t4);font-weight:400;">₹' + t.origPrice.toLocaleString('en-IN') + '</s>' : '')
+          + '</div>';
+      }
+
+      // Action button
+      var actionBtn;
+      if (t.status === 'live') {
+        var needsPremium = (t.plan === 'premium' || t.plan === 'franchise');
+        if (needsPremium) {
+          actionBtn = '<a href="#" class="cbtn" style="background:linear-gradient(135deg,var(--gold),var(--gold2));" onclick="return launchPremiumTool(\'' + t.file + '\',\'' + t.id + '\',\'' + t.plan + '\')">🔓 Launch Tool →</a>';
+        } else {
+          actionBtn = '<a href="#" class="cbtn" onclick="return launchTool(\'' + t.file + '\',\'' + t.id + '\')">Launch Tool →</a>';
+        }
+      } else if (t.status === 'maintenance') {
+        actionBtn = '<span class="cdis">🔧 Under Maintenance</span>';
+      } else {
+        actionBtn = '<span class="cdis">🔜 Coming Soon</span>';
+      }
+
+      var feats = t.feats.map(function(f) { return '<li>' + f + '</li>'; }).join('');
+      var tags  = t.tags.map(function(tg) { return '<span class="ctag">#' + tg + '</span>'; }).join('');
+
+      return '<div class="tcard ' + t.cls + '" style="animation-delay:' + (i * 0.04) + 's' + (t.featured ? ';border-color:var(--gold-b)' : '') + '" data-cat="' + t.cat + '" role="listitem">' +
+        '<div class="ctop"><div class="ciw">' + t.icon + '</div><div class="cbadges">' + badge + planBadge + '</div></div>' +
+        '<div class="cname">' + san(t.name) + '</div>' +
+        '<div class="cdesc">' + san(t.desc) + '</div>' +
+        priceHtml +
+        '<ul class="cfeats">' + feats + '</ul>' +
+        '<div class="ctags">' + tags + '<span class="ctag">🌐 Multi-lang</span></div>' +
+        '<div class="cfoot">' + actionBtn +
+        '<div class="cibtns">' +
+        '<button class="ibtn" title="Share this tool" onclick="openShareModal(\'' + t.id + '\')" aria-label="Share ' + san(t.name) + '">📤</button>' +
+        '<button class="ibtn" title="Copy link" onclick="openShareModal(\'' + t.id + '\')" aria-label="Copy link">🔗</button>' +
+        '</div></div></div>';
+    }).join('');
+    initRv();
+  });
 }
 
 function fc(cat, btn) {
   document.querySelectorAll('.fchip').forEach(function(c) { c.classList.remove('a'); });
   if (btn) btn.classList.add('a');
+  // Reset cached settings so latest Firestore data is used on each filter
+  _adminToolSettings = null;
   renderTools(cat);
 }
 
@@ -4151,15 +4339,4 @@ function ksFaqToggle(btn) {
 })();
 </script>
 
-<!-- ── CSS: Disable selection globally ── -->
-<style>
-*, *::before, *::after {
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
-}
-input, textarea, select, [contenteditable] {
-  -webkit-user-select: text !important;
-  -moz-use
+<!-- ── 
