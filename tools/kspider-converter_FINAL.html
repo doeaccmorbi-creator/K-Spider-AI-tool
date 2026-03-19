@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="/tool-guard.js"></script>
-  <script src="../ks-guard.js"></script>
 <!-- ═══════════════════════════════════════════════════════
      K SPIDER AI — Universal File Converter
      Full SEO + Security | www.kspiderai.in
@@ -115,8 +113,8 @@
 
 <!-- ── TWITTER CARD ── -->
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:site" content="@KSpider4Kreaction"/>
-<meta name="twitter:creator" content="@KSpider4Kreaction"/>
+<meta name="twitter:site" content="@KSpider4Kreation"/>
+<meta name="twitter:creator" content="@KSpider4Kreation"/>
 <meta name="twitter:title" content="K Spider AI Universal File Converter — Free & Secure | No Upload Required"/>
 <meta name="twitter:description" content="Convert images, PDFs, audio, video & data files free. 100% browser-based. No file upload to server. Made for India by K Spider AI."/>
 <meta name="twitter:image" content="https://www.kspiderai.in/assets/og-image.png"/>
@@ -344,8 +342,21 @@ body {
   top: 0; left: 0; bottom: 0;
   z-index: 100;
   overflow-y: auto;
-  transition: transform 0.3s ease;
+  transition: transform 0.3s ease, width 0.3s ease;
 }
+/* Desktop: sidebar hidden by default — toggle via hamburger */
+.sidebar.collapsed {
+  transform: translateX(-100%);
+}
+/* Desktop overlay when sidebar open */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+  background: rgba(0,0,0,0.35);
+}
+.sidebar-overlay.show { display: block; }
 .sidebar-logo {
   padding: 24px 20px 16px;
   border-bottom: 1px solid var(--border);
@@ -443,10 +454,15 @@ body {
 /* MAIN CONTENT */
 .main-content {
   flex: 1;
-  margin-left: 260px;
+  margin-left: 0;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  transition: margin-left 0.3s ease;
+}
+/* When sidebar is open on desktop, push content */
+.app-wrapper.sidebar-open .main-content {
+  margin-left: 260px;
 }
 
 /* TOP BAR */
@@ -1036,7 +1052,8 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
 @media(max-width: 768px) {
   .sidebar { transform: translateX(-100%); }
   .sidebar.open { transform: translateX(0); }
-  .main-content { margin-left: 0; }
+  .sidebar.collapsed { transform: translateX(-100%); }
+  .main-content { margin-left: 0 !important; }
   .mobile-nav-toggle { display: flex; }
   .content-area { padding: 16px; }
   .topbar { padding: 12px 16px; }
@@ -1187,6 +1204,9 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
   </div>
 </div>
 
+<!-- SIDEBAR OVERLAY (click to close) -->
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
 <!-- APP WRAPPER -->
 <div class="app-wrapper">
 
@@ -1310,9 +1330,16 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
     </nav>
 
     <div class="sidebar-footer">
+      <button onclick="ksOpenShareModal()" style="width:100%;padding:9px 12px;background:linear-gradient(135deg,#25D366,#128C7E);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:6px">📤 Share This Tool</button>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:8px">
+        <button onclick="ksShareTo('wa')" style="padding:7px 5px;background:rgba(37,211,102,0.15);border:1px solid rgba(37,211,102,0.35);color:#25D366;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer">📱 WhatsApp</button>
+        <button onclick="ksShareTo('tg')" style="padding:7px 5px;background:rgba(34,158,217,0.15);border:1px solid rgba(34,158,217,0.35);color:#229ED9;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer">✈️ Telegram</button>
+        <button onclick="ksShareTo('tw')" style="padding:7px 5px;background:rgba(0,0,0,0.15);border:1px solid rgba(150,150,150,0.35);color:var(--text2);border-radius:7px;font-size:10px;font-weight:700;cursor:pointer">🐦 Twitter/X</button>
+        <button onclick="ksShareTo('li')" style="padding:7px 5px;background:rgba(10,102,194,0.15);border:1px solid rgba(10,102,194,0.35);color:#0A66C2;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer">💼 LinkedIn</button>
+      </div>
       <div style="margin-bottom:6px">
         <a href="https://www.kspiderai.in" target="_blank">🌐 kspiderai.in</a> •
-        <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank">▶️ YouTube</a>
+        <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank">▶️ YouTube</a>
       </div>
       <div>Developed by<br><strong style="color:var(--text2)">Gaurang & Khush Raval</strong></div>
     </div>
@@ -1323,6 +1350,7 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
 
     <!-- TOP BAR -->
     <header class="topbar">
+      <div class="btn-icon" onclick="toggleSidebar()" title="Toggle Menu" style="flex-shrink:0;font-size:18px">☰</div>
       <div class="topbar-title" id="topbarTitle">🏠 Dashboard</div>
       <div class="topbar-actions">
         <select class="lang-select" id="langSelect" onchange="changeLang(this.value)">
@@ -1332,7 +1360,7 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
           <option value="es">🇪🇸 Spanish</option>
           <option value="fr">🇫🇷 French</option>
         </select>
-        <div class="btn-icon" onclick="openShareModal()" title="Share on WhatsApp">📲</div>
+        <div class="btn-icon" onclick="ksOpenShareModal()" title="Share Tool">📲</div>
         <div class="btn-icon" onclick="toggleDark()" id="darkToggle" title="Toggle theme">🌙</div>
         <div class="btn-icon" onclick="installPWA()" title="Install App">📥</div>
       </div>
@@ -2480,7 +2508,7 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
             </div>
             <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
               <a href="https://www.kspiderai.in" target="_blank" class="btn btn-primary">🌐 Visit Website</a>
-              <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank" class="btn btn-secondary">▶️ YouTube Channel</a>
+              <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank" class="btn btn-secondary">▶️ YouTube Channel</a>
             </div>
           </div>
           <div class="panel">
@@ -2512,7 +2540,7 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
           <div class="panel-title"><span>📞</span> Contact & Support</div>
           <div style="font-size:13px;color:var(--text2)">
             🌐 Website: <a href="https://www.kspiderai.in" target="_blank" style="color:var(--accent)">www.kspiderai.in</a><br>
-            ▶️ YouTube: <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank" style="color:var(--accent)">@KSpider4Kreaction</a>
+            ▶️ YouTube: <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank" style="color:var(--accent)">@KSpider4Kreation</a>
           </div>
         </div>
       </div>
@@ -2525,7 +2553,7 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
         <div class="footer-brand">🕷️ K Spider AI Universal File Converter – Ultra SaaS Edition</div>
         <div class="footer-links">
           <a href="https://www.kspiderai.in" target="_blank">🌐 kspiderai.in</a>
-          <a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank">▶️ YouTube</a>
+          <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank">▶️ YouTube</a>
           <a href="#" onclick="showPage('about')">Privacy Policy</a>
           <a href="#" onclick="showPage('about')">Legal</a>
           <a href="#" onclick="openShareModal()">📲 Share</a>
@@ -2534,7 +2562,7 @@ canvas.hidden-canvas { position: absolute; left: -9999px; top: -9999px; }
           <strong>Privacy:</strong> All files processed locally in browser. No file uploaded to server. No third-party storage. |
           <strong>Disclaimer:</strong> User responsible for content legality. |
           © 2026 K Spider AI Tool – All Rights Reserved<br>
-          <strong>Powered by K Spider AI Tool</strong> – www.kspiderai.in – https://www.youtube.com/@KSpider4Kreaction |
+          <strong>Powered by K Spider AI Tool</strong> – www.kspiderai.in – https://www.youtube.com/@KSpider4Kreation |
           <strong>Developed By:</strong> Father – Gaurang Raval | Son – Khush Raval
         </div>
       </div>
@@ -2620,7 +2648,11 @@ function showPage(id) {
   document.getElementById('topbarTitle').textContent = pageNames[id] || id;
   state.currentPage = id;
   // Close sidebar on mobile
-  if (window.innerWidth < 768) document.getElementById('sidebar').classList.remove('open');
+  if (window.innerWidth < 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    var ov = document.getElementById('sidebarOverlay');
+    if (ov) ov.classList.remove('show');
+  }
 }
 
 function filterNav(val) {
@@ -2631,7 +2663,21 @@ function filterNav(val) {
 }
 
 function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
+  var sidebar = document.getElementById('sidebar');
+  var overlay = document.getElementById('sidebarOverlay');
+  var wrapper = document.querySelector('.app-wrapper');
+  var isMobile = window.innerWidth < 768;
+
+  if (isMobile) {
+    // Mobile: toggle open class
+    var isOpen = sidebar.classList.toggle('open');
+    if (overlay) overlay.classList.toggle('show', isOpen);
+  } else {
+    // Desktop: toggle collapsed class + margin
+    var isCollapsed = sidebar.classList.toggle('collapsed');
+    if (wrapper) wrapper.classList.toggle('sidebar-open', !isCollapsed);
+    if (overlay) overlay.classList.toggle('show', !isCollapsed);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -2894,6 +2940,7 @@ async function convertImages() {
   state.outputs = outputs;
   addHistory('Image Conversion', `${files.length} file(s) → ${format.toUpperCase()}`);
   showNotif(`✅ ${files.length} image(s) converted to ${format.toUpperCase()}!`, 'success');
+  ksShowWAShareAfterConversion('Image Convert', files.length + ' image(s) → ' + format.toUpperCase());
 }
 
 function convertImageFile(file, format, quality, addWm, addBrand) {
@@ -3001,6 +3048,7 @@ function compressImage() {
         addHistory('Image Compress', `${formatBytes(compressFileRef.size)} → ${formatBytes(blob.size)}`);
         showNotif(`✅ Compressed: ${formatBytes(blob.size)} (was ${formatBytes(compressFileRef.size)})`, 'success');
         state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+        ksShowWAShareAfterConversion('Image Compress', formatBytes(compressFileRef.size) + ' → ' + formatBytes(blob.size));
       }, 'image/jpeg', lvl);
     };
     img.src = ev.target.result;
@@ -3062,6 +3110,7 @@ function resizeImage() {
         addHistory('Image Resize', `→ ${w}×${h}px ${format.toUpperCase()}`);
         showNotif(`✅ Resized to ${w}×${h}px!`, 'success');
         state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+        ksShowWAShareAfterConversion('Image Resize', 'Resized to ' + w + '×' + h + 'px ' + format.toUpperCase());
       }, `image/${format}`, qual);
     };
     img.src = ev.target.result;
@@ -3117,6 +3166,7 @@ function removeBackground() {
         addHistory('BG Remove', bgFileRef.name);
         showNotif('✅ Background removed! Downloading PNG...', 'success');
         state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+        ksShowWAShareAfterConversion('BG Remove', bgFileRef.name + ' — Background Removed PNG');
       }, 'image/png');
     };
     img.src = ev.target.result;
@@ -3192,6 +3242,7 @@ function generatePassportLayout() {
       addHistory('Passport Photo', `${actualCopies} copies on A4`);
       showNotif(`✅ Generated ${actualCopies} passport photos on A4!`, 'success');
       state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+      ksShowWAShareAfterConversion('Passport Photo', actualCopies + ' photos on A4 — Print Ready!');
     };
     img.src = ev.target.result;
   };
@@ -3246,6 +3297,7 @@ function convertImagesToPDF() {
           addHistory('Image to PDF', `${img2files.length} images`);
           showNotif(`✅ ${img2files.length} images converted to PDF!`, 'success');
           state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+          ksShowWAShareAfterConversion('Image to PDF', img2files.length + ' images → PDF');
         }
       };
       img.src = ev.target.result;
@@ -3323,6 +3375,7 @@ function convertTxtToPDF() {
   addHistory('TXT to PDF', title);
   showNotif('✅ TXT converted to PDF!', 'success');
   state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+  ksShowWAShareAfterConversion('TXT to PDF', 'Text → Professional PDF');
 }
 
 // ═══════════════════════════════════════════
@@ -3446,6 +3499,7 @@ function formatJSON() {
     const parsed = JSON.parse(input);
     document.getElementById('jsonOutput').value = JSON.stringify(parsed, null, 2);
     showNotif('✅ JSON formatted!', 'success');
+    ksShowWAShareAfterConversion('JSON Tools', 'JSON Formatted & Beautified');
   } catch(e) { showNotif('❌ Invalid JSON: ' + e.message, 'error'); }
 }
 
@@ -3505,6 +3559,7 @@ function convertCSVtoJSON() {
   document.getElementById('csvToJsonOutput').value = JSON.stringify(result.data, null, 2);
   addHistory('CSV to JSON', `${result.data.length} rows`);
   showNotif(`✅ ${result.data.length} rows converted to JSON!`, 'success');
+  ksShowWAShareAfterConversion('CSV to JSON', result.data.length + ' rows → JSON');
 }
 
 function convertJSONtoCSV2() {
@@ -3522,6 +3577,7 @@ function encodeBase64Text() {
   const text = document.getElementById('b64TextInput').value;
   document.getElementById('b64TextOutput').value = btoa(unescape(encodeURIComponent(text)));
   showNotif('✅ Encoded!', 'success');
+  ksShowWAShareAfterConversion('Base64', 'Text Encoded to Base64');
 }
 
 function decodeBase64() {
@@ -3596,6 +3652,7 @@ function createZIP() {
     addHistory('Create ZIP', `${zipFiles.length} files → ${formatBytes(blob.size)}`);
     showNotif(`✅ ZIP created: ${formatBytes(blob.size)}!`, 'success');
     state.convertedCount++; localStorage.setItem('kspider_count', state.convertedCount); updateStats();
+    ksShowWAShareAfterConversion('ZIP Create', 'ZIP file created: ' + formatBytes(blob.size));
   });
 }
 
@@ -3902,7 +3959,7 @@ function updateWALink() {
   const msg = `I${name ? ' ' + name : ''} converted my file using K Spider AI Universal File Converter.
 Check it here: https://www.kspiderai.in
 
-Powered by K Spider AI Tool – www.kspiderai.in – https://www.youtube.com/@KSpider4Kreaction`;
+Powered by K Spider AI Tool – www.kspiderai.in – https://www.youtube.com/@KSpider4Kreation`;
   document.getElementById('waShareBtn').href = `https://wa.me/?text=${encodeURIComponent(msg)}`;
 }
 document.addEventListener('DOMContentLoaded', () => {
@@ -4212,6 +4269,72 @@ const _KS_PROMO = {
   ],
 };
 
+/* ─── TOOL-SPECIFIC WA MESSAGES AFTER CONVERSION ─── */
+const _KS_TOOL_MSGS = {
+  'Image Convert': [
+    "🖼️ *Image Convert ho gaya — K Spider AI se!*\n\n✅ JPG, PNG, WEBP, GIF, ICO — koi bhi format mein convert karo!\n⚡ Instant result — koi wait nahi, koi upload nahi!\n🔒 100% private — file kabhi server pe nahi jaati\n📱 Mobile pe bhi perfectly kaam karta hai!\n\n👉 FREE try karo: www.kspiderai.in",
+    "🎨 *Image Format Convert kiya — ZERO cost mein!*\n\n🔄 JPG to PNG, PNG to WEBP — sab ek click mein!\n💡 No app download, no registration, no payment\n🏆 K Spider AI — India ka #1 FREE image tool\n✨ Share karo dosto ke saath — unka bhi kaam aayega!\n\n👉 www.kspiderai.in",
+    "⚡ *Bhai/Behen! Ye image converter try karo — FREE hai!*\n\n🖼️ Convert any image format instantly in browser\n🔒 Privacy 100% guaranteed — no server upload\n💰 Paid tools ko GOODBYE bol do!\n🚀 K Spider AI — kspiderai.in\n\n📲 Share karo sabko!",
+    "🌟 *Image Convert in 2 seconds — FREE!*\n\n✅ 10+ formats supported: JPG PNG WEBP GIF BMP ICO TIFF\n📦 Batch convert — multiple images ek saath!\n🔐 Zero data collection, zero upload\n💪 Mobile + Desktop — everywhere works!\n\n🕷️ K Spider AI → www.kspiderai.in",
+  ],
+  'Image Compress': [
+    "📦 *Image Compress ho gayi — 90% tak size reduce!*\n\n🔥 File size chhoti, quality same — MAGIC!\n⚡ 5MB photo ko 200KB banao — bilkul FREE\n📊 Before/After comparison — khud dekho difference\n✅ Website, WhatsApp, Email — har jagah kaam aayega\n\n👉 FREE try karo: www.kspiderai.in",
+    "💡 *Smart Compress — Quality nahi, sirf size ghatao!*\n\n🎯 AI-powered compression — best quality auto-select\n📱 WhatsApp ke liye perfect size — instantly\n🔒 Files kabhi server pe nahi jaati\n💰 Paid compressors ka kaam FREE mein karo!\n\n🕷️ K Spider AI → www.kspiderai.in",
+    "🗜️ *Image compress karke share karo — easy hai!*\n\n📦 Original se 70-90% chhoti file — same quality!\n⚡ Instant result — browser mein hi sab hota hai\n🌐 Website SEO improve karo compressed images se\n🏆 India ka best FREE compressor!\n\n👉 kspiderai.in — Try aaj hi!",
+    "⚡ *Ye FREE compressor Photoshop se bhi better hai!*\n\n🗜️ JPG, PNG, WEBP — sab compress karo\n📊 50+ images ek saath batch compress!\n🔐 100% privacy — no server, no upload\n💸 ₹0 cost — forever FREE!\n\n📲 Share karo: www.kspiderai.in",
+  ],
+  'Image Resize': [
+    "📐 *Image Resize ho gayi — Perfect dimensions!*\n\n✅ Instagram (1080x1080), YouTube (1280x720), WhatsApp DP\n🎯 Custom size — exact pixels set karo\n⚡ Instant — 2 seconds mein done\n🔒 Privacy 100% — file browser mein hi process hoti hai\n\n👉 FREE try karo: www.kspiderai.in",
+    "📱 *Social Media ke liye perfect size — FREE mein!*\n\n📸 Instagram Post, Story, YouTube Thumbnail ready\n💡 Aspect ratio lock — image stretch nahi hogi\n🚀 1 click preset — aur ho gaya!\n✨ Mobile pe bhi perfectly kaam karta hai!\n\n🕷️ K Spider AI → www.kspiderai.in",
+    "🎯 *Resize kiya — K Spider AI File Converter se!*\n\n📐 Koi bhi dimension — custom ya preset\n⚡ Browser mein instant conversion\n🔒 Files server pe nahi jaati — 100% safe\n💰 Zero cost — always FREE!\n\n👉 kspiderai.in — Share karo!",
+  ],
+  'BG Remove': [
+    "✂️ *Background Remove ho gaya — FREE mein!*\n\n🖼️ Professional transparent PNG — studio quality!\n🎯 Colour tolerance control — perfect edges\n💰 Photo editing apps ₹500+ lete hain... K Spider? ZERO!\n⚡ 30 seconds mein professional result\n\n👉 FREE try karo: www.kspiderai.in",
+    "🌟 *Background Remover — Photographer quality, ZERO cost!*\n\n✂️ Ek click mein transparent background\n🎨 Custom background color add karo\n📱 Mobile pe bhi smooth kaam karta hai!\n🔒 Files device pe hi rehti hain — 100% private\n\n🕷️ K Spider AI → www.kspiderai.in",
+  ],
+  'Passport Photo': [
+    "🪪 *Passport Photo ready — Studio se better, FREE mein!*\n\n📸 35x45mm India Passport, US Visa, UK Visa — sab templates!\n🖨️ A4 sheet pe 8 photos print-ready — ₹2 mein print karo!\n💰 Studio ₹50-100 leta hai... K Spider? ZERO!\n✅ 300 DPI quality — recruiter/embassy ready\n\n👉 FREE try karo: www.kspiderai.in",
+    "📸 *Ghar se banao Passport Photo — Bilkul FREE!*\n\n🪪 All country templates: India, US, UK, Aadhaar, PAN\n🖨️ A4 layout with cut marks — ready to print!\n⚡ 30 seconds mein professional photo ready\n🔒 Privacy 100% — koi server upload nahi\n\n🕷️ K Spider AI → www.kspiderai.in",
+    "💡 *Passport Photo studio band karo — K Spider FREE hai!*\n\n✅ 8 templates — sab govt documents ke liye\n📄 Print-ready A4 layout included\n💰 Studio ka ek baar ka kharcha = K Spider ka lifetime FREE use!\n📱 Mobile pe bhi perfectly kaam karta hai\n\n👉 kspiderai.in — Share karo!",
+  ],
+  'Image to PDF': [
+    "📄 *Images to PDF convert ho gayi — FREE mein!*\n\n🖼️ Multiple images ek PDF mein — ek click!\n📦 Batch convert — 50+ images ek saath\n⚡ Instant PDF — koi wait nahi\n🔒 Files kabhi server pe nahi jaati\n\n👉 FREE try karo: www.kspiderai.in",
+    "🚀 *Images ko PDF banao — K Spider AI se!*\n\n📄 JPG, PNG, WEBP → PDF instantly\n📐 A4, A3, Letter size options available\n💰 Paid PDF tools? Nahi chahiye — K Spider FREE hai!\n✅ Mobile + Desktop — everywhere!\n\n🕷️ K Spider AI → www.kspiderai.in",
+  ],
+  'TXT to PDF': [
+    "📝 *Text to PDF convert ho gaya — 2 seconds mein!*\n\n✅ Plain text → Professional PDF instantly\n🎨 Font, size, margins — customize karo\n💰 FREE forever — no subscription needed\n🔒 100% browser-based — koi server nahi\n\n👉 FREE try karo: www.kspiderai.in",
+  ],
+  'HTML to PDF': [
+    "🌐 *HTML to PDF — Professional quality, FREE!*\n\n✅ Web content instantly printable\n🖨️ Perfect for invoices, reports, web pages\n⚡ Browser print engine — best quality\n💰 Zero cost — K Spider AI FREE hai!\n\n👉 www.kspiderai.in",
+  ],
+  'Markdown to PDF': [
+    "⬇️ *Markdown to PDF — Developer ka best friend!*\n\n✅ .md files → Beautiful PDF instantly\n📄 Headers, lists, code blocks — sab render\n🚀 FREE — koi subscription nahi\n🔒 100% private browser conversion\n\n👉 kspiderai.in — Try karo!",
+  ],
+  'JSON Tools': [
+    "🔧 *JSON Format/Validate ho gaya — FREE mein!*\n\n✅ Format, Minify, Validate, Convert — sab ek tool mein\n💡 Developers ke liye perfect daily tool\n⚡ Instant result — koi server nahi\n🔒 Your data stays on YOUR device\n\n👉 FREE try karo: www.kspiderai.in",
+    "🛠️ *JSON Tools — Developer ka swiss army knife!*\n\n🔧 Format beautify, minify, JSON↔CSV convert\n⚡ Real-time validation — errors instantly highlight\n💰 Paid tools replace karo is FREE tool se!\n🕷️ K Spider AI → www.kspiderai.in",
+  ],
+  'CSV to JSON': [
+    "📊 *CSV to JSON convert ho gaya — Instant!*\n\n✅ CSV ↔ JSON bidirectional conversion\n⚡ Real-time preview — instantly dekho result\n💡 Developers + Data analysts ke liye perfect\n🔒 Files device pe hi process — 100% private\n\n👉 FREE try karo: www.kspiderai.in",
+  ],
+  'Base64': [
+    "🔐 *Base64 Encode/Decode — Browser mein, FREE!*\n\n✅ Text + File encoding — dono support\n⚡ Instant encode/decode — koi wait nahi\n💡 Developers ke liye must-have tool\n🔒 100% private — no server, no upload\n\n👉 kspiderai.in — Free forever!",
+  ],
+  'ZIP Create': [
+    "📦 *ZIP file ready ho gayi — FREE mein!*\n\n✅ Multiple files ek ZIP mein instantly\n⚡ Browser-based — koi software install nahi\n💰 WinRAR, 7-Zip se bhi easy — aur FREE!\n🔒 Files kabhi server pe nahi jaati\n\n👉 FREE try karo: www.kspiderai.in",
+  ],
+  'ZIP Extract': [
+    "📂 *ZIP Extract ho gaya — Browser mein!*\n\n✅ ZIP files instantly extract — koi software nahi\n⚡ All files individually download\n💰 FREE — koi tool install karne ki zarurat nahi\n🔒 100% private — browser mein hi sab\n\n👉 kspiderai.in — Share karo!",
+  ],
+  'default': [
+    "🔥 *K Spider AI File Converter — FREE aur Powerful!*\n\n⚡ JPG, PNG, PDF, JSON, CSV, ZIP — sab convert karo!\n🔒 100% browser-based — files kabhi server pe nahi jaati\n💰 Bilkul FREE — hamesha ke liye!\n🚀 Mobile + Desktop — har jagah kaam karta hai\n\n👉 Share karo: www.kspiderai.in",
+    "🌟 *Conversion done — K Spider AI ne kiya!*\n\n💡 Universal File Converter — 50+ formats\n✅ No upload, no registration, no payment\n🏆 India ka #1 FREE converter tool\n📲 Dosto ko share karo — unka bhi kaam aayega!\n\n👉 www.kspiderai.in",
+    "⚡ *File convert ho gayi — ZERO cost, ZERO upload!*\n\n🔐 Privacy 100% — data sirf aapke browser mein\n🎯 50+ file formats supported\n💸 Paid tools ko GOODBYE bol do!\n🕷️ K Spider AI — Made for India 🇮🇳\n\n👉 kspiderai.in — Try aur Share!",
+    "🎁 *FREE tool jo sab kuch karta hai!*\n\n🖼️ Image convert + compress + resize + passport photo\n📄 PDF tools + Data tools + ZIP tools\n🔒 100% browser-based — your files stay with you\n💯 Zero subscriptions — FREE forever!\n\n🕷️ K Spider AI → www.kspiderai.in",
+    "💥 *Bhai/Behen! Ye FREE converter try karo!*\n\n📱 Mobile pe bhi super fast kaam karta hai\n⚡ Chrome open karo → upload → instant result!\n🔒 No app, no account, no server upload\n💰 ₹0 cost — hamesha FREE\n\n👉 www.kspiderai.in — Share karo!",
+  ]
+};
+
 let _KS_SHARE_OUT = '';
 function ksGetPromo(){const l=document.getElementById('ks-share-lang')?.value||'en';const m=_KS_PROMO[l]||_KS_PROMO.en;return m[Math.floor(Math.random()*m.length)];}
 function ksGetMsg(output){
@@ -4232,6 +4355,68 @@ function ksShareDirect(){
   if(!ph||ph.length<10){alert('Please enter a valid phone number');return;}
   const msg=ksGetMsg(_KS_SHARE_OUT);
   window.open(`https://wa.me/${ph.startsWith('91')?ph:'91'+ph}?text=${encodeURIComponent(msg)}`,'_blank');
+}
+
+/* ─── SHOW WA SHARE TOAST AFTER CONVERSION ─── */
+function ksShowWAShareAfterConversion(toolName, details) {
+  // Pick tool-specific message or fallback to default
+  var msgs = _KS_TOOL_MSGS[toolName] || _KS_TOOL_MSGS['default'];
+  var msg = msgs[Math.floor(Math.random() * msgs.length)];
+  // Append details if provided
+  if (details) msg = msg + '\n\n✅ ' + details;
+  // Append brand footer
+  msg += '\n\n━━━━━━━━━━━━━━━━━━━━\n🕷️ *K Spider AI* — Digital Tools ka Powerhouse!\n🌐 www.kspiderai.in\n📺 https://www.youtube.com/@KSpider4Kreation';
+
+  // Remove existing toast if any
+  var existing = document.getElementById('ks-wa-toast');
+  if (existing) existing.remove();
+
+  // Build share toast
+  var toast = document.createElement('div');
+  toast.id = 'ks-wa-toast';
+  toast.style.cssText = 'position:fixed;bottom:80px;right:16px;z-index:99998;background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.22);padding:16px 18px;max-width:320px;width:calc(100% - 32px);animation:ksSlideInToast .35s ease-out;border-left:4px solid #25D366;font-family:DM Sans,sans-serif';
+  toast.innerHTML = '<style>@keyframes ksSlideInToast{from{opacity:0;transform:translateX(60px)}to{opacity:1;transform:none}}</style>'
+    + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    + '<div style="font-weight:800;font-size:.88rem;color:#1a1d2e">🎉 Conversion Done! Share karo?</div>'
+    + '<button onclick="document.getElementById(\'ks-wa-toast\').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:#8892b0;line-height:1;padding:0">✕</button>'
+    + '</div>'
+    + '<div style="font-size:11px;color:#4a5078;line-height:1.6;margin-bottom:12px;background:#f8f9fd;border-radius:8px;padding:9px 11px;max-height:80px;overflow-y:auto;white-space:pre-wrap">' + msg.slice(0, 200) + '...</div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px">'
+    + '<button onclick="ksShareFromToast(\'wa\',\'' + encodeURIComponent(msg) + '\')" style="background:#25D366;color:#fff;border:none;border-radius:8px;padding:9px 6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📱 WhatsApp</button>'
+    + '<button onclick="ksShareFromToast(\'tg\',\'' + encodeURIComponent(msg) + '\')" style="background:#229ED9;color:#fff;border:none;border-radius:8px;padding:9px 6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">✈️ Telegram</button>'
+    + '<button onclick="ksShareFromToast(\'tw\',\'' + encodeURIComponent(msg) + '\')" style="background:#000;color:#fff;border:none;border-radius:8px;padding:9px 6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">🐦 Twitter/X</button>'
+    + '<button onclick="ksShareFromToast(\'cp\',\'' + encodeURIComponent(msg) + '\')" style="background:#6B7280;color:#fff;border:none;border-radius:8px;padding:9px 6px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:5px">📋 Copy</button>'
+    + '</div>'
+    + '<button onclick="ksOpenShareModal(\'\');document.getElementById(\'ks-wa-toast\').remove()" style="width:100%;background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;border-radius:8px;padding:8px;font-size:11px;font-weight:700;cursor:pointer">📤 More Platforms (WhatsApp, LinkedIn, Facebook...)</button>'
+    + '<div style="text-align:center;font-size:10px;color:#c5cad8;margin-top:8px">Auto-hides in 12 seconds · 🕷️ K Spider AI</div>';
+
+  document.body.appendChild(toast);
+
+  // Set _KS_SHARE_OUT for full modal use
+  _KS_SHARE_OUT = '';
+
+  // Auto-remove after 12 seconds
+  setTimeout(function() {
+    var t = document.getElementById('ks-wa-toast');
+    if (t) { t.style.animation = 'none'; t.style.opacity = '0'; t.style.transition = 'opacity .4s'; setTimeout(function(){ if(t.parentNode) t.parentNode.removeChild(t); }, 400); }
+  }, 12000);
+}
+
+function ksShareFromToast(platform, encodedMsg) {
+  var msg = decodeURIComponent(encodedMsg);
+  var url = 'https://kspiderai.in';
+  var enc = encodeURIComponent(msg);
+  var map = {
+    wa: 'https://wa.me/?text=' + enc,
+    tg: 'https://t.me/share/url?url=' + encodeURIComponent(url) + '&text=' + enc,
+    tw: 'https://twitter.com/intent/tweet?text=' + enc,
+    cp: null
+  };
+  if (platform === 'cp') {
+    navigator.clipboard ? navigator.clipboard.writeText(msg).then(function(){ if(typeof showNotif==='function') showNotif('✅ Message copied!','success'); }) : (function(){ var ta=document.createElement('textarea');ta.value=msg;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);if(typeof showNotif==='function')showNotif('✅ Copied!','success'); })();
+    return;
+  }
+  if (map[platform]) window.open(map[platform], '_blank');
 }
 
 </script>
