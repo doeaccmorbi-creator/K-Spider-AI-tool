@@ -130,13 +130,15 @@
   <!-- ── PERFORMANCE HINTS ── -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="preconnect" href="https://www.gstatic.com">
-  <link rel="preconnect" href="https://cdn.jsdelivr.net">
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
   <link rel="dns-prefetch" href="https://www.googletagmanager.com">
   <link rel="dns-prefetch" href="https://www.google-analytics.com">
   <link rel="dns-prefetch" href="https://fonts.googleapis.com">
   <link rel="dns-prefetch" href="https://fonts.gstatic.com">
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
+  <link rel="dns-prefetch" href="https://unpkg.com">
+  <link rel="dns-prefetch" href="https://cdnjs.cloudflare.com">
   <link rel="preconnect" href="https://checkout.razorpay.com">
   <link rel="dns-prefetch" href="https://checkout.razorpay.com">
 
@@ -441,20 +443,23 @@
     }
 
     var CDN_SETS = [
-      [
-        'https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js',
-        'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js',
-        'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js'
-      ],
+      // v1: jsDelivr — PRIMARY (fast, no blocking issues)
       [
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js'
       ],
+      // v2: unpkg fallback
       [
         'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js'
+      ],
+      // v3: cdnjs last resort
+      [
+        'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-auth-compat.min.js'
       ]
     ];
     var _cdnIdx = 0;
@@ -468,17 +473,6 @@
     function loadSDKSet(set, i, onDone, onFail) {
       if (i >= set.length) { onDone(); return; }
       loadScript(set[i], function() { loadSDKSet(set, i+1, onDone, onFail); }, function() { onFail(); });
-    }
-
-    var SDKS = [
-      'https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js',
-      'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js'
-    ];
-
-    function loadSeq(i) {
-      if (i >= SDKS.length) { initKS(); return; }
-      loadScript(SDKS[i], function(){ loadSeq(i + 1); }, function(){ loadSeq(i + 1); });
     }
 
     if (typeof firebase !== 'undefined') { initKS(); }
@@ -2262,64 +2256,191 @@ body {
 </div>
 
 <!-- PRO PAYMENT MODAL -->
-<div class="ov" id="pro-pay-ov" role="dialog" aria-modal="true" aria-label="Buy Pro Plan">
-  <div class="mod" style="max-width:520px">
+<div class="ov" id="pro-pay-ov" role="dialog" aria-modal="true" aria-label="Buy Plan">
+  <div class="mod" style="max-width:540px">
     <button class="mcl" onclick="closeM('pro-pay-ov')" aria-label="Close">&#x2715;</button>
-    <div class="mbd">
-      <div style="text-align:center;margin-bottom:18px">
-        <div style="font-size:2.5rem;margin-bottom:8px">&#x1F48E;</div>
-        <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--t1);margin-bottom:6px">K Spider AI Pro Plan</h2>
-        <div style="display:inline-flex;align-items:center;gap:8px;background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(168,85,247,.08));border:1px solid rgba(124,58,237,.25);border-radius:50px;padding:8px 20px;margin-bottom:4px">
-          <span style="font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:900;color:var(--pur)">&#x20B9;2,999</span>
-          <span style="font-size:.8rem;color:var(--t3)">/year &nbsp;<s style="color:var(--t4)">&#x20B9;5,999</s></span>
-        </div>
-        <div style="font-size:.72rem;color:var(--t3);margin-top:4px">&#x1F381; Save 50% &middot; Full Access 365 Days &middot; One-time Payment</div>
-      </div>
-      <div style="background:var(--bg3);border:1px solid var(--br);border-radius:var(--r8);padding:14px;margin-bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:.74rem;color:var(--t3)">
-        <span>&#x2714; All 600+ tools unlimited</span><span>&#x2714; Watermark-free exports</span>
-        <span>&#x2714; Bulk batch processing</span><span>&#x2714; Priority 24hr support</span>
-        <span>&#x2714; Early new tool access</span><span>&#x2714; Advanced AI features</span>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Full Name *</label>
-        <input class="form-ctrl" id="pay-name" type="text" placeholder="Your full name" maxlength="100" autocomplete="name">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Email *</label>
-        <input class="form-ctrl" id="pay-email" type="email" placeholder="your@email.com" maxlength="150" autocomplete="email">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Mobile (India) *</label>
-        <input class="form-ctrl" id="pay-mobile" type="tel" placeholder="10-digit mobile" maxlength="10">
-      </div>
-      <div class="fchk" style="margin-bottom:16px">
-        <input type="checkbox" id="pay-terms">
-        <label for="pay-terms" style="-webkit-user-select:text;user-select:text;font-size:.74rem">I agree to <a href="#" onclick="openM('terms-ov');return false;" style="color:var(--pur)">Terms &amp; Conditions</a>, <a href="#" onclick="openM('refund-ov');return false;" style="color:var(--pur)">Refund Policy</a> &amp; <a href="legal/index.html#privacy-policy" target="_blank" style="color:var(--pur)">Privacy Policy</a>. *</label>
-      </div>
-      <button onclick="initiateRazorpay()" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.9rem;border:none;border-radius:var(--r8);cursor:pointer;transition:all .25s;box-shadow:0 6px 20px rgba(124,58,237,.3)">
-        &#x1F512; Pay Securely &#x20B9;2,999 via Razorpay &#x2192;
-      </button>
+    <div class="mbd" style="padding:0;">
 
-      <!-- UPI Offline Payment Option -->
-      <div style="margin-top:14px;border:1px solid rgba(184,121,42,.3);border-radius:var(--r8);padding:14px;background:rgba(184,121,42,.06);">
-        <div style="font-size:.78rem;font-weight:700;color:#d4922e;margin-bottom:8px;">📱 Ya Direct UPI se pay karo (Offline)</div>
-        <div style="text-align:center;margin-bottom:8px;">
-          <div style="font-family:monospace;font-size:1rem;font-weight:700;color:#f5c259;background:rgba(0,0,0,.3);padding:8px 16px;border-radius:6px;display:inline-block;">9099928877@pthdfc</div>
+      <!-- Step 1: Plan Select + Form -->
+      <div id="pay-step-1">
+        <div style="padding:24px 24px 0;">
+          <div style="text-align:center;margin-bottom:18px;">
+            <div style="font-size:2rem;margin-bottom:6px;">💳</div>
+            <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:var(--t1);margin-bottom:4px;">Upgrade Your Plan</h2>
+            <p style="font-size:.76rem;color:var(--t3);">K Spider AI — India ka #1 AI Tools Platform</p>
+          </div>
+
+          <!-- Plan Selector -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;" id="plan-selector">
+            <div class="pay-plan-card active" id="ppc-premium" onclick="selectPayPlan('premium')" style="border:2px solid var(--pur);background:rgba(124,58,237,.08);border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;text-align:center;">
+              <div style="font-size:1.3rem;">💎</div>
+              <div style="font-weight:700;font-size:.88rem;color:var(--t1);margin:4px 0;">Premium</div>
+              <div style="font-size:1.1rem;font-weight:800;color:#a78bfa;" id="ppc-premium-price">₹2,999<span style="font-size:.65rem;font-weight:500;color:var(--t3);">/yr</span></div>
+              <div style="font-size:.65rem;color:var(--t3);margin-top:3px;">All premium tools</div>
+            </div>
+            <div class="pay-plan-card" id="ppc-franchise" onclick="selectPayPlan('franchise')" style="border:2px solid var(--br2);background:transparent;border-radius:12px;padding:14px;cursor:pointer;transition:all .2s;text-align:center;">
+              <div style="font-size:1.3rem;">🏢</div>
+              <div style="font-weight:700;font-size:.88rem;color:var(--t1);margin:4px 0;">Franchise</div>
+              <div style="font-size:1.1rem;font-weight:800;color:var(--gold2);" id="ppc-franchise-price">₹9,999<span style="font-size:.65rem;font-weight:500;color:var(--t3);">/yr</span></div>
+              <div style="font-size:.65rem;color:var(--t3);margin-top:3px;">Resell + white-label</div>
+            </div>
+          </div>
+
+          <!-- What's included summary -->
+          <div style="background:var(--bg3);border:1px solid var(--br);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.74rem;color:var(--t3);line-height:1.9;" id="plan-features-summary">
+            <span style="color:var(--t2);font-weight:600;">💎 Premium includes:</span><br>
+            ✦ All premium tools unlimited &nbsp;✦ Pharmacy Master Pro &nbsp;✦ WA Broadcast Pro<br>
+            ✦ Doctor Elite Pro &nbsp;✦ Priority 24hr support &nbsp;✦ Early new tool access
+          </div>
+
+          <!-- User Info -->
+          <div class="form-group">
+            <label class="form-label">Full Name *</label>
+            <input class="form-ctrl" id="pay-name" type="text" placeholder="Aapka poora naam" maxlength="100" autocomplete="name">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group">
+              <label class="form-label">Email *</label>
+              <input class="form-ctrl" id="pay-email" type="email" placeholder="email@example.com" maxlength="150">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Mobile *</label>
+              <input class="form-ctrl" id="pay-mobile" type="tel" placeholder="10-digit" maxlength="10">
+            </div>
+          </div>
+          <div class="fchk" style="margin-bottom:16px;">
+            <input type="checkbox" id="pay-terms">
+            <label for="pay-terms" style="-webkit-user-select:text;user-select:text;font-size:.73rem;">I agree to <a href="#" onclick="openM('terms-ov');return false;" style="color:var(--pur);">Terms</a>, <a href="#" onclick="openM('refund-ov');return false;" style="color:var(--pur);">Refund Policy</a> &amp; <a href="legal/index.html#privacy-policy" target="_blank" style="color:var(--pur);">Privacy Policy</a> *</label>
+          </div>
         </div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.4);line-height:1.75;">
-          1. ऊपर UPI ID pe payment karo (PhonePe / GPay / Paytm)<br>
-          2. Screenshot ya UTR number save karo<br>
-          3. WhatsApp karo: <a href="https://wa.me/919099928877" target="_blank" style="color:#d4922e;">+91 90999 28877</a> — screenshot bhejo<br>
-          4. Admin 1-2 hrs mein access activate kar dega ✅
+
+        <!-- Payment Options -->
+        <div style="padding:0 24px 24px;">
+          <div style="font-size:.76rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Choose Payment Method</div>
+
+          <!-- UPI Direct (Primary) -->
+          <button onclick="proceedUPIPayment()" style="width:100%;padding:14px;background:linear-gradient(135deg,#059669,#047857);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.92rem;border:none;border-radius:10px;cursor:pointer;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(5,150,105,.3);">
+            <span style="font-size:1.1rem;">📱</span> Pay via UPI — Instant &amp; Easy
+          </button>
+
+          <!-- Razorpay (secondary) -->
+          <button onclick="initiateRazorpay()" style="width:100%;padding:13px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-family:'DM Sans',sans-serif;font-weight:700;font-size:.88rem;border:none;border-radius:10px;cursor:pointer;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(124,58,237,.25);">
+            <span style="font-size:1rem;">🔐</span> Pay via Card / Net Banking (Razorpay)
+          </button>
+
+          <div style="display:flex;align-items:center;justify-content:center;gap:10px;font-size:.65rem;color:var(--t4);margin-top:8px;">
+            <span>🔒 256-bit SSL</span><span>•</span><span>🇮🇳 Made in India</span><span>•</span><span>⚡ Instant Access on approval</span>
+          </div>
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px;font-size:.67rem;color:var(--t4)">
-        <span>&#x1F512; 256-bit SSL</span><span>&bull;</span><span>&#x1F3E6; Razorpay Secure</span><span>&bull;</span><span>&#x1F4F1; UPI / Card / NetBanking</span>
+      <!-- Step 2: UPI Payment Screen -->
+      <div id="pay-step-2" style="display:none;padding:24px;">
+        <div style="text-align:center;margin-bottom:20px;">
+          <div style="font-size:1.8rem;margin-bottom:8px;">📱</div>
+          <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:var(--t1);margin-bottom:4px;">UPI Payment</h2>
+          <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(5,150,105,.12);border:1px solid rgba(5,150,105,.3);border-radius:8px;padding:6px 16px;">
+            <span style="font-size:1.1rem;font-weight:800;color:#34d399;" id="upi-pay-amount">₹2,999</span>
+            <span style="font-size:.72rem;color:var(--t3);" id="upi-pay-plan-label">• Premium Plan • 365 Days</span>
+          </div>
+        </div>
+
+        <!-- UPI ID Big Display -->
+        <div style="background:linear-gradient(135deg,rgba(184,121,42,.12),rgba(184,121,42,.06));border:2px solid var(--gold-b);border-radius:14px;padding:20px;text-align:center;margin-bottom:16px;">
+          <div style="font-size:.75rem;color:var(--t3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;">Send Payment To</div>
+          <div style="font-family:monospace;font-size:1.25rem;font-weight:800;color:var(--gold2);letter-spacing:.02em;margin-bottom:10px;" id="upi-display-id">9099928877@pthdfc</div>
+          <div style="font-size:.72rem;color:var(--t3);margin-bottom:12px;">PhonePe · Google Pay · Paytm · BHIM · Any UPI App</div>
+          <button onclick="copyUPIId()" style="padding:8px 20px;background:var(--gold-s);border:1px solid var(--gold-b);color:var(--gold2);border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;font-family:inherit;" id="copy-upi-btn">📋 Copy UPI ID</button>
+        </div>
+
+        <!-- Steps -->
+        <div style="background:var(--bg3);border:1px solid var(--br);border-radius:10px;padding:14px;margin-bottom:16px;">
+          <div style="font-size:.75rem;font-weight:700;color:var(--t2);margin-bottom:10px;">📋 Payment Steps:</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:.78rem;color:var(--t3);line-height:1.6;">
+            <div style="display:flex;align-items:flex-start;gap:10px;"><span style="background:var(--gold-s);color:var(--gold2);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;">1</span><span>PhonePe / GPay / Paytm kholein aur <strong style="color:var(--t1);">9099928877@pthdfc</strong> pe payment karein</span></div>
+            <div style="display:flex;align-items:flex-start;gap:10px;"><span style="background:var(--gold-s);color:var(--gold2);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;">2</span><span>Payment successful hone ke baad <strong style="color:var(--t1);">UTR / Transaction ID</strong> ya screenshot save karein</span></div>
+            <div style="display:flex;align-items:flex-start;gap:10px;"><span style="background:var(--gold-s);color:var(--gold2);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;">3</span><span>Neeche UTR number daalo aur <strong style="color:var(--t1);">"Submit Payment"</strong> click karein</span></div>
+            <div style="display:flex;align-items:flex-start;gap:10px;"><span style="background:rgba(5,150,105,.15);color:#34d399;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:800;flex-shrink:0;">✓</span><span>Admin <strong style="color:#34d399;">1-2 hours</strong> mein verify karega — confirmation email aayega ✅</span></div>
+          </div>
+        </div>
+
+        <!-- UTR Input -->
+        <div class="form-group">
+          <label class="form-label" style="font-size:.78rem;font-weight:700;">UTR / Transaction ID * <span style="color:var(--t4);font-weight:400;">(12-digit number from payment app)</span></label>
+          <input class="form-ctrl" id="pay-utr" type="text" placeholder="e.g. 425812345678" maxlength="30" style="font-family:monospace;font-size:.9rem;letter-spacing:.02em;">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:.78rem;font-weight:700;">Additional Note <span style="color:var(--t4);font-weight:400;">(optional)</span></label>
+          <input class="form-ctrl" id="pay-note" type="text" placeholder="e.g. Paid via PhonePe at 2:30 PM" maxlength="100">
+        </div>
+
+        <div style="display:flex;gap:10px;">
+          <button onclick="goPayStep(1)" style="padding:12px 18px;background:transparent;border:1px solid var(--br2);color:var(--t3);border-radius:10px;cursor:pointer;font-family:inherit;font-size:.82rem;">← Back</button>
+          <button onclick="submitUPIPayment()" style="flex:1;padding:13px;background:linear-gradient(135deg,#059669,#047857);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.9rem;border:none;border-radius:10px;cursor:pointer;box-shadow:0 4px 16px rgba(5,150,105,.3);" id="submit-upi-btn">
+            ✅ Submit Payment Request
+          </button>
+        </div>
+
+        <!-- WhatsApp Alternative -->
+        <div style="margin-top:12px;text-align:center;font-size:.72rem;color:var(--t4);">
+          UTR number nahi pata? &nbsp;<a href="#" onclick="sendWhatsAppPayment();return false;" style="color:var(--gold2);font-weight:700;">📱 WhatsApp pe screenshot bhejo →</a>
+        </div>
       </div>
+
+      <!-- Step 3: Confirmation Screen -->
+      <div id="pay-step-3" style="display:none;padding:32px 24px;text-align:center;">
+        <div style="width:72px;height:72px;background:rgba(5,150,105,.12);border:2px solid rgba(5,150,105,.3);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto 16px;">✅</div>
+        <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.15rem;color:var(--t1);margin-bottom:8px;">Payment Request Submitted!</h2>
+        <p style="font-size:.82rem;color:var(--t3);line-height:1.7;margin-bottom:20px;">
+          Aapki payment request successfully submit ho gayi.<br>
+          <strong style="color:var(--t1);">Confirmation email aapke inbox mein bheja gaya hai.</strong><br>
+          Admin <strong style="color:#34d399;">1-2 hours</strong> mein verify karega aur access activate kar dega.
+        </p>
+
+        <!-- Order Summary Box -->
+        <div style="background:var(--bg3);border:1px solid var(--br);border-radius:12px;padding:16px;margin-bottom:20px;text-align:left;">
+          <div style="font-size:.72rem;font-weight:700;color:var(--t4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">📋 Order Summary</div>
+          <div style="display:flex;flex-direction:column;gap:8px;font-size:.82rem;">
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--t3);">Plan</span><span style="color:var(--t1);font-weight:700;" id="conf-plan">Premium</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--t3);">Amount</span><span style="color:var(--gold2);font-weight:700;" id="conf-amount">₹2,999</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--t3);">UTR/Ref</span><span style="color:var(--t2);font-family:monospace;font-size:.78rem;" id="conf-utr">—</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--t3);">Order ID</span><span style="color:var(--t2);font-family:monospace;font-size:.78rem;" id="conf-orderid">—</span></div>
+            <div style="display:flex;justify-content:space-between;"><span style="color:var(--t3);">Status</span><span style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);padding:2px 10px;border-radius:20px;font-size:.7rem;font-weight:700;">⏳ Pending Verification</span></div>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <a id="conf-wa-link" href="#" target="_blank" style="display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;background:rgba(37,211,102,.12);border:1px solid rgba(37,211,102,.3);color:#25d366;border-radius:10px;font-size:.84rem;font-weight:700;text-decoration:none;">
+            📱 WhatsApp Admin for Faster Approval
+          </a>
+          <button onclick="closeM('pro-pay-ov')" style="padding:11px;background:transparent;border:1px solid var(--br2);color:var(--t3);border-radius:10px;cursor:pointer;font-family:inherit;font-size:.84rem;">Close</button>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
+
+<!-- PAYMENT SUCCESS MODAL (after admin approves) -->
+<div class="ov" id="pay-success-ov" role="dialog" aria-modal="true">
+  <div class="mod" style="max-width:420px;text-align:center;">
+    <div class="mbd" style="padding:36px 24px;">
+      <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+      <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.2rem;color:var(--t1);margin-bottom:8px;">Access Activated!</h2>
+      <p style="font-size:.84rem;color:var(--t3);line-height:1.7;margin-bottom:20px;" id="pay-success-msg">
+        Aapka plan successfully activate ho gaya! Ab sare premium tools use kar sakte hain.
+      </p>
+      <div style="background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.25);border-radius:10px;padding:14px;margin-bottom:20px;">
+        <div style="font-size:.78rem;color:#34d399;font-weight:700;">Plan Active Until</div>
+        <div style="font-size:1.1rem;font-weight:800;color:var(--t1);margin-top:4px;" id="pay-success-expiry">—</div>
+      </div>
+      <button onclick="closeM('pay-success-ov');updateUW();" style="width:100%;padding:13px;background:linear-gradient(135deg,#059669,#047857);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.9rem;border:none;border-radius:10px;cursor:pointer;">
+        🚀 Start Using Premium Tools →
+      </button>
+    </div>
+  </div>
+</div>
+
 
 <!-- TERMS & CONDITIONS MODAL -->
 <div class="ov" id="terms-ov" role="dialog" aria-modal="true" aria-label="Terms and Conditions">
@@ -3249,99 +3370,293 @@ function launchPremiumTool(url, toolId, requiredPlan) {
    PRO PAYMENT MODAL — open with user details pre-filled
    ══════════════════════════════════════════════════════ */
 function openFranchiseContact() {
-  var waMsg = 'Namaste! Mujhe K Spider AI Franchise ke baare mein jaankari chahiye. Kripya details share karein. UPI: 9099928877@pthdfc';
-  window.open('https://wa.me/919099928877?text=' + encodeURIComponent(waMsg), '_blank');
+  selectPayPlan('franchise');
+  openProPayment();
+}
+
+// ═══════════════════════════════════════════════
+// PAYMENT SYSTEM — UPI First + Razorpay fallback
+// ═══════════════════════════════════════════════
+var _selectedPlan = 'premium';
+var _paymentOrderId = null;
+
+function selectPayPlan(plan) {
+  _selectedPlan = plan;
+  var premCard = document.getElementById('ppc-premium');
+  var franCard = document.getElementById('ppc-franchise');
+  var summary  = document.getElementById('plan-features-summary');
+  if (premCard) premCard.style.border = plan==='premium' ? '2px solid var(--pur)' : '2px solid var(--br2)';
+  if (premCard) premCard.style.background = plan==='premium' ? 'rgba(124,58,237,.08)' : 'transparent';
+  if (franCard) franCard.style.border = plan==='franchise' ? '2px solid var(--gold2)' : '2px solid var(--br2)';
+  if (franCard) franCard.style.background = plan==='franchise' ? 'rgba(184,121,42,.08)' : 'transparent';
+  if (summary) {
+    if (plan==='franchise') {
+      summary.innerHTML = '<span style="color:var(--gold2);font-weight:600;">🏢 Franchise includes:</span><br>✦ Everything in Premium &nbsp;✦ Resell K Spider AI &nbsp;✦ White-label platform<br>✦ Team accounts (10 users) &nbsp;✦ Commission on sales &nbsp;✦ Dedicated manager';
+    } else {
+      summary.innerHTML = '<span style="color:var(--t2);font-weight:600;">💎 Premium includes:</span><br>✦ All premium tools unlimited &nbsp;✦ Pharmacy Master Pro &nbsp;✦ WA Broadcast Pro<br>✦ Doctor Elite Pro &nbsp;✦ Priority 24hr support &nbsp;✦ Early new tool access';
+    }
+  }
+  window._currentPlanAmount = plan==='franchise' ? PRICES.ent.yearly : PRICES.pro.yearly;
 }
 
 function openProPayment() {
   var u = getUser();
   if (!u || !u.verified) {
-    toast('Pehle register karo aur email verify karo — phir Pro upgrade karo!', 'warn', 5000);
+    toast('Pehle register karo aur email verify karo — phir upgrade karo!', 'warn', 5000);
     openM('reg-ov');
     return;
   }
+  goPayStep(1);
   openM('pro-pay-ov');
-  var nameEl  = document.getElementById('pay-name');
-  var emailEl = document.getElementById('pay-email');
-  var mobEl   = document.getElementById('pay-mobile');
-  if (nameEl  && u.name)   nameEl.value  = u.name;
-  if (emailEl && u.email)  emailEl.value = u.email;
-  if (mobEl   && u.mobile) mobEl.value   = u.mobile;
+  // Pre-fill user info
+  var n=document.getElementById('pay-name'), e=document.getElementById('pay-email'), m=document.getElementById('pay-mobile');
+  if(n && u.name) n.value=u.name;
+  if(e && u.email) e.value=u.email;
+  if(m && u.mobile) m.value=u.mobile;
+  // Update plan prices from PRICES object
+  var pp=document.getElementById('ppc-premium-price'), fp=document.getElementById('ppc-franchise-price');
+  if(pp) pp.innerHTML='₹'+PRICES.pro.yearly.toLocaleString('en-IN')+'<span style="font-size:.65rem;font-weight:500;color:var(--t3);">/yr</span>';
+  if(fp) fp.innerHTML='₹'+PRICES.ent.yearly.toLocaleString('en-IN')+'<span style="font-size:.65rem;font-weight:500;color:var(--t3);">/yr</span>';
+  selectPayPlan(_selectedPlan);
+}
+
+function goPayStep(n) {
+  [1,2,3].forEach(function(i) {
+    var el=document.getElementById('pay-step-'+i);
+    if(el) el.style.display=(i===n)?'':'none';
+  });
+}
+
+function validatePayForm() {
+  var name  =(document.getElementById('pay-name')||{}).value||'';
+  var email =(document.getElementById('pay-email')||{}).value||'';
+  var mobile=(document.getElementById('pay-mobile')||{}).value||'';
+  var terms =(document.getElementById('pay-terms')||{}).checked;
+  if(name.trim().length<2){toast('Apna poora naam darj karein.','error');return false;}
+  if(!vEmail(email)){toast('Sahi email address darj karein.','error');return false;}
+  if(!vMobile(mobile)){toast('Valid 10-digit mobile number darj karein.','error');return false;}
+  if(!terms){toast('Terms & Conditions se agree karein.','error');return false;}
+  return true;
+}
+
+function proceedUPIPayment() {
+  if(!validatePayForm()) return;
+  var amount = _selectedPlan==='franchise' ? PRICES.ent.yearly : PRICES.pro.yearly;
+  var upiEl=document.getElementById('upi-pay-amount');
+  var lblEl=document.getElementById('upi-pay-plan-label');
+  if(upiEl) upiEl.textContent='₹'+amount.toLocaleString('en-IN');
+  if(lblEl) lblEl.textContent='• '+(_selectedPlan==='franchise'?'Franchise':'Premium')+' Plan • 365 Days';
+  document.getElementById('pay-utr').value='';
+  document.getElementById('pay-note').value='';
+  goPayStep(2);
+}
+
+function copyUPIId() {
+  var upiId='9099928877@pthdfc';
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(upiId).then(function(){
+      var btn=document.getElementById('copy-upi-btn');
+      if(btn){btn.textContent='✅ Copied!';setTimeout(function(){btn.textContent='📋 Copy UPI ID';},2000);}
+    });
+  } else {
+    toast('UPI ID: '+upiId,'success',4000);
+  }
+}
+
+function submitUPIPayment() {
+  var utr=(document.getElementById('pay-utr')||{}).value||'';
+  var note=(document.getElementById('pay-note')||{}).value||'';
+  if(utr.trim().length<6){toast('Valid UTR / Transaction ID darj karein (minimum 6 characters).','error');return;}
+
+  var btn=document.getElementById('submit-upi-btn');
+  if(btn){btn.textContent='⏳ Submitting...';btn.disabled=true;}
+
+  var name  =(document.getElementById('pay-name')||{}).value||'';
+  var email =(document.getElementById('pay-email')||{}).value||'';
+  var mobile=(document.getElementById('pay-mobile')||{}).value||'';
+  var amount=_selectedPlan==='franchise'?PRICES.ent.yearly:PRICES.pro.yearly;
+  var orderId='KS-'+Date.now().toString(36).toUpperCase();
+  _paymentOrderId=orderId;
+
+  var u=getUser()||{};
+  var paymentDoc={
+    orderId:orderId, userEmail:email, userName:name, userMobile:mobile,
+    planType:_selectedPlan, amount:amount, utr:utr.trim(), note:note,
+    status:'pending', type:'upi_offline', paymentMethod:'upi_manual',
+    submittedAt:new Date().toISOString(),
+    userID:email.replace(/[.#$\/\[\]]/g,'_')
+  };
+
+  // Save to Firestore payments collection
+  var db=(typeof KS!=='undefined'&&KS.db)?KS.db:(_db||null);
+  var savePromise;
+  if(db){
+    savePromise=db.collection('payments').add(Object.assign({},paymentDoc,{
+      timestamp: typeof firebase!=='undefined'?firebase.firestore.FieldValue.serverTimestamp():new Date().toISOString()
+    }));
+  } else {
+    savePromise=Promise.resolve({id:orderId});
+  }
+
+  savePromise.then(function(docRef){
+    // Also save/update user record with pending status
+    if(db){
+      db.collection('users').doc(email.replace(/[.#$\/\[\]]/g,'_')).set({
+        name:name, email:email, mobile:mobile,
+        pendingPlan:_selectedPlan, pendingOrderId:orderId,
+        lastSeen:new Date().toISOString(), source:'kspiderai.in'
+      },{merge:true});
+    }
+
+    // Send confirmation email to user via EmailJS
+    sendPaymentConfirmationEmail(email, name, orderId, _selectedPlan, amount, utr);
+
+    // Send admin alert
+    sendAdminAlert('UPI_PAYMENT_SUBMITTED', {name:name,email:email,mobile:mobile},
+      'OrderID: '+orderId+' | Plan: '+_selectedPlan+' | Amount: ₹'+amount+' | UTR: '+utr);
+
+    // Show confirmation screen
+    var confPlan=document.getElementById('conf-plan');
+    var confAmt=document.getElementById('conf-amount');
+    var confUtr=document.getElementById('conf-utr');
+    var confOid=document.getElementById('conf-orderid');
+    var confWa=document.getElementById('conf-wa-link');
+    if(confPlan) confPlan.textContent=_selectedPlan.charAt(0).toUpperCase()+_selectedPlan.slice(1)+' Plan';
+    if(confAmt) confAmt.textContent='₹'+amount.toLocaleString('en-IN');
+    if(confUtr) confUtr.textContent=utr;
+    if(confOid) confOid.textContent=orderId;
+    if(confWa){
+      var waMsg='Namaste! Mera K Spider AI payment submit ho gaya.\nOrder ID: '+orderId+'\nUTR: '+utr+'\nPlan: '+_selectedPlan.toUpperCase()+'\nAmount: ₹'+amount+'\nEmail: '+email+'\nKripya access activate karein. Dhanyavaad! 🙏';
+      confWa.href='https://wa.me/919099928877?text='+encodeURIComponent(waMsg);
+    }
+    goPayStep(3);
+  }).catch(function(err){
+    console.error('[KSpider] Payment save error:',err);
+    toast('❌ Kuch gadbad hui. Dobara try karein ya WhatsApp karein.','error',6000);
+    if(btn){btn.textContent='✅ Submit Payment Request';btn.disabled=false;}
+  });
+}
+
+function sendWhatsAppPayment() {
+  var name=(document.getElementById('pay-name')||{}).value||'';
+  var email=(document.getElementById('pay-email')||{}).value||'';
+  var amount=_selectedPlan==='franchise'?PRICES.ent.yearly:PRICES.pro.yearly;
+  var msg='Namaste! K Spider AI '+(_selectedPlan==='franchise'?'Franchise':'Premium')+' plan ke liye payment karna chahta/chahti hun.\nName: '+name+'\nEmail: '+email+'\nPlan: '+_selectedPlan.toUpperCase()+'\nAmount: ₹'+amount+'\nPlease UPI ID share karein ya confirm karein.';
+  window.open('https://wa.me/919099928877?text='+encodeURIComponent(msg),'_blank');
+}
+
+function sendPaymentConfirmationEmail(email, name, orderId, plan, amount, utr) {
+  if(typeof emailjs==='undefined') return;
+  var planLabel=plan==='franchise'?'Franchise':'Premium';
+  try {
+    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, {
+      user_name: name,
+      user_email: email,
+      to_email: email,
+      subject: 'Payment Received - K Spider AI '+planLabel+' Plan | Order '+orderId,
+      message: 'Namaste '+name+',\n\nAapki K Spider AI '+planLabel+' Plan ki payment request successfully receive ho gayi!\n\n'+
+        '📋 Order Details:\n'+
+        '• Order ID: '+orderId+'\n'+
+        '• Plan: '+planLabel+'\n'+
+        '• Amount: ₹'+amount+'\n'+
+        '• UTR/Ref: '+utr+'\n'+
+        '• Status: Pending Verification\n\n'+
+        '⏳ Admin 1-2 hours mein verify karega.\n'+
+        'Verification ke baad aapko email aayega aur access automatically activate ho jaayega.\n\n'+
+        '📱 Jaldi approval ke liye WhatsApp karein: +91 90999 28877\n\n'+
+        'K Spider AI Team\nwww.kspiderai.in',
+      platform: 'K Spider AI Payment Confirmation',
+      registration_date: new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),
+      user_mobile: ''
+    });
+  } catch(e){ console.warn('[KSpider] Confirmation email error:',e); }
 }
 
 /* ══════════════════════════════════════════════════════
-   RAZORPAY CHECKOUT — called from Pro Payment Modal
-   Replace 'YOUR_RAZORPAY_KEY_ID' with your live key
+   RAZORPAY CHECKOUT — Card / Net Banking
    ══════════════════════════════════════════════════════ */
 function initiateRazorpay() {
-  var name   = ((document.getElementById('pay-name')   || {}).value || '').trim();
-  var email  = ((document.getElementById('pay-email')  || {}).value || '').trim();
-  var mobile = ((document.getElementById('pay-mobile') || {}).value || '').trim();
-  var agreed = ((document.getElementById('pay-terms')  || {}).checked);
+  if(!validatePayForm()) return;
+  var name  =(document.getElementById('pay-name')||{}).value||'';
+  var email =(document.getElementById('pay-email')||{}).value||'';
+  var mobile=(document.getElementById('pay-mobile')||{}).value||'';
+  var amount=(_selectedPlan==='franchise'?PRICES.ent.yearly:PRICES.pro.yearly);
+  var user=getUser()||{};
 
-  if (name.length < 2)  { toast('Kripya apna poora naam darj karein.', 'error'); return; }
-  if (!vEmail(email))   { toast('Kripya sahi email address darj karein.', 'error'); return; }
-  if (!vMobile(mobile)) { toast('Kripya valid 10-digit mobile number darj karein.', 'error'); return; }
-  if (!agreed)          { toast('Kripya Terms, Refund Policy aur Privacy Policy se agree karein.', 'error'); return; }
-
-  var user = getUser() || {};
-
-  var rzpOptions = {
-    key:         'YOUR_RAZORPAY_KEY_ID',
-    amount:      (window._currentPlanAmount ? window._currentPlanAmount * 100 : PRICES.pro.yearly * 100),
-    currency:    'INR',
-    name:        'K Spider AI Tool',
-    description: 'Pro Plan — 365 Days Full Access (All 600+ Tools)',
-    image:       'https://www.kspiderai.in/assets/logo.png',
-    prefill: { name: name, email: email, contact: mobile },
-    notes:   { plan: 'pro_annual_2999', source: 'kspiderai.in', user_email: email },
-    theme:   { color: '#7c3aed' },
-    modal:   { backdropclose: false },
-    handler: function(response) {
-      var updatedUser = {};
-      var k;
-      for (k in user) { if (user.hasOwnProperty(k)) updatedUser[k] = user[k]; }
-      updatedUser.planType  = 'premium';
-      updatedUser.plan      = 'pro';
-      updatedUser.premium   = true;
-      updatedUser.name      = user.name  || name;
-      updatedUser.email     = user.email || email;
-      updatedUser.mobile    = user.mobile || mobile;
-      updatedUser.verified  = true;
-      updatedUser.planExpiry  = new Date(Date.now() + 365*24*60*60*1000).toISOString();
-      updatedUser.paymentId   = response.razorpay_payment_id;
-      updatedUser.paidAmount  = 2999;
-      updatedUser.paidOn      = new Date().toISOString();
+  var rzpOptions={
+    key:'YOUR_RAZORPAY_KEY_ID',
+    amount: amount*100,
+    currency:'INR',
+    name:'K Spider AI Tool',
+    description:(_selectedPlan==='franchise'?'Franchise':'Premium')+' Plan — 365 Days Full Access',
+    image:'https://www.kspiderai.in/assets/logo.png',
+    prefill:{name:name, email:email, contact:mobile},
+    notes:{plan:_selectedPlan, source:'kspiderai.in', user_email:email},
+    theme:{color:_selectedPlan==='franchise'?'#b8792a':'#7c3aed'},
+    modal:{backdropclose:false},
+    handler:function(response){
+      var k; var updatedUser={};
+      for(k in user){if(user.hasOwnProperty(k))updatedUser[k]=user[k];}
+      updatedUser.planType=_selectedPlan;
+      updatedUser.plan=_selectedPlan;
+      updatedUser.premium=true;
+      updatedUser.name=user.name||name;
+      updatedUser.email=user.email||email;
+      updatedUser.mobile=user.mobile||mobile;
+      updatedUser.verified=true;
+      updatedUser.planExpiry=new Date(Date.now()+365*24*60*60*1000).toISOString();
+      updatedUser.accessStart=new Date().toISOString();
+      updatedUser.paymentId=response.razorpay_payment_id;
+      updatedUser.paidAmount=amount;
+      updatedUser.paidOn=new Date().toISOString();
+      updatedUser.paymentMethod='razorpay';
       saveUser(updatedUser);
-      saveUserToFirebase(updatedUser, function(ok) {
-        if (ok) {
-          sendAdminAlert('PRO_PURCHASE', updatedUser,
-            'PaymentID: ' + response.razorpay_payment_id + ' | Plan: Pro Annual | Amount: Rs.2999');
-        }
-      });
+      // Save to Firestore
+      var db=(typeof KS!=='undefined'&&KS.db)?KS.db:(_db||null);
+      if(db){
+        var key=email.replace(/[.#$\/\[\]]/g,'_');
+        db.collection('users').doc(key).set({
+          name:name, email:email, mobile:mobile,
+          planType:_selectedPlan, paymentStatus:'paid',
+          planExpiry:updatedUser.planExpiry,
+          accessStart:updatedUser.accessStart,
+          paidAmount:amount, paymentMethod:'razorpay',
+          paymentId:response.razorpay_payment_id,
+          disabled:false, source:'kspiderai.in',
+          lastSeen:new Date().toISOString()
+        },{merge:true});
+        db.collection('payments').add({
+          userID:key, userEmail:email, planType:_selectedPlan,
+          amount:amount, method:'razorpay', status:'success', type:'online',
+          paymentId:response.razorpay_payment_id,
+          timestamp:firebase.firestore.FieldValue.serverTimestamp()
+        });
+      }
+      sendAdminAlert('PRO_PURCHASE',updatedUser,
+        'PaymentID: '+response.razorpay_payment_id+' | Plan: '+_selectedPlan+' | Amount: ₹'+amount);
       closeM('pro-pay-ov');
+      // Show success modal
+      var sm=document.getElementById('pay-success-msg');
+      var se=document.getElementById('pay-success-expiry');
+      if(sm) sm.textContent='Aapka '+(_selectedPlan==='franchise'?'Franchise':'Premium')+' plan successfully activate ho gaya! Ab sare premium tools use kar sakte hain.';
+      if(se) se.textContent=new Date(updatedUser.planExpiry).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});
+      openM('pay-success-ov');
       updateUW();
-      toast('🎉 Welcome to K Spider Pro! 365 days full access unlocked!', 'success', 8000);
     }
   };
-
-  var loadAndOpen = function() {
-    var rzp = new Razorpay(rzpOptions);
-    rzp.on('payment.failed', function(resp) {
-      toast('Payment failed: ' + ((resp.error && resp.error.description) || 'Please try again.'), 'error', 6000);
+  var loadAndOpen=function(){
+    var rzp=new Razorpay(rzpOptions);
+    rzp.on('payment.failed',function(resp){
+      toast('Payment failed: '+((resp.error&&resp.error.description)||'Please try again.'),'error',6000);
     });
     rzp.open();
   };
-
-  if (typeof Razorpay !== 'undefined') {
-    loadAndOpen();
-  } else {
-    var s = document.createElement('script');
-    s.src = 'https://checkout.razorpay.com/v1/checkout.js';
-    s.onload = loadAndOpen;
-    s.onerror = function() {
-      toast('Payment gateway load failed. Check internet and refresh.', 'error', 5000);
-    };
+  if(typeof Razorpay!=='undefined'){loadAndOpen();}
+  else{
+    var s=document.createElement('script');
+    s.src='https://checkout.razorpay.com/v1/checkout.js';
+    s.onload=loadAndOpen;
+    s.onerror=function(){toast('Payment gateway load failed. Internet check karo.','error',5000);};
     document.head.appendChild(s);
   }
 }
@@ -4276,6 +4591,13 @@ function ksFaqToggle(btn) {
       "@type": "Question",
       "name": "Is my data safe on K Spider AI?",
       "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Yes! K Spider AI processes everything in your browser — no files are uploaded to our servers. Your data never leaves your device. We use Firebase for account data with industry-standard security."
+      }
+    }
+  ]
+}
+</script>
 
 <!-- K Spider Security (NEW) -->
 <script src="security.js"></script>

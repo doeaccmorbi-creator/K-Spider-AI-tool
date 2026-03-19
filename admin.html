@@ -84,23 +84,23 @@
 
     // ── CDN groups — tries each SDK set in order ──
     var CDN_SETS = [
-      // v1: Google gstatic (latest stable 11.6.0)
-      [
-        'https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js',
-        'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js',
-        'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js'
-      ],
-      // v2: jsDelivr mirror (works when gstatic is slow/blocked)
+      // v1: jsDelivr — FAST & RELIABLE (Primary)
       [
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js'
       ],
-      // v3: unpkg mirror
+      // v2: unpkg fallback
       [
         'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js'
+      ],
+      // v3: cdnjs last resort
+      [
+        'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-auth-compat.min.js',
+        'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js'
       ]
     ];
 
@@ -664,29 +664,53 @@
 
     <!-- ═══ PAYMENTS PANEL ═══ -->
     <div class="admin-panel" id="panel-payments">
-      <div class="filter-row">
-        <input class="search-input" type="text" placeholder="🔍 Search by Payment ID or email..." id="pay-search" oninput="filterPayments()">
-        <select class="filter-select" id="pay-status-filter" onchange="filterPayments()">
-          <option value="all">All Status</option>
-          <option value="success">Success</option>
-          <option value="pending">Pending</option>
-          <option value="failed">Failed</option>
-        </select>
-        <button class="btn btn-gold btn-sm" onclick="loadPayments()">🔄 Refresh</button>
-      </div>
-      <div class="section-card" style="margin:0 28px 28px;">
-        <div class="table-wrap">
-          <table>
-            <thead><tr>
-              <th>Payment ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Action</th>
-            </tr></thead>
-            <tbody id="payments-table-body">
-              <tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
-            </tbody>
-          </table>
+      <div style="padding:24px;">
+
+        <!-- Pending UPI Approvals (top priority) -->
+        <div class="section-card" style="margin-bottom:20px;border-color:rgba(245,158,11,.3);">
+          <div class="section-head" style="background:rgba(245,158,11,.06);">
+            <div class="section-title">⏳ Pending UPI Approvals <span id="pending-count-badge" style="background:var(--red);color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;margin-left:8px;display:none;">0</span></div>
+            <div class="section-actions">
+              <button class="btn btn-gold btn-sm" onclick="loadPendingPayments()">🔄 Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Order ID</th><th>User</th><th>Plan</th><th>Amount</th><th>UTR / Ref</th><th>Submitted</th><th>Actions</th></tr></thead>
+              <tbody id="pending-payments-body">
+                <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- All Payments -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-title">💳 All Transactions</div>
+            <div class="section-actions">
+              <input class="search-input" type="text" placeholder="🔍 Search..." id="pay-search" oninput="filterPayments()" style="flex:none;width:180px;">
+              <select class="filter-select" id="pay-status-filter" onchange="filterPayments()">
+                <option value="all">All Status</option>
+                <option value="success">Success</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+              </select>
+              <button class="btn btn-ghost btn-sm" onclick="loadPayments()">🔄 Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Order / Pay ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+              <tbody id="payments-table-body">
+                <tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
+
 
     <!-- ═══ FRANCHISE PANEL ═══ -->
     <div class="admin-panel" id="panel-franchise">
@@ -979,6 +1003,42 @@
 
 <div id="admin-toast"></div>
 
+<!-- APPROVE PAYMENT MODAL -->
+<div class="modal-ov" id="approve-pay-modal">
+  <div class="modal-box" style="max-width:480px;">
+    <div class="modal-title">✅ Approve Payment & Activate Access</div>
+    <input type="hidden" id="ap-payment-doc-id">
+    <div style="background:rgba(5,150,105,.08);border:1px solid rgba(5,150,105,.25);border-radius:10px;padding:14px;margin-bottom:16px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:.82rem;">
+        <div><span style="color:var(--t4);">User:</span><br><strong id="ap-user-name" style="color:var(--t1);"></strong></div>
+        <div><span style="color:var(--t4);">Email:</span><br><strong id="ap-user-email" style="color:var(--t1);font-size:.76rem;"></strong></div>
+        <div><span style="color:var(--t4);">Plan:</span><br><strong id="ap-plan" style="color:var(--gold2);"></strong></div>
+        <div><span style="color:var(--t4);">Amount:</span><br><strong id="ap-amount" style="color:var(--neon);"></strong></div>
+        <div style="grid-column:1/-1;"><span style="color:var(--t4);">UTR / Ref:</span><br><strong id="ap-utr" style="color:var(--t1);font-family:monospace;font-size:.84rem;"></strong></div>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Access Duration</label>
+      <select class="filter-select" id="ap-duration" style="width:100%;">
+        <option value="365" selected>365 Days (1 Year)</option>
+        <option value="180">180 Days (6 Months)</option>
+        <option value="90">90 Days (3 Months)</option>
+        <option value="30">30 Days</option>
+        <option value="730">730 Days (2 Years)</option>
+      </select>
+    </div>
+    <div style="margin-bottom:16px;">
+      <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Admin Note (optional)</label>
+      <input class="search-input" type="text" id="ap-admin-note" placeholder="e.g. Verified via PhonePe screenshot" style="width:100%;">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-danger btn-sm" onclick="rejectPayment()">❌ Reject</button>
+      <button class="btn btn-ghost" onclick="closeModal('approve-pay-modal')">Cancel</button>
+      <button class="btn btn-gold" style="background:linear-gradient(135deg,#059669,#047857);" onclick="executeApprovePayment()">✅ Approve & Activate Access</button>
+    </div>
+  </div>
+</div>
+
 <!-- EXTEND/RENEW MODAL -->
 <div class="modal-ov" id="extend-modal">
   <div class="modal-box" style="max-width:400px;">
@@ -1122,7 +1182,8 @@ document.addEventListener('DOMContentLoaded',function(){if(typeof KS!=='undefine
 // ════════ INIT ════════
 function initDashboard(){
   loadStats(); loadRecentPayments(); loadUsers();
-  loadPayments(); loadFranchise(); loadAccessList();
+  loadPendingPayments(); loadPayments();
+  loadFranchise(); loadAccessList();
   loadReminders(); loadToolSettings(); loadPricing();
 }
 
@@ -1402,7 +1463,165 @@ function loadReminders(){
     }).catch(function(e){adminToast('❌ Reminders: '+e.message);});
 }
 
-// ════════ PAYMENTS ════════
+// ════════ PENDING UPI PAYMENTS ════════
+var _pendingPayments = [];
+var _currentApproveData = null;
+
+function loadPendingPayments() {
+  setText('pending-payments-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:16px;">Loading...</td></tr>');
+  KS.db.collection('payments').where('status','==','pending').orderBy('timestamp','desc').limit(50).get()
+    .then(function(snap){
+      _pendingPayments=[];
+      snap.forEach(function(doc){_pendingPayments.push(Object.assign({id:doc.id},doc.data()));});
+      renderPendingPayments(_pendingPayments);
+      // Update badge
+      var badge=document.getElementById('pending-count-badge');
+      if(badge){
+        badge.textContent=_pendingPayments.length;
+        badge.style.display=_pendingPayments.length>0?'':'none';
+      }
+      // Update sidebar nav badge
+      var nb=document.getElementById('payments-badge');
+      if(nb&&_pendingPayments.length>0){nb.textContent='⚡'+_pendingPayments.length;nb.style.background='var(--red)';}
+    }).catch(function(e){
+      setText('pending-payments-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:16px;">'+esc(e.message)+'</td></tr>');
+    });
+}
+
+function renderPendingPayments(list) {
+  var tbody=document.getElementById('pending-payments-body');
+  if(!list.length){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--neon);padding:20px;">✅ Koi pending payment nahi — sab approved!</td></tr>';
+    return;
+  }
+  tbody.innerHTML=list.map(function(p){
+    var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):(p.submittedAt?new Date(p.submittedAt).toLocaleString('en-IN'):'—');
+    return '<tr style="background:rgba(245,158,11,.04);">'+
+      '<td style="font-family:monospace;font-size:.74rem;color:var(--gold2);">'+esc(p.orderId||p.id||'—')+'</td>'+
+      '<td><div style="font-weight:600;font-size:.84rem;">'+esc(p.userName||'—')+'</div><div style="font-size:.73rem;color:var(--t4);">'+esc(p.userEmail||'')+'</div><div style="font-size:.7rem;color:var(--t4);">📱 '+esc(p.userMobile||'—')+'</div></td>'+
+      '<td><span class="badge '+(p.planType||'free')+'">'+(p.planType||'—').toUpperCase()+'</span></td>'+
+      '<td style="font-weight:700;color:var(--gold2);">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
+      '<td style="font-family:monospace;font-size:.78rem;color:var(--t2);">'+esc(p.utr||p.ref||'—')+'</td>'+
+      '<td style="font-size:.73rem;color:var(--t4);">'+date+'</td>'+
+      '<td style="white-space:nowrap;">'+
+        '<button class="btn btn-gold btn-sm" style="background:linear-gradient(135deg,#059669,#047857);margin-right:4px;" onclick="openApproveModal(\''+p.id+'\')">✅ Approve</button>'+
+        '<button class="btn btn-danger btn-sm" onclick="rejectPaymentById(\''+p.id+'\')">❌</button>'+
+      '</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function openApproveModal(pid) {
+  var p=_pendingPayments.find(function(x){return x.id===pid;});
+  if(!p)return;
+  _currentApproveData=p;
+  document.getElementById('ap-payment-doc-id').value=pid;
+  setText('ap-user-name',p.userName||'—');
+  setText('ap-user-email',p.userEmail||'—');
+  setText('ap-plan',(p.planType||'—').toUpperCase()+' Plan');
+  setText('ap-amount','₹'+(p.amount||0).toLocaleString('en-IN'));
+  setText('ap-utr',p.utr||p.ref||'—');
+  document.getElementById('ap-admin-note').value='';
+  openModal('approve-pay-modal');
+}
+
+function executeApprovePayment() {
+  var pid=document.getElementById('ap-payment-doc-id').value;
+  var days=parseInt(document.getElementById('ap-duration').value)||365;
+  var note=document.getElementById('ap-admin-note').value;
+  var p=_currentApproveData;
+  if(!p||!pid)return;
+
+  var btn=document.querySelector('#approve-pay-modal .btn-gold');
+  if(btn){btn.textContent='⏳ Activating...';btn.disabled=true;}
+
+  var email=p.userEmail||'';
+  var key=email.replace(/[.#$\/\[\]]/g,'_');
+  var expiry=new Date(Date.now()+days*864e5);
+
+  // 1. Update payment status
+  KS.db.collection('payments').doc(pid).update({
+    status:'success',
+    approvedBy:_adminUser?_adminUser.email:'admin',
+    approvedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    adminNote:note
+  }).then(function(){
+    // 2. Activate user access in Firestore
+    return KS.db.collection('users').doc(key).set({
+      name:p.userName||'', email:email,
+      mobile:p.userMobile||'',
+      planType:p.planType||'premium',
+      paymentStatus:'paid',
+      planExpiry:expiry.toISOString(),
+      accessStart:new Date().toISOString(),
+      paidAmount:(p.amount||0),
+      paymentMethod:'upi_manual',
+      paymentRef:p.utr||'',
+      orderId:p.orderId||pid,
+      disabled:false,
+      lastGrantedBy:_adminUser?_adminUser.email:'admin',
+      lastGrantedAt:firebase.firestore.FieldValue.serverTimestamp(),
+      source:'kspiderai.in'
+    },{merge:true});
+  }).then(function(){
+    // 3. Send approval email to user via EmailJS
+    sendApprovalEmail(email, p.userName, p.planType, expiry, p.orderId||pid, p.amount);
+
+    closeModal('approve-pay-modal');
+    adminToast('✅ Payment approved! '+email+' ko '+p.planType.toUpperCase()+' access diya — expires '+expiry.toLocaleDateString('en-IN'));
+    loadPendingPayments(); loadPayments(); loadStats(); loadAccessList();
+  }).catch(function(e){
+    adminToast('❌ Error: '+e.message);
+    if(btn){btn.textContent='✅ Approve & Activate Access';btn.disabled=false;}
+  });
+}
+
+function rejectPayment() {
+  var pid=document.getElementById('ap-payment-doc-id').value;
+  rejectPaymentById(pid);
+  closeModal('approve-pay-modal');
+}
+
+function rejectPaymentById(pid) {
+  if(!confirm('Is payment ko reject karna chahte hain? User ko inform karna padega.'))return;
+  KS.db.collection('payments').doc(pid).update({
+    status:'rejected',
+    rejectedBy:_adminUser?_adminUser.email:'admin',
+    rejectedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    adminToast('Payment rejected.');
+    loadPendingPayments(); loadPayments();
+  }).catch(function(e){adminToast('❌ '+e.message);});
+}
+
+function sendApprovalEmail(email, name, plan, expiry, orderId, amount) {
+  if(typeof firebase==='undefined'||!window.emailjs) return;
+  var planLabel=(plan==='franchise'?'Franchise':'Premium');
+  try {
+    emailjs.send('service_sxzyj31','template_qjffh29',{
+      user_name: name||'User',
+      user_email: email,
+      to_email: email,
+      subject: '🎉 Access Activated! K Spider AI '+planLabel+' Plan | Order '+orderId,
+      message: 'Namaste '+( name||'User')+',\n\n'+
+        '🎉 Aapka K Spider AI '+planLabel+' Plan ACTIVATE ho gaya!\n\n'+
+        '✅ Order Details:\n'+
+        '• Plan: '+planLabel+'\n'+
+        '• Amount: ₹'+(amount||0).toLocaleString('en-IN')+'\n'+
+        '• Order ID: '+orderId+'\n'+
+        '• Valid Until: '+expiry.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'})+'\n\n'+
+        '🚀 Abhi site pe jaao aur sare premium tools use karo:\n'+
+        'https://www.kspiderai.in\n\n'+
+        'Koi samasya ho to WhatsApp karein: +91 90999 28877\n\n'+
+        'Dhanyavaad! 🙏\nK Spider AI Team\nwww.kspiderai.in',
+      platform: 'K Spider AI Access Activated',
+      registration_date: expiry.toLocaleDateString('en-IN'),
+      user_mobile: ''
+    });
+  } catch(e){console.warn('[Admin] Approval email error:',e);}
+}
+
+// ════════ ALL PAYMENTS ════════
 function loadPayments(){
   KS.db.collection('payments').orderBy('timestamp','desc').limit(300).get()
     .then(function(snap){
@@ -1410,6 +1629,38 @@ function loadPayments(){
       snap.forEach(function(doc){_allPayments.push(Object.assign({id:doc.id},doc.data()));});
       renderPayments(_allPayments);
     }).catch(function(){renderPayments([]);});
+}
+
+function renderPayments(payments){
+  var tbody=document.getElementById('payments-table-body');
+  if(!payments.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">No payments</td></tr>';return;}
+  tbody.innerHTML=payments.map(function(p){
+    var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):(p.submittedAt?new Date(p.submittedAt).toLocaleString('en-IN'):'—');
+    var statusCls=p.status==='success'?'success':p.status==='pending'?'pending':p.status==='rejected'?'failed':'pending';
+    return '<tr>'+
+      '<td style="font-family:monospace;font-size:.72rem;">'+esc((p.orderId||p.paymentId||p.id||'—').toString().substring(0,16))+'</td>'+
+      '<td style="font-size:.8rem;"><div>'+esc(p.userName||p.userEmail||'—')+'</div><div style="font-size:.71rem;color:var(--t4);">'+esc(p.userEmail||p.userID||'')+'</div></td>'+
+      '<td><span class="badge '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
+      '<td style="font-weight:600;color:var(--gold2);">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
+      '<td style="font-size:.74rem;color:var(--t3);">'+(p.method||p.type||p.paymentMethod||'—')+'</td>'+
+      '<td><span class="badge '+statusCls+'">'+(p.status||'—')+'</span></td>'+
+      '<td style="font-size:.73rem;color:var(--t4);">'+date+'</td>'+
+      '<td>'+(p.status==='pending'?'<button class="btn btn-gold btn-sm" style="background:linear-gradient(135deg,#059669,#047857);" onclick="openApproveModal(\''+p.id+'\')">✅ Approve</button>':'')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+
+function filterPayments(){
+  var q=(document.getElementById('pay-search').value||'').toLowerCase();
+  var st=document.getElementById('pay-status-filter').value;
+  var f=_allPayments.filter(function(p){
+    return (!q||(p.orderId||'').toLowerCase().includes(q)||(p.paymentId||'').toLowerCase().includes(q)||(p.userEmail||'').toLowerCase().includes(q)||(p.userName||'').toLowerCase().includes(q))&&(st==='all'||p.status===st);
+  });
+  renderPayments(f);
+}
+
+function markPaid(pid){
+  openApproveModal(pid);
 }
 function loadRecentPayments(){
   KS.db.collection('payments').orderBy('timestamp','desc').limit(10).get()
@@ -1428,35 +1679,6 @@ function loadRecentPayments(){
       });
       setText('recent-payments-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No transactions yet</td></tr>');
     });
-}
-function renderPayments(payments){
-  var tbody=document.getElementById('payments-table-body');
-  if(!payments.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">No payments</td></tr>';return;}
-  tbody.innerHTML=payments.map(function(p){
-    var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):'—';
-    return '<tr><td style="font-family:monospace;font-size:.74rem;">'+esc(p.paymentID||p.id||'—').substring(0,14)+'</td>'+
-      '<td style="font-size:.8rem;">'+esc(p.userEmail||p.userID||'—')+'</td>'+
-      '<td><span class="badge '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
-      '<td style="font-weight:600;color:var(--gold2);">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
-      '<td style="font-size:.76rem;color:var(--t3);">'+(p.method||p.type||'—')+'</td>'+
-      '<td><span class="badge '+(p.status||'pending')+'">'+(p.status||'—')+'</span></td>'+
-      '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td>'+
-      '<td>'+(p.status==='pending'?'<button class="btn btn-green btn-sm" onclick="markPaid(\''+p.id+'\')">✅ Confirm</button>':'')+'</td>'+
-    '</tr>';
-  }).join('');
-}
-function filterPayments(){
-  var q=(document.getElementById('pay-search').value||'').toLowerCase();
-  var st=document.getElementById('pay-status-filter').value;
-  var f=_allPayments.filter(function(p){
-    return (!q||(p.paymentID||'').toLowerCase().includes(q)||(p.userEmail||'').toLowerCase().includes(q)||(p.userID||'').toLowerCase().includes(q))&&(st==='all'||p.status===st);
-  });
-  renderPayments(f);
-}
-function markPaid(pid){
-  KS.db.collection('payments').doc(pid).update({status:'success'})
-    .then(function(){adminToast('✅ Payment confirmed!');loadPayments();loadStats();})
-    .catch(function(e){adminToast('❌ '+e.message);});
 }
 
 // ════════ FRANCHISE ════════
@@ -1647,7 +1869,7 @@ function showPanel(name,el){
   if(name==='access'){loadAccessList();loadPricing();}
   if(name==='franchise')loadFranchise();
   if(name==='users')loadUsers();
-  if(name==='payments')loadPayments();
+  if(name==='payments'){loadPendingPayments();loadPayments();}
   if(name==='dashboard'){loadStats();loadRecentPayments();}
 }
 
