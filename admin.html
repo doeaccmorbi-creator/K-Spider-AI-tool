@@ -380,11 +380,22 @@
     <h2>Admin Access</h2>
     <p>This panel is restricted to authorized K Spider admins only.</p>
     <div id="admin-login-alert" style="display:none;padding:10px;border-radius:8px;font-size:.82rem;margin-bottom:12px;background:rgba(220,38,38,.1);color:#f87171;border:1px solid rgba(220,38,38,.2);"></div>
-    <input type="email"    class="form-input-dark" id="admin-email-in"  placeholder="Admin email">
-    <input type="password" class="form-input-dark" id="admin-pw-in"     placeholder="Password">
+    <input type="email"    class="form-input-dark" id="admin-email-in"  placeholder="Admin email" onkeydown="if(event.key==='Enter')document.getElementById('admin-pw-in').focus()">
+    <input type="password" class="form-input-dark" id="admin-pw-in"     placeholder="Password"    onkeydown="if(event.key==='Enter')adminLogin()">
     <button class="btn btn-gold" style="width:100%;padding:12px;font-size:.95rem;" onclick="adminLogin()">
       🔑 Sign In as Admin
     </button>
+    <!-- Setup help — shows only if user not found in Firebase Auth -->
+    <div id="admin-setup-help" style="display:none;margin-top:16px;padding:12px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;font-size:.75rem;color:#d97706;line-height:1.8;text-align:left;">
+      <strong>⚠️ Firebase Auth mein account nahi hai!</strong><br>
+      Yeh steps karo:<br>
+      1. <a href="https://console.firebase.google.com" target="_blank" style="color:#f59e0b;">Firebase Console</a> kholo<br>
+      2. <strong>kspideraimain</strong> → <strong>Authentication</strong> → <strong>Users</strong><br>
+      3. <strong>Add user</strong> dabao<br>
+      4. Email: <code style="background:rgba(0,0,0,.3);padding:1px 5px;border-radius:3px;">kspider221206@gmail.com</code><br>
+      5. Password: apna strong password daalo → Save<br>
+      6. Wapas aao aur login karo ✅
+    </div>
   </div>
 </div>
 
@@ -1169,15 +1180,35 @@ function adminLogin(){
   var email=(document.getElementById('admin-email-in').value||'').trim().toLowerCase();
   var pw=document.getElementById('admin-pw-in').value;
   if(!email||!pw){showLoginAlert('Email aur password enter karo');return;}
+  if(!KS||!KS.auth){showLoginAlert('Firebase load nahi hua — Ctrl+Shift+R karo');return;}
+  var btn=document.querySelector('.admin-login-box .btn-gold');
+  if(btn){btn.textContent='Signing in...';btn.disabled=true;}
   KS.auth.signInWithEmailAndPassword(email,pw)
     .then(function(c){
-      if(!KS.isAdmin(c.user.email)){KS.auth.signOut();showLoginAlert('Access denied');return;}
+      if(!KS.isAdmin(c.user.email)){
+        KS.auth.signOut();
+        showLoginAlert('Access denied — yeh email admin nahi hai: '+c.user.email);
+        if(btn){btn.textContent='Sign In as Admin';btn.disabled=false;}
+        return;
+      }
       _adminUser=c.user;
       document.getElementById('admin-login-overlay').style.display='none';
       document.getElementById('admin-layout').style.display='flex';
       setText('admin-name-display',c.user.displayName||email);
       initDashboard();
-    }).catch(function(e){showLoginAlert(e.code==='auth/wrong-password'||e.code==='auth/user-not-found'?'Invalid credentials':e.message);});
+    }).catch(function(e){
+      if(btn){btn.textContent='Sign In as Admin';btn.disabled=false;}
+      var msg='';
+      if(e.code==='auth/wrong-password')           msg='Password galat hai';
+      else if(e.code==='auth/user-not-found')      msg='Yeh email Firebase Auth mein register nahi — niche steps dekho';
+      else if(e.code==='auth/invalid-credential')  msg='Email ya password galat hai';
+      else if(e.code==='auth/too-many-requests')   msg='Bahut attempts — 15 min baad try karo';
+      else if(e.code==='auth/network-request-failed') msg='Internet check karo';
+      else msg=e.code+': '+e.message;
+      showLoginAlert(msg);
+      var h=document.getElementById('admin-setup-help');
+      if(h&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'))h.style.display='block';
+    });
 }
 function showLoginAlert(m){var el=document.getElementById('admin-login-alert');el.style.display='block';el.textContent=m;}
 function adminLogout(){KS.auth.signOut().then(function(){window.location.reload();});}
@@ -1811,27 +1842,29 @@ function loadFranchiseeList(){
     .then(function(snap){
       var total=snap.size,active=0,expiring=0,revenue=0,rows='';
       snap.forEach(function(doc){
-        var u=doc.data();
+        var u=doc.data(); var uid=doc.id;
         var diff=u.planExpiry?Math.ceil((new Date(u.planExpiry).getTime()-now)/864e5):999;
         if(diff>0)active++;
         if(diff>=0&&diff<=7)expiring++;
         revenue+=(u.paidAmount||0);
         var dc=diff<0?'var(--red)':diff<=7?'#fbbf24':'var(--neon)';
-        rows+='<tr><td style=\"font-weight:600;\">'+esc(u.name||'Unknown')+'</td>'+
-          '<td style=\"color:var(--t3);font-size:.8rem;\">'+esc(u.email||'')+'</td>'+
-          '<td><span class=\"badge franchise\">Franchise</span></td>'+
-          '<td style=\"font-size:.78rem;\">'+(u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'—')+'</td>'+
-          '<td style=\"font-weight:600;color:'+dc+';\">'+(diff===999?'—':diff<0?'Expired':diff+' days')+'</td>'+
-          '<td style=\"color:var(--gold2);\">₹'+(u.paidAmount||0).toLocaleString('en-IN')+'</td>'+
-          '<td><button class=\"btn btn-ghost btn-sm\" onclick=\"openUserEdit(\'+doc.id+'\')">✏️ Manage</button></td></tr>';
+        rows+='<tr>'+
+          '<td style="font-weight:600;">'+esc(u.name||'Unknown')+'</td>'+
+          '<td style="color:var(--t3);font-size:.8rem;">'+esc(u.email||'')+'</td>'+
+          '<td><span class="badge franchise">Franchise</span></td>'+
+          '<td style="font-size:.78rem;">'+(u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'—')+'</td>'+
+          '<td style="font-weight:600;color:'+dc+';">'+(diff===999?'—':diff<0?'Expired':diff+' days')+'</td>'+
+          '<td style="color:var(--gold2);">&#8377;'+(u.paidAmount||0).toLocaleString('en-IN')+'</td>'+
+          '<td><button class="btn btn-ghost btn-sm" onclick="openUserEdit(\''+uid+'\')">&#9999;&#65039; Manage</button></td>'+
+        '</tr>';
       });
       setText('f-total',total); setText('f-active',active);
-      setText('f-expiring',expiring); setText('f-revenue','₹'+revenue.toLocaleString('en-IN'));
-      setText('franchise-table-body',rows||'<tr><td colspan=\"7\" style=\"text-align:center;color:var(--t4);padding:20px;\">No franchise users yet</td></tr>');
+      setText('f-expiring',expiring); setText('f-revenue','&#8377;'+revenue.toLocaleString('en-IN'));
+      setText('franchise-table-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No franchise users yet</td></tr>');
     })
     .catch(function(err){
       console.warn('[Admin] loadFranchiseeList error:',err.message);
-      setText('franchise-table-body','<tr><td colspan=\"7\" style=\"text-align:center;color:var(--t4);padding:20px;\">Load error — refresh karo</td></tr>');
+      setText('franchise-table-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Load error — refresh karo</td></tr>');
     });
 }
 function convertToFranchise(email){
