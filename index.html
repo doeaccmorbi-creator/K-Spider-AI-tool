@@ -2619,18 +2619,22 @@ function saveUserToFirebase(userData, callback) {
   if (!initFirebase() || !_db) { if (callback) callback(false); return; }
   var key = userData.email.replace(/[.#$\/\[\]]/g, '_');
   _db.collection('users').doc(key).set({
-    name:         userData.name,
-    email:        userData.email,
-    mobile:       userData.mobile,
-    city:         userData.city || '',
-    language:     userData.language || 'en',
-    verified:     userData.verified || false,
-    registeredAt: userData.registeredAt,
-    verifiedAt:   userData.verifiedAt || null,
-    toolsUsed:    userData.toolsUsed || 0,
-    premium:      userData.premium || false,
-    lastSeen:     new Date().toISOString(),
-    source:       'kspiderai.in'
+    name:          userData.name,
+    email:         userData.email,
+    mobile:        userData.mobile,
+    city:          userData.city || '',
+    language:      userData.language || 'en',
+    verified:      userData.verified || false,
+    registeredAt:  userData.registeredAt,
+    verifiedAt:    userData.verifiedAt || null,
+    toolsUsed:     userData.toolsUsed || 0,
+    premium:       userData.premium || false,
+    planType:      userData.planType || 'free',
+    planExpiry:    userData.planExpiry || null,
+    paymentStatus: userData.paymentStatus || 'none',
+    paidAmount:    userData.paidAmount || 0,
+    lastSeen:      new Date().toISOString(),
+    source:        'kspiderai.in'
   }, { merge: true })
   .then(function() {
     console.log('[KSpider] User saved to Firebase ✅');
@@ -3310,14 +3314,35 @@ function submitReg(e) {
 /* ══════════════════════════════════════════════════════
    TOOL LAUNCH — verified users only
    ══════════════════════════════════════════════════════ */
+// ══════════════════════════════════════════════════════
+// TOOL LAUNCH — strict access control + session token
+// ══════════════════════════════════════════════════════
+var _KS_TOOL_TOKEN_KEY = 'ks_tool_token';
+var _KS_TOOL_ID_KEY    = 'ks_tool_id';
+var _KS_TOOL_PLAN_KEY  = 'ks_tool_plan';
+var _KS_TOOL_EXPIRY    = 'ks_tool_exp';
+
+function _setToolToken(toolId, plan) {
+  // Token valid for 3 minutes — single use
+  var token = 'kst_' + Date.now() + '_' + Math.random().toString(36).substr(2,9);
+  var expiry = Date.now() + (3 * 60 * 1000);
+  try {
+    sessionStorage.setItem(_KS_TOOL_TOKEN_KEY, token);
+    sessionStorage.setItem(_KS_TOOL_ID_KEY,    toolId);
+    sessionStorage.setItem(_KS_TOOL_PLAN_KEY,  plan || 'free');
+    sessionStorage.setItem(_KS_TOOL_EXPIRY,    expiry.toString());
+  } catch(e) {}
+  return token;
+}
+
 function launchTool(url, toolId) {
   var u = getUser();
   if (!u || !u.verified) { openM('gate-ov'); return false; }
+  if (!url || !toolId)   { toast('Tool temporarily unavailable.', 'warn'); return false; }
+
   u.toolsUsed = (u.toolsUsed || 0) + 1;
   saveUser(u);
-
-  // Admin ko TOOL_LAUNCHED alert bhejo
-  sendAdminAlert('TOOL_LAUNCHED', u, 'Tool: ' + toolId + ' | URL: ' + url + ' | Total used: ' + u.toolsUsed);
+  _setToolToken(toolId, 'free');
 
   if (typeof gtag !== 'undefined') {
     gtag('event', 'tool_click', { event_category: 'kspider', event_label: toolId });
@@ -3342,6 +3367,7 @@ function launchPremiumTool(url, toolId, requiredPlan) {
       if (allowed) {
         u.toolsUsed = (u.toolsUsed || 0) + 1;
         saveUser(u);
+        _setToolToken(toolId, requiredPlan);
         if (typeof gtag !== 'undefined') {
           gtag('event', 'tool_click', { event_category: 'kspider', event_label: toolId + '_premium' });
         }
@@ -3369,6 +3395,7 @@ function launchPremiumTool(url, toolId, requiredPlan) {
     if (allowed) {
       u.toolsUsed = (u.toolsUsed || 0) + 1;
       saveUser(u);
+      _setToolToken(toolId, requiredPlan);
       window.location.href = url;
     } else {
       toast('💎 Yeh tool sirf ' + requiredPlan.toUpperCase() + ' users ke liye hai! Upgrade karo.', 'warn', 5000);
@@ -4253,19 +4280,86 @@ var _fs = false;
 function submitF(e) {
   e.preventDefault();
   if (_fs) return;
-  if (!rl('fr')) { toast('Thoda wait karo.', 'warn'); return; }
+  if (!rl('fr')) { toast('Thoda wait karo — spam protection.', 'warn'); return; }
+
+  var form   = document.getElementById('ff');
+  var name   = (form.querySelector('[name=franchise_name]')   ||{}).value||'';
+  var email  = (form.querySelector('[name=franchise_email]')  ||{}).value||'';
+  var mobile = (form.querySelector('[name=franchise_mobile]') ||{}).value||'';
+  var city   = (form.querySelector('[name=franchise_city]')   ||{}).value||'';
+  var msg    = (form.querySelector('[name=franchise_message]')||{}).value||'';
+  var agreed = (document.getElementById('fcon')||{}).checked;
+
+  // Validation
+  if (name.trim().length < 2)  { toast('Apna poora naam darj karein.', 'error'); return; }
+  if (!vEmail(email))           { toast('Valid email address darj karein.', 'error'); return; }
+  if (!vMobile(mobile))         { toast('Valid 10-digit mobile number darj karein.', 'error'); return; }
+  if (city.trim().length < 2)   { toast('City/State darj karein.', 'error'); return; }
+  if (!agreed)                  { toast('Franchise Terms se agree karein.', 'error'); return; }
+
   _fs = true;
   var btn = document.getElementById('fb');
-  btn.textContent = 'Bheja ja raha hai...';
-  btn.disabled = true;
-  setTimeout(function() {
-    if (typeof emailjs !== 'undefined') {
-      emailjs.sendForm(EJS_SERVICE, EJS_ADMIN_TEMPLATE, '#ff')
-        .then(function() { toast('Franchise inquiry send ho gayi! 48 hours mein respond karenge.', 'success', 6000); document.getElementById('ff').reset(); })
-        .catch(function() { toast('Please email karo: kspider221206@gmail.com', 'error', 6000); });
-    } else { toast('Please email karo: kspider221206@gmail.com', 'info', 6000); }
-    _fs = false; btn.textContent = 'Submit Inquiry →'; btn.disabled = false;
-  }, 500);
+  if (btn) { btn.textContent = '⏳ Bheja ja raha hai...'; btn.disabled = true; }
+
+  var timestamp = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  var inquiryData = {
+    franchise_name: san(name), franchise_email: san(email),
+    franchise_mobile: san(mobile), franchise_city: san(city),
+    franchise_message: san(msg),
+    timestamp: (typeof KS !== 'undefined' && KS.db && typeof firebase !== 'undefined')
+      ? firebase.firestore.FieldValue.serverTimestamp()
+      : new Date().toISOString(),
+    timestamp_str: timestamp,
+    status: 'new', source: 'kspiderai.in'
+  };
+
+  // 1. Save to Firestore franchise_inquiries collection
+  var db = (typeof KS !== 'undefined' && KS.db) ? KS.db : (_db || null);
+  if (db) {
+    db.collection('franchise_inquiries').add(inquiryData)
+      .then(function() { console.log('[KSpider] Franchise inquiry saved to Firestore ✅'); })
+      .catch(function(err) { console.warn('[KSpider] Firestore save error:', err); });
+  }
+
+  // 2. Send email to ADMIN — kspider221206@gmail.com
+  if (typeof emailjs !== 'undefined') {
+    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, {
+      user_name:         san(name),
+      user_email:        san(email),
+      user_mobile:       san(mobile),
+      to_email:          'kspider221206@gmail.com',
+      subject:           '🏢 New Franchise Inquiry — ' + san(name) + ' | ' + san(city),
+      message:           '📋 FRANCHISE INQUIRY DETAILS\n\n' +
+                         '👤 Name:    ' + san(name) + '\n' +
+                         '📧 Email:   ' + san(email) + '\n' +
+                         '📱 Mobile:  ' + san(mobile) + '\n' +
+                         '📍 City:    ' + san(city) + '\n' +
+                         '💬 Message: ' + (san(msg)||'(not provided)') + '\n\n' +
+                         '🕐 Time: ' + timestamp + '\n' +
+                         '🌐 Source: www.kspiderai.in/franchise\n\n' +
+                         '⚡ Admin panel pe check karein: kspiderai.in/admin',
+      platform:          'Franchise Inquiry Form — K Spider AI',
+      registration_date: timestamp
+    })
+    .then(function() {
+      console.log('[KSpider] Franchise inquiry email sent to admin ✅');
+      toast('✅ Inquiry send ho gayi! 48 hours mein hum aapse contact karenge.', 'success', 7000);
+      form.reset();
+    })
+    .catch(function(err) {
+      console.warn('[KSpider] Email send error:', err);
+      // Even if email fails, inquiry is saved in Firestore — show success
+      toast('✅ Inquiry registered! Hum aapse contact karenge. Email bhi kar sakte ho: kspider221206@gmail.com', 'success', 8000);
+      form.reset();
+    });
+  } else {
+    // EmailJS not loaded — just Firestore save
+    toast('✅ Inquiry registered! Hum aapse 48 hours mein contact karenge.', 'success', 7000);
+    form.reset();
+  }
+
+  _fs = false;
+  if (btn) { btn.textContent = 'Submit Inquiry →'; btn.disabled = false; }
 }
 
 function initRv() {

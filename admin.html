@@ -7,6 +7,14 @@
   <meta name="robots" content="noindex, nofollow, noarchive">
   <!-- Completely hidden from search engines -->
 
+  <!-- EmailJS for approval emails -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    if (typeof emailjs !== 'undefined') {
+      emailjs.init({ publicKey: 'KU5yrIwmM4PMVyqBN' });
+    }
+  </script>
+
   <!-- ═══════════════════════════════════════════════════════
        FIREBASE BOOTSTRAP — Multi-CDN fallback system
        Primary: gstatic v11 → Fallback: jsDelivr → cdnjs
@@ -1194,6 +1202,33 @@ function initDashboard(){
   loadPendingPayments(); loadPayments();
   loadFranchise(); loadAccessList();
   loadReminders(); loadToolSettings(); loadPricing();
+  // Real-time listener for new franchise inquiries
+  startFranchiseListener();
+}
+
+// Real-time Firestore listener — shows alert when new inquiry comes
+var _franchiseUnsubscribe = null;
+function startFranchiseListener() {
+  if (!KS || !KS.db) return;
+  try {
+    _franchiseUnsubscribe = KS.db.collection('franchise_inquiries')
+      .where('status','==','new')
+      .onSnapshot(function(snap) {
+        var count = snap.size;
+        var b = document.getElementById('franchise-count-badge');
+        if (b) { b.style.display = count > 0 ? '' : 'none'; b.textContent = count > 0 ? count + ' New' : ''; }
+        // Show topbar alert for new inquiry
+        if (count > 0) {
+          var ra = document.getElementById('renewal-alert');
+          var rt = document.getElementById('renewal-alert-text');
+          // Don't override expiry alert — only show if no expiry alert
+          if (ra && ra.style.display === 'none') {
+            ra.style.display = '';
+            if (rt) rt.textContent = count + ' new franchise inquiry pending!';
+          }
+        }
+      }, function() {});
+  } catch(e) {}
 }
 
 // ════════ STATS ════════
@@ -1604,7 +1639,7 @@ function rejectPaymentById(pid) {
 }
 
 function sendApprovalEmail(email, name, plan, expiry, orderId, amount) {
-  if(typeof firebase==='undefined'||!window.emailjs) return;
+  if(typeof emailjs==='undefined') { console.warn('[Admin] EmailJS not loaded'); return; }
   var planLabel=(plan==='franchise'?'Franchise':'Premium');
   try {
     emailjs.send('service_sxzyj31','template_qjffh29',{
@@ -1696,22 +1731,43 @@ function loadFranchiseInquiries(){
   KS.db.collection('franchise_inquiries').orderBy('timestamp','desc').limit(50).get()
     .then(function(snap){
       var rows='';
+      var newCount=0;
       snap.forEach(function(doc){
-        var f=doc.data();
-        var date=f.timestamp?new Date(f.timestamp.seconds*1000).toLocaleDateString('en-IN'):'—';
-        rows+='<tr><td style="font-weight:600;">'+esc(f.franchise_name||f.name||'—')+'</td>'+
+        var f=doc.data(); var fid=doc.id;
+        var date=f.timestamp?new Date(f.timestamp.seconds*1000).toLocaleDateString('en-IN'):(f.timestamp_str||'—');
+        var isNew = f.status==='new'||!f.status;
+        if(isNew) newCount++;
+        var statusBadge = isNew
+          ? '<span class="badge pending" style="font-size:.6rem;">🔔 NEW</span>'
+          : '<span class="badge success" style="font-size:.6rem;">✓ Seen</span>';
+        rows+='<tr style="'+(isNew?'background:rgba(245,158,11,.04)':'')+'">'+
+          '<td style="font-weight:600;">'+esc(f.franchise_name||f.name||'—')+'<br>'+statusBadge+'</td>'+
           '<td style="font-size:.8rem;color:var(--t3);">'+esc(f.franchise_email||f.email||'—')+'</td>'+
           '<td style="font-size:.8rem;">'+esc(f.franchise_mobile||f.mobile||'—')+'</td>'+
           '<td style="font-size:.8rem;">'+esc(f.franchise_city||f.city||'—')+'</td>'+
-          '<td style="font-size:.76rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(f.franchise_message||f.message||'—')+'</td>'+
+          '<td style="font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(f.franchise_message||'')+'">'+esc(f.franchise_message||f.message||'—')+'</td>'+
           '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td>'+
-          '<td><button class="btn btn-pur btn-sm" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3);" onclick="convertToFranchise(\''+esc(f.franchise_email||f.email||'')+'\')">🏢 Convert</button></td>'+
+          '<td style="white-space:nowrap;">'+
+            '<button class="btn btn-pur btn-sm" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3);margin-right:4px;" onclick="convertToFranchise(\''+esc(f.franchise_email||f.email||'')+'\')">🏢 Convert</button>'+
+            (isNew?'<button class="btn btn-ghost btn-sm" onclick="markInquirySeen(\''+fid+'\',this)">✓ Mark Seen</button>':'')+
+          '</td>'+
         '</tr>';
       });
       setText('franchise-inquiries-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No inquiries yet</td></tr>');
-      if(snap.size>0){var b=document.getElementById('franchise-count-badge');if(b){b.style.display='';b.textContent=snap.size;}}
+      var b=document.getElementById('franchise-count-badge');
+      if(b){b.style.display=newCount>0?'':'none';b.textContent=newCount>0?newCount+' New':'';}
     }).catch(function(){setText('franchise-inquiries-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">—</td></tr>');});
 }
+
+function markInquirySeen(docId, btn) {
+  KS.db.collection('franchise_inquiries').doc(docId).update({status:'seen'})
+    .then(function(){
+      if(btn) btn.closest('tr').style.background='';
+      adminToast('Inquiry marked as seen.');
+      loadFranchiseInquiries();
+    }).catch(function(e){adminToast('❌ '+e.message);});
+}
+
 function loadFranchiseeList(){
   var now=Date.now();
   KS.db.collection('users').where('planType','==','franchise').get()
