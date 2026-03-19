@@ -1546,10 +1546,16 @@ var _currentApproveData = null;
 
 function loadPendingPayments() {
   setText('pending-payments-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:16px;">Loading...</td></tr>');
-  KS.db.collection('payments').where('status','==','pending').orderBy('timestamp','desc').limit(50).get()
+  KS.db.collection('payments').where('status','==','pending').limit(50).get()
     .then(function(snap){
       _pendingPayments=[];
       snap.forEach(function(doc){_pendingPayments.push(Object.assign({id:doc.id},doc.data()));});
+      // Sort by timestamp desc client-side
+      _pendingPayments.sort(function(a,b){
+        var ta=a.timestamp?(a.timestamp.seconds||0)*1000:(a.submittedAt?new Date(a.submittedAt).getTime():0);
+        var tb=b.timestamp?(b.timestamp.seconds||0)*1000:(b.submittedAt?new Date(b.submittedAt).getTime():0);
+        return tb-ta;
+      });
       renderPendingPayments(_pendingPayments);
       // Update badge
       var badge=document.getElementById('pending-count-badge');
@@ -1700,15 +1706,21 @@ function sendApprovalEmail(email, name, plan, expiry, orderId, amount) {
 
 // ════════ ALL PAYMENTS ════════
 function loadPayments(){
-  KS.db.collection('payments').orderBy('timestamp','desc').limit(300).get()
+  KS.db.collection('payments').limit(300).get()
     .then(function(snap){
       _allPayments=[];
       snap.forEach(function(doc){_allPayments.push(Object.assign({id:doc.id},doc.data()));});
       renderPayments(_allPayments);
-    }).catch(function(){renderPayments([]);});
+    }).catch(function(e){console.warn('[Admin] loadPayments:',e.message);renderPayments([]);});
 }
 
 function renderPayments(payments){
+  // Sort client-side by timestamp desc
+  payments.sort(function(a,b){
+    var ta = a.timestamp ? (a.timestamp.seconds||0)*1000 : (a.submittedAt ? new Date(a.submittedAt).getTime() : 0);
+    var tb = b.timestamp ? (b.timestamp.seconds||0)*1000 : (b.submittedAt ? new Date(b.submittedAt).getTime() : 0);
+    return tb - ta;
+  });
   var tbody=document.getElementById('payments-table-body');
   if(!payments.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">No payments</td></tr>';return;}
   tbody.innerHTML=payments.map(function(p){
@@ -1740,13 +1752,19 @@ function markPaid(pid){
   openApproveModal(pid);
 }
 function loadRecentPayments(){
-  KS.db.collection('payments').orderBy('timestamp','desc').limit(10).get()
+  KS.db.collection('payments').limit(20).get()
     .then(function(snap){
+      var docs=[];
+      snap.forEach(function(doc){docs.push(Object.assign({id:doc.id},doc.data()));});
+      docs.sort(function(a,b){
+        var ta=a.timestamp?(a.timestamp.seconds||0)*1000:0;
+        var tb=b.timestamp?(b.timestamp.seconds||0)*1000:0;
+        return tb-ta;
+      });
       var rows='';
-      snap.forEach(function(doc){
-        var p=doc.data();
-        var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):'—';
-        rows+='<tr><td style="font-family:monospace;font-size:.74rem;">'+esc(p.paymentID||p.id||'—').substring(0,14)+'</td>'+
+      docs.slice(0,10).forEach(function(p){
+        var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):(p.submittedAt?new Date(p.submittedAt).toLocaleString('en-IN'):'—');
+        rows+='<tr><td style="font-family:monospace;font-size:.74rem;">'+esc((p.paymentID||p.id||'—').substring(0,14))+'</td>'+
           '<td style="font-size:.78rem;color:var(--t3);">'+esc(p.userEmail||p.userID||'—')+'</td>'+
           '<td><span class="badge '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
           '<td style="font-weight:600;color:var(--gold2);">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
@@ -1755,10 +1773,12 @@ function loadRecentPayments(){
           '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td></tr>';
       });
       setText('recent-payments-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No transactions yet</td></tr>');
+    }).catch(function(e){
+      console.warn('[Admin] loadRecentPayments error:',e.message);
+      setText('recent-payments-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">—</td></tr>');
     });
 }
 
-// ════════ FRANCHISE ════════
 function loadFranchise(){loadFranchiseInquiries(); loadFranchiseeList();}
 
 function loadFranchiseInquiries(){
