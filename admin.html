@@ -1727,36 +1727,72 @@ function loadRecentPayments(){
 
 // ════════ FRANCHISE ════════
 function loadFranchise(){loadFranchiseInquiries(); loadFranchiseeList();}
+
 function loadFranchiseInquiries(){
-  KS.db.collection('franchise_inquiries').orderBy('timestamp','desc').limit(50).get()
-    .then(function(snap){
-      var rows='';
-      var newCount=0;
-      snap.forEach(function(doc){
-        var f=doc.data(); var fid=doc.id;
-        var date=f.timestamp?new Date(f.timestamp.seconds*1000).toLocaleDateString('en-IN'):(f.timestamp_str||'—');
-        var isNew = f.status==='new'||!f.status;
-        if(isNew) newCount++;
-        var statusBadge = isNew
-          ? '<span class="badge pending" style="font-size:.6rem;">🔔 NEW</span>'
-          : '<span class="badge success" style="font-size:.6rem;">✓ Seen</span>';
-        rows+='<tr style="'+(isNew?'background:rgba(245,158,11,.04)':'')+'">'+
-          '<td style="font-weight:600;">'+esc(f.franchise_name||f.name||'—')+'<br>'+statusBadge+'</td>'+
-          '<td style="font-size:.8rem;color:var(--t3);">'+esc(f.franchise_email||f.email||'—')+'</td>'+
-          '<td style="font-size:.8rem;">'+esc(f.franchise_mobile||f.mobile||'—')+'</td>'+
-          '<td style="font-size:.8rem;">'+esc(f.franchise_city||f.city||'—')+'</td>'+
-          '<td style="font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(f.franchise_message||'')+'">'+esc(f.franchise_message||f.message||'—')+'</td>'+
-          '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td>'+
-          '<td style="white-space:nowrap;">'+
-            '<button class="btn btn-pur btn-sm" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3);margin-right:4px;" onclick="convertToFranchise(\''+esc(f.franchise_email||f.email||'')+'\')">🏢 Convert</button>'+
-            (isNew?'<button class="btn btn-ghost btn-sm" onclick="markInquirySeen(\''+fid+'\',this)">✓ Mark Seen</button>':'')+
-          '</td>'+
-        '</tr>';
+  if(!KS||!KS.db){setText('franchise-inquiries-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Firebase not ready — refresh karo</td></tr>');return;}
+
+  // Try with orderBy first, fallback without it (avoids index error)
+  function fetchInquiries(useOrder) {
+    var ref = KS.db.collection('franchise_inquiries').limit(50);
+    if (useOrder) ref = ref.orderBy('timestamp','desc');
+    ref.get()
+      .then(function(snap){
+        var rows='';
+        var newCount=0;
+        var docs = [];
+        snap.forEach(function(doc){ docs.push({id:doc.id, data:doc.data()}); });
+
+        // Sort client-side if no orderBy
+        if (!useOrder) {
+          docs.sort(function(a,b){
+            var ta = a.data.timestamp_str ? new Date(a.data.timestamp_str).getTime() : 0;
+            var tb = b.data.timestamp_str ? new Date(b.data.timestamp_str).getTime() : 0;
+            return tb - ta;
+          });
+        }
+
+        docs.forEach(function(item){
+          var f=item.data; var fid=item.id;
+          var date='—';
+          if(f.timestamp && f.timestamp.seconds) {
+            date = new Date(f.timestamp.seconds*1000).toLocaleDateString('en-IN');
+          } else if(f.timestamp_str) {
+            date = new Date(f.timestamp_str).toLocaleDateString('en-IN');
+          }
+          var isNew = f.status==='new'||!f.status;
+          if(isNew) newCount++;
+          var statusBadge = isNew
+            ? '<span class="badge pending" style="font-size:.6rem;">🔔 NEW</span>'
+            : '<span class="badge success" style="font-size:.6rem;">✓ Seen</span>';
+          rows+='<tr style="'+(isNew?'background:rgba(245,158,11,.04)':'')+'">' +
+            '<td style="font-weight:600;">'+esc(f.franchise_name||f.name||'—')+'<br>'+statusBadge+'</td>'+
+            '<td style="font-size:.8rem;color:var(--t3);">'+esc(f.franchise_email||f.email||'—')+'</td>'+
+            '<td style="font-size:.8rem;">'+esc(f.franchise_mobile||f.mobile||'—')+'</td>'+
+            '<td style="font-size:.8rem;">'+esc(f.franchise_city||f.city||'—')+'</td>'+
+            '<td style="font-size:.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+esc(f.franchise_message||'')+'">'+esc(f.franchise_message||f.message||'—')+'</td>'+
+            '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td>'+
+            '<td style="white-space:nowrap;">'+
+              '<button class="btn btn-pur btn-sm" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3);margin-right:4px;" onclick="convertToFranchise(\''+esc(f.franchise_email||f.email||'')+'\')">🏢 Convert</button>'+
+              (isNew?'<button class="btn btn-ghost btn-sm" onclick="markInquirySeen(\''+fid+'\',this)">✓ Seen</button>':'')+
+            '</td>'+
+          '</tr>';
+        });
+
+        setText('franchise-inquiries-body', rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No inquiries yet</td></tr>');
+        var b=document.getElementById('franchise-count-badge');
+        if(b){b.style.display=newCount>0?'':'none';b.textContent=newCount>0?newCount+' New':'';}
+      })
+      .catch(function(err){
+        console.warn('[Admin] Franchise inquiries error:', err.code, err.message);
+        if(useOrder && (err.code==='failed-precondition' || err.message.indexOf('index')!==-1)){
+          // Firestore index nahi bana — retry without orderBy
+          fetchInquiries(false);
+        } else {
+          setText('franchise-inquiries-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Error: '+esc(err.message)+'</td></tr>');
+        }
       });
-      setText('franchise-inquiries-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No inquiries yet</td></tr>');
-      var b=document.getElementById('franchise-count-badge');
-      if(b){b.style.display=newCount>0?'':'none';b.textContent=newCount>0?newCount+' New':'';}
-    }).catch(function(){setText('franchise-inquiries-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">—</td></tr>');});
+  }
+  fetchInquiries(true);
 }
 
 function markInquirySeen(docId, btn) {
@@ -1769,6 +1805,7 @@ function markInquirySeen(docId, btn) {
 }
 
 function loadFranchiseeList(){
+  if(!KS||!KS.db) return;
   var now=Date.now();
   KS.db.collection('users').where('planType','==','franchise').get()
     .then(function(snap){
@@ -1780,17 +1817,21 @@ function loadFranchiseeList(){
         if(diff>=0&&diff<=7)expiring++;
         revenue+=(u.paidAmount||0);
         var dc=diff<0?'var(--red)':diff<=7?'#fbbf24':'var(--neon)';
-        rows+='<tr><td style="font-weight:600;">'+esc(u.name||'Unknown')+'</td>'+
-          '<td style="color:var(--t3);font-size:.8rem;">'+esc(u.email||'')+'</td>'+
-          '<td><span class="badge franchise">Franchise</span></td>'+
-          '<td style="font-size:.78rem;">'+(u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'—')+'</td>'+
-          '<td style="font-weight:600;color:'+dc+';">'+(diff===999?'—':diff<0?'Expired':diff+' days')+'</td>'+
-          '<td style="color:var(--gold2);">₹'+(u.paidAmount||0).toLocaleString('en-IN')+'</td>'+
-          '<td><button class="btn btn-ghost btn-sm" onclick="openUserEdit(\''+doc.id+'\')">✏️ Manage</button></td></tr>';
+        rows+='<tr><td style=\"font-weight:600;\">'+esc(u.name||'Unknown')+'</td>'+
+          '<td style=\"color:var(--t3);font-size:.8rem;\">'+esc(u.email||'')+'</td>'+
+          '<td><span class=\"badge franchise\">Franchise</span></td>'+
+          '<td style=\"font-size:.78rem;\">'+(u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'—')+'</td>'+
+          '<td style=\"font-weight:600;color:'+dc+';\">'+(diff===999?'—':diff<0?'Expired':diff+' days')+'</td>'+
+          '<td style=\"color:var(--gold2);\">₹'+(u.paidAmount||0).toLocaleString('en-IN')+'</td>'+
+          '<td><button class=\"btn btn-ghost btn-sm\" onclick=\"openUserEdit(\'+doc.id+'\')">✏️ Manage</button></td></tr>';
       });
-      setText('f-total',total);setText('f-active',active);
-      setText('f-expiring',expiring);setText('f-revenue','₹'+revenue.toLocaleString('en-IN'));
-      setText('franchise-table-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No franchise users yet</td></tr>');
+      setText('f-total',total); setText('f-active',active);
+      setText('f-expiring',expiring); setText('f-revenue','₹'+revenue.toLocaleString('en-IN'));
+      setText('franchise-table-body',rows||'<tr><td colspan=\"7\" style=\"text-align:center;color:var(--t4);padding:20px;\">No franchise users yet</td></tr>');
+    })
+    .catch(function(err){
+      console.warn('[Admin] loadFranchiseeList error:',err.message);
+      setText('franchise-table-body','<tr><td colspan=\"7\" style=\"text-align:center;color:var(--t4);padding:20px;\">Load error — refresh karo</td></tr>');
     });
 }
 function convertToFranchise(email){
