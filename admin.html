@@ -8,8 +8,8 @@
   <!-- Completely hidden from search engines -->
 
   <!-- ═══════════════════════════════════════════════════════
-       FIREBASE BOOTSTRAP — works locally (file://) AND live
-       SDKs load dynamically so no CDN block on local files
+       FIREBASE BOOTSTRAP — Multi-CDN fallback system
+       Primary: gstatic v11 → Fallback: jsDelivr → cdnjs
        ═══════════════════════════════════════════════════════ -->
   <script>
   (function() {
@@ -22,48 +22,120 @@
       appId:             "1:940003391760:web:8617000465b6991d348d95"
     };
     var _admins = ['kspider221206@gmail.com'];
+    var _initDone = false;
 
     function initKS() {
-      if (!firebase.apps.length) firebase.initializeApp(_cfg);
-      window.KS = {
-        auth:    firebase.auth(),
-        db:      firebase.firestore(),
-        isAdmin: function(e){ return _admins.includes((e||'').toLowerCase().trim()); },
-        canAccessTool: function(toolId, plan){
-          if (!plan || plan === 'franchise') return true;
-          if (plan === 'premium') return true;
-          return true; // free
-        }
-      };
-      // Re-run auth check after KS is ready
-      if (typeof checkAdminAuth === 'function') checkAdminAuth();
-      console.log('[KSpider Admin] Firebase ready ✅');
+      if (_initDone) return;
+      if (typeof firebase === 'undefined') {
+        showFBError('Firebase load nahi hua. Internet check karo aur page reload karo.');
+        return;
+      }
+      _initDone = true;
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(_cfg);
+        window.KS = {
+          auth: firebase.auth(),
+          db:   firebase.firestore(),
+          isAdmin: function(e){ return _admins.includes((e||'').toLowerCase().trim()); }
+        };
+        if (typeof checkAdminAuth === 'function') checkAdminAuth();
+        console.log('[KSpider Admin] Firebase ready ✅');
+      } catch(err) {
+        console.error('[KSpider Admin] Init error:', err);
+        showFBError('Firebase init error: ' + err.message);
+      }
     }
 
-    function loadScript(src, cb) {
+    function showFBError(msg) {
+      // Show visible error on page
+      document.addEventListener('DOMContentLoaded', function() {
+        var ov = document.getElementById('admin-login-overlay');
+        if (ov) {
+          ov.innerHTML = '<div style="text-align:center;padding:40px;max-width:420px;margin:auto;">' +
+            '<div style="font-size:3rem;margin-bottom:16px;">⚠️</div>' +
+            '<h2 style="color:#f87171;font-size:1.1rem;margin-bottom:10px;">Firebase Load Error</h2>' +
+            '<p style="color:#8a8479;font-size:.85rem;line-height:1.7;margin-bottom:16px;">' + msg + '</p>' +
+            '<p style="color:#5a5650;font-size:.78rem;">Agar yeh error bar bar aaye:<br>' +
+            '1. Ctrl+Shift+R karo (hard refresh)<br>' +
+            '2. VPN/Proxy band karo<br>' +
+            '3. Browser cache clear karo</p>' +
+            '<button onclick="location.reload()" style="margin-top:16px;padding:10px 24px;background:#b8792a;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.9rem;">🔄 Reload Page</button>' +
+            '</div>';
+        }
+      });
+    }
+
+    // ── Script loader with per-script timeout ──
+    function loadScript(src, onSuccess, onFail) {
       var s = document.createElement('script');
+      var done = false;
+      var timer = setTimeout(function() {
+        if (!done) { done = true; console.warn('[KSpider] Timeout:', src); onFail(); }
+      }, 8000);
       s.src = src;
-      s.onload = cb;
-      s.onerror = function(){ console.error('[KSpider] Failed to load:', src); cb(); };
+      s.onload = function() {
+        if (!done) { done = true; clearTimeout(timer); onSuccess(); }
+      };
+      s.onerror = function() {
+        if (!done) { done = true; clearTimeout(timer); console.warn('[KSpider] Failed:', src); onFail(); }
+      };
       document.head.appendChild(s);
     }
 
-    var SDKS = [
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js'
+    // ── CDN groups — tries each SDK set in order ──
+    var CDN_SETS = [
+      // v1: Google gstatic (latest stable 11.6.0)
+      [
+        'https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js',
+        'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js',
+        'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js'
+      ],
+      // v2: jsDelivr mirror (works when gstatic is slow/blocked)
+      [
+        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
+        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js',
+        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js'
+      ],
+      // v3: unpkg mirror
+      [
+        'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
+        'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js',
+        'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js'
+      ]
     ];
 
-    function loadSequential(i) {
-      if (i >= SDKS.length) { initKS(); return; }
-      loadScript(SDKS[i], function(){ loadSequential(i + 1); });
+    var _cdnIdx = 0;
+
+    function tryNextCDN() {
+      if (_cdnIdx >= CDN_SETS.length) {
+        showFBError('Saare CDN fail ho gaye. Internet connection check karo.');
+        return;
+      }
+      var set = CDN_SETS[_cdnIdx++];
+      console.log('[KSpider] Trying CDN set', _cdnIdx, ':', set[0]);
+      loadSDKSet(set, 0, function() {
+        // All 3 loaded from this CDN set
+        initKS();
+      }, function() {
+        // This CDN set failed, try next
+        console.warn('[KSpider] CDN set', _cdnIdx, 'failed, trying next...');
+        tryNextCDN();
+      });
     }
 
-    // If Firebase SDKs already loaded (live server with normal tags), use them directly
+    function loadSDKSet(set, i, onAllDone, onSetFail) {
+      if (i >= set.length) { onAllDone(); return; }
+      loadScript(set[i],
+        function() { loadSDKSet(set, i + 1, onAllDone, onSetFail); },
+        function() { onSetFail(); }
+      );
+    }
+
+    // ── Start ──
     if (typeof firebase !== 'undefined') {
-      initKS();
+      initKS(); // Already loaded (e.g. live server with script tags)
     } else {
-      loadSequential(0);
+      tryNextCDN();
     }
   })();
   </script>
@@ -188,6 +260,10 @@
     .badge.failed    { background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3); }
     .badge.pending   { background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3); }
     .badge.admin     { background:rgba(239,68,68,.2);color:#f87171;border:1px solid rgba(239,68,68,.3); }
+    .badge.active    { background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.3); }
+    .badge.expired   { background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3); }
+    .badge.expiring  { background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3); }
+    .stat-icon.pur   { background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.25); }
 
     /* Buttons */
     .btn { padding:8px 16px;border-radius:var(--r8);font-size:.8rem;font-weight:600;cursor:pointer;border:none;font-family:inherit;transition:all .2s; }
@@ -199,6 +275,10 @@
     .btn-danger:hover { background:rgba(220,38,38,.25); }
     .btn-green  { background:rgba(5,150,105,.15);color:#34d399;border:1px solid rgba(5,150,105,.3); }
     .btn-green:hover  { background:rgba(5,150,105,.25); }
+    .btn-blue   { background:rgba(59,130,246,.15);color:#60a5fa;border:1px solid rgba(59,130,246,.3); }
+    .btn-blue:hover   { background:rgba(59,130,246,.25); }
+    .btn-pur    { background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3); }
+    .btn-pur:hover    { background:rgba(124,58,237,.25); }
     .btn-sm { padding:5px 12px; font-size:.75rem; }
 
     /* Search / Filter */
@@ -323,18 +403,26 @@
 
     <div class="nav-section">
       <div class="nav-label">Management</div>
-      <a class="nav-item" onclick="showPanel('users')" href="#">
+      <a class="nav-item" onclick="showPanel('users',this)" href="#">
         <span class="nav-icon">👥</span> Users
-        <span class="nav-badge" id="users-count-badge">...</span>
+        <span class="nav-badge" id="users-count-badge">0</span>
       </a>
-      <a class="nav-item" onclick="showPanel('payments')" href="#">
+      <a class="nav-item" onclick="showPanel('access',this)" href="#">
+        <span class="nav-icon">🔐</span> Access Control
+        <span class="nav-badge" id="access-badge" style="background:var(--red);display:none;">!</span>
+      </a>
+      <a class="nav-item" onclick="showPanel('payments',this)" href="#">
         <span class="nav-icon">💳</span> Payments
       </a>
-      <a class="nav-item" onclick="showPanel('franchise')" href="#">
+      <a class="nav-item" onclick="showPanel('franchise',this)" href="#">
         <span class="nav-icon">🏢</span> Franchise
         <span class="nav-badge" id="franchise-count-badge" style="background:var(--red);display:none;">!</span>
       </a>
-      <a class="nav-item" onclick="showPanel('tools')" href="#">
+      <a class="nav-item" onclick="showPanel('reminders',this)" href="#">
+        <span class="nav-icon">🔔</span> Reminders
+        <span class="nav-badge" id="reminders-badge" style="background:var(--red);display:none;"><span style="display:inline-block;width:7px;height:7px;background:#fff;border-radius:50%;"></span></span>
+      </a>
+      <a class="nav-item" onclick="showPanel('tools',this)" href="#">
         <span class="nav-icon">🔧</span> Tools
       </a>
     </div>
@@ -356,6 +444,9 @@
   <main class="admin-main">
     <div class="topbar">
       <div class="topbar-title" id="topbar-title">📊 Dashboard</div>
+      <div id="renewal-alert" style="display:none;font-size:.75rem;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:5px 14px;border-radius:20px;cursor:pointer;" onclick="showPanel('reminders',null)">
+        🔔 <span id="renewal-alert-text"></span>
+      </div>
       <div class="topbar-user">
         <div class="topbar-avatar">👑</div>
         <span id="admin-name-display">Admin</span>
@@ -367,47 +458,41 @@
       <div class="stats-grid">
         <div class="stat-card">
           <div class="stat-icon gold">👥</div>
-          <div>
-            <div class="stat-val" id="stat-total-users">—</div>
-            <div class="stat-lbl">Total Users</div>
-          </div>
+          <div><div class="stat-val" id="stat-total-users">—</div><div class="stat-lbl">Total Users</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon green">💳</div>
-          <div>
-            <div class="stat-val" id="stat-total-payments">—</div>
-            <div class="stat-lbl">Total Payments</div>
-          </div>
+          <div><div class="stat-val" id="stat-total-payments">—</div><div class="stat-lbl">Total Payments</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon gold">💎</div>
-          <div>
-            <div class="stat-val" id="stat-premium-users">—</div>
-            <div class="stat-lbl">Premium Users</div>
-          </div>
+          <div><div class="stat-val" id="stat-premium-users">—</div><div class="stat-lbl">Premium Users</div></div>
         </div>
         <div class="stat-card">
           <div class="stat-icon blue">🏢</div>
-          <div>
-            <div class="stat-val" id="stat-franchise-users">—</div>
-            <div class="stat-lbl">Franchise Users</div>
-          </div>
+          <div><div class="stat-val" id="stat-franchise-users">—</div><div class="stat-lbl">Franchise</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon red">⏰</div>
+          <div><div class="stat-val" id="stat-expiring">—</div><div class="stat-lbl">Expiring (7d)</div></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green">₹</div>
+          <div><div class="stat-val" id="stat-revenue">—</div><div class="stat-lbl">Total Revenue</div></div>
         </div>
       </div>
 
       <!-- Revenue stat -->
       <div class="section-card">
         <div class="section-head">
-          <div class="section-title">📈 Recent Activity (Last 10 transactions)</div>
+          <div class="section-title">📈 Recent Transactions (Last 10)</div>
           <button class="btn btn-ghost btn-sm" onclick="loadRecentPayments()">🔄 Refresh</button>
         </div>
         <div class="table-wrap">
           <table>
-            <thead><tr>
-              <th>Payment ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Status</th><th>Date</th>
-            </tr></thead>
+            <thead><tr><th>Payment ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
             <tbody id="recent-payments-body">
-              <tr><td colspan="6" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+              <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -424,14 +509,19 @@
           <option value="premium">Premium</option>
           <option value="franchise">Franchise</option>
         </select>
+        <select class="filter-select" id="user-status-filter" onchange="filterUsers()">
+          <option value="all">All Status</option>
+          <option value="active">Active</option>
+          <option value="expiring">Expiring Soon</option>
+          <option value="expired">Expired</option>
+        </select>
         <button class="btn btn-gold btn-sm" onclick="loadUsers()">🔄 Refresh</button>
       </div>
       <div class="section-card" style="margin:0 28px 28px;">
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>User</th><th>Email</th><th>Plan</th><th>Status</th>
-              <th>Registered</th><th>Last Login</th><th>Actions</th>
+              <th>User</th><th>Email</th><th>Plan</th><th>Access</th><th>Expiry</th><th>Registered</th><th>Actions</th>
             </tr></thead>
             <tbody id="users-table-body">
               <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
@@ -441,13 +531,145 @@
       </div>
     </div>
 
+    <!-- ═══ ACCESS CONTROL PANEL ═══ -->
+    <div class="admin-panel" id="panel-access">
+      <div style="padding:28px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+
+          <!-- Grant Access -->
+          <div class="section-card">
+            <div class="section-head"><div class="section-title">🔓 Grant / Upgrade Access</div></div>
+            <div style="padding:20px;display:flex;flex-direction:column;gap:12px;">
+              <div>
+                <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">User Email *</label>
+                <input class="search-input" type="email" id="ac-email" placeholder="user@email.com" style="width:100%;">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Plan Type *</label>
+                  <select class="filter-select" id="ac-plan" style="width:100%;">
+                    <option value="free">🆓 Free</option>
+                    <option value="premium">💎 Premium</option>
+                    <option value="franchise">🏢 Franchise</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Duration *</label>
+                  <select class="filter-select" id="ac-duration" style="width:100%;" onchange="document.getElementById('ac-custom-wrap').style.display=this.value==='custom'?'block':'none'">
+                    <option value="30">30 Days</option>
+                    <option value="90">90 Days</option>
+                    <option value="180">180 Days</option>
+                    <option value="365" selected>1 Year (365d)</option>
+                    <option value="730">2 Years</option>
+                    <option value="custom">Custom Days</option>
+                  </select>
+                </div>
+              </div>
+              <div id="ac-custom-wrap" style="display:none;">
+                <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Custom Days</label>
+                <input class="search-input" type="number" id="ac-custom-days" placeholder="e.g. 45" min="1" style="width:100%;">
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                <div>
+                  <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Payment Method</label>
+                  <select class="filter-select" id="ac-pay-method" style="width:100%;">
+                    <option value="offline_upi">📱 Offline UPI</option>
+                    <option value="offline_cash">💵 Cash</option>
+                    <option value="offline_bank">🏦 Bank Transfer</option>
+                    <option value="online_upi">💳 Online UPI</option>
+                    <option value="free_grant">🎁 Free Grant</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Amount (₹)</label>
+                  <input class="search-input" type="number" id="ac-amount" placeholder="2999" min="0" style="width:100%;">
+                </div>
+              </div>
+              <div>
+                <label class="form-label" style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Payment Ref / Note</label>
+                <input class="search-input" type="text" id="ac-ref" placeholder="UTR no. / note" style="width:100%;">
+              </div>
+              <button class="btn btn-gold" style="width:100%;padding:11px;" onclick="grantAccess()">🔓 Grant Access Now</button>
+            </div>
+          </div>
+
+          <!-- Right column: UPI + Pricing -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- UPI Box -->
+            <div class="section-card">
+              <div class="section-head"><div class="section-title">📱 Your UPI (Share with customers)</div></div>
+              <div style="padding:18px;">
+                <div style="background:var(--bg3);border:1px solid var(--gold-b);border-radius:12px;padding:18px;text-align:center;">
+                  <div style="font-size:.78rem;color:var(--t3);margin-bottom:6px;">Send payment to:</div>
+                  <div style="font-family:monospace;font-size:1.1rem;font-weight:700;color:var(--gold2);background:var(--bg2);padding:9px 18px;border-radius:var(--r8);display:inline-block;margin:8px 0;">9099928877@pthdfc</div>
+                  <div style="font-size:.72rem;color:var(--t3);">PhonePe / HDFC UPI</div>
+                  <button class="btn btn-ghost btn-sm" style="margin-top:10px;" onclick="copyUPI()">📋 Copy UPI ID</button>
+                </div>
+                <div style="margin-top:12px;font-size:.76rem;color:var(--t3);line-height:1.85;">
+                  <strong style="color:var(--t2);">📌 Offline Payment Steps:</strong><br>
+                  1. Customer UPI/Cash payment kare<br>
+                  2. Left form se manually access do<br>
+                  3. System expiry auto-set karega<br>
+                  4. Renewal reminder 7 days pehle aayega
+                </div>
+              </div>
+            </div>
+
+            <!-- Pricing Config -->
+            <div class="section-card">
+              <div class="section-head"><div class="section-title">💰 Plan Pricing Settings</div></div>
+              <div style="padding:16px;display:flex;flex-direction:column;gap:10px;">
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:.8rem;color:var(--t2);width:130px;">💎 Premium/year</span>
+                  <input class="search-input" type="number" id="price-premium-yr" value="2999" style="flex:1;">
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:.8rem;color:var(--t2);width:130px;">💎 Premium/month</span>
+                  <input class="search-input" type="number" id="price-premium-mo" value="499" style="flex:1;">
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:.8rem;color:var(--t2);width:130px;">🏢 Franchise/year</span>
+                  <input class="search-input" type="number" id="price-franchise-yr" value="9999" style="flex:1;">
+                </div>
+                <div style="display:flex;align-items:center;gap:10px;">
+                  <span style="font-size:.8rem;color:var(--t2);width:130px;">🏢 Franchise/month</span>
+                  <input class="search-input" type="number" id="price-franchise-mo" value="1999" style="flex:1;">
+                </div>
+                <button class="btn btn-gold btn-sm" onclick="savePricing()" style="margin-top:4px;">💾 Save Pricing</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Active Access List -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-title">🔐 Active Access List (Premium + Franchise)</div>
+            <div class="section-actions">
+              <input class="search-input" type="text" id="access-search" placeholder="Search..." oninput="filterAccessList()" style="flex:none;width:180px;">
+              <button class="btn btn-ghost btn-sm" onclick="loadAccessList()">🔄 Refresh</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Plan</th><th>Access Given</th><th>Expiry</th><th>Days Left</th><th>Method</th><th>Amount</th><th>Actions</th></tr></thead>
+              <tbody id="access-table-body">
+                <tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- ═══ PAYMENTS PANEL ═══ -->
     <div class="admin-panel" id="panel-payments">
       <div class="filter-row">
-        <input class="search-input" type="text" placeholder="🔍 Search by Payment ID or User ID..." id="pay-search" oninput="filterPayments()">
+        <input class="search-input" type="text" placeholder="🔍 Search by Payment ID or email..." id="pay-search" oninput="filterPayments()">
         <select class="filter-select" id="pay-status-filter" onchange="filterPayments()">
           <option value="all">All Status</option>
           <option value="success">Success</option>
+          <option value="pending">Pending</option>
           <option value="failed">Failed</option>
         </select>
         <button class="btn btn-gold btn-sm" onclick="loadPayments()">🔄 Refresh</button>
@@ -456,11 +678,10 @@
         <div class="table-wrap">
           <table>
             <thead><tr>
-              <th>Payment ID</th><th>User ID</th><th>Plan</th><th>Amount</th>
-              <th>Status</th><th>Date</th>
+              <th>Payment ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Action</th>
             </tr></thead>
             <tbody id="payments-table-body">
-              <tr><td colspan="6" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+              <tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
             </tbody>
           </table>
         </div>
@@ -470,17 +691,94 @@
     <!-- ═══ FRANCHISE PANEL ═══ -->
     <div class="admin-panel" id="panel-franchise">
       <div style="padding:28px;">
-        <div class="section-card">
+        <!-- Franchise Stats -->
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px;">
+          <div class="stat-card"><div class="stat-icon blue">🏢</div><div><div class="stat-val" id="f-total">—</div><div class="stat-lbl">Total Franchise</div></div></div>
+          <div class="stat-card"><div class="stat-icon green">✅</div><div><div class="stat-val" id="f-active">—</div><div class="stat-lbl">Active</div></div></div>
+          <div class="stat-card"><div class="stat-icon red">⏰</div><div><div class="stat-val" id="f-expiring">—</div><div class="stat-lbl">Expiring (7d)</div></div></div>
+          <div class="stat-card"><div class="stat-icon gold">₹</div><div><div class="stat-val" id="f-revenue">—</div><div class="stat-lbl">Total Revenue</div></div></div>
+        </div>
+
+        <!-- New Inquiries -->
+        <div class="section-card" style="margin-bottom:20px;">
           <div class="section-head">
-            <div class="section-title">🏢 Franchise Requests / Users</div>
+            <div class="section-title">📬 New Franchise Inquiries</div>
+            <button class="btn btn-ghost btn-sm" onclick="loadFranchiseInquiries()">🔄 Refresh</button>
           </div>
           <div class="table-wrap">
             <table>
-              <thead><tr>
-                <th>User</th><th>Email</th><th>Current Plan</th><th>Payment Status</th><th>Actions</th>
-              </tr></thead>
+              <thead><tr><th>Name</th><th>Email</th><th>Mobile</th><th>City</th><th>Message</th><th>Date</th><th>Action</th></tr></thead>
+              <tbody id="franchise-inquiries-body">
+                <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Active Franchisees -->
+        <div class="section-card">
+          <div class="section-head"><div class="section-title">🏢 Active Franchisees</div></div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>Email</th><th>Plan</th><th>Expiry</th><th>Days Left</th><th>Revenue</th><th>Actions</th></tr></thead>
               <tbody id="franchise-table-body">
-                <tr><td colspan="5" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>
+                <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ REMINDERS PANEL ═══ -->
+    <div class="admin-panel" id="panel-reminders">
+      <div style="padding:28px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
+          <!-- Summary -->
+          <div class="section-card">
+            <div class="section-head"><div class="section-title">📊 Renewal Summary</div></div>
+            <div style="padding:18px;display:flex;flex-direction:column;gap:10px;">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:var(--r8);">
+                <span style="font-size:.82rem;color:#f87171;">🔴 Expired / Today</span>
+                <span style="font-weight:700;color:#f87171;" id="rem-count-expired">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);border-radius:var(--r8);">
+                <span style="font-size:.82rem;color:#fbbf24;">🟠 Expiring in 1–3 days</span>
+                <span style="font-weight:700;color:#fbbf24;" id="rem-count-3d">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:10px;background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.3);border-radius:var(--r8);">
+                <span style="font-size:.82rem;color:#60a5fa;">🔵 Expiring in 4–7 days</span>
+                <span style="font-weight:700;color:#60a5fa;" id="rem-count-7d">0</span>
+              </div>
+            </div>
+          </div>
+          <!-- Info -->
+          <div class="section-card">
+            <div class="section-head"><div class="section-title">ℹ️ How Reminders Work</div></div>
+            <div style="padding:18px;font-size:.8rem;color:var(--t3);line-height:2;">
+              🔔 7 days pehle — admin dashboard mein alert<br>
+              🔔 3 days pehle — urgent warning dikhti hai<br>
+              🔔 1 day pehle — critical reminder<br>
+              🔔 Expiry day — expired badge lagta hai<br><br>
+              <strong style="color:var(--t2);">WhatsApp Reminder:</strong><br>
+              Har user ke liye pre-filled WhatsApp link hai.<br>
+              Click karo aur directly message bhejo!<br><br>
+              <strong style="color:var(--t2);">UPI:</strong> 9099928877@pthdfc
+            </div>
+          </div>
+        </div>
+
+        <!-- Reminder List -->
+        <div class="section-card">
+          <div class="section-head">
+            <div class="section-title">🔔 Users Needing Renewal Attention</div>
+            <button class="btn btn-ghost btn-sm" onclick="loadReminders()">🔄 Refresh</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>User</th><th>Plan</th><th>Expiry Date</th><th>Days Left</th><th>Urgency</th><th>Contact</th><th>Action</th></tr></thead>
+              <tbody id="reminders-table-body">
+                <tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>
               </tbody>
             </table>
           </div>
@@ -681,640 +979,690 @@
 
 <div id="admin-toast"></div>
 
+<!-- EXTEND/RENEW MODAL -->
+<div class="modal-ov" id="extend-modal">
+  <div class="modal-box" style="max-width:400px;">
+    <div class="modal-title">⏳ Extend / Renew Access</div>
+    <p style="font-size:.82rem;color:var(--t3);margin-bottom:14px;">User: <strong id="ext-email" style="color:var(--t2);"></strong></p>
+    <input type="hidden" id="ext-uid">
+    <div style="margin-bottom:12px;">
+      <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Extend by</label>
+      <select class="filter-select" id="ext-days" style="width:100%;">
+        <option value="30">+30 Days</option><option value="90">+90 Days</option>
+        <option value="180">+180 Days</option><option value="365" selected>+365 Days (1 Year)</option>
+      </select>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Amount Received (₹)</label>
+      <input class="search-input" type="number" id="ext-amount" placeholder="2999" style="width:100%;">
+    </div>
+    <div style="margin-bottom:16px;">
+      <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Payment Method</label>
+      <select class="filter-select" id="ext-paymethod" style="width:100%;">
+        <option value="offline_upi">📱 Offline UPI (9099928877@pthdfc)</option>
+        <option value="offline_cash">💵 Cash</option>
+        <option value="online_upi">💳 Online UPI</option>
+        <option value="free_grant">🎁 Free Grant</option>
+      </select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal('extend-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="executeExtend()">✅ Extend Now</button>
+    </div>
+  </div>
+</div>
+
+<!-- USER EDIT MODAL -->
+<div class="modal-ov" id="user-edit-modal">
+  <div class="modal-box" style="max-width:500px;">
+    <div class="modal-title">👤 User Access Management</div>
+    <div style="font-size:.82rem;color:var(--t3);margin-bottom:14px;">User: <strong id="ue-email-display" style="color:var(--t2);"></strong></div>
+    <input type="hidden" id="ue-uid">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div>
+        <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Plan Type</label>
+        <select class="filter-select" id="ue-plan" style="width:100%;">
+          <option value="free">🆓 Free</option><option value="premium">💎 Premium</option><option value="franchise">🏢 Franchise</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Access Expiry Date</label>
+        <input class="search-input" type="date" id="ue-expiry" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Amount Paid (₹)</label>
+        <input class="search-input" type="number" id="ue-amount" placeholder="0" style="width:100%;">
+      </div>
+      <div>
+        <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Payment Method</label>
+        <select class="filter-select" id="ue-paymethod" style="width:100%;">
+          <option value="online_upi">Online UPI</option><option value="offline_cash">Cash</option>
+          <option value="offline_upi">Offline UPI</option><option value="free_grant">Free Grant</option>
+        </select>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label style="font-size:.76rem;color:var(--t3);display:block;margin-bottom:5px;font-weight:600;">Admin Note</label>
+      <textarea class="search-input" id="ue-note" placeholder="Internal note..." style="width:100%;resize:vertical;min-height:60px;"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-danger btn-sm" onclick="disableUser()">🚫 Disable</button>
+      <button class="btn btn-ghost" onclick="closeModal('user-edit-modal')">Cancel</button>
+      <button class="btn btn-gold" onclick="saveUserEdit()">💾 Save</button>
+    </div>
+  </div>
+</div>
+
 <script>
-// ═══════════════════════════════════════════════════════════════
-// ADMIN DASHBOARD CONTROLLER
-// ═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════
+// K SPIDER ADMIN v2.0 — COMPLETE CONTROLLER
+// ═══════════════════════════════════════════════════
+var _allUsers=[], _allPayments=[], _allAccess=[], _adminUser=null;
+var _toolSettings={}, _unsavedCount=0;
 
-var _allUsers    = [];
-var _allPayments = [];
-var _adminUser   = null;
-
-// ── TOOL DEFINITIONS ── (index.html ke TD se perfectly synced)
+// ── TOOLS LIST ──
 var TOOLS_LIST = [
-  { id:'whatsapp-bulk-sender',    name:'WhatsApp Bulk Sender',                    icon:'📱', cat:'marketing',  status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'resume-builder',          name:'Resume Builder + RSK Bharat',             icon:'📄', cat:'career',      status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'image-master-pro',        name:'Image Master Pro',                        icon:'🖼️', cat:'image',       status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'ai-teacher',              name:'AI Teacher',                              icon:'🎓', cat:'education',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'ai-business-consultant',  name:'AI Business Consultant',                  icon:'💼', cat:'finance',     status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'ai-prompt-engine',        name:'AI Universal Prompt Engine',              icon:'🧠', cat:'marketing',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'ai-file-converter',       name:'AI Universal File Converter',             icon:'🔄', cat:'image',       status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'pharmacy-master',         name:'Pharmacy Master Pro',                     icon:'💊', cat:'health',      status:'live',        plan:'premium', price:0, origPrice:0 },
-  { id:'india-fbook',             name:'K Spider India F-Book',                   icon:'🇮🇳', cat:'social',     status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'linkshare',               name:'K Spider LinkShare',                      icon:'🔗', cat:'marketing',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'multipost',               name:'K Spider MultiPost',                      icon:'📤', cat:'social',      status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'doctor-elite-pro-max',    name:'Doctor Elite Pro Max',                    icon:'🩺', cat:'health',      status:'live',        plan:'premium', price:0, origPrice:0 },
-  { id:'kspider-400-tools',       name:'KSpider AI – 400+ Tools Collection',      icon:'🕷️', cat:'marketing',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'knowledge-spider',        name:'Knowledge Spider',                        icon:'🧠', cat:'education',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'wa-broadcast-pro',        name:'WA Broadcast Pro',                        icon:'📡', cat:'marketing',   status:'live',        plan:'premium', price:0, origPrice:0 },
-  { id:'free-ai-video-generator', name:'Free AI Video Generator',                 icon:'🎬', cat:'marketing',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'cybershield-pro',         name:'KSpider CyberShield Pro',                 icon:'🛡️', cat:'education',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'lead-scout',              name:'K Spider Lead Scout V3',                  icon:'🎯', cat:'marketing',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'webcraft-pro',            name:'K Spider WebCraft Pro',                   icon:'🌐', cat:'marketing',   status:'live',        plan:'free',    price:0, origPrice:0 },
-  { id:'social-captions',         name:'Social Media Caption AI',                 icon:'✍️', cat:'social',      status:'coming_soon', plan:'free',    price:0, origPrice:0 },
-  { id:'biz-name-gen',            name:'Business Name Generator',                 icon:'🏢', cat:'finance',     status:'coming_soon', plan:'free',    price:0, origPrice:0 },
-  { id:'health-checker',          name:'Health Symptom Checker',                  icon:'🏥', cat:'health',      status:'coming_soon', plan:'free',    price:0, origPrice:0 },
-  { id:'contract-gen',            name:'Legal Contract Generator',                icon:'⚖️', cat:'legal',       status:'coming_soon', plan:'free',    price:0, origPrice:0 }
+  {id:'whatsapp-bulk-sender',   name:'WhatsApp Bulk Sender',          icon:'📱',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'resume-builder',         name:'Resume Builder + RSK Bharat',   icon:'📄',cat:'career',    status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'image-master-pro',       name:'Image Master Pro',              icon:'🖼️',cat:'image',     status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'ai-teacher',             name:'AI Teacher',                    icon:'🎓',cat:'education', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'ai-business-consultant', name:'AI Business Consultant',        icon:'💼',cat:'finance',   status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'ai-prompt-engine',       name:'AI Universal Prompt Engine',    icon:'🧠',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'ai-file-converter',      name:'AI Universal File Converter',   icon:'🔄',cat:'image',     status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'pharmacy-master',        name:'Pharmacy Master Pro',           icon:'💊',cat:'health',    status:'live',       plan:'premium',price:0,origPrice:0},
+  {id:'india-fbook',            name:'K Spider India F-Book',         icon:'🇮🇳',cat:'social',   status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'linkshare',              name:'K Spider LinkShare',            icon:'🔗',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'multipost',              name:'K Spider MultiPost',            icon:'📤',cat:'social',    status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'doctor-elite-pro-max',   name:'Doctor Elite Pro Max',          icon:'🩺',cat:'health',    status:'live',       plan:'premium',price:0,origPrice:0},
+  {id:'kspider-400-tools',      name:'KSpider AI – 400+ Tools',       icon:'🕷️',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'knowledge-spider',       name:'Knowledge Spider',              icon:'🧠',cat:'education', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'wa-broadcast-pro',       name:'WA Broadcast Pro',              icon:'📡',cat:'marketing', status:'live',       plan:'premium',price:0,origPrice:0},
+  {id:'free-ai-video-generator',name:'Free AI Video Generator',       icon:'🎬',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'cybershield-pro',        name:'KSpider CyberShield Pro',       icon:'🛡️',cat:'education', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'lead-scout',             name:'K Spider Lead Scout V3',        icon:'🎯',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'webcraft-pro',           name:'K Spider WebCraft Pro',         icon:'🌐',cat:'marketing', status:'live',       plan:'free',   price:0,origPrice:0},
+  {id:'social-captions',        name:'Social Media Caption AI',       icon:'✍️',cat:'social',    status:'coming_soon',plan:'free',   price:0,origPrice:0},
+  {id:'biz-name-gen',           name:'Business Name Generator',       icon:'🏢',cat:'finance',   status:'coming_soon',plan:'free',   price:0,origPrice:0},
+  {id:'health-checker',         name:'Health Symptom Checker',        icon:'🏥',cat:'health',    status:'coming_soon',plan:'free',   price:0,origPrice:0},
+  {id:'contract-gen',           name:'Legal Contract Generator',      icon:'⚖️',cat:'legal',     status:'coming_soon',plan:'free',   price:0,origPrice:0}
 ];
 
-// ─── Admin Login ───
-function adminLogin() {
-  var email = document.getElementById('admin-email-in').value.trim().toLowerCase();
-  var pw    = document.getElementById('admin-pw-in').value;
-  var alert = document.getElementById('admin-login-alert');
-
-  if (!email || !pw) { showLoginAlert('Enter email and password'); return; }
-
-  KS.auth.signInWithEmailAndPassword(email, pw)
-    .then(function(cred) {
-      if (!KS.isAdmin(cred.user.email)) {
-        KS.auth.signOut();
-        showLoginAlert('Access denied. You are not an admin.');
-        return;
-      }
-      _adminUser = cred.user;
-      document.getElementById('admin-login-overlay').style.display = 'none';
-      document.getElementById('admin-layout').style.display = 'flex';
-      document.getElementById('admin-name-display').textContent = cred.user.displayName || email;
+// ════════ AUTH ════════
+function adminLogin(){
+  var email=(document.getElementById('admin-email-in').value||'').trim().toLowerCase();
+  var pw=document.getElementById('admin-pw-in').value;
+  if(!email||!pw){showLoginAlert('Email aur password enter karo');return;}
+  KS.auth.signInWithEmailAndPassword(email,pw)
+    .then(function(c){
+      if(!KS.isAdmin(c.user.email)){KS.auth.signOut();showLoginAlert('Access denied');return;}
+      _adminUser=c.user;
+      document.getElementById('admin-login-overlay').style.display='none';
+      document.getElementById('admin-layout').style.display='flex';
+      setText('admin-name-display',c.user.displayName||email);
       initDashboard();
-    })
-    .catch(function(err) {
-      showLoginAlert(err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found'
-        ? 'Invalid credentials.' : err.message);
-    });
+    }).catch(function(e){showLoginAlert(e.code==='auth/wrong-password'||e.code==='auth/user-not-found'?'Invalid credentials':e.message);});
 }
-
-function showLoginAlert(msg) {
-  var el = document.getElementById('admin-login-alert');
-  el.style.display = 'block';
-  el.textContent = msg;
-}
-
-function adminLogout() {
-  KS.auth.signOut().then(function() {
-    window.location.reload();
-  });
-}
-
-// ─── Check existing auth (called by bootstrap once KS is ready) ───
-var _authCheckDone = false;
-function checkAdminAuth() {
-  if (_authCheckDone) return;
-  _authCheckDone = true;
-  KS.auth.onAuthStateChanged(function(user) {
-    if (user && KS.isAdmin(user.email)) {
-      _adminUser = user;
-      document.getElementById('admin-login-overlay').style.display = 'none';
-      document.getElementById('admin-layout').style.display = 'flex';
-      document.getElementById('admin-name-display').textContent = user.displayName || user.email;
+function showLoginAlert(m){var el=document.getElementById('admin-login-alert');el.style.display='block';el.textContent=m;}
+function adminLogout(){KS.auth.signOut().then(function(){window.location.reload();});}
+var _authDone=false;
+function checkAdminAuth(){
+  if(_authDone)return;_authDone=true;
+  KS.auth.onAuthStateChanged(function(u){
+    if(u&&KS.isAdmin(u.email)){
+      _adminUser=u;
+      document.getElementById('admin-login-overlay').style.display='none';
+      document.getElementById('admin-layout').style.display='flex';
+      setText('admin-name-display',u.displayName||u.email);
       initDashboard();
     }
   });
 }
+document.addEventListener('DOMContentLoaded',function(){if(typeof KS!=='undefined')checkAdminAuth();});
 
-// Fallback: if KS loaded synchronously before this script ran
-document.addEventListener('DOMContentLoaded', function() {
-  if (typeof KS !== 'undefined') checkAdminAuth();
-  // else bootstrap will call checkAdminAuth() after async load
-});
-
-// ─── Init Dashboard ───
-function initDashboard() {
-  loadStats();
-  loadRecentPayments();
-  loadUsers();
-  loadPayments();
-  loadFranchise();
-  loadToolSettings();
+// ════════ INIT ════════
+function initDashboard(){
+  loadStats(); loadRecentPayments(); loadUsers();
+  loadPayments(); loadFranchise(); loadAccessList();
+  loadReminders(); loadToolSettings(); loadPricing();
 }
 
-// ─── Load Stats ───
-function loadStats() {
-  KS.db.collection('users').get().then(function(snap) {
-    var total = snap.size;
-    var premium = 0, franchise = 0;
-    snap.forEach(function(doc) {
-      var d = doc.data();
-      if (d.planType === 'premium') premium++;
-      if (d.planType === 'franchise') franchise++;
+// ════════ STATS ════════
+function loadStats(){
+  var now=Date.now();
+  KS.db.collection('users').get().then(function(snap){
+    var total=snap.size,premium=0,franchise=0,expiring=0,revenue=0;
+    snap.forEach(function(doc){
+      var d=doc.data();
+      if(d.planType==='premium')premium++;
+      if(d.planType==='franchise')franchise++;
+      if(d.planExpiry){
+        var diff=(new Date(d.planExpiry).getTime()-now)/(864e5);
+        if(diff>=0&&diff<=7)expiring++;
+      }
+      revenue+=(Number(d.paidAmount)||0);
     });
-    document.getElementById('stat-total-users').textContent = total;
-    document.getElementById('stat-premium-users').textContent = premium;
-    document.getElementById('stat-franchise-users').textContent = franchise;
-    document.getElementById('users-count-badge').textContent = total;
+    setText('stat-total-users',total); setText('stat-premium-users',premium);
+    setText('stat-franchise-users',franchise); setText('stat-expiring',expiring);
+    setText('stat-revenue','₹'+revenue.toLocaleString('en-IN'));
+    setText('users-count-badge',total);
+    if(expiring>0){
+      var ra=document.getElementById('renewal-alert');
+      if(ra){ra.style.display='';setText('renewal-alert-text',expiring+' user(s) expiring in 7 days!');}
+      var rb=document.getElementById('reminders-badge');if(rb)rb.style.display='';
+    }
   });
-
-  KS.db.collection('payments').where('status','==','success').get().then(function(snap) {
-    document.getElementById('stat-total-payments').textContent = snap.size;
-  });
+  KS.db.collection('payments').where('status','==','success').get().then(function(snap){setText('stat-total-payments',snap.size);});
 }
 
-// ─── Load Users ───
-function loadUsers() {
-  document.getElementById('users-table-body').innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>';
-
-  KS.db.collection('users').orderBy('registrationDate', 'desc').limit(200).get()
-    .then(function(snap) {
-      _allUsers = [];
-      snap.forEach(function(doc) { _allUsers.push({ id: doc.id, ...doc.data() }); });
+// ════════ USERS ════════
+function loadUsers(){
+  setText('users-table-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>');
+  KS.db.collection('users').limit(300).get()
+    .then(function(snap){
+      _allUsers=[];
+      snap.forEach(function(doc){_allUsers.push(Object.assign({id:doc.id},doc.data()));});
       renderUsers(_allUsers);
-    })
-    .catch(function(err) { console.error('[Admin] Users load error:', err); });
+    }).catch(function(e){adminToast('❌ Users: '+e.message);});
 }
-
-function renderUsers(users) {
-  var tbody = document.getElementById('users-table-body');
-  if (!users.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No users found</td></tr>';
-    return;
-  }
-  tbody.innerHTML = users.map(function(u) {
-    var regDate  = u.registrationDate ? new Date(u.registrationDate.seconds * 1000).toLocaleDateString('en-IN') : '—';
-    var lastLogin= u.lastLogin        ? new Date(u.lastLogin.seconds * 1000).toLocaleDateString('en-IN') : '—';
-    var isAdmin  = KS.isAdmin(u.email);
-    return `<tr>
-      <td>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:30px;height:30px;background:var(--gold-s);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:var(--gold2);font-weight:700;flex-shrink:0;">
-            ${(u.name||'U').charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <div style="font-weight:600;color:var(--t1);">${esc(u.name||'Unknown')}</div>
-            ${isAdmin ? '<span class="badge admin" style="font-size:.6rem;">ADMIN</span>' : ''}
-          </div>
-        </div>
-      </td>
-      <td style="color:var(--t3);">${esc(u.email||'')}</td>
-      <td><span class="badge ${u.planType||'free'}">${u.planType||'free'}</span></td>
-      <td><span class="badge ${u.paymentStatus==='paid'?'success':'pending'}">${u.paymentStatus||'none'}</span></td>
-      <td style="color:var(--t4);font-size:.78rem;">${regDate}</td>
-      <td style="color:var(--t4);font-size:.78rem;">${lastLogin}</td>
-      <td>
-        <button class="btn btn-ghost btn-sm" onclick="openUpgradeModal('${u.id}','${esc(u.email||'')}','${u.planType||'free'}')">⬆️ Upgrade</button>
-        <button class="btn btn-danger btn-sm" onclick="confirmDisableUser('${u.id}','${esc(u.name||'')}')">🚫 Disable</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-function filterUsers() {
-  var q     = (document.getElementById('user-search').value||'').toLowerCase();
-  var plan  = document.getElementById('user-plan-filter').value;
-  var filtered = _allUsers.filter(function(u) {
-    var matchQ    = !q || (u.name||'').toLowerCase().includes(q) || (u.email||'').toLowerCase().includes(q);
-    var matchPlan = plan === 'all' || u.planType === plan;
-    return matchQ && matchPlan;
-  });
-  renderUsers(filtered);
-}
-
-// ─── Load Payments ───
-function loadPayments() {
-  KS.db.collection('payments').orderBy('timestamp','desc').limit(200).get()
-    .then(function(snap) {
-      _allPayments = [];
-      snap.forEach(function(doc) { _allPayments.push({ id: doc.id, ...doc.data() }); });
-      renderPayments(_allPayments);
-    });
-}
-
-function renderPayments(payments) {
-  var tbody = document.getElementById('payments-table-body');
-  if (!payments.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--t4);padding:20px;">No payments found</td></tr>';
-    return;
-  }
-  tbody.innerHTML = payments.map(function(p) {
-    var date = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleString('en-IN') : p.createdAt || '—';
-    return `<tr>
-      <td style="font-family:monospace;font-size:.78rem;">${esc(p.paymentID||'—')}</td>
-      <td style="font-family:monospace;font-size:.75rem;color:var(--t4);">${esc(p.userID||'').substring(0,12)}...</td>
-      <td><span class="badge ${p.planType||'free'}">${p.planType||'—'}</span></td>
-      <td style="font-weight:600;color:var(--gold2);">₹${(p.amount||0).toLocaleString('en-IN')}</td>
-      <td><span class="badge ${p.status||'pending'}">${p.status||'—'}</span></td>
-      <td style="font-size:.75rem;color:var(--t4);">${date}</td>
-    </tr>`;
-  }).join('');
-}
-
-function filterPayments() {
-  var q      = (document.getElementById('pay-search').value||'').toLowerCase();
-  var status = document.getElementById('pay-status-filter').value;
-  var filtered = _allPayments.filter(function(p) {
-    var matchQ = !q || (p.paymentID||'').toLowerCase().includes(q) || (p.userID||'').toLowerCase().includes(q);
-    var matchS = status === 'all' || p.status === status;
-    return matchQ && matchS;
-  });
-  renderPayments(filtered);
-}
-
-// ─── Load Recent Payments ───
-function loadRecentPayments() {
-  KS.db.collection('payments').orderBy('timestamp','desc').limit(10).get()
-    .then(function(snap) {
-      var rows = '';
-      snap.forEach(function(doc) {
-        var p = doc.data();
-        var date = p.timestamp ? new Date(p.timestamp.seconds * 1000).toLocaleString('en-IN') : '—';
-        rows += `<tr>
-          <td style="font-family:monospace;font-size:.75rem;">${esc(p.paymentID||'—')}</td>
-          <td style="font-size:.78rem;color:var(--t3);">${esc((p.userID||'').substring(0,12))}...</td>
-          <td><span class="badge ${p.planType||'free'}">${p.planType||'—'}</span></td>
-          <td style="font-weight:600;color:var(--gold2);">₹${(p.amount||0).toLocaleString('en-IN')}</td>
-          <td><span class="badge ${p.status||'pending'}">${p.status||'—'}</span></td>
-          <td style="font-size:.75rem;color:var(--t4);">${date}</td>
-        </tr>`;
-      });
-      document.getElementById('recent-payments-body').innerHTML = rows || '<tr><td colspan="6" style="text-align:center;color:var(--t4);padding:20px;">No payments yet</td></tr>';
-    });
-}
-
-// ─── Load Franchise ───
-function loadFranchise() {
-  KS.db.collection('users').where('planType','in',['franchise','premium']).get()
-    .then(function(snap) {
-      var rows = '';
-      snap.forEach(function(doc) {
-        var u = doc.data();
-        rows += `<tr>
-          <td style="font-weight:600;">${esc(u.name||'Unknown')}</td>
-          <td style="color:var(--t3);">${esc(u.email||'')}</td>
-          <td><span class="badge ${u.planType||'free'}">${u.planType||'free'}</span></td>
-          <td><span class="badge ${u.paymentStatus==='paid'?'success':'pending'}">${u.paymentStatus||'none'}</span></td>
-          <td>
-            <button class="btn btn-green btn-sm" onclick="openUpgradeModal('${doc.id}','${esc(u.email||'')}','${u.planType||'free'}')">✏️ Change Plan</button>
-          </td>
-        </tr>`;
-      });
-      document.getElementById('franchise-table-body').innerHTML = rows || '<tr><td colspan="5" style="text-align:center;color:var(--t4);padding:20px;">No franchise users yet</td></tr>';
-    });
-}
-
-// ═══════════════════════════════════════════════════════
-// TOOLS MANAGEMENT — FULL ADMIN CONTROL
-// ═══════════════════════════════════════════════════════
-
-// Master tool definitions (base data — overrides come from Firestore)
-// TOOLS_LIST defined above (line ~694) — full 23 tools synced with index.html TD array
-
-// Working copy — merged with Firestore overrides
-var _toolSettings = {};
-var _toolsRendered = [];   // filtered list currently showing
-var _unsavedCount  = 0;
-
-// ── Load tool settings from Firestore ──
-function loadToolSettings() {
-  document.getElementById('tools-admin-tbody').innerHTML =
-    '<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">Loading...</td></tr>';
-
-  KS.db.collection('admin').doc('tool_settings').get()
-    .then(function(doc) {
-      var saved = doc.exists ? doc.data() : {};
-      // Merge base list with saved overrides
-      _toolSettings = {};
-      TOOLS_LIST.forEach(function(t) {
-        var s = saved[t.id] || {};
-        _toolSettings[t.id] = {
-          id:        t.id,
-          name:      s.name      !== undefined ? s.name      : t.name,
-          icon:      s.icon      !== undefined ? s.icon      : t.icon,
-          cat:       s.cat       !== undefined ? s.cat       : t.cat,
-          desc:      s.desc      !== undefined ? s.desc      : (t.desc || ''),
-          status:    s.status    !== undefined ? s.status    : t.status,
-          plan:      s.plan      !== undefined ? s.plan      : t.plan,
-          price:     s.price     !== undefined ? s.price     : (t.price || 0),
-          origPrice: s.origPrice !== undefined ? s.origPrice : (t.origPrice || 0),
-          badge:     s.badge     !== undefined ? s.badge     : (t.badge || ''),
-          featured:  s.featured  !== undefined ? s.featured  : (t.featured || false)
-        };
-      });
-      _unsavedCount = 0;
-      updateUnsavedBanner();
-      filterToolsPanel();
-      updateToolStats();
-      adminToast('✅ Tool settings loaded from Firestore');
-    })
-    .catch(function(err) {
-      // Firestore not available yet — use base list
-      TOOLS_LIST.forEach(function(t) {
-        _toolSettings[t.id] = {
-          id: t.id, name: t.name, icon: t.icon, cat: t.cat, desc: t.desc || '',
-          status: t.status, plan: t.plan, price: t.price || 0,
-          origPrice: t.origPrice || 0, badge: t.badge || '', featured: t.featured || false
-        };
-      });
-      filterToolsPanel();
-      updateToolStats();
-      adminToast('⚠️ Firestore unavailable — showing defaults');
-    });
-}
-
-// ── Render tools table ──
-function renderToolsTable(list) {
-  _toolsRendered = list;
-  var tbody = document.getElementById('tools-admin-tbody');
-  if (!list.length) {
-    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:30px;">No tools match filter</td></tr>';
-    return;
-  }
-
-  var statusColors = {
-    live:         { dot:'#34d399', label:'🟢 LIVE' },
-    off:          { dot:'#f87171', label:'🔴 OFF' },
-    coming_soon:  { dot:'#fbbf24', label:'🟡 SOON' },
-    maintenance:  { dot:'#60a5fa', label:'🔧 MAINT.' }
-  };
-  var planColors = {
-    free:      'badge free',
-    premium:   'badge premium',
-    franchise: 'badge franchise'
-  };
-
-  tbody.innerHTML = list.map(function(t, i) {
-    var sc = statusColors[t.status] || statusColors['off'];
-    var isLive = t.status === 'live';
-    var priceDisplay = t.price > 0
-      ? '<span style="color:var(--gold2);font-weight:700;">₹' + t.price.toLocaleString('en-IN') + '</span>'
-        + (t.origPrice > t.price ? '<br><s style="color:var(--t4);font-size:.72rem;">₹' + t.origPrice.toLocaleString('en-IN') + '</s>' : '')
-      : '<span style="color:var(--neon);font-weight:600;">FREE</span>';
-
-    return '<tr id="tool-row-' + t.id + '">' +
-      '<td style="color:var(--t4);font-size:.78rem;">' + (i+1) + '</td>' +
-      '<td>' +
-        '<div style="display:flex;align-items:center;gap:8px;">' +
-          '<span style="font-size:1.4rem;">' + esc(t.icon) + '</span>' +
-          '<div>' +
-            '<div style="font-weight:600;color:var(--t1);font-size:.88rem;">' + esc(t.name) + '</div>' +
-            (t.badge ? '<span style="font-size:.6rem;font-weight:700;background:var(--red);color:#fff;padding:2px 6px;border-radius:4px;">' + esc(t.badge) + '</span>' : '') +
-            (t.featured ? '<span style="font-size:.6rem;font-weight:700;background:rgba(245,158,11,.2);color:#fbbf24;padding:2px 6px;border-radius:4px;margin-left:3px;">⭐ FEATURED</span>' : '') +
-          '</div>' +
-        '</div>' +
-      '</td>' +
-      '<td><span style="font-size:.75rem;color:var(--t3);text-transform:capitalize;">' + esc(t.cat) + '</span></td>' +
-      '<td><span style="font-size:.77rem;font-weight:600;color:' + sc.dot + ';">' + sc.label + '</span></td>' +
-      '<td><span class="' + (planColors[t.plan] || 'badge free') + '">' + (t.plan || 'free').toUpperCase() + '</span></td>' +
-      '<td>' + priceDisplay + '</td>' +
-      '<td>' +
-        '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;">' +
-          '<input type="checkbox"' + (isLive ? ' checked' : '') +
-            ' id="toggle-' + t.id + '"' +
-            ' data-toolid="' + t.id + '"' +
-            ' onchange="onToolLiveToggle(this)"' +
-            ' style="width:16px;height:16px;accent-color:var(--neon);">' +
-          '<span style="font-size:.78rem;color:' + (isLive ? 'var(--neon)' : 'var(--red)') + ';" id="toggle-lbl-' + t.id + '">' + (isLive ? 'Live' : 'Off') + '</span>' +
-        '</label>' +
-      '</td>' +
-      '<td>' +
-        '<button class="btn btn-ghost btn-sm" onclick="openToolEdit(\'' + t.id + '\')" title="Edit tool">✏️</button>' +
-      '</td>' +
+function renderUsers(users){
+  var now=Date.now();
+  var tbody=document.getElementById('users-table-body');
+  if(!users.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No users found</td></tr>';return;}
+  tbody.innerHTML=users.map(function(u){
+    var regDate=u.registeredAt?new Date(u.registeredAt).toLocaleDateString('en-IN'):(u.registrationDate?new Date(u.registrationDate.seconds*1000).toLocaleDateString('en-IN'):'—');
+    var expBadge='<span class="badge free">Free</span>',expDate='—';
+    if(u.planExpiry&&u.planType!=='free'){
+      expDate=new Date(u.planExpiry).toLocaleDateString('en-IN');
+      var diff=Math.ceil((new Date(u.planExpiry).getTime()-now)/864e5);
+      if(diff<0)expBadge='<span class="badge failed">Expired</span>';
+      else if(diff<=3)expBadge='<span class="badge pending">⚠️ '+diff+'d</span>';
+      else if(diff<=7)expBadge='<span class="badge pending">🔔 '+diff+'d</span>';
+      else expBadge='<span class="badge success">Active '+diff+'d</span>';
+    }
+    var isAdm=KS.isAdmin(u.email);
+    return '<tr><td><div style="display:flex;align-items:center;gap:8px;"><div style="width:28px;height:28px;background:var(--gold-s);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--gold2);font-weight:700;flex-shrink:0;">'+(u.name||'U').charAt(0).toUpperCase()+'</div><div><div style="font-weight:600;font-size:.85rem;">'+(isAdm?'<span class="badge admin" style="font-size:.58rem;margin-right:3px;">ADMIN</span>':'')+esc(u.name||'Unknown')+'</div></div></div></td>'+
+      '<td style="color:var(--t3);font-size:.8rem;">'+esc(u.email||'')+'</td>'+
+      '<td><span class="badge '+(u.planType||'free')+'">'+(u.planType||'free')+'</span></td>'+
+      '<td>'+expBadge+'</td>'+
+      '<td style="font-size:.78rem;color:var(--t4);">'+expDate+'</td>'+
+      '<td style="font-size:.78rem;color:var(--t4);">'+regDate+'</td>'+
+      '<td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="openUserEdit(\''+u.id+'\')">✏️ Edit</button> <button class="btn btn-blue btn-sm" onclick="openExtendModal(\''+u.id+'\',\''+esc(u.email||'')+'\')">⏳ Renew</button></td>'+
     '</tr>';
   }).join('');
 }
-
-// ── Filter tools table ──
-function filterToolsPanel() {
-  if (!Object.keys(_toolSettings).length) return;
-  var q       = (document.getElementById('tool-search')        || {value:''}).value.toLowerCase();
-  var fPlan   = (document.getElementById('tool-filter-plan')   || {value:'all'}).value;
-  var fStatus = (document.getElementById('tool-filter-status') || {value:'all'}).value;
-
-  var all = Object.values(_toolSettings);
-  var filtered = all.filter(function(t) {
-    var mQ  = !q || t.name.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q) || (t.desc||'').toLowerCase().includes(q);
-    var mP  = fPlan   === 'all' || t.plan   === fPlan;
-    var mS  = fStatus === 'all' || t.status === fStatus;
-    return mQ && mP && mS;
+function filterUsers(){
+  var q=(document.getElementById('user-search').value||'').toLowerCase();
+  var plan=document.getElementById('user-plan-filter').value;
+  var st=document.getElementById('user-status-filter').value;
+  var now=Date.now();
+  var f=_allUsers.filter(function(u){
+    var mQ=!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q);
+    var mP=plan==='all'||u.planType===plan;
+    var mS=true;
+    if(st!=='all'&&u.planExpiry){
+      var d=(new Date(u.planExpiry).getTime()-now)/864e5;
+      if(st==='active')mS=d>7;
+      else if(st==='expiring')mS=d>=0&&d<=7;
+      else if(st==='expired')mS=d<0;
+    }
+    return mQ&&mP&&mS;
   });
-
-  // Featured on top, then live, then rest
-  filtered.sort(function(a,b) {
-    if (a.featured && !b.featured) return -1;
-    if (!a.featured && b.featured)  return 1;
-    var order = {live:0, maintenance:1, coming_soon:2, off:3};
-    return (order[a.status]||9) - (order[b.status]||9);
-  });
-  renderToolsTable(filtered);
-  updateToolStats();
+  renderUsers(f);
 }
 
-// ── Live/Off toggle (instant local change) ──
-function onToolLiveToggle(checkbox) {
-  var id  = checkbox.getAttribute('data-toolid');
-  var lbl = document.getElementById('toggle-lbl-' + id);
-  if (!_toolSettings[id]) return;
-
-  if (checkbox.checked) {
-    _toolSettings[id].status = 'live';
-    if (lbl) { lbl.textContent = 'Live'; lbl.style.color = 'var(--neon)'; }
-  } else {
-    _toolSettings[id].status = 'off';
-    if (lbl) { lbl.textContent = 'Off'; lbl.style.color = 'var(--red)'; }
+// ════════ USER EDIT ════════
+function openUserEdit(uid){
+  var u=_allUsers.find(function(x){return x.id===uid;});
+  if(!u){// Try from access list
+    u=_allAccess.find(function(x){return x.id===uid;});
   }
-  _unsavedCount++;
-  updateUnsavedBanner();
-  updateToolStats();
+  if(!u)return;
+  document.getElementById('ue-uid').value=uid;
+  setText('ue-email-display',u.email||'');
+  document.getElementById('ue-plan').value=u.planType||'free';
+  document.getElementById('ue-expiry').value=u.planExpiry?u.planExpiry.substring(0,10):'';
+  document.getElementById('ue-amount').value=u.paidAmount||0;
+  document.getElementById('ue-paymethod').value=u.paymentMethod||'online_upi';
+  document.getElementById('ue-note').value=u.adminNote||'';
+  openModal('user-edit-modal');
+}
+function saveUserEdit(){
+  var uid=document.getElementById('ue-uid').value; if(!uid)return;
+  var plan=document.getElementById('ue-plan').value;
+  var expiry=document.getElementById('ue-expiry').value;
+  var amount=parseInt(document.getElementById('ue-amount').value)||0;
+  var method=document.getElementById('ue-paymethod').value;
+  var note=document.getElementById('ue-note').value;
+  var update={planType:plan,paymentStatus:plan==='free'?'none':'paid',disabled:false,
+    planExpiry:expiry?new Date(expiry).toISOString():null,paidAmount:amount,
+    paymentMethod:method,adminNote:note,
+    lastModifiedBy:_adminUser?_adminUser.email:'admin',
+    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  KS.db.collection('users').doc(uid).update(update)
+    .then(function(){
+      closeModal('user-edit-modal'); adminToast('✅ User updated!');
+      if(amount>0){KS.db.collection('payments').add({userID:uid,planType:plan,amount:amount,method:method,status:'success',type:'offline',note:note,grantedBy:_adminUser?_adminUser.email:'admin',timestamp:firebase.firestore.FieldValue.serverTimestamp()});}
+      loadUsers(); loadStats(); loadAccessList();
+    }).catch(function(e){adminToast('❌ '+e.message);});
+}
+function disableUser(){
+  var uid=document.getElementById('ue-uid').value;
+  if(!confirm('User ko disable karna chahte hain?'))return;
+  KS.db.collection('users').doc(uid).update({disabled:true,planType:'free'})
+    .then(function(){closeModal('user-edit-modal');adminToast('User disabled.');loadUsers();})
+    .catch(function(e){adminToast('❌ '+e.message);});
 }
 
-// ── Set all live / all off ──
-function setAllToolsLive() {
-  if (!confirm('Sare tools LIVE kar dein?')) return;
-  Object.keys(_toolSettings).forEach(function(id) {
-    _toolSettings[id].status = 'live';
+// ════════ GRANT ACCESS ════════
+function grantAccess(){
+  var email=(document.getElementById('ac-email').value||'').trim().toLowerCase();
+  var plan=document.getElementById('ac-plan').value;
+  var durVal=document.getElementById('ac-duration').value;
+  var days=durVal==='custom'?parseInt(document.getElementById('ac-custom-days').value):parseInt(durVal);
+  var amount=parseInt(document.getElementById('ac-amount').value)||0;
+  var method=document.getElementById('ac-pay-method').value;
+  var ref=(document.getElementById('ac-ref').value||'').trim();
+  if(!email){adminToast('❌ Email enter karo');return;}
+  if(!days||days<1){adminToast('❌ Valid duration select karo');return;}
+  var start=new Date();
+  var expiry=new Date(start.getTime()+days*864e5);
+  var key=email.replace(/[.#$\/\[\]]/g,'_');
+  KS.db.collection('users').doc(key).get().then(function(doc){
+    var ex=doc.exists?doc.data():{};
+    if(ex.planExpiry&&new Date(ex.planExpiry)>start)expiry=new Date(new Date(ex.planExpiry).getTime()+days*864e5);
+    var upd={email:email,planType:plan,paymentStatus:'paid',accessStart:start.toISOString(),
+      planExpiry:expiry.toISOString(),paidAmount:(ex.paidAmount||0)+amount,
+      paymentMethod:method,paymentRef:ref,disabled:false,
+      lastGrantedBy:_adminUser?_adminUser.email:'admin',
+      lastGrantedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    KS.db.collection('users').doc(key).set(upd,{merge:true}).then(function(){
+      KS.db.collection('payments').add({userID:key,userEmail:email,planType:plan,amount:amount,
+        method:method,ref:ref,status:'success',type:method.startsWith('online')?'online':'offline',
+        daysGranted:days,expiryDate:expiry.toISOString(),
+        grantedBy:_adminUser?_adminUser.email:'admin',
+        timestamp:firebase.firestore.FieldValue.serverTimestamp()});
+      adminToast('✅ Access granted! '+plan.toUpperCase()+' — '+days+' days (expires '+expiry.toLocaleDateString('en-IN')+')');
+      document.getElementById('ac-email').value='';
+      document.getElementById('ac-amount').value='';
+      document.getElementById('ac-ref').value='';
+      loadUsers(); loadStats(); loadAccessList(); loadReminders();
+    }).catch(function(e){adminToast('❌ '+e.message);});
   });
-  _unsavedCount = Object.keys(_toolSettings).length;
-  filterToolsPanel();
-  updateUnsavedBanner();
 }
-function setAllToolsOff() {
-  if (!confirm('Sare tools OFF kar dein?')) return;
-  Object.keys(_toolSettings).forEach(function(id) {
-    _toolSettings[id].status = 'off';
+
+// ════════ ACCESS LIST ════════
+function loadAccessList(){
+  setText('access-table-body','<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>');
+  KS.db.collection('users').where('planType','in',['premium','franchise']).get()
+    .then(function(snap){
+      _allAccess=[];
+      snap.forEach(function(doc){_allAccess.push(Object.assign({id:doc.id},doc.data()));});
+      renderAccessList(_allAccess);
+    }).catch(function(){renderAccessList([]);});
+}
+function renderAccessList(list){
+  var now=Date.now();
+  var tbody=document.getElementById('access-table-body');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">No premium/franchise users</td></tr>';return;}
+  tbody.innerHTML=list.map(function(u){
+    var expDate=u.planExpiry?new Date(u.planExpiry):null;
+    var expStr=expDate?expDate.toLocaleDateString('en-IN'):'—';
+    var diff=expDate?Math.ceil((expDate.getTime()-now)/864e5):999;
+    var dLabel,dColor;
+    if(diff<0){dLabel='Exp '+Math.abs(diff)+'d ago';dColor='var(--red)';}
+    else if(diff<=3){dLabel='⚠️ '+diff+'d';dColor='#f87171';}
+    else if(diff<=7){dLabel='🔔 '+diff+'d';dColor='#fbbf24';}
+    else{dLabel=diff+'d';dColor='var(--neon)';}
+    return '<tr><td><div style="font-weight:600;font-size:.85rem;">'+esc(u.name||u.email||'—')+'</div><div style="font-size:.73rem;color:var(--t4);">'+esc(u.email||'')+'</div></td>'+
+      '<td><span class="badge '+(u.planType||'free')+'">'+(u.planType||'free')+'</span></td>'+
+      '<td style="font-size:.78rem;color:var(--t4);">'+(u.accessStart?new Date(u.accessStart).toLocaleDateString('en-IN'):'—')+'</td>'+
+      '<td style="font-size:.78rem;">'+expStr+'</td>'+
+      '<td style="font-weight:700;color:'+dColor+';font-size:.82rem;">'+dLabel+'</td>'+
+      '<td style="font-size:.76rem;color:var(--t3);">'+(u.paymentMethod||'—')+'</td>'+
+      '<td style="font-weight:600;color:var(--gold2);">₹'+(u.paidAmount||0).toLocaleString('en-IN')+'</td>'+
+      '<td style="white-space:nowrap;"><button class="btn btn-ghost btn-sm" onclick="openUserEdit(\''+u.id+'\')">✏️</button> <button class="btn btn-blue btn-sm" onclick="openExtendModal(\''+u.id+'\',\''+esc(u.email||'')+'\')">⏳ Renew</button></td>'+
+    '</tr>';
+  }).join('');
+}
+function filterAccessList(){
+  var q=(document.getElementById('access-search').value||'').toLowerCase();
+  renderAccessList(!q?_allAccess:_allAccess.filter(function(u){return(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q);}));
+}
+
+// ════════ EXTEND ACCESS ════════
+function openExtendModal(uid,email){
+  document.getElementById('ext-uid').value=uid;
+  setText('ext-email',email);
+  document.getElementById('ext-amount').value='';
+  openModal('extend-modal');
+}
+function executeExtend(){
+  var uid=document.getElementById('ext-uid').value;
+  var days=parseInt(document.getElementById('ext-days').value);
+  var amount=parseInt(document.getElementById('ext-amount').value)||0;
+  var method=document.getElementById('ext-paymethod').value;
+  if(!uid)return;
+  KS.db.collection('users').doc(uid).get().then(function(doc){
+    if(!doc.exists){adminToast('❌ User not found');return;}
+    var d=doc.data();
+    var base=d.planExpiry&&new Date(d.planExpiry)>new Date()?new Date(d.planExpiry):new Date();
+    var newExp=new Date(base.getTime()+days*864e5);
+    KS.db.collection('users').doc(uid).update({planExpiry:newExp.toISOString(),paymentStatus:'paid',
+      paidAmount:(d.paidAmount||0)+amount,paymentMethod:method,
+      lastRenewedAt:firebase.firestore.FieldValue.serverTimestamp()})
+      .then(function(){
+        if(amount>0)KS.db.collection('payments').add({userID:uid,planType:d.planType,amount:amount,method:method,status:'success',type:'renewal',daysExtended:days,newExpiry:newExp.toISOString(),grantedBy:_adminUser?_adminUser.email:'admin',timestamp:firebase.firestore.FieldValue.serverTimestamp()});
+        closeModal('extend-modal');
+        adminToast('✅ Extended! New expiry: '+newExp.toLocaleDateString('en-IN'));
+        loadUsers(); loadAccessList(); loadReminders(); loadStats();
+      }).catch(function(e){adminToast('❌ '+e.message);});
   });
-  _unsavedCount = Object.keys(_toolSettings).length;
-  filterToolsPanel();
-  updateUnsavedBanner();
 }
 
-// ── Open tool edit modal ──
-function openToolEdit(id) {
-  var t = _toolSettings[id];
-  if (!t) return;
-  document.getElementById('te-tool-id').value      = id;
-  document.getElementById('te-name').value          = t.name    || '';
-  document.getElementById('te-desc').value          = t.desc    || '';
-  document.getElementById('te-icon').value          = t.icon    || '';
-  document.getElementById('te-cat').value           = t.cat     || 'marketing';
-  document.getElementById('te-status').value        = t.status  || 'live';
-  document.getElementById('te-plan').value          = t.plan    || 'free';
-  document.getElementById('te-price').value         = t.price   || 0;
-  document.getElementById('te-orig-price').value    = t.origPrice || 0;
-  document.getElementById('te-badge').value         = t.badge   || '';
-  document.getElementById('te-featured').checked    = t.featured || false;
-  document.getElementById('tool-edit-modal').classList.add('open');
+// ════════ REMINDERS ════════
+function loadReminders(){
+  setText('reminders-table-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>');
+  var now=Date.now();
+  KS.db.collection('users').where('planType','in',['premium','franchise']).get()
+    .then(function(snap){
+      var list=[];
+      snap.forEach(function(doc){
+        var d=doc.data();
+        if(!d.planExpiry)return;
+        var diff=Math.ceil((new Date(d.planExpiry).getTime()-now)/864e5);
+        if(diff<=7)list.push(Object.assign({id:doc.id,daysLeft:diff},d));
+      });
+      list.sort(function(a,b){return a.daysLeft-b.daysLeft;});
+      setText('rem-count-expired',list.filter(function(x){return x.daysLeft<=0;}).length);
+      setText('rem-count-3d',list.filter(function(x){return x.daysLeft>0&&x.daysLeft<=3;}).length);
+      setText('rem-count-7d',list.filter(function(x){return x.daysLeft>3&&x.daysLeft<=7;}).length);
+      var tbody=document.getElementById('reminders-table-body');
+      if(!list.length){tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--neon);padding:20px;">✅ Sab theek hai — koi expiring user nahi!</td></tr>';return;}
+      tbody.innerHTML=list.map(function(u){
+        var urgency,uc;
+        if(u.daysLeft<0){urgency='🔴 EXPIRED';uc='#f87171';}
+        else if(u.daysLeft===0){urgency='🔴 TODAY';uc='#f87171';}
+        else if(u.daysLeft<=3){urgency='🟠 URGENT';uc='#fb923c';}
+        else{urgency='🟡 SOON';uc='#fbbf24';}
+        var waMsg='Namaste '+(u.name||'')+' ji! Aapka K Spider AI '+(u.planType||'Premium').toUpperCase()+' plan '+
+          (u.daysLeft<0?Math.abs(u.daysLeft)+' din pehle expire ho gaya. Abhi renew karein!':u.daysLeft===0?'aaj expire ho raha hai! Abhi renew karein!':u.daysLeft+' din mein expire hoga. Renewal ke liye UPI payment karein.')+
+          ' UPI: 9099928877@pthdfc | K Spider AI — www.kspiderai.in';
+        var waLink='https://wa.me/91'+(u.mobile||'').replace(/\D/g,'')+'?text='+encodeURIComponent(waMsg);
+        return '<tr><td><div style="font-weight:600;font-size:.85rem;">'+esc(u.name||'—')+'</div><div style="font-size:.73rem;color:var(--t4);">'+esc(u.email||'')+'</div></td>'+
+          '<td><span class="badge '+(u.planType||'free')+'">'+(u.planType||'')+'</span></td>'+
+          '<td style="font-size:.78rem;">'+new Date(u.planExpiry).toLocaleDateString('en-IN')+'</td>'+
+          '<td style="font-weight:700;color:'+uc+';">'+(u.daysLeft<0?'Expired '+Math.abs(u.daysLeft)+'d ago':u.daysLeft===0?'TODAY':u.daysLeft+' days')+'</td>'+
+          '<td style="font-weight:600;color:'+uc+';">'+urgency+'</td>'+
+          '<td style="font-size:.76rem;">'+(u.email||'')+' '+(u.mobile?'<br>📱 '+u.mobile:'')+'</td>'+
+          '<td style="white-space:nowrap;">'+
+            (u.mobile?'<a href="'+waLink+'" target="_blank" class="btn btn-green btn-sm">📱 WA</a> ':'')+
+            '<button class="btn btn-blue btn-sm" onclick="openExtendModal(\''+u.id+'\',\''+esc(u.email||'')+'\')">⏳ Renew</button>'+
+          '</td></tr>';
+      }).join('');
+    }).catch(function(e){adminToast('❌ Reminders: '+e.message);});
 }
 
-// ── Save individual tool edit ──
-function saveToolEdit() {
-  var id = document.getElementById('te-tool-id').value;
-  if (!id || !_toolSettings[id]) { adminToast('❌ Tool not found'); return; }
-
-  _toolSettings[id].name      = document.getElementById('te-name').value.trim();
-  _toolSettings[id].desc      = document.getElementById('te-desc').value.trim();
-  _toolSettings[id].icon      = document.getElementById('te-icon').value.trim();
-  _toolSettings[id].cat       = document.getElementById('te-cat').value;
-  _toolSettings[id].status    = document.getElementById('te-status').value;
-  _toolSettings[id].plan      = document.getElementById('te-plan').value;
-  _toolSettings[id].price     = parseInt(document.getElementById('te-price').value) || 0;
-  _toolSettings[id].origPrice = parseInt(document.getElementById('te-orig-price').value) || 0;
-  _toolSettings[id].badge     = document.getElementById('te-badge').value.trim();
-  _toolSettings[id].featured  = document.getElementById('te-featured').checked;
-
-  _unsavedCount++;
-  updateUnsavedBanner();
-  closeModal('tool-edit-modal');
-  filterToolsPanel();
-  adminToast('✅ Tool updated locally — click Save All to apply.');
+// ════════ PAYMENTS ════════
+function loadPayments(){
+  KS.db.collection('payments').orderBy('timestamp','desc').limit(300).get()
+    .then(function(snap){
+      _allPayments=[];
+      snap.forEach(function(doc){_allPayments.push(Object.assign({id:doc.id},doc.data()));});
+      renderPayments(_allPayments);
+    }).catch(function(){renderPayments([]);});
 }
-
-// ── Save all tool settings to Firestore ──
-function saveToolSettings() {
-  if (!_adminUser) {
-    adminToast('❌ Admin login required to save.');
-    return;
-  }
-
-  var toSave = {};
-  Object.keys(_toolSettings).forEach(function(id) {
-    toSave[id] = _toolSettings[id];
-  });
-
-  // Show saving state
-  adminToast('⏳ Saving to Firestore...');
-
-  KS.db.collection('admin').doc('tool_settings').set(toSave)
-    .then(function() {
-      _unsavedCount = 0;
-      updateUnsavedBanner();
-      filterToolsPanel();
-      adminToast('✅ All tool settings saved successfully!');
-    })
-    .catch(function(err) {
-      console.error('[KSpider Admin] Save error:', err);
-      if (err.code === 'permission-denied') {
-        adminToast('❌ Permission denied! Firestore rules update karo — neeche console mein instructions dekho.');
-        console.warn(
-          '%c[KSpider Admin] FIRESTORE RULES FIX NEEDED:\n\n' +
-          'Firebase Console → Firestore → Rules mein ye paste karo:\n\n' +
-          'rules_version = \'2\';\n' +
-          'service cloud.firestore {\n' +
-          '  match /databases/{database}/documents {\n' +
-          '    match /users/{userId} {\n' +
-          '      allow read, write: if request.auth != null;\n' +
-          '    }\n' +
-          '    match /payments/{doc} {\n' +
-          '      allow read, write: if request.auth != null;\n' +
-          '    }\n' +
-          '    match /admin/{doc} {\n' +
-          '      allow read: if true;\n' +
-          '      allow write: if request.auth != null && request.auth.token.email in ["kspider221206@gmail.com"];\n' +
-          '    }\n' +
-          '  }\n' +
-          '}',
-          'color:#e8520a;font-size:13px;font-weight:bold;'
-        );
-      } else {
-        adminToast('❌ Save failed: ' + err.message);
-      }
+function loadRecentPayments(){
+  KS.db.collection('payments').orderBy('timestamp','desc').limit(10).get()
+    .then(function(snap){
+      var rows='';
+      snap.forEach(function(doc){
+        var p=doc.data();
+        var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):'—';
+        rows+='<tr><td style="font-family:monospace;font-size:.74rem;">'+esc(p.paymentID||p.id||'—').substring(0,14)+'</td>'+
+          '<td style="font-size:.78rem;color:var(--t3);">'+esc(p.userEmail||p.userID||'—')+'</td>'+
+          '<td><span class="badge '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
+          '<td style="font-weight:600;color:var(--gold2);">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
+          '<td style="font-size:.76rem;color:var(--t3);">'+(p.method||p.type||'—')+'</td>'+
+          '<td><span class="badge '+(p.status||'pending')+'">'+(p.status||'—')+'</span></td>'+
+          '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td></tr>';
+      });
+      setText('recent-payments-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No transactions yet</td></tr>');
     });
 }
-
-// ── Stats update ──
-function updateToolStats() {
-  var all = Object.values(_toolSettings);
-  var live = all.filter(function(t){ return t.status === 'live'; }).length;
-  var off  = all.filter(function(t){ return t.status === 'off'; }).length;
-  var prem = all.filter(function(t){ return t.plan === 'premium'; }).length;
-  var free = all.filter(function(t){ return t.plan === 'free'; }).length;
-  var liveEl = document.getElementById('ts-live-count');
-  var offEl  = document.getElementById('ts-off-count');
-  var premEl = document.getElementById('ts-premium-count');
-  var freeEl = document.getElementById('ts-free-count');
-  if (liveEl) liveEl.textContent = live;
-  if (offEl)  offEl.textContent  = off;
-  if (premEl) premEl.textContent = prem;
-  if (freeEl) freeEl.textContent = free;
+function renderPayments(payments){
+  var tbody=document.getElementById('payments-table-body');
+  if(!payments.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">No payments</td></tr>';return;}
+  tbody.innerHTML=payments.map(function(p){
+    var date=p.timestamp?new Date(p.timestamp.seconds*1000).toLocaleString('en-IN'):'—';
+    return '<tr><td style="font-family:monospace;font-size:.74rem;">'+esc(p.paymentID||p.id||'—').substring(0,14)+'</td>'+
+      '<td style="font-size:.8rem;">'+esc(p.userEmail||p.userID||'—')+'</td>'+
+      '<td><span class="badge '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
+      '<td style="font-weight:600;color:var(--gold2);">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
+      '<td style="font-size:.76rem;color:var(--t3);">'+(p.method||p.type||'—')+'</td>'+
+      '<td><span class="badge '+(p.status||'pending')+'">'+(p.status||'—')+'</span></td>'+
+      '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td>'+
+      '<td>'+(p.status==='pending'?'<button class="btn btn-green btn-sm" onclick="markPaid(\''+p.id+'\')">✅ Confirm</button>':'')+'</td>'+
+    '</tr>';
+  }).join('');
+}
+function filterPayments(){
+  var q=(document.getElementById('pay-search').value||'').toLowerCase();
+  var st=document.getElementById('pay-status-filter').value;
+  var f=_allPayments.filter(function(p){
+    return (!q||(p.paymentID||'').toLowerCase().includes(q)||(p.userEmail||'').toLowerCase().includes(q)||(p.userID||'').toLowerCase().includes(q))&&(st==='all'||p.status===st);
+  });
+  renderPayments(f);
+}
+function markPaid(pid){
+  KS.db.collection('payments').doc(pid).update({status:'success'})
+    .then(function(){adminToast('✅ Payment confirmed!');loadPayments();loadStats();})
+    .catch(function(e){adminToast('❌ '+e.message);});
 }
 
-function updateUnsavedBanner() {
-  var banner = document.getElementById('tools-unsaved-banner');
-  var cnt    = document.getElementById('unsaved-count');
-  if (!banner) return;
-  if (_unsavedCount > 0) {
-    if (cnt) cnt.textContent = _unsavedCount;
-    banner.style.display = 'flex';
-  } else {
-    banner.style.display = 'none';
-  }
+// ════════ FRANCHISE ════════
+function loadFranchise(){loadFranchiseInquiries(); loadFranchiseeList();}
+function loadFranchiseInquiries(){
+  KS.db.collection('franchise_inquiries').orderBy('timestamp','desc').limit(50).get()
+    .then(function(snap){
+      var rows='';
+      snap.forEach(function(doc){
+        var f=doc.data();
+        var date=f.timestamp?new Date(f.timestamp.seconds*1000).toLocaleDateString('en-IN'):'—';
+        rows+='<tr><td style="font-weight:600;">'+esc(f.franchise_name||f.name||'—')+'</td>'+
+          '<td style="font-size:.8rem;color:var(--t3);">'+esc(f.franchise_email||f.email||'—')+'</td>'+
+          '<td style="font-size:.8rem;">'+esc(f.franchise_mobile||f.mobile||'—')+'</td>'+
+          '<td style="font-size:.8rem;">'+esc(f.franchise_city||f.city||'—')+'</td>'+
+          '<td style="font-size:.76rem;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(f.franchise_message||f.message||'—')+'</td>'+
+          '<td style="font-size:.74rem;color:var(--t4);">'+date+'</td>'+
+          '<td><button class="btn btn-pur btn-sm" style="background:rgba(124,58,237,.15);color:#a78bfa;border:1px solid rgba(124,58,237,.3);" onclick="convertToFranchise(\''+esc(f.franchise_email||f.email||'')+'\')">🏢 Convert</button></td>'+
+        '</tr>';
+      });
+      setText('franchise-inquiries-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No inquiries yet</td></tr>');
+      if(snap.size>0){var b=document.getElementById('franchise-count-badge');if(b){b.style.display='';b.textContent=snap.size;}}
+    }).catch(function(){setText('franchise-inquiries-body','<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">—</td></tr>');});
+}
+function loadFranchiseeList(){
+  var now=Date.now();
+  KS.db.collection('users').where('planType','==','franchise').get()
+    .then(function(snap){
+      var total=snap.size,active=0,expiring=0,revenue=0,rows='';
+      snap.forEach(function(doc){
+        var u=doc.data();
+        var diff=u.planExpiry?Math.ceil((new Date(u.planExpiry).getTime()-now)/864e5):999;
+        if(diff>0)active++;
+        if(diff>=0&&diff<=7)expiring++;
+        revenue+=(u.paidAmount||0);
+        var dc=diff<0?'var(--red)':diff<=7?'#fbbf24':'var(--neon)';
+        rows+='<tr><td style="font-weight:600;">'+esc(u.name||'Unknown')+'</td>'+
+          '<td style="color:var(--t3);font-size:.8rem;">'+esc(u.email||'')+'</td>'+
+          '<td><span class="badge franchise">Franchise</span></td>'+
+          '<td style="font-size:.78rem;">'+(u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'—')+'</td>'+
+          '<td style="font-weight:600;color:'+dc+';">'+(diff===999?'—':diff<0?'Expired':diff+' days')+'</td>'+
+          '<td style="color:var(--gold2);">₹'+(u.paidAmount||0).toLocaleString('en-IN')+'</td>'+
+          '<td><button class="btn btn-ghost btn-sm" onclick="openUserEdit(\''+doc.id+'\')">✏️ Manage</button></td></tr>';
+      });
+      setText('f-total',total);setText('f-active',active);
+      setText('f-expiring',expiring);setText('f-revenue','₹'+revenue.toLocaleString('en-IN'));
+      setText('franchise-table-body',rows||'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px;">No franchise users yet</td></tr>');
+    });
+}
+function convertToFranchise(email){
+  document.getElementById('ac-email').value=email;
+  document.getElementById('ac-plan').value='franchise';
+  showPanel('access',document.querySelector('.nav-item[onclick*="access"]'));
+  adminToast('✅ Email pre-filled in Access Control — set duration & amount aur Grant karo');
 }
 
-// ─── Upgrade Modal ───
-function openUpgradeModal(uid, email, currentPlan) {
-  document.getElementById('upgrade-user-id').value = uid;
-  document.getElementById('upgrade-user-email').textContent = email;
-  document.getElementById('upgrade-plan-select').value = currentPlan;
-  document.getElementById('upgrade-modal').classList.add('open');
+// ════════ PRICING ════════
+function savePricing(){
+  var p={premium_yr:parseInt(document.getElementById('price-premium-yr').value)||2999,premium_mo:parseInt(document.getElementById('price-premium-mo').value)||499,franchise_yr:parseInt(document.getElementById('price-franchise-yr').value)||9999,franchise_mo:parseInt(document.getElementById('price-franchise-mo').value)||1999};
+  KS.db.collection('admin').doc('pricing').set(p)
+    .then(function(){adminToast('✅ Pricing saved!');}).catch(function(e){adminToast('❌ '+e.message);});
+}
+function loadPricing(){
+  KS.db.collection('admin').doc('pricing').get().then(function(doc){
+    if(!doc.exists)return; var p=doc.data();
+    if(p.premium_yr)document.getElementById('price-premium-yr').value=p.premium_yr;
+    if(p.premium_mo)document.getElementById('price-premium-mo').value=p.premium_mo;
+    if(p.franchise_yr)document.getElementById('price-franchise-yr').value=p.franchise_yr;
+    if(p.franchise_mo)document.getElementById('price-franchise-mo').value=p.franchise_mo;
+  }).catch(function(){});
 }
 
-function executeUpgrade() {
-  var uid  = document.getElementById('upgrade-user-id').value;
-  var plan = document.getElementById('upgrade-plan-select').value;
-  if (!uid) return;
-
-  KS.db.collection('users').doc(uid).update({
-    planType:         plan,
-    paymentStatus:    plan === 'free' ? 'none' : 'paid',
-    manualUpgradeBy:  _adminUser ? _adminUser.email : 'admin',
-    manualUpgradeAt:  firebase.firestore.FieldValue.serverTimestamp()
-  })
-  .then(function() {
-    closeModal('upgrade-modal');
-    adminToast('✅ User plan updated to ' + plan);
-    loadUsers(); loadStats();
-  })
-  .catch(function(err) { adminToast('❌ ' + err.message); });
+// ════════ TOOLS ════════
+function loadToolSettings(){
+  setText('tools-admin-tbody','<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">Loading...</td></tr>');
+  KS.db.collection('admin').doc('tool_settings').get()
+    .then(function(doc){
+      var saved=doc.exists?doc.data():{};
+      _toolSettings={};
+      TOOLS_LIST.forEach(function(t){var s=saved[t.id]||{};_toolSettings[t.id]={id:t.id,name:s.name||t.name,icon:s.icon||t.icon,cat:s.cat||t.cat,desc:s.desc||'',status:s.status!==undefined?s.status:t.status,plan:s.plan!==undefined?s.plan:t.plan,price:s.price!==undefined?s.price:0,origPrice:s.origPrice!==undefined?s.origPrice:0,badge:s.badge||'',featured:s.featured||false};});
+      _unsavedCount=0;updateUnsavedBanner();filterToolsPanel();updateToolStats();
+    }).catch(function(){TOOLS_LIST.forEach(function(t){_toolSettings[t.id]=Object.assign({},t);});filterToolsPanel();updateToolStats();});
+}
+function renderToolsTable(list){
+  var sC={live:{dot:'#34d399',label:'🟢 LIVE'},off:{dot:'#f87171',label:'🔴 OFF'},coming_soon:{dot:'#fbbf24',label:'🟡 SOON'},maintenance:{dot:'#60a5fa',label:'🔧 MAINT.'}};
+  var pC={free:'badge free',premium:'badge premium',franchise:'badge franchise'};
+  var tbody=document.getElementById('tools-admin-tbody');
+  if(!list.length){tbody.innerHTML='<tr><td colspan="8" style="text-align:center;color:var(--t4);padding:20px;">No tools match filter</td></tr>';return;}
+  tbody.innerHTML=list.map(function(t,i){
+    var sc=sC[t.status]||sC['off'],isL=t.status==='live';
+    var pd=t.price>0?'<span style="color:var(--gold2);font-weight:700;">₹'+t.price.toLocaleString('en-IN')+'</span>':'<span style="color:var(--neon);">FREE</span>';
+    return '<tr><td style="color:var(--t4);font-size:.75rem;">'+(i+1)+'</td>'+
+      '<td><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:1.25rem;">'+esc(t.icon)+'</span>'+
+      '<div><div style="font-weight:600;font-size:.84rem;">'+esc(t.name)+'</div>'+
+      (t.badge?'<span style="font-size:.58rem;background:var(--red);color:#fff;padding:1px 5px;border-radius:3px;">'+esc(t.badge)+'</span>':'')+
+      (t.featured?'<span style="font-size:.58rem;background:rgba(245,158,11,.2);color:#fbbf24;padding:1px 5px;border-radius:3px;margin-left:2px;">⭐</span>':'')+'</div></div></td>'+
+      '<td style="font-size:.75rem;color:var(--t3);text-transform:capitalize;">'+esc(t.cat)+'</td>'+
+      '<td style="font-size:.75rem;font-weight:600;color:'+sc.dot+';">'+sc.label+'</td>'+
+      '<td><span class="'+(pC[t.plan]||'badge free')+'">'+(t.plan||'free').toUpperCase()+'</span></td>'+
+      '<td>'+pd+'</td>'+
+      '<td><label style="display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox"'+(isL?' checked':'')+' data-toolid="'+t.id+'" onchange="onToolLiveToggle(this)" style="width:14px;height:14px;accent-color:var(--neon);"><span style="font-size:.75rem;color:'+(isL?'var(--neon)':'var(--red)')+';" id="tl-'+t.id+'">'+(isL?'Live':'Off')+'</span></label></td>'+
+      '<td><button class="btn btn-ghost btn-sm" onclick="openToolEdit(\''+t.id+'\')">✏️</button></td>'+
+    '</tr>';
+  }).join('');
+}
+function filterToolsPanel(){
+  if(!Object.keys(_toolSettings).length)return;
+  var q=(document.getElementById('tool-search')||{value:''}).value.toLowerCase();
+  var fP=(document.getElementById('tool-filter-plan')||{value:'all'}).value;
+  var fS=(document.getElementById('tool-filter-status')||{value:'all'}).value;
+  var filtered=Object.values(_toolSettings).filter(function(t){return(!q||t.name.toLowerCase().includes(q)||t.cat.toLowerCase().includes(q))&&(fP==='all'||t.plan===fP)&&(fS==='all'||t.status===fS);});
+  filtered.sort(function(a,b){if(a.featured&&!b.featured)return -1;if(!a.featured&&b.featured)return 1;var o={live:0,maintenance:1,coming_soon:2,off:3};return(o[a.status]||9)-(o[b.status]||9);});
+  renderToolsTable(filtered); updateToolStats();
+}
+function onToolLiveToggle(cb){
+  var id=cb.getAttribute('data-toolid');var lbl=document.getElementById('tl-'+id);
+  if(!_toolSettings[id])return;
+  _toolSettings[id].status=cb.checked?'live':'off';
+  if(lbl){lbl.textContent=cb.checked?'Live':'Off';lbl.style.color=cb.checked?'var(--neon)':'var(--red)';}
+  _unsavedCount++;updateUnsavedBanner();updateToolStats();
+}
+function setAllToolsLive(){if(!confirm('Sare tools LIVE?'))return;Object.keys(_toolSettings).forEach(function(id){_toolSettings[id].status='live';});_unsavedCount=Object.keys(_toolSettings).length;filterToolsPanel();updateUnsavedBanner();}
+function setAllToolsOff(){if(!confirm('Sare tools OFF?'))return;Object.keys(_toolSettings).forEach(function(id){_toolSettings[id].status='off';});_unsavedCount=Object.keys(_toolSettings).length;filterToolsPanel();updateUnsavedBanner();}
+function openToolEdit(id){
+  var t=_toolSettings[id];if(!t)return;
+  document.getElementById('te-tool-id').value=id;
+  document.getElementById('te-name').value=t.name||'';
+  document.getElementById('te-icon').value=t.icon||'';
+  document.getElementById('te-cat').value=t.cat||'marketing';
+  document.getElementById('te-status').value=t.status||'live';
+  document.getElementById('te-plan').value=t.plan||'free';
+  document.getElementById('te-price').value=t.price||0;
+  document.getElementById('te-orig-price').value=t.origPrice||0;
+  document.getElementById('te-badge').value=t.badge||'';
+  document.getElementById('te-featured').checked=t.featured||false;
+  openModal('tool-edit-modal');
+}
+function saveToolEdit(){
+  var id=document.getElementById('te-tool-id').value;if(!id||!_toolSettings[id])return;
+  _toolSettings[id].name=document.getElementById('te-name').value.trim();
+  _toolSettings[id].icon=document.getElementById('te-icon').value.trim();
+  _toolSettings[id].cat=document.getElementById('te-cat').value;
+  _toolSettings[id].status=document.getElementById('te-status').value;
+  _toolSettings[id].plan=document.getElementById('te-plan').value;
+  _toolSettings[id].price=parseInt(document.getElementById('te-price').value)||0;
+  _toolSettings[id].origPrice=parseInt(document.getElementById('te-orig-price').value)||0;
+  _toolSettings[id].badge=document.getElementById('te-badge').value.trim();
+  _toolSettings[id].featured=document.getElementById('te-featured').checked;
+  _unsavedCount++;updateUnsavedBanner();closeModal('tool-edit-modal');filterToolsPanel();
+  adminToast('✅ Tool updated — Save All karo to apply live');
+}
+function saveToolSettings(){
+  if(!_adminUser){adminToast('❌ Admin login required');return;}
+  adminToast('⏳ Saving...');
+  var s={};Object.keys(_toolSettings).forEach(function(id){s[id]=_toolSettings[id];});
+  KS.db.collection('admin').doc('tool_settings').set(s)
+    .then(function(){_unsavedCount=0;updateUnsavedBanner();filterToolsPanel();adminToast('✅ Tool settings saved to Firestore!');})
+    .catch(function(e){adminToast(e.code==='permission-denied'?'❌ Permission denied! Firestore rules update karo':'❌ '+e.message);});
+}
+function updateToolStats(){
+  var a=Object.values(_toolSettings);
+  setText('ts-live-count',a.filter(function(t){return t.status==='live';}).length);
+  setText('ts-off-count',a.filter(function(t){return t.status==='off';}).length);
+  setText('ts-premium-count',a.filter(function(t){return t.plan==='premium';}).length);
+  setText('ts-free-count',a.filter(function(t){return t.plan==='free';}).length);
+}
+function updateUnsavedBanner(){
+  var b=document.getElementById('tools-unsaved-banner');if(!b)return;
+  if(_unsavedCount>0){setText('unsaved-count',_unsavedCount);b.style.display='flex';}else{b.style.display='none';}
 }
 
-function confirmDisableUser(uid, name) {
-  if (!confirm('Disable user "' + name + '"? They will not be able to login.')) return;
-  KS.db.collection('users').doc(uid).update({ disabled: true, planType: 'free' })
-    .then(function() { adminToast('User disabled.'); loadUsers(); })
-    .catch(function(err) { adminToast('Error: ' + err.message); });
+// ════════ UPI ════════
+function copyUPI(){
+  if(navigator.clipboard)navigator.clipboard.writeText('9099928877@pthdfc').then(function(){adminToast('📋 UPI copied: 9099928877@pthdfc');});
+  else adminToast('UPI ID: 9099928877@pthdfc');
 }
 
-// ─── Panel Navigation ───
-function showPanel(name) {
-  document.querySelectorAll('.admin-panel').forEach(function(p) { p.classList.remove('active'); });
-  document.getElementById('panel-' + name).classList.add('active');
-  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-  event.currentTarget && event.currentTarget.classList && event.currentTarget.classList.add('active');
-
-  var titles = { dashboard:'📊 Dashboard', users:'👥 Users', payments:'💳 Payments', franchise:'🏢 Franchise', tools:'🔧 Tools Management' };
-  document.getElementById('topbar-title').textContent = titles[name] || name;
-
-  if (name === 'tools') { loadToolSettings(); }
+// ════════ PANEL NAV ════════
+function showPanel(name,el){
+  document.querySelectorAll('.admin-panel').forEach(function(p){p.classList.remove('active');});
+  var panel=document.getElementById('panel-'+name);if(panel)panel.classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active');});
+  if(el)el.classList.add('active');
+  var titles={dashboard:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',payments:'💳 Payments',franchise:'🏢 Franchise',reminders:'🔔 Reminders',tools:'🔧 Tools Management'};
+  setText('topbar-title',titles[name]||name);
+  if(name==='tools')loadToolSettings();
+  if(name==='reminders')loadReminders();
+  if(name==='access'){loadAccessList();loadPricing();}
+  if(name==='franchise')loadFranchise();
+  if(name==='users')loadUsers();
+  if(name==='payments')loadPayments();
+  if(name==='dashboard'){loadStats();loadRecentPayments();}
 }
 
-// ─── Helpers ───
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function esc(s) { return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function adminToast(msg) {
-  var t = document.getElementById('admin-toast');
-  t.textContent = msg; t.style.display = 'block';
-  setTimeout(function() { t.style.display = 'none'; }, 3000);
+// ════════ HELPERS ════════
+function openModal(id){var e=document.getElementById(id);if(e)e.classList.add('open');}
+function closeModal(id){var e=document.getElementById(id);if(e)e.classList.remove('open');}
+function esc(s){return(s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function setText(id,val){var el=document.getElementById(id);if(el)el.innerHTML=val;}
+function adminToast(msg){
+  var t=document.getElementById('admin-toast');
+  t.textContent=msg;t.style.display='block';t.style.animation='toastIn .3s ease';
+  clearTimeout(t._t);t._t=setTimeout(function(){t.style.display='none';},4500);
 }
+document.addEventListener('click',function(e){if(e.target.classList.contains('modal-ov'))e.target.classList.remove('open');});
+document.addEventListener('keydown',function(e){if(e.key==='Escape')document.querySelectorAll('.modal-ov.open').forEach(function(m){m.classList.remove('open');});});
 </script>
-
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 </body>
 </html>

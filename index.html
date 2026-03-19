@@ -371,10 +371,54 @@
         auth:    firebase.auth(),
         db:      firebase.firestore(),
         isAdmin: function(e){ return _admins.includes((e||'').toLowerCase().trim()); },
-        canAccessTool: function(toolId, plan){
-          if (!plan) return true;
-          if (plan === 'franchise') return true;
-          return true;
+        canAccessTool: function(toolId, userPlan){
+          // Free tools - always allowed
+          if (!toolId) return true;
+          return true; // Tool-level check done in launchPremiumTool
+        },
+        checkUserAccess: function(requiredPlan, callback) {
+          // Real-time access check from Firestore
+          var user = window.getUser ? getUser() : null;
+          if (!user || !user.email) { callback(false, 'not_logged_in'); return; }
+          var key = user.email.replace(/[.#$\/\[\]]/g,'_');
+          KS.db.collection('users').doc(key).get().then(function(doc) {
+            if (!doc.exists) { callback(false, 'no_record'); return; }
+            var d = doc.data();
+            if (d.disabled) { callback(false, 'disabled'); return; }
+            var planType = d.planType || 'free';
+            // Check expiry
+            if (d.planExpiry && planType !== 'free') {
+              var expiry = new Date(d.planExpiry);
+              if (expiry < new Date()) { callback(false, 'expired'); return; }
+            }
+            // Check plan level
+            if (requiredPlan === 'premium') {
+              if (planType === 'premium' || planType === 'franchise') {
+                // Sync to localStorage
+                var u = getUser(); u.planType = planType; u.planExpiry = d.planExpiry; saveUser(u);
+                callback(true, planType);
+              } else {
+                callback(false, 'upgrade_required');
+              }
+            } else if (requiredPlan === 'franchise') {
+              if (planType === 'franchise') {
+                var u = getUser(); u.planType = planType; u.planExpiry = d.planExpiry; saveUser(u);
+                callback(true, planType);
+              } else {
+                callback(false, 'franchise_required');
+              }
+            } else {
+              callback(true, planType);
+            }
+          }).catch(function(err) {
+            console.error('[KSpider] Access check error:', err);
+            // Fallback to localStorage
+            var u = window.getUser ? getUser() : null;
+            var p = u ? (u.planType || u.plan || 'free') : 'free';
+            if (requiredPlan === 'premium') callback(p==='premium'||p==='franchise', p);
+            else if (requiredPlan === 'franchise') callback(p==='franchise', p);
+            else callback(true, p);
+          });
         }
       };
       // Reset tool settings cache so next render picks up fresh Firestore data
@@ -382,27 +426,61 @@
       console.log('[KSpider] Firebase ready ✅');
     }
 
-    function loadScript(src, cb) {
+    function loadScript(src, onSuccess, onFail) {
       var s = document.createElement('script');
+      var done = false;
+      var timer = setTimeout(function() {
+        if (!done) { done = true; onFail && onFail(); }
+      }, 8000);
       s.src = src;
-      s.onload = cb;
-      s.onerror = function(){ cb(); };
+      s.onload = function() { if (!done) { done = true; clearTimeout(timer); onSuccess(); } };
+      s.onerror = function() { if (!done) { done = true; clearTimeout(timer); onFail && onFail(); } };
       document.head.appendChild(s);
     }
 
+    var CDN_SETS = [
+      [
+        'https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js',
+        'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js',
+        'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js'
+      ],
+      [
+        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
+        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js',
+        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js'
+      ],
+      [
+        'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
+        'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js',
+        'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js'
+      ]
+    ];
+    var _cdnIdx = 0;
+
+    function tryNextCDN() {
+      if (_cdnIdx >= CDN_SETS.length) { console.error('[KSpider] All CDNs failed'); return; }
+      var set = CDN_SETS[_cdnIdx++];
+      loadSDKSet(set, 0, function() { initKS(); }, function() { tryNextCDN(); });
+    }
+
+    function loadSDKSet(set, i, onDone, onFail) {
+      if (i >= set.length) { onDone(); return; }
+      loadScript(set[i], function() { loadSDKSet(set, i+1, onDone, onFail); }, function() { onFail(); });
+    }
+
     var SDKS = [
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js',
-      'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js'
+      'https://www.gstatic.com/firebasejs/11.6.0/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/11.6.0/firebase-firestore-compat.js',
+      'https://www.gstatic.com/firebasejs/11.6.0/firebase-auth-compat.js'
     ];
 
     function loadSeq(i) {
       if (i >= SDKS.length) { initKS(); return; }
-      loadScript(SDKS[i], function(){ loadSeq(i + 1); });
+      loadScript(SDKS[i], function(){ loadSeq(i + 1); }, function(){ loadSeq(i + 1); });
     }
 
     if (typeof firebase !== 'undefined') { initKS(); }
-    else { loadSeq(0); }
+    else { tryNextCDN(); }
   })();
   </script>
   <script src="payment.js"></script>
@@ -2220,6 +2298,21 @@ body {
       <button onclick="initiateRazorpay()" style="width:100%;padding:14px;background:linear-gradient(135deg,#7c3aed,#a855f7);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.9rem;border:none;border-radius:var(--r8);cursor:pointer;transition:all .25s;box-shadow:0 6px 20px rgba(124,58,237,.3)">
         &#x1F512; Pay Securely &#x20B9;2,999 via Razorpay &#x2192;
       </button>
+
+      <!-- UPI Offline Payment Option -->
+      <div style="margin-top:14px;border:1px solid rgba(184,121,42,.3);border-radius:var(--r8);padding:14px;background:rgba(184,121,42,.06);">
+        <div style="font-size:.78rem;font-weight:700;color:#d4922e;margin-bottom:8px;">📱 Ya Direct UPI se pay karo (Offline)</div>
+        <div style="text-align:center;margin-bottom:8px;">
+          <div style="font-family:monospace;font-size:1rem;font-weight:700;color:#f5c259;background:rgba(0,0,0,.3);padding:8px 16px;border-radius:6px;display:inline-block;">9099928877@pthdfc</div>
+        </div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.4);line-height:1.75;">
+          1. ऊपर UPI ID pe payment karo (PhonePe / GPay / Paytm)<br>
+          2. Screenshot ya UTR number save karo<br>
+          3. WhatsApp karo: <a href="https://wa.me/919099928877" target="_blank" style="color:#d4922e;">+91 90999 28877</a> — screenshot bhejo<br>
+          4. Admin 1-2 hrs mein access activate kar dega ✅
+        </div>
+      </div>
+
       <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin-top:12px;font-size:.67rem;color:var(--t4)">
         <span>&#x1F512; 256-bit SSL</span><span>&bull;</span><span>&#x1F3E6; Razorpay Secure</span><span>&bull;</span><span>&#x1F4F1; UPI / Card / NetBanking</span>
       </div>
@@ -3106,30 +3199,48 @@ function launchPremiumTool(url, toolId, requiredPlan) {
   var u = getUser();
   if (!u || !u.verified) { openM('gate-ov'); return false; }
 
-  var planType = u.planType || u.plan || 'free';
+  // Show loading state
+  toast('⏳ Access check ho rahi hai...', 'info', 2000);
 
-  // Use KS.canAccessTool if available, else manual check
-  var allowed = false;
-  if (typeof KS !== 'undefined' && KS.canAccessTool) {
-    allowed = KS.canAccessTool(toolId, planType);
+  if (typeof KS !== 'undefined' && KS.checkUserAccess) {
+    // Real-time Firestore check
+    KS.checkUserAccess(requiredPlan, function(allowed, reason) {
+      if (allowed) {
+        u.toolsUsed = (u.toolsUsed || 0) + 1;
+        saveUser(u);
+        if (typeof gtag !== 'undefined') {
+          gtag('event', 'tool_click', { event_category: 'kspider', event_label: toolId + '_premium' });
+        }
+        window.location.href = url;
+      } else {
+        if (reason === 'expired') {
+          toast('⏰ Aapka plan expire ho gaya hai! Renew karo.', 'warn', 6000);
+          openProPayment();
+        } else if (reason === 'disabled') {
+          toast('🚫 Account suspended. Admin se contact karo: kspider221206@gmail.com', 'error', 7000);
+        } else if (reason === 'not_logged_in') {
+          openM('gate-ov');
+        } else {
+          toast('💎 Yeh tool sirf ' + (requiredPlan==='franchise'?'Franchise':'Premium') + ' users ke liye hai! Upgrade karo.', 'warn', 5000);
+          openProPayment();
+        }
+      }
+    });
   } else {
+    // Fallback: localStorage check
+    var planType = u.planType || u.plan || 'free';
+    var allowed = false;
     if (requiredPlan === 'premium' && (planType === 'premium' || planType === 'franchise')) allowed = true;
     if (requiredPlan === 'franchise' && planType === 'franchise') allowed = true;
+    if (allowed) {
+      u.toolsUsed = (u.toolsUsed || 0) + 1;
+      saveUser(u);
+      window.location.href = url;
+    } else {
+      toast('💎 Yeh tool sirf ' + requiredPlan.toUpperCase() + ' users ke liye hai! Upgrade karo.', 'warn', 5000);
+      openProPayment();
+    }
   }
-
-  if (!allowed) {
-    toast('💎 Yeh tool sirf ' + requiredPlan.toUpperCase() + ' users ke liye hai! Pro upgrade karo.', 'warn', 5000);
-    openProPayment();
-    return false;
-  }
-
-  u.toolsUsed = (u.toolsUsed || 0) + 1;
-  saveUser(u);
-  sendAdminAlert('TOOL_LAUNCHED', u, 'Premium Tool: ' + toolId + ' | Plan: ' + planType + ' | URL: ' + url);
-  if (typeof gtag !== 'undefined') {
-    gtag('event', 'tool_click', { event_category: 'kspider', event_label: toolId + '_premium' });
-  }
-  window.location.href = url;
   return false;
 }
 
