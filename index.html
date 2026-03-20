@@ -2574,82 +2574,35 @@ body {
      EmailJS Dashboard pe jaake template_otp_kspider banao
      (instructions neeche comment mein hain)
      ═══════════════════════════════════════════════════════════ -->
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 
 /* ══════════════════════════════════════════════════════
    EMAILJS CONFIG — AAPKE ACTUAL IDs
    ══════════════════════════════════════════════════════ */
 
-// ═══════════════════════════════════════════════════════
-// EMAIL SYSTEM — Google Apps Script (Primary) + EmailJS (Fallback)
-// GAS = No CORS, No block, Sends from Gmail directly
-// ═══════════════════════════════════════════════════════
+// ── EmailJS credentials — PEHLE define karo, functions baad mein ──
+var EJS_SERVICE    = 'service_sxzyj31';    // ✅ Gmail Service ID
+var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN'; // ✅ EmailJS Public Key
 
-function ksSendEmail(toEmail, subject, body, onOk, onFail) {
-  // Try Netlify Function / GAS proxy first
-  if (GAS_EMAIL_URL && GAS_EMAIL_URL.indexOf('YOUR_GAS') < 0) {
-    fetch(GAS_EMAIL_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: toEmail, subject: subject, body: body })
-    })
-    .then(function(res) {
-      if (!res.ok) throw new Error('HTTP ' + res.status);
-      return res.json();
-    })
-    .then(function(data) {
-      if (data.status === 'ok') {
-        console.log('[KSpider] Email sent via proxy ✅ to:', toEmail);
-        if (onOk) onOk();
-      } else {
-        throw new Error(data.error || 'Proxy error');
-      }
-    })
-    .catch(function(e) {
-      console.warn('[KSpider] Proxy failed:', e.message, '— trying EmailJS...');
-      ksSendViaEJS(toEmail, subject, body, onOk, onFail);
-    });
-  } else {
-    ksSendViaEJS(toEmail, subject, body, onOk, onFail);
-  }
-}
-
-function ksSendViaEJS(toEmail, subject, body, onOk, onFail) {
+// ── EmailJS REST API helper — no SDK needed, no "failed to fetch" ──
+function ejsSend(templateId, params, onOk, onFail) {
   fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       service_id: EJS_SERVICE,
-      template_id: EJS_OTP_TEMPLATE,
+      template_id: templateId,
       user_id: EJS_PUBLIC_KEY,
       accessToken: EJS_PUBLIC_KEY,
-      template_params: { to_email: toEmail, subject: subject, message: body,
-        to_name: toEmail, from_name: 'K Spider AI', otp_code: '', reg_date: '', user_mobile: '', features_list: '' }
+      template_params: params
     })
   })
   .then(function(res) {
-    if (res.ok) { console.log('[KSpider] Email via EmailJS ✅'); if (onOk) onOk(); }
-    else { return res.text().then(function(t){ throw new Error('EJS '+res.status+': '+t); }); }
+    if (res.ok) { if (onOk) onOk(res); }
+    else { return res.text().then(function(t){ var e=new Error(res.status+': '+t); if(onFail) onFail(e); else console.warn('[EJS]',e.message); }); }
   })
-  .catch(function(e) {
-    console.warn('[KSpider] EmailJS also failed:', e.message);
-    if (onFail) onFail(e);
-  });
+  .catch(function(e) { if (onFail) onFail(e); else console.warn('[EJS] Network error:', e.message); });
 }
-
-// Legacy ejsSend wrapper for backwards compat
-function ejsSend(templateId, params, onOk, onFail) {
-  var toEmail = params.to_email || params.user_email || 'kspider221206@gmail.com';
-  var subject = params.subject || params.alert_type || 'K Spider AI Alert';
-  var body    = params.message || params.extra_info || JSON.stringify(params);
-  ksSendEmail(toEmail, subject, body, onOk, onFail);
-}
-// ── Google Apps Script Email Proxy (Primary — no CORS, no block) ──
-// SETUP: script.google.com → New Project → paste GAS code → Deploy → copy URL here
-var GAS_EMAIL_URL = 'https://kspiderai.in/.netlify/functions/send-email'; // Netlify Function
-
-var EJS_SERVICE   = 'service_sxzyj31';
-var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN';
 
 /* ══════════════════════════════════════════════════════
    FIREBASE CONFIG — K Spider AI Tool
@@ -3182,13 +3135,23 @@ function sendAdminAlert(alertType, userData, extraInfo) {
         window._ejsReady = true;
       }
     } catch(e) {}
-    ksSendEmail(
-      'kspider221206@gmail.com',
-      adminParams.subject,
-      adminParams.message,
-      function() { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); },
-      function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.message||err); }
-    );
+    var ejsAdminPayload = {
+      service_id:  EJS_SERVICE,
+      template_id: EJS_ADMIN_TEMPLATE,
+      user_id:     EJS_PUBLIC_KEY,
+      accessToken: EJS_PUBLIC_KEY,
+      template_params: adminParams
+    };
+    fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ejsAdminPayload)
+    })
+    .then(function(res) {
+      if (res.ok) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); }
+      else { return res.text().then(function(t){ throw new Error(res.status+': '+t); }); }
+    })
+    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.message||err); });
   }
   doAdminAlert(1);
 }
@@ -3238,22 +3201,34 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
       showOtpStatus('⚠️ Email service load nahi hua — OTP screen pe dekho.', true);
       return;
     }
-    var otpSubject = 'Aapka K Spider AI OTP: ' + otp;
-    var otpBody    = 'Namaste ' + name + ',\n\nAapka K Spider AI OTP: ' + otp +
-      '\n\nYeh OTP 10 minutes mein expire hoga.\nKisi ko share mat karo.' +
-      '\n\nDate: ' + dateStr + '\nMobile: ' + mobile +
-      '\n\nK Spider AI — www.kspiderai.in';
-
-    console.log('[KSpider] Sending OTP to:', email);
-    ksSendEmail(email, otpSubject, otpBody,
-      function() {
+    // Use EmailJS REST API directly — no SDK needed, no CORS issue
+    var ejsPayload = {
+      service_id:  EJS_SERVICE,
+      template_id: EJS_OTP_TEMPLATE,
+      user_id:     EJS_PUBLIC_KEY,
+      accessToken: EJS_PUBLIC_KEY,
+      template_params: userParams
+    };
+    console.log('[KSpider] Sending OTP via REST API to:', email);
+    fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(ejsPayload)
+    })
+    .then(function(res) {
+      if (res.ok) {
+        console.log('[KSpider] OTP sent ✅ Status:', res.status);
         showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
-      },
-      function(err) {
-        console.error('[KSpider] OTP send FAILED:', err.message);
-        showOtpStatus('⚠️ Email nahi gaya — OTP screen pe dekho ya Resend karo.', true);
+      } else {
+        return res.text().then(function(txt) {
+          throw new Error('HTTP ' + res.status + ': ' + txt);
+        });
       }
-    );
+    })
+    .catch(function(err) {
+      console.error('[KSpider] OTP send FAILED:', err.message || err);
+      showOtpStatus('⚠️ Email nahi gaya: ' + (err.message || 'Network error') + ' — OTP screen pe dekho.', true);
+    });
   }
   doSendOTP(1);
   sendAdminAlert('NEW_REGISTRATION', {name:name,email:email,mobile:mobile,city:city,language:language}, 'New user registered');
@@ -3681,7 +3656,7 @@ function sendPaymentConfirmationEmail(email, name, orderId, plan, amount, utr) {
   try {
     fetch('https://api.emailjs.com/api/v1.0/email/send',{
       method:'POST',
-      headers:{'Content-Type':'application/json','origin':'https://www.kspiderai.in'},
+      headers:{'Content-Type':'application/json'},
       body:JSON.stringify({service_id:EJS_SERVICE,template_id:EJS_ADMIN_TEMPLATE,user_id:EJS_PUBLIC_KEY,accessToken:EJS_PUBLIC_KEY,
         template_params:{
           user_name:name, user_email:email, to_email:email,
