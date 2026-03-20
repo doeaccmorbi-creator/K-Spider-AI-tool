@@ -48,6 +48,9 @@
         };
         if (typeof checkAdminAuth === 'function') checkAdminAuth();
         console.log('[KSpider Admin] Firebase ready ✅');
+      // Update login page status indicator
+      var fbStatus = document.getElementById('fb-status');
+      if(fbStatus){ fbStatus.textContent='✅ Ready — Sign in karein'; fbStatus.style.color='#34d399'; }
       } catch(err) {
         console.error('[KSpider Admin] Init error:', err);
         showFBError('Firebase init error: ' + err.message);
@@ -55,7 +58,9 @@
     }
 
     function showFBError(msg) {
-      // Show visible error on page
+      // Update status indicator
+      var fbStatus = document.getElementById('fb-status');
+      if(fbStatus){ fbStatus.textContent='❌ '+msg; fbStatus.style.color='#f87171'; }
       document.addEventListener('DOMContentLoaded', function() {
         var ov = document.getElementById('admin-login-overlay');
         if (ov) {
@@ -382,7 +387,8 @@
     <div id="admin-login-alert" style="display:none;padding:10px;border-radius:8px;font-size:.82rem;margin-bottom:12px;background:rgba(220,38,38,.1);color:#f87171;border:1px solid rgba(220,38,38,.2);"></div>
     <input type="email"    class="form-input-dark" id="admin-email-in"  placeholder="Admin email" onkeydown="if(event.key==='Enter')document.getElementById('admin-pw-in').focus()">
     <input type="password" class="form-input-dark" id="admin-pw-in"     placeholder="Password"    onkeydown="if(event.key==='Enter')adminLogin()">
-    <button class="btn btn-gold" style="width:100%;padding:12px;font-size:.95rem;" onclick="adminLogin()">
+    <div id="fb-status" style="font-size:.75rem;color:#fbbf24;margin-bottom:10px;min-height:18px;text-align:center;">⏳ Firebase connecting...</div>
+    <button class="btn btn-gold" style="width:100%;padding:12px;font-size:.95rem;" onclick="adminLogin()" id="admin-signin-btn">
       🔑 Sign In as Admin
     </button>
     <!-- Setup help — shows only if user not found in Firebase Auth -->
@@ -1187,13 +1193,33 @@ function adminLogin(){
   var email=(document.getElementById('admin-email-in').value||'').trim().toLowerCase();
   var pw=document.getElementById('admin-pw-in').value;
   if(!email||!pw){showLoginAlert('Email aur password enter karo');return;}
-  if(!KS||!KS.auth){showLoginAlert('Firebase load nahi hua — Ctrl+Shift+R karo');return;}
   var btn=document.querySelector('.admin-login-box .btn-gold');
+  // Wait for Firebase/KS to be ready — retry up to 5 seconds
+  if(!window.KS||!window.KS.auth){
+    if(btn){btn.textContent='⏳ Connecting...';btn.disabled=true;}
+    var attempts=0;
+    var waitKS=setInterval(function(){
+      attempts++;
+      if(window.KS&&window.KS.auth){
+        clearInterval(waitKS);
+        if(btn){btn.textContent='Signing in...';btn.disabled=true;}
+        doSignIn(email,pw,btn);
+      } else if(attempts>=20){
+        clearInterval(waitKS);
+        if(btn){btn.textContent='🔑 Sign In as Admin';btn.disabled=false;}
+        showLoginAlert('Firebase load nahi hua. Ctrl+Shift+R karo ya internet check karo.');
+      }
+    },250);
+    return;
+  }
   if(btn){btn.textContent='Signing in...';btn.disabled=true;}
-  KS.auth.signInWithEmailAndPassword(email,pw)
+  doSignIn(email,pw,btn);
+}
+function doSignIn(email,pw,btn){
+  window.KS.auth.signInWithEmailAndPassword(email,pw)
     .then(function(c){
       if(!KS.isAdmin(c.user.email)){
-        KS.auth.signOut();
+        window.KS.auth.signOut();
         showLoginAlert('Access denied — yeh email admin nahi hai: '+c.user.email);
         if(btn){btn.textContent='Sign In as Admin';btn.disabled=false;}
         return;
@@ -1204,14 +1230,15 @@ function adminLogin(){
       setText('admin-name-display',c.user.displayName||email);
       initDashboard();
     }).catch(function(e){
-      if(btn){btn.textContent='Sign In as Admin';btn.disabled=false;}
+      if(btn){btn.textContent='🔑 Sign In as Admin';btn.disabled=false;}
       var msg='';
-      if(e.code==='auth/wrong-password')           msg='Password galat hai';
-      else if(e.code==='auth/user-not-found')      msg='Yeh email Firebase Auth mein register nahi — niche steps dekho';
-      else if(e.code==='auth/invalid-credential')  msg='Email ya password galat hai';
-      else if(e.code==='auth/too-many-requests')   msg='Bahut attempts — 15 min baad try karo';
-      else if(e.code==='auth/network-request-failed') msg='Internet check karo';
-      else msg=e.code+': '+e.message;
+      if(e.code==='auth/wrong-password')              msg='❌ Password galat hai';
+      else if(e.code==='auth/user-not-found')         msg='❌ Email Firebase Auth mein nahi — niche steps dekho';
+      else if(e.code==='auth/invalid-credential')     msg='❌ Email ya password galat hai';
+      else if(e.code==='auth/invalid-email')          msg='❌ Invalid email format';
+      else if(e.code==='auth/too-many-requests')      msg='⚠️ Bahut attempts — 15 min baad try karo';
+      else if(e.code==='auth/network-request-failed') msg='❌ Internet check karo';
+      else msg='❌ '+e.code+': '+e.message;
       showLoginAlert(msg);
       var h=document.getElementById('admin-setup-help');
       if(h&&(e.code==='auth/user-not-found'||e.code==='auth/invalid-credential'))h.style.display='block';
@@ -1222,17 +1249,31 @@ function adminLogout(){KS.auth.signOut().then(function(){window.location.reload(
 var _authDone=false;
 function checkAdminAuth(){
   if(_authDone)return;_authDone=true;
-  KS.auth.onAuthStateChanged(function(u){
-    if(u&&KS.isAdmin(u.email)){
+  window.KS.auth.onAuthStateChanged(function(u){
+    if(u&&window.KS.isAdmin(u.email)){
       _adminUser=u;
       document.getElementById('admin-login-overlay').style.display='none';
       document.getElementById('admin-layout').style.display='flex';
       setText('admin-name-display',u.displayName||u.email);
       initDashboard();
+    } else {
+      // Not logged in — make sure login overlay is visible
+      var ov=document.getElementById('admin-login-overlay');
+      if(ov)ov.style.display='flex';
     }
   });
 }
-document.addEventListener('DOMContentLoaded',function(){if(typeof KS!=='undefined')checkAdminAuth();});
+document.addEventListener('DOMContentLoaded',function(){
+  // Poll for KS to be ready then check auth
+  var poll=setInterval(function(){
+    if(window.KS&&window.KS.auth){
+      clearInterval(poll);
+      checkAdminAuth();
+    }
+  },100);
+  // Timeout after 10s
+  setTimeout(function(){clearInterval(poll);},10000);
+});
 
 // ════════ INIT ════════
 function initDashboard(){
