@@ -3165,23 +3165,32 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
       showOtpStatus('⚠️ Email service load nahi hua — OTP screen pe dekho.', true);
       return;
     }
-    // Ensure init before every send
+    // Always re-init to be safe
     try {
-      if (!window._ejsReady) {
-        emailjs.init({ publicKey: EJS_PUBLIC_KEY });
-        window._ejsReady = true;
-      }
+      emailjs.init({ publicKey: EJS_PUBLIC_KEY });
+      window._ejsReady = true;
+      console.log('[KSpider] EmailJS init OK. Service:', EJS_SERVICE, 'Template:', EJS_OTP_TEMPLATE, 'Key:', EJS_PUBLIC_KEY);
     } catch(initErr) { console.warn('[EJS] init error:', initErr); }
 
+    console.log('[KSpider] Sending to:', email, '| Params:', JSON.stringify(userParams));
     emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
       .then(function(r) {
         console.log('[KSpider] OTP Email sent ✅ Status:', r.status, r.text);
         showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
       })
       .catch(function(err) {
-        console.error('[KSpider] OTP Email FAILED — Status:', err.status, '| Error:', err.text);
-        var errMsg = err.text || err.status || 'Unknown error';
-        showOtpStatus('⚠️ Email error: ' + errMsg + ' — OTP screen pe dekho ya Resend karo.', true);
+        // Full error dump for debugging
+        console.error('[KSpider] OTP FAILED. Full error object:', JSON.stringify(err));
+        console.error('err.status=', err.status, 'err.text=', err.text, 'err.message=', err.message);
+        var errMsg = '';
+        if (err && typeof err === 'object') {
+          errMsg = err.text || err.message || err.status || JSON.stringify(err);
+        } else if (typeof err === 'string') {
+          errMsg = err;
+        } else {
+          errMsg = 'Send failed — check Console (F12) for details';
+        }
+        showOtpStatus('⚠️ Email error: ' + errMsg, true);
       });
   }
   doSendOTP(1);
