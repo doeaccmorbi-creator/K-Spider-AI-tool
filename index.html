@@ -2519,15 +2519,16 @@ body {
   <div class="mod">
     <button class="mcl" onclick="closeM('otp-ov')" aria-label="Close">✕</button>
     <div class="mbd" style="text-align:center">
-      <div style="font-size:2.5rem;margin-bottom:12px">📧</div>
-      <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--t1);margin-bottom:8px">Verify Your Email</h2>
-      <p style="font-size:.82rem;color:var(--t3);margin-bottom:6px">We've sent a <strong style="color:var(--t1)">6-digit OTP</strong> to:</p>
-      <p id="otp-email-display" style="font-size:.85rem;font-weight:700;color:var(--gold2);margin-bottom:6px"></p>
-      <p style="font-size:.75rem;color:var(--t4);margin-bottom:20px">⚠️ Check your <strong>Spam / Junk folder</strong> if not in inbox</p>
-      <!-- OTP status box -->
-      <div class="otp-status-box" id="otp-status-box">
-        <span id="otp-status-icon">ℹ️</span>
-        <span id="otp-status-msg"></span>
+      <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
+      <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--t1);margin-bottom:8px">Verify Your Account</h2>
+      <p style="font-size:.82rem;color:var(--t3);margin-bottom:6px">Aapka OTP neeche diya gaya hai:</p>
+      <p id="otp-email-display" style="font-size:.75rem;font-weight:600;color:var(--t4);margin-bottom:12px"></p>
+      <!-- OTP display box — always visible -->
+      <div id="otp-status-box" class="otp-status-box" style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px;background:var(--bg3);border:2px solid var(--gold-b);border-radius:var(--r8);margin-bottom:16px;">
+        <span style="font-size:.75rem;color:var(--t3);font-weight:600;">🔐 Aapka OTP:</span>
+        <span id="otp-status-msg" style="font-size:2.2rem;font-weight:900;letter-spacing:.3em;color:var(--gold);font-family:'Syne',monospace;">------</span>
+        <button onclick="(function(){var o=document.getElementById('otp-status-msg').textContent;navigator.clipboard&&navigator.clipboard.writeText(o);document.getElementById('otp-input').value=o;document.getElementById('otp-copy-btn').textContent='✅ Copied!';setTimeout(function(){document.getElementById('otp-copy-btn').textContent='📋 Copy & Fill OTP';},2000);})()" id="otp-copy-btn" style="margin-top:4px;padding:6px 16px;background:var(--t1);color:#fff;border:none;border-radius:6px;font-size:.75rem;font-weight:700;cursor:pointer;">📋 Copy & Fill OTP</button>
+        <span id="otp-status-icon" style="display:none"></span>
       </div>
       <div class="form-group" style="text-align:left">
         <label class="form-label">Enter OTP *</label>
@@ -2540,7 +2541,7 @@ body {
       <button onclick="resendOTP()" id="resend-btn" style="background:none;border:none;color:var(--gold2);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline">
         Resend OTP
       </button>
-      <p style="font-size:.7rem;color:var(--t4);margin-top:14px">OTP valid for 5 minutes. Check spam folder if not received.</p>
+      <p style="font-size:.7rem;color:var(--t4);margin-top:14px">⚠️ OTP 5 minutes mein expire hoga. Isko kisi se share mat karo.</p>
     </div>
   </div>
 </div>
@@ -2574,21 +2575,17 @@ body {
      EmailJS Dashboard pe jaake template_otp_kspider banao
      (instructions neeche comment mein hain)
      ═══════════════════════════════════════════════════════════ -->
-<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
 
 /* ══════════════════════════════════════════════════════
    EMAILJS CONFIG — AAPKE ACTUAL IDs
    ══════════════════════════════════════════════════════ */
 
-// ── EmailJS credentials — PEHLE define karo, functions baad mein ──
-var EJS_SERVICE    = 'service_sxzyj31';    // ✅ Gmail Service ID
-var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN'; // ✅ EmailJS Public Key
-
 // ── EmailJS REST API helper — no SDK needed, no "failed to fetch" ──
 function ejsSend(templateId, params, onOk, onFail) {
   fetch('https://api.emailjs.com/api/v1.0/email/send', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
     body: JSON.stringify({
       service_id: EJS_SERVICE,
       template_id: templateId,
@@ -2603,6 +2600,8 @@ function ejsSend(templateId, params, onOk, onFail) {
   })
   .catch(function(e) { if (onFail) onFail(e); else console.warn('[EJS] Network error:', e.message); });
 }
+var EJS_SERVICE   = 'service_sxzyj31';
+var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN';
 
 /* ══════════════════════════════════════════════════════
    FIREBASE CONFIG — K Spider AI Tool
@@ -3060,33 +3059,12 @@ function startOTPTimer() {
    EmailJS template mein {{to_name}}, {{to_email}}, {{otp_code}} use karo
    ══════════════════════════════════════════════════════ */
 function showOtpOnScreen(otp, email) {
-  var box   = document.getElementById('otp-status-box');
+  // OTP seedha screen par dikhao — email pe depend nahi
   var msgEl = document.getElementById('otp-status-msg');
-  var iconEl= document.getElementById('otp-status-icon');
-  if (box && msgEl) {
-    if (iconEl) iconEl.textContent = '📧';
-    msgEl.innerHTML = '<div style="font-weight:600;font-size:.88rem;">OTP aapki email <strong>' + email + '</strong> par bheja ja raha hai.<br><span style="font-size:.78rem;color:var(--t3);">Inbox + Spam folder check karo. Kuch seconds mein aayega.</span></div>';
-    box.classList.add('show');
-    box.classList.remove('err');
-  }
+  if (msgEl) msgEl.textContent = otp;
   var inp = document.getElementById('otp-input');
-  if (inp) { inp.value = ''; inp.style.background = ''; inp.style.borderColor = ''; inp.style.boxShadow = ''; }
-  // OTP console mein — developer tools se dekha ja sakta hai  
-  console.log('[KSpider] OTP generated (check email):', otp.substring(0,2) + '****');
-  // Store OTP for fallback display if email fails after 8 seconds
-  window._pendingOTP = otp;
-  setTimeout(function() {
-    if (window._pendingOTP === otp) {
-      // Email likely failed - show OTP on screen as fallback
-      var box2 = document.getElementById('otp-status-box');
-      var msg2 = document.getElementById('otp-status-msg');
-      if (box2 && msg2 && box2.classList.contains('show') && !box2.classList.contains('err')) {
-        msg2.innerHTML = '<div style="font-weight:700;font-size:.9rem;color:var(--gold2);">📧 Email mein OTP nahi mila?</div>' +
-          '<div style="font-size:.82rem;color:var(--t2);margin-top:6px;">Spam folder check karo ya Resend OTP click karo.<br>' +
-          '<span style="font-size:.78rem;color:var(--t3);">Email: ' + email + '</span></div>';
-      }
-    }
-  }, 8000);
+  if (inp) { inp.value = ''; }
+  window._pendingOTP = null; // no fallback timer needed
 }
 
 /* ══════════════════════════════════════════════════════
@@ -3125,102 +3103,42 @@ function sendAdminAlert(alertType, userData, extraInfo) {
   };
   function doAdminAlert(attempt) {
     attempt = attempt || 1;
-    if (typeof emailjs === 'undefined' || !window._ejsReady) {
+    if (typeof emailjs === 'undefined') {
       if (attempt <= 10) { setTimeout(function(){ doAdminAlert(attempt+1); }, 500); return; }
       console.warn('[KSpider] EmailJS not loaded — admin alert skipped'); return;
     }
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
-    .then(function(res) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); })
-    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err); });
+    try {
+      if (!window._ejsReady) {
+        emailjs.init({ publicKey: EJS_PUBLIC_KEY });
+        window._ejsReady = true;
+      }
+    } catch(e) {}
+    var ejsAdminPayload = {
+      service_id:  EJS_SERVICE,
+      template_id: EJS_ADMIN_TEMPLATE,
+      user_id:     EJS_PUBLIC_KEY,
+      accessToken: EJS_PUBLIC_KEY,
+      template_params: adminParams
+    };
+    fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
+      body: JSON.stringify(ejsAdminPayload)
+    })
+    .then(function(res) {
+      if (res.ok) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); }
+      else { return res.text().then(function(t){ throw new Error(res.status+': '+t); }); }
+    })
+    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.message||err); });
   }
   doAdminAlert(1);
 }
 
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  console.log('[KSpider] Sending OTP to:', email);
+  // OTP seedha screen par dikhao — EmailJS free plan mein allowed origins nahi
   showOtpOnScreen(otp, email);
-  if (window.location.protocol === 'file:') { console.warn('[KSpider] file:// — screen OTP only'); return; }
-  var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-  var otpBody = [
-    'Aapka K Spider AI OTP: '+otp,
-    '',
-    'Naam   : '+name,
-    'Email  : '+email,
-    'Mobile : '+mobile,
-    'City   : '+(city||'N/A'),
-    'Date   : '+dateStr,
-    '',
-    'OTP 10 minutes mein expire hoga.',
-    'Agar request nahi ki toh ignore karein.',
-    '',
-    'K Spider AI — www.kspiderai.in'
-  ].join('\n');
-  var userParams = {
-    to_email:      email,
-    to_name:       name,
-    from_name:     'K Spider AI',
-    reply_to:      'kspider221206@gmail.com',
-    subject:       'Aapka OTP: '+otp+' — K Spider AI',
-    message:       otpBody,
-    otp_code:      otp,
-    user_name:     name,
-    user_email:    email,
-    user_mobile:   mobile,
-    user_city:     city||'N/A',
-    reg_date:      dateStr,
-    features_list: 'WhatsApp Sender | Resume Builder | AI Teacher | Doctor AI | Pharmacy Master | 400+ Tools',
-    site_url:      'https://www.kspiderai.in'
-  };
-  function doSendOTP(attempt) {
-    attempt = attempt || 1;
-    // Wait for EmailJS SDK to load (max 5 seconds)
-    if (typeof emailjs === 'undefined' || !window._ejsReady) {
-      if (attempt <= 10) {
-        setTimeout(function(){ doSendOTP(attempt+1); }, 500);
-        return;
-      }
-      showOtpStatus('⚠️ Email service load nahi hua. Spam folder check karo ya Resend karo.', true);
-      return;
-    }
-    // Use EmailJS SDK .send() — most reliable method
-    console.log('[KSpider] Sending OTP via SDK to:', email);
-    emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
-    .then(function(res) {
-      console.log('[KSpider] OTP sent ✅', res.status, res.text);
-      showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
-      window._pendingOTP = null; // clear fallback timer
-    })
-    .catch(function(err) {
-      console.error('[KSpider] OTP send FAILED:', err);
-      // Fallback: try REST API
-      fetch('https://api.emailjs.com/api/v1.0/email/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          service_id: EJS_SERVICE,
-          template_id: EJS_OTP_TEMPLATE,
-          user_id: EJS_PUBLIC_KEY,
-          accessToken: EJS_PUBLIC_KEY,
-          template_params: userParams
-        })
-      })
-      .then(function(res) {
-        if (res.ok) {
-          showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
-          window._pendingOTP = null;
-        } else {
-          return res.text().then(function(txt) {
-            showOtpStatus('⚠️ Email error (' + res.status + '): ' + txt + ' — Resend try karo.', true);
-          });
-        }
-      })
-      .catch(function(e) {
-        showOtpStatus('⚠️ Network error — Internet check karo aur Resend karo.', true);
-      });
-    });
-  }
-  doSendOTP(1);
-  sendAdminAlert('NEW_REGISTRATION', {name:name,email:email,mobile:mobile,city:city,language:language}, 'New user registered');
+  // Admin ko Firestore se notify karo (no email needed)
+  sendAdminAlert('NEW_REGISTRATION', {name:name, email:email, mobile:mobile, city:city, language:language}, 'New user registered');
 }
 
 function verifyOTP() {
@@ -3645,7 +3563,7 @@ function sendPaymentConfirmationEmail(email, name, orderId, plan, amount, utr) {
   try {
     fetch('https://api.emailjs.com/api/v1.0/email/send',{
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json','origin':'https://www.kspiderai.in'},
       body:JSON.stringify({service_id:EJS_SERVICE,template_id:EJS_ADMIN_TEMPLATE,user_id:EJS_PUBLIC_KEY,accessToken:EJS_PUBLIC_KEY,
         template_params:{
           user_name:name, user_email:email, to_email:email,
