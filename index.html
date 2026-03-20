@@ -3125,33 +3125,13 @@ function sendAdminAlert(alertType, userData, extraInfo) {
   };
   function doAdminAlert(attempt) {
     attempt = attempt || 1;
-    if (typeof emailjs === 'undefined') {
+    if (typeof emailjs === 'undefined' || !window._ejsReady) {
       if (attempt <= 10) { setTimeout(function(){ doAdminAlert(attempt+1); }, 500); return; }
       console.warn('[KSpider] EmailJS not loaded — admin alert skipped'); return;
     }
-    try {
-      if (!window._ejsReady) {
-        emailjs.init({ publicKey: EJS_PUBLIC_KEY });
-        window._ejsReady = true;
-      }
-    } catch(e) {}
-    var ejsAdminPayload = {
-      service_id:  EJS_SERVICE,
-      template_id: EJS_ADMIN_TEMPLATE,
-      user_id:     EJS_PUBLIC_KEY,
-      accessToken: EJS_PUBLIC_KEY,
-      template_params: adminParams
-    };
-    fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ejsAdminPayload)
-    })
-    .then(function(res) {
-      if (res.ok) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); }
-      else { return res.text().then(function(t){ throw new Error(res.status+': '+t); }); }
-    })
-    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.message||err); });
+    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
+    .then(function(res) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); })
+    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err); });
   }
   doAdminAlert(1);
 }
@@ -3193,41 +3173,50 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
   };
   function doSendOTP(attempt) {
     attempt = attempt || 1;
-    if (typeof emailjs === 'undefined') {
+    // Wait for EmailJS SDK to load (max 5 seconds)
+    if (typeof emailjs === 'undefined' || !window._ejsReady) {
       if (attempt <= 10) {
         setTimeout(function(){ doSendOTP(attempt+1); }, 500);
         return;
       }
-      showOtpStatus('⚠️ Email service load nahi hua — OTP screen pe dekho.', true);
+      showOtpStatus('⚠️ Email service load nahi hua. Spam folder check karo ya Resend karo.', true);
       return;
     }
-    // Use EmailJS REST API directly — no SDK needed, no CORS issue
-    var ejsPayload = {
-      service_id:  EJS_SERVICE,
-      template_id: EJS_OTP_TEMPLATE,
-      user_id:     EJS_PUBLIC_KEY,
-      accessToken: EJS_PUBLIC_KEY,
-      template_params: userParams
-    };
-    console.log('[KSpider] Sending OTP via REST API to:', email);
-    fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(ejsPayload)
-    })
+    // Use EmailJS SDK .send() — most reliable method
+    console.log('[KSpider] Sending OTP via SDK to:', email);
+    emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
     .then(function(res) {
-      if (res.ok) {
-        console.log('[KSpider] OTP sent ✅ Status:', res.status);
-        showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
-      } else {
-        return res.text().then(function(txt) {
-          throw new Error('HTTP ' + res.status + ': ' + txt);
-        });
-      }
+      console.log('[KSpider] OTP sent ✅', res.status, res.text);
+      showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
+      window._pendingOTP = null; // clear fallback timer
     })
     .catch(function(err) {
-      console.error('[KSpider] OTP send FAILED:', err.message || err);
-      showOtpStatus('⚠️ Email nahi gaya: ' + (err.message || 'Network error') + ' — OTP screen pe dekho.', true);
+      console.error('[KSpider] OTP send FAILED:', err);
+      // Fallback: try REST API
+      fetch('https://api.emailjs.com/api/v1.0/email/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service_id: EJS_SERVICE,
+          template_id: EJS_OTP_TEMPLATE,
+          user_id: EJS_PUBLIC_KEY,
+          accessToken: EJS_PUBLIC_KEY,
+          template_params: userParams
+        })
+      })
+      .then(function(res) {
+        if (res.ok) {
+          showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
+          window._pendingOTP = null;
+        } else {
+          return res.text().then(function(txt) {
+            showOtpStatus('⚠️ Email error (' + res.status + '): ' + txt + ' — Resend try karo.', true);
+          });
+        }
+      })
+      .catch(function(e) {
+        showOtpStatus('⚠️ Network error — Internet check karo aur Resend karo.', true);
+      });
     });
   }
   doSendOTP(1);
