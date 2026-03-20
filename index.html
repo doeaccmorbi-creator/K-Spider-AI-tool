@@ -2579,6 +2579,26 @@ body {
 /* ══════════════════════════════════════════════════════
    EMAILJS CONFIG — AAPKE ACTUAL IDs
    ══════════════════════════════════════════════════════ */
+
+// ── EmailJS REST API helper — no SDK needed, no "failed to fetch" ──
+function ejsSend(templateId, params, onOk, onFail) {
+  fetch('https://api.emailjs.com/api/v1.0/email/send', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
+    body: JSON.stringify({
+      service_id: EJS_SERVICE,
+      template_id: templateId,
+      user_id: EJS_PUBLIC_KEY,
+      accessToken: EJS_PUBLIC_KEY,
+      template_params: params
+    })
+  })
+  .then(function(res) {
+    if (res.ok) { if (onOk) onOk(res); }
+    else { return res.text().then(function(t){ var e=new Error(res.status+': '+t); if(onFail) onFail(e); else console.warn('[EJS]',e.message); }); }
+  })
+  .catch(function(e) { if (onFail) onFail(e); else console.warn('[EJS] Network error:', e.message); });
+}
 var EJS_SERVICE   = 'service_sxzyj31';
 var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN';
 
@@ -3113,9 +3133,23 @@ function sendAdminAlert(alertType, userData, extraInfo) {
         window._ejsReady = true;
       }
     } catch(e) {}
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
-      .then(function() { console.log('[KSpider] Admin alert ✅ Type:', alertType); })
-      .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, '|', err.text||err.status||err); });
+    var ejsAdminPayload = {
+      service_id:  EJS_SERVICE,
+      template_id: EJS_ADMIN_TEMPLATE,
+      user_id:     EJS_PUBLIC_KEY,
+      accessToken: EJS_PUBLIC_KEY,
+      template_params: adminParams
+    };
+    fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
+      body: JSON.stringify(ejsAdminPayload)
+    })
+    .then(function(res) {
+      if (res.ok) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); }
+      else { return res.text().then(function(t){ throw new Error(res.status+': '+t); }); }
+    })
+    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.message||err); });
   }
   doAdminAlert(1);
 }
@@ -3165,33 +3199,34 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
       showOtpStatus('⚠️ Email service load nahi hua — OTP screen pe dekho.', true);
       return;
     }
-    // Always re-init to be safe
-    try {
-      emailjs.init({ publicKey: EJS_PUBLIC_KEY });
-      window._ejsReady = true;
-      console.log('[KSpider] EmailJS init OK. Service:', EJS_SERVICE, 'Template:', EJS_OTP_TEMPLATE, 'Key:', EJS_PUBLIC_KEY);
-    } catch(initErr) { console.warn('[EJS] init error:', initErr); }
-
-    console.log('[KSpider] Sending to:', email, '| Params:', JSON.stringify(userParams));
-    emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
-      .then(function(r) {
-        console.log('[KSpider] OTP Email sent ✅ Status:', r.status, r.text);
+    // Use EmailJS REST API directly — no SDK needed, no CORS issue
+    var ejsPayload = {
+      service_id:  EJS_SERVICE,
+      template_id: EJS_OTP_TEMPLATE,
+      user_id:     EJS_PUBLIC_KEY,
+      accessToken: EJS_PUBLIC_KEY,
+      template_params: userParams
+    };
+    console.log('[KSpider] Sending OTP via REST API to:', email);
+    fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
+      body: JSON.stringify(ejsPayload)
+    })
+    .then(function(res) {
+      if (res.ok) {
+        console.log('[KSpider] OTP sent ✅ Status:', res.status);
         showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
-      })
-      .catch(function(err) {
-        // Full error dump for debugging
-        console.error('[KSpider] OTP FAILED. Full error object:', JSON.stringify(err));
-        console.error('err.status=', err.status, 'err.text=', err.text, 'err.message=', err.message);
-        var errMsg = '';
-        if (err && typeof err === 'object') {
-          errMsg = err.text || err.message || err.status || JSON.stringify(err);
-        } else if (typeof err === 'string') {
-          errMsg = err;
-        } else {
-          errMsg = 'Send failed — check Console (F12) for details';
-        }
-        showOtpStatus('⚠️ Email error: ' + errMsg, true);
-      });
+      } else {
+        return res.text().then(function(txt) {
+          throw new Error('HTTP ' + res.status + ': ' + txt);
+        });
+      }
+    })
+    .catch(function(err) {
+      console.error('[KSpider] OTP send FAILED:', err.message || err);
+      showOtpStatus('⚠️ Email nahi gaya: ' + (err.message || 'Network error') + ' — OTP screen pe dekho.', true);
+    });
   }
   doSendOTP(1);
   sendAdminAlert('NEW_REGISTRATION', {name:name,email:email,mobile:mobile,city:city,language:language}, 'New user registered');
@@ -3617,26 +3652,23 @@ function sendPaymentConfirmationEmail(email, name, orderId, plan, amount, utr) {
   if(typeof emailjs==='undefined') return;
   var planLabel=plan==='franchise'?'Franchise':'Premium';
   try {
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, {
-      user_name: name,
-      user_email: email,
-      to_email: email,
-      subject: 'Payment Received - K Spider AI '+planLabel+' Plan | Order '+orderId,
-      message: 'Namaste '+name+',\n\nAapki K Spider AI '+planLabel+' Plan ki payment request successfully receive ho gayi!\n\n'+
-        '📋 Order Details:\n'+
-        '• Order ID: '+orderId+'\n'+
-        '• Plan: '+planLabel+'\n'+
-        '• Amount: ₹'+amount+'\n'+
-        '• UTR/Ref: '+utr+'\n'+
-        '• Status: Pending Verification\n\n'+
-        '⏳ Admin 1-2 hours mein verify karega.\n'+
-        'Verification ke baad aapko email aayega aur access automatically activate ho jaayega.\n\n'+
-        '📱 Jaldi approval ke liye WhatsApp karein: +91 90999 28877\n\n'+
-        'K Spider AI Team\nwww.kspiderai.in',
-      platform: 'K Spider AI Payment Confirmation',
-      registration_date: new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),
-      user_mobile: ''
-    });
+    fetch('https://api.emailjs.com/api/v1.0/email/send',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','origin':'https://www.kspiderai.in'},
+      body:JSON.stringify({service_id:EJS_SERVICE,template_id:EJS_ADMIN_TEMPLATE,user_id:EJS_PUBLIC_KEY,accessToken:EJS_PUBLIC_KEY,
+        template_params:{
+          user_name:name, user_email:email, to_email:email,
+          subject:'Payment Received - K Spider AI '+planLabel+' Plan | Order '+orderId,
+          message:'Namaste '+name+',\n\nAapki K Spider AI '+planLabel+' Plan ki payment request successfully receive ho gayi!\n\n'+
+            '📋 Order Details:\n• Order ID: '+orderId+'\n• Plan: '+planLabel+'\n• Amount: ₹'+amount+'\n• UTR/Ref: '+utr+'\n• Status: Pending Verification\n\n'+
+            '⏳ Admin 1-2 hours mein verify karega.\n📱 WhatsApp: +91 90999 28877\n\nK Spider AI Team\nwww.kspiderai.in',
+          platform:'K Spider AI Payment Confirmation',
+          registration_date:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),
+          user_mobile:''
+        }
+      })
+    }).then(function(r){if(r.ok)console.log('[KSpider] Payment confirm email sent ✅');})
+      .catch(function(e){console.warn('[KSpider] Payment email error:',e.message);});
   } catch(e){ console.warn('[KSpider] Confirmation email error:',e); }
 }
 
@@ -4352,33 +4384,28 @@ function submitF(e) {
 
   // 2. Send email to ADMIN — kspider221206@gmail.com
   if (typeof emailjs !== 'undefined') {
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, {
+    ejsSend(EJS_ADMIN_TEMPLATE, {
       user_name:         san(name),
       user_email:        san(email),
       user_mobile:       san(mobile),
       to_email:          'kspider221206@gmail.com',
+      from_name:         'K Spider AI',
+      reply_to:          san(email),
       subject:           '🏢 New Franchise Inquiry — ' + san(name) + ' | ' + san(city),
-      message:           '📋 FRANCHISE INQUIRY DETAILS\n\n' +
-                         '👤 Name:    ' + san(name) + '\n' +
-                         '📧 Email:   ' + san(email) + '\n' +
-                         '📱 Mobile:  ' + san(mobile) + '\n' +
-                         '📍 City:    ' + san(city) + '\n' +
-                         '💬 Message: ' + (san(msg)||'(not provided)') + '\n\n' +
-                         '🕐 Time: ' + timestamp + '\n' +
-                         '🌐 Source: www.kspiderai.in/franchise\n\n' +
-                         '⚡ Admin panel pe check karein: kspiderai.in/admin',
-      platform:          'Franchise Inquiry Form — K Spider AI',
-      registration_date: timestamp
-    })
-    .then(function() {
-      console.log('[KSpider] Franchise inquiry email sent to admin ✅');
-      toast('✅ Inquiry send ho gayi! 48 hours mein hum aapse contact karenge.', 'success', 7000);
+      message:           '📋 FRANCHISE INQUIRY\n\nName: '+san(name)+'\nEmail: '+san(email)+'\nMobile: '+san(mobile)+'\nCity: '+san(city)+'\nMsg: '+(san(msg)||'N/A')+'\nTime: '+timestamp+'\nSource: kspiderai.in/franchise',
+      platform:          'Franchise Inquiry',
+      registration_date: timestamp,
+      alert_type:        '🏢 Franchise Inquiry',
+      extra_info:        'City: '+san(city)
+    },
+    function() {
+      console.log('[KSpider] Franchise email sent ✅');
+      toast('✅ Inquiry send ho gayi! 48 hours mein contact karenge.', 'success', 7000);
       form.reset();
-    })
-    .catch(function(err) {
-      console.warn('[KSpider] Email send error:', err);
-      // Even if email fails, inquiry is saved in Firestore — show success
-      toast('✅ Inquiry registered! Hum aapse contact karenge. Email bhi kar sakte ho: kspider221206@gmail.com', 'success', 8000);
+    },
+    function(err) {
+      console.warn('[KSpider] Franchise email error:', err.message);
+      toast('✅ Inquiry registered! Contact karenge. Direct email: kspider221206@gmail.com', 'success', 7000);
       form.reset();
     });
   } else {
@@ -4619,8 +4646,22 @@ function submitNotify() {
   if (!vEmail(email)) { toast('Sahi email address darj karo.', 'error'); return; }
   try { var notifs = JSON.parse(localStorage.getItem('ks_notifs') || '[]'); notifs.push({tool:_currentNotifyTool,email:san(email),ts:new Date().toISOString()}); localStorage.setItem('ks_notifs', JSON.stringify(notifs)); } catch(e) {}
   if (typeof emailjs !== 'undefined') {
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, { to_email:'kspider221206@gmail.com', to_name:'K Spider Admin', user_name:'Premium Waitlist', user_email:san(email), user_mobile:'N/A', registration_date:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}), platform: 'Premium Waitlist — ' + _currentNotifyTool
-    }).then(function(){ console.log('[KSpider] Notify email sent.'); }).catch(function(err){ console.warn('[KSpider] Notify email failed:', err); });
+    ejsSend(EJS_ADMIN_TEMPLATE, {
+      to_email:'kspider221206@gmail.com',
+      to_name:'K Spider Admin',
+      from_name:'K Spider AI',
+      subject:'⭐ Premium Waitlist — '+_currentNotifyTool,
+      message:'Premium Waitlist signup\nEmail: '+san(email)+'\nTool: '+_currentNotifyTool+'\nDate: '+new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),
+      user_name:'Premium Waitlist',
+      user_email:san(email),
+      user_mobile:'N/A',
+      registration_date:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}),
+      platform:'Premium Waitlist — '+_currentNotifyTool,
+      extra_info:'Waitlist signup',
+      alert_type:'⭐ Waitlist'
+    },
+    function(){ console.log('[KSpider] Notify email sent ✅'); },
+    function(err){ console.warn('[KSpider] Notify email failed:', err.message||err); });
   }
   toast('✅ Notify ho jaoge jab yeh tool launch ho!', 'success', 5000);
   closeM('notify-ov');
