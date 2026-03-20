@@ -348,7 +348,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
 
   <!-- Email SDK — load FIRST, not deferred -->
-  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" onload="(function(){try{emailjs.init({publicKey:'KU5yrIwmM4PMVyqBN'});window._ejsReady=true;console.log('[KSpider] EmailJS ready ✅');}catch(e){console.warn('[KSpider] EmailJS init error:',e);}})()" onerror="(function(){var s=document.createElement('script');s.src='https://unpkg.com/@emailjs/browser@4/dist/email.min.js';s.onload=function(){try{emailjs.init({publicKey:'KU5yrIwmM4PMVyqBN'});window._ejsReady=true;console.log('[KSpider] EmailJS ready via fallback ✅');}catch(e){}};document.head.appendChild(s);})()"></script>
   <!-- Razorpay Payment SDK -->
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 
@@ -3101,16 +3101,23 @@ function sendAdminAlert(alertType, userData, extraInfo) {
     reg_date:    dateStr,
     extra_info:  bodyText
   };
-  function doAdminAlert(retries) {
-    if (typeof emailjs === 'undefined' || !window._ejsReady) {
-      if (retries > 0) { setTimeout(function(){ doAdminAlert(retries-1); }, 600); return; }
-      console.warn('[KSpider] Admin alert skipped — EmailJS not ready'); return;
+  function doAdminAlert(attempt) {
+    attempt = attempt || 1;
+    if (typeof emailjs === 'undefined') {
+      if (attempt <= 10) { setTimeout(function(){ doAdminAlert(attempt+1); }, 500); return; }
+      console.warn('[KSpider] EmailJS not loaded — admin alert skipped'); return;
     }
+    try {
+      if (!window._ejsReady) {
+        emailjs.init({ publicKey: EJS_PUBLIC_KEY });
+        window._ejsReady = true;
+      }
+    } catch(e) {}
     emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
-      .then(function() { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); })
-      .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.text||err.status||err); });
+      .then(function() { console.log('[KSpider] Admin alert ✅ Type:', alertType); })
+      .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, '|', err.text||err.status||err); });
   }
-  doAdminAlert(8);
+  doAdminAlert(1);
 }
 
 function sendOTPEmail(name, email, mobile, city, language, otp) {
@@ -3148,22 +3155,36 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
     features_list: 'WhatsApp Sender | Resume Builder | AI Teacher | Doctor AI | Pharmacy Master | 400+ Tools',
     site_url:      'https://www.kspiderai.in'
   };
-  function doSendOTP(retries) {
-    if (typeof emailjs === 'undefined' || !window._ejsReady) {
-      if (retries > 0) { setTimeout(function(){ doSendOTP(retries-1); }, 600); return; }
-      showOtpStatus('Email service ready nahi — OTP screen pe dekho.', true); return;
+  function doSendOTP(attempt) {
+    attempt = attempt || 1;
+    if (typeof emailjs === 'undefined') {
+      if (attempt <= 10) {
+        setTimeout(function(){ doSendOTP(attempt+1); }, 500);
+        return;
+      }
+      showOtpStatus('⚠️ Email service load nahi hua — OTP screen pe dekho.', true);
+      return;
     }
+    // Ensure init before every send
+    try {
+      if (!window._ejsReady) {
+        emailjs.init({ publicKey: EJS_PUBLIC_KEY });
+        window._ejsReady = true;
+      }
+    } catch(initErr) { console.warn('[EJS] init error:', initErr); }
+
     emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
       .then(function(r) {
-        console.log('[KSpider] OTP sent ✅ Status:', r.status);
-        showOtpStatus('OTP '+email+' par bheja gaya! Inbox + Spam check karo.', false);
+        console.log('[KSpider] OTP Email sent ✅ Status:', r.status, r.text);
+        showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam check karo.', false);
       })
       .catch(function(err) {
-        console.error('[KSpider] OTP FAILED:', err.status, err.text);
-        showOtpStatus('OTP email error ('+( err.text||err.status||'unknown')+'). OTP screen pe dekho.', true);
+        console.error('[KSpider] OTP Email FAILED — Status:', err.status, '| Error:', err.text);
+        var errMsg = err.text || err.status || 'Unknown error';
+        showOtpStatus('⚠️ Email error: ' + errMsg + ' — OTP screen pe dekho ya Resend karo.', true);
       });
   }
-  doSendOTP(8);
+  doSendOTP(1);
   sendAdminAlert('NEW_REGISTRATION', {name:name,email:email,mobile:mobile,city:city,language:language}, 'New user registered');
 }
 
