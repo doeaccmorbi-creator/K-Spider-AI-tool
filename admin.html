@@ -1297,7 +1297,7 @@ function sendAllRemindersWA(){
 
 // ── PRICING ──
 function loadPricing(){
-  db.collection('admin').doc('pricing_settings').get().then(function(doc){
+  db.collection('admin').doc('pricing').get().then(function(doc){
     if(!doc.exists){ toast('No saved pricing found — defaults shown'); return; }
     var d=doc.data();
     var fields={
@@ -1325,6 +1325,10 @@ function savePricing(){
     franchise_6m: parseInt($id('pr-f6m').value)||5999,
     franchise_3m: parseInt($id('pr-f3m').value)||3499,
     franchise_1m: parseInt($id('pr-f1m').value)||1499,
+    premium_yr:  parseInt($id('pr-p1y').value)||2999,
+    premium_mo:  parseInt($id('pr-p1m').value)||399,
+    franchise_yr: parseInt($id('pr-f1y').value)||9999,
+    franchise_mo: parseInt($id('pr-f1m').value)||1499,
     upi_id:      ($id('pr-upi').value||'').trim(),
     upi_name:    ($id('pr-uname').value||'').trim(),
     whatsapp:    ($id('pr-wa').value||'').trim(),
@@ -1335,7 +1339,7 @@ function savePricing(){
     savedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   showPrMsg('Saving...');
-  db.collection('admin').doc('pricing_settings').set(data)
+  db.collection('admin').doc('pricing').set(data)
     .then(function(){ toast('Pricing saved!'); showPrMsg('Saved successfully!'); })
     .catch(function(e){ toast('Error: '+e.message); showPrMsg('Save failed!'); });
 }
