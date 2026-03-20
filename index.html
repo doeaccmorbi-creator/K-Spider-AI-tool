@@ -3038,25 +3038,33 @@ function startOTPTimer() {
    EmailJS template mein {{to_name}}, {{to_email}}, {{otp_code}} use karo
    ══════════════════════════════════════════════════════ */
 function showOtpOnScreen(otp, email) {
-  // ⛔ SECURITY FIX: OTP screen pe nahi dikhayenge
-  // OTP sirf email pe jayega — screen pe nahi
-  var box = document.getElementById('otp-status-box');
+  var box   = document.getElementById('otp-status-box');
   var msgEl = document.getElementById('otp-status-msg');
-  var iconEl = document.getElementById('otp-status-icon');
+  var iconEl= document.getElementById('otp-status-icon');
   if (box && msgEl) {
     if (iconEl) iconEl.textContent = '📧';
-    msgEl.innerHTML = '<div style="font-weight:600;font-size:.88rem;">OTP aapki email <strong>' + email + '</strong> par bheja gaya hai.<br><span style="font-size:.78rem;color:var(--t3);">Inbox aur Spam folder check karo.</span></div>';
+    msgEl.innerHTML = '<div style="font-weight:600;font-size:.88rem;">OTP aapki email <strong>' + email + '</strong> par bheja ja raha hai.<br><span style="font-size:.78rem;color:var(--t3);">Inbox + Spam folder check karo. Kuch seconds mein aayega.</span></div>';
     box.classList.add('show');
     box.classList.remove('err');
   }
   var inp = document.getElementById('otp-input');
-  if (inp) {
-    inp.value = '';
-    inp.style.background = '';
-    inp.style.borderColor = '';
-    inp.style.boxShadow = '';
-  }
-  console.log('[KSpider] OTP:', otp);
+  if (inp) { inp.value = ''; inp.style.background = ''; inp.style.borderColor = ''; inp.style.boxShadow = ''; }
+  // OTP console mein — developer tools se dekha ja sakta hai  
+  console.log('[KSpider] OTP generated (check email):', otp.substring(0,2) + '****');
+  // Store OTP for fallback display if email fails after 8 seconds
+  window._pendingOTP = otp;
+  setTimeout(function() {
+    if (window._pendingOTP === otp) {
+      // Email likely failed - show OTP on screen as fallback
+      var box2 = document.getElementById('otp-status-box');
+      var msg2 = document.getElementById('otp-status-msg');
+      if (box2 && msg2 && box2.classList.contains('show') && !box2.classList.contains('err')) {
+        msg2.innerHTML = '<div style="font-weight:700;font-size:.9rem;color:var(--gold2);">📧 Email mein OTP nahi mila?</div>' +
+          '<div style="font-size:.82rem;color:var(--t2);margin-top:6px;">Spam folder check karo ya Resend OTP click karo.<br>' +
+          '<span style="font-size:.78rem;color:var(--t3);">Email: ' + email + '</span></div>';
+      }
+    }
+  }, 8000);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -3064,106 +3072,99 @@ function showOtpOnScreen(otp, email) {
    alert_type: 'NEW_REGISTRATION' | 'EMAIL_VERIFIED' | 'TOOL_LAUNCHED'
    ══════════════════════════════════════════════════════ */
 function sendAdminAlert(alertType, userData, extraInfo) {
-  if (typeof emailjs === 'undefined') return;
   var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-
-  var alertEmoji = {
-    'NEW_REGISTRATION': '🆕',
-    'EMAIL_VERIFIED':   '✅',
-    'TOOL_LAUNCHED':    '🚀'
-  }[alertType] || '📩';
-
+  var alertEmoji = {'NEW_REGISTRATION':'🆕','EMAIL_VERIFIED':'✅','TOOL_LAUNCHED':'🚀','UPI_PAYMENT_SUBMITTED':'💰','PRO_PURCHASE':'🎉'}[alertType] || '📩';
+  var bodyText = [
+    alertEmoji+' '+alertType+' — K Spider AI',
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    'Name   : '+(userData.name   ||'N/A'),
+    'Email  : '+(userData.email  ||'N/A'),
+    'Mobile : '+(userData.mobile ||'N/A'),
+    'City   : '+(userData.city   ||'N/A'),
+    'Date   : '+dateStr,
+    'Info   : '+(extraInfo||'N/A'),
+    '━━━━━━━━━━━━━━━━━━━━━━━━',
+    'Source : www.kspiderai.in'
+  ].join('\n');
   var adminParams = {
-    alert_type:  alertEmoji + ' ' + alertType + ' — K Spider AI Tool',
-    user_name:   userData.name  || 'N/A',
-    user_email:  userData.email || 'N/A',
-    user_mobile: userData.mobile || 'N/A',
-    user_city:   userData.city  || 'N/A',
+    to_email:    'kspider221206@gmail.com',
+    to_name:     'K Spider Admin',
+    from_name:   'K Spider AI System',
+    reply_to:    userData.email || 'noreply@kspiderai.in',
+    subject:     alertEmoji+' '+alertType+' | K Spider AI — '+(userData.name||'User'),
+    message:     bodyText,
+    alert_type:  alertEmoji+' '+alertType,
+    user_name:   userData.name   ||'N/A',
+    user_email:  userData.email  ||'N/A',
+    user_mobile: userData.mobile ||'N/A',
+    user_city:   userData.city   ||'N/A',
     reg_date:    dateStr,
-    extra_info: [
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      alertEmoji + ' ' + alertType,
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━',
-      'Name    : ' + (userData.name   || 'N/A'),
-      'Email   : ' + (userData.email  || 'N/A'),
-      'Mobile  : ' + (userData.mobile || 'N/A'),
-      'City    : ' + (userData.city   || 'N/A'),
-      'Language: ' + (userData.language || 'en'),
-      'Date    : ' + dateStr,
-      'Info    : ' + (extraInfo || 'N/A'),
-      'Source  : www.kspiderai.in',
-      '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━'
-    ].join('\n')
+    extra_info:  bodyText
   };
-
-  emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
-    .then(function() { console.log('[KSpider] Admin alert sent ✅ | Type:', alertType); })
-    .catch(function(err) { console.warn('[KSpider] Admin alert failed:', alertType, err); });
+  function doAdminAlert(retries) {
+    if (typeof emailjs === 'undefined' || !window._ejsReady) {
+      if (retries > 0) { setTimeout(function(){ doAdminAlert(retries-1); }, 600); return; }
+      console.warn('[KSpider] Admin alert skipped — EmailJS not ready'); return;
+    }
+    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, adminParams)
+      .then(function() { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); })
+      .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.text||err.status||err); });
+  }
+  doAdminAlert(8);
 }
 
-/* ══════════════════════════════════════════════════════
-   sendOTPEmail — User ko OTP + Features email bhejo
-   FIXED: to_email dynamically set, template variables correct
-   ══════════════════════════════════════════════════════ */
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  console.log('[KSpider] Sending OTP → To:', email); // OTP hidden from logs
-
-  // HAMESHA pehle OTP screen pe dikhao — email sirf bonus hai
+  console.log('[KSpider] Sending OTP to:', email);
   showOtpOnScreen(otp, email);
-
-  // file:// ya EmailJS missing → screen OTP kaafi hai
-  if (typeof emailjs === 'undefined' || window.location.protocol === 'file:') {
-    console.warn('[KSpider] EmailJS unavailable or file:// — screen OTP shown only.');
-    return;
-  }
-
+  if (window.location.protocol === 'file:') { console.warn('[KSpider] file:// — screen OTP only'); return; }
   var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-
-  // ── USER KO OTP + FEATURES EMAIL ──
-  // Template "To Email" field mein {{to_email}} daalna ZAROORI hai EmailJS template settings mein
+  var otpBody = [
+    'Aapka K Spider AI OTP: '+otp,
+    '',
+    'Naam   : '+name,
+    'Email  : '+email,
+    'Mobile : '+mobile,
+    'City   : '+(city||'N/A'),
+    'Date   : '+dateStr,
+    '',
+    'OTP 10 minutes mein expire hoga.',
+    'Agar request nahi ki toh ignore karein.',
+    '',
+    'K Spider AI — www.kspiderai.in'
+  ].join('\n');
   var userParams = {
+    to_email:      email,
     to_name:       name,
-    to_email:      email,          // ← EmailJS template TO field: {{to_email}}
-    user_name:     name,           // fallback
-    user_email:    email,          // fallback
+    from_name:     'K Spider AI',
     reply_to:      'kspider221206@gmail.com',
+    subject:       'Aapka OTP: '+otp+' — K Spider AI',
+    message:       otpBody,
     otp_code:      otp,
+    user_name:     name,
+    user_email:    email,
     user_mobile:   mobile,
-    user_city:     city    || 'N/A',
+    user_city:     city||'N/A',
     reg_date:      dateStr,
-    // Site features — template mein {{features_list}} use karo
-    features_list: [
-      '🖼️ Image Master Pro — Convert, compress, passport photo',
-      '📄 Resume Builder — ATS-friendly AI resume generator',
-      '💬 WhatsApp Bulk Sender — Marketing tool',
-      '📡 WA Broadcast Pro — Contact extract + AI broadcast',
-      '🎓 AI Teacher — NEET, JEE, UPSC, CBSE prep',
-      '💼 AI Business Consultant — Idea to plan in minutes',
-      '🧠 AI Prompt Engine — ChatGPT/Gemini prompts',
-      '🔄 Universal File Converter — Image, doc, audio, video',
-      '🩺 Doctor Elite Pro Max — Medical prescription tool',
-      '💊 Pharmacy Master Pro — GST billing & inventory',
-      '🕷️ 400+ Tools Collection — All in one platform',
-      '...aur bahut saare tools coming soon! 600+ planned!'
-    ].join('\n'),
+    features_list: 'WhatsApp Sender | Resume Builder | AI Teacher | Doctor AI | Pharmacy Master | 400+ Tools',
     site_url:      'https://www.kspiderai.in'
   };
-
-  emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
-    .then(function(r) {
-      console.log('[KSpider] OTP Email sent to user ✅ Status:', r.status);
-      showOtpStatus('✅ OTP ' + email + ' par bheja gaya! Inbox + Spam folder check karo.', false);
-    })
-    .catch(function(err) {
-      console.error('[KSpider] OTP Email FAILED. Status:', err.status, '| Text:', err.text);
-      showOtpStatus('⚠️ Email send mein dikkat aayi. Resend OTP try karo.', true);
-    });
-
-  // ── ADMIN KO NEW REGISTRATION ALERT ──
-  sendAdminAlert('NEW_REGISTRATION',
-    { name: name, email: email, mobile: mobile, city: city, language: language },
-    'OTP Sent: ' + otp
-  );
+  function doSendOTP(retries) {
+    if (typeof emailjs === 'undefined' || !window._ejsReady) {
+      if (retries > 0) { setTimeout(function(){ doSendOTP(retries-1); }, 600); return; }
+      showOtpStatus('Email service ready nahi — OTP screen pe dekho.', true); return;
+    }
+    emailjs.send(EJS_SERVICE, EJS_OTP_TEMPLATE, userParams)
+      .then(function(r) {
+        console.log('[KSpider] OTP sent ✅ Status:', r.status);
+        showOtpStatus('OTP '+email+' par bheja gaya! Inbox + Spam check karo.', false);
+      })
+      .catch(function(err) {
+        console.error('[KSpider] OTP FAILED:', err.status, err.text);
+        showOtpStatus('OTP email error ('+( err.text||err.status||'unknown')+'). OTP screen pe dekho.', true);
+      });
+  }
+  doSendOTP(8);
+  sendAdminAlert('NEW_REGISTRATION', {name:name,email:email,mobile:mobile,city:city,language:language}, 'New user registered');
 }
 
 function verifyOTP() {
@@ -3238,11 +3239,9 @@ function submitReg(e) {
   if (!vMobile(m))   { showRegStatus('Kripya 10-digit Indian mobile number darj karein.', true); toast('Kripya 10-digit Indian mobile number darj karein.', 'error'); return; }
   if (!c1 || !c2)    { showRegStatus('Kripya dono consent boxes tick karein.', true); toast('Kripya dono consent boxes tick karein.', 'error'); return; }
 
-  // EmailJS loaded hai?
+  // EmailJS check - don't block registration if emailjs slow to load
   if (typeof emailjs === 'undefined') {
-    showRegStatus('Email service load nahi hua. Page refresh karo.', true);
-    toast('Email service abhi load ho rahi hai. 3 second baad dobara try karo.', 'warn', 5000);
-    return;
+    console.warn('[KSpider] EmailJS not yet loaded — proceeding, OTP will show on screen');
   }
   hideRegStatus();
 
@@ -4396,13 +4395,18 @@ document.addEventListener('DOMContentLoaded', function() {
   renderTools();
   initRv();
 
-  // ── EmailJS init ──
-  if (typeof emailjs !== 'undefined') {
-    emailjs.init({ publicKey: EJS_PUBLIC_KEY });
-    console.log('[KSpider] EmailJS v4 initialized ✅ | Service:', EJS_SERVICE, '| OTP Template:', EJS_OTP_TEMPLATE);
-  } else {
-    console.error('[KSpider] EmailJS NOT loaded ❌ — CDN blocked ya internet nahi hai');
-  }
+  // ── EmailJS init with retry ──
+  (function initEJS(attempts) {
+    if (typeof emailjs !== 'undefined') {
+      emailjs.init({ publicKey: EJS_PUBLIC_KEY });
+      window._ejsReady = true;
+      console.log('[KSpider] EmailJS initialized ✅ | Service:', EJS_SERVICE);
+    } else if (attempts > 0) {
+      setTimeout(function() { initEJS(attempts - 1); }, 500);
+    } else {
+      console.error('[KSpider] EmailJS NOT loaded ❌');
+    }
+  })(10);
 
   // Firebase init
   initFirebase();
@@ -4585,7 +4589,7 @@ function submitNotify() {
   if (!vEmail(email)) { toast('Sahi email address darj karo.', 'error'); return; }
   try { var notifs = JSON.parse(localStorage.getItem('ks_notifs') || '[]'); notifs.push({tool:_currentNotifyTool,email:san(email),ts:new Date().toISOString()}); localStorage.setItem('ks_notifs', JSON.stringify(notifs)); } catch(e) {}
   if (typeof emailjs !== 'undefined') {
-    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, { user_name:'Premium Waitlist', user_email:san(email), user_mobile:'N/A', registration_date:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}), platform: 'Premium Waitlist — ' + _currentNotifyTool
+    emailjs.send(EJS_SERVICE, EJS_ADMIN_TEMPLATE, { to_email:'kspider221206@gmail.com', to_name:'K Spider Admin', user_name:'Premium Waitlist', user_email:san(email), user_mobile:'N/A', registration_date:new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'}), platform: 'Premium Waitlist — ' + _currentNotifyTool
     }).then(function(){ console.log('[KSpider] Notify email sent.'); }).catch(function(err){ console.warn('[KSpider] Notify email failed:', err); });
   }
   toast('✅ Notify ho jaoge jab yeh tool launch ho!', 'success', 5000);
