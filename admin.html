@@ -6,6 +6,7 @@
 <title>Admin — K Spider AI</title>
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <style>
 :root{--bg:#0f0e0c;--bg2:#1a1814;--bg3:#242019;--bg4:#2e2b24;--gold:#b8792a;--gold2:#d4922e;--gold3:#f5c259;--gs:rgba(184,121,42,.12);--gb:rgba(184,121,42,.3);--neon:#059669;--red:#dc2626;--blue:#3b82f6;--pur:#7c3aed;--t1:#f0ede8;--t2:#c8c3ba;--t3:#8a8479;--t4:#5a5650;--br:rgba(255,255,255,.07);--br2:rgba(255,255,255,.12);--r8:12px;--r12:18px;--r16:24px}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -171,6 +172,13 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <a class="ni" id="n-pricing" onclick="show('pricing',this)" href="#">
         <span class="ic">💰</span> Pricing
       </a>
+      <a class="ni" id="n-analytics" onclick="show('analytics',this)" href="#">
+        <span class="ic">📊</span> Analytics
+      </a>
+      <a class="ni" id="n-blog" onclick="show('blog',this)" href="#">
+        <span class="ic">📝</span> Blog / Notice
+        <span class="nbadge" id="blog-badge" style="display:none">0</span>
+      </a>
     </div>
     <div class="s-foot">
       <a class="ni" href="index.html" target="_blank"><span class="ic">🌐</span> View Website</a>
@@ -220,12 +228,18 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <option value="premium">Premium</option>
             <option value="franchise">Franchise</option>
           </select>
+          <select class="sel" id="u-verified" onchange="filterUsers()">
+            <option value="all">All Verified</option>
+            <option value="yes">✅ Verified</option>
+            <option value="no">⚠️ Not Verified</option>
+          </select>
+          <input class="si2" type="text" id="u-city" placeholder="🏙️ City filter..." oninput="filterUsers()" style="max-width:130px">
           <button class="btn btn-gh btn-sm" onclick="loadUsers()">🔄 Refresh</button>
           <button class="btn btn-gr btn-sm" onclick="exportCSV()">📥 CSV</button>
         </div>
         <div class="tw"><table>
-          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City</th><th>Plan</th><th>Verified</th><th>Registered</th><th>Actions</th></tr></thead>
-          <tbody id="u-body"><tr><td colspan="9" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr></tbody>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Registered</th><th>Actions</th></tr></thead>
+          <tbody id="u-body"><tr><td colspan="11" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr></tbody>
         </table></div>
       </div>
     </div>
@@ -391,6 +405,82 @@ tr:hover td{background:rgba(255,255,255,.015)}
         <span id="pr-msg" style="font-size:.8rem;color:var(--neon);display:none"></span>
       </div>
     </div>
+    <!-- ── ANALYTICS PANEL ── -->
+    <div class="panel" id="panel-analytics">
+      <div class="sg" style="margin-bottom:20px">
+        <div class="sc"><div class="si g">👥</div><div><div class="sv" id="an-total">—</div><div class="sl">Total Users</div></div></div>
+        <div class="sc"><div class="si gr">💎</div><div><div class="sv" id="an-prem">—</div><div class="sl">Premium Users</div></div></div>
+        <div class="sc"><div class="si pu">🏢</div><div><div class="sv" id="an-fran">—</div><div class="sl">Franchise Users</div></div></div>
+        <div class="sc"><div class="si gr">₹</div><div><div class="sv" id="an-rev">—</div><div class="sl">Total Revenue</div></div></div>
+        <div class="sc"><div class="si re">⏰</div><div><div class="sv" id="an-exp">—</div><div class="sl">Expiring 7d</div></div></div>
+        <div class="sc"><div class="si bl">📊</div><div><div class="sv" id="an-pay">—</div><div class="sl">Total Payments</div></div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+        <div class="card">
+          <div class="card-head"><div class="card-title">📊 Users by Plan</div><button class="btn btn-gh btn-sm" onclick="loadAnalytics()">🔄</button></div>
+          <div style="padding:18px">
+            <canvas id="chart-plan" height="200"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><div class="card-title">💳 Revenue by Method</div></div>
+          <div style="padding:18px">
+            <canvas id="chart-method" height="200"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head"><div class="card-title">📅 New Users — Last 30 Days</div></div>
+        <div style="padding:18px">
+          <canvas id="chart-growth" height="120"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-head"><div class="card-title">🏙️ Top Cities</div></div>
+        <div class="tw"><table>
+          <thead><tr><th>City</th><th>Users</th><th>% Share</th></tr></thead>
+          <tbody id="city-body"><tr><td colspan="3" style="text-align:center;color:var(--t4);padding:16px">Loading...</td></tr></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- ── BLOG / NOTICE PANEL ── -->
+    <div class="panel" id="panel-blog">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div class="card">
+          <div class="card-head"><div class="card-title">✍️ Post New Announcement</div></div>
+          <div style="padding:18px">
+            <label class="fl">Title *</label>
+            <input class="fi" id="bl-title" type="text" placeholder="e.g. New Feature Launch!">
+            <label class="fl">Message *</label>
+            <textarea class="fi" id="bl-body" rows="5" placeholder="Apna message yahan likhein..." style="resize:vertical"></textarea>
+            <label class="fl">Type</label>
+            <select class="fi" id="bl-type">
+              <option value="info">ℹ️ Info</option>
+              <option value="success">✅ Success / New Feature</option>
+              <option value="warning">⚠️ Warning / Maintenance</option>
+              <option value="promo">🎉 Promo / Offer</option>
+            </select>
+            <label class="fl">Show on Website?</label>
+            <select class="fi" id="bl-active">
+              <option value="yes">✅ Yes — Show on site</option>
+              <option value="no">❌ No — Draft only</option>
+            </select>
+            <button class="btn btn-g" style="width:100%;padding:11px;font-size:.9rem;margin-top:4px" onclick="postBlog()">📢 Publish Announcement</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head">
+            <div class="card-title">📋 All Announcements</div>
+            <button class="btn btn-gh btn-sm" onclick="loadBlog()">🔄</button>
+          </div>
+          <div id="blog-list" style="padding:10px;max-height:520px;overflow-y:auto">
+            <div style="text-align:center;color:var(--t4);padding:20px">Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
 </div>
 
@@ -641,7 +731,7 @@ function show(name, el) {
   if (panel) panel.classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){ n.classList.remove('on'); });
   if (el) el.classList.add('on');
-  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings'};
+  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements'};
   document.getElementById('page-title').textContent = titles[name]||name;
   if (name==='users')     loadUsers();
   if (name==='access')    loadAccess();
@@ -651,6 +741,8 @@ function show(name, el) {
   if (name==='dash')      loadDash();
   if (name==='reminders') loadReminders();
   if (name==='pricing')   loadPricing();
+  if (name==='analytics') loadAnalytics();
+  if (name==='blog')      loadBlog();
 }
 
 function initAll() { loadDash(); loadUsers(); loadPay(); loadFranchise(); loadAccess(); loadTools(); checkExpiringAlert(); }
@@ -703,7 +795,7 @@ function loadDash() {
 
 // ── USERS ──
 function loadUsers() {
-  set('u-body','<tr><td colspan="9" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr>');
+  set('u-body','<tr><td colspan="11" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr>');
   db.collection('users').limit(500).get().then(function(snap) {
     _users=[];
     snap.forEach(function(d){ _users.push(Object.assign({id:d.id},d.data())); });
@@ -719,52 +811,77 @@ function loadUsers() {
 
 function renderUsers(list) {
   var now=Date.now();
-  if(!list.length){ set('u-body','<tr><td colspan="9" style="text-align:center;color:var(--t4);padding:30px">👥 No users found</td></tr>'); return; }
-  set('u-body', list.map(function(u,i){
+  if(!list.length){ set('u-body','<tr><td colspan="11" style="text-align:center;color:var(--t4);padding:30px">No users found</td></tr>'); return; }
+  var rows='';
+  list.forEach(function(u,i){
     var mob = u.mobile||u.phone||u.contact||'';
     var city = u.city||u.location||'';
-    var reg = u.registeredAt ? (new Date(u.registeredAt).toLocaleDateString('en-IN')+' '+new Date(u.registeredAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}))
+    var state = u.state||u.province||'';
+    var cityState = [city,state].filter(Boolean).join(', ')||'—';
+    var reg = u.registeredAt ? new Date(u.registeredAt).toLocaleDateString('en-IN')+' '+new Date(u.registeredAt).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})
               : (u.verifiedAt ? new Date(u.verifiedAt).toLocaleDateString('en-IN') : '—');
     var plan = u.planType||'free';
-    var isAdm = ADMINS.indexOf((u.email||'').toLowerCase()) !== -1;
-    var expB = '<span class="b free">Free</span>';
-    if(plan!=='free'&&u.planExpiry){
-      var diff=Math.ceil((new Date(u.planExpiry).getTime()-now)/864e5);
-      expB = diff<0?'<span class="b fail">Expired</span>':diff<=7?'<span class="b warn">⚠️ '+diff+'d</span>':'<span class="b ok">Active</span>';
+    var isAdm = ADMINS.indexOf((u.email||'').toLowerCase())!==-1;
+    var expiryCell='<span style="color:var(--t4)">—</span>';
+    var statusBadge='<span class="b free">FREE</span>';
+    if(plan!=='free'){
+      statusBadge='<span class="b '+plan+'">'+plan.toUpperCase()+'</span>';
+      if(u.planExpiry){
+        var diff=Math.ceil((new Date(u.planExpiry).getTime()-now)/864e5);
+        var dc=diff<0?'#f87171':diff<=7?'#fbbf24':'var(--neon)';
+        expiryCell='<span style="color:'+dc+';font-weight:700;font-size:.8rem">'+(diff<0?Math.abs(diff)+'d Expired':diff===0?'TODAY':diff+'d left')+'</span><br><span style="font-size:.66rem;color:var(--t4)">'+fmtD(u.planExpiry)+'</span>';
+      }
     }
-    return '<tr>'+
+    var paid=u.paidAmount?'<span style="color:var(--gold2);font-weight:600">'+Number(u.paidAmount).toLocaleString('en-IN')+'</span>':'<span style="color:var(--t4)">—</span>';
+    rows+='<tr>'+
       '<td style="color:var(--t4);font-size:.72rem;text-align:center">'+(i+1)+'</td>'+
-      '<td><div style="display:flex;align-items:center;gap:7px"><div style="width:28px;height:28px;background:var(--gs);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--gold2);font-weight:800;flex-shrink:0">'+(u.name||'U').charAt(0).toUpperCase()+'</div>'+
-      '<div style="font-weight:600;font-size:.84rem">'+(isAdm?'<span class="b adm" style="font-size:.55rem;margin-right:3px">ADMIN</span>':'')+x(u.name||'Unknown')+'</div></div></td>'+
-      '<td style="font-size:.8rem;color:var(--t3)">'+x(u.email||'')+'</td>'+
-      '<td><a href="tel:'+x(mob)+'" style="color:var(--t2);text-decoration:none;font-size:.82rem">'+(mob?'📱 '+x(mob):'<span style="color:var(--t4)">—</span>')+'</a></td>'+
-      '<td style="font-size:.8rem;color:var(--t3)">'+(city?x(city):'<span style="color:var(--t4)">—</span>')+'</td>'+
-      '<td><span class="b '+plan+'">'+plan.toUpperCase()+'</span></td>'+
-      '<td>'+(u.verified?'<span style="color:var(--neon)">✅</span>':'<span style="color:#fbbf24">⚠️</span>')+'</td>'+
-      '<td style="font-size:.74rem;color:var(--t4);white-space:nowrap">'+reg+'</td>'+
-      '<td style="white-space:nowrap"><button class="btn btn-gh btn-sm" onclick="openEditUser(\''+u.id+'\')">✏️</button></td>'+
+      '<td style="min-width:130px"><div style="display:flex;align-items:center;gap:7px">'+
+        '<div style="width:28px;height:28px;background:var(--gs);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--gold2);font-weight:800;flex-shrink:0">'+(u.name||'U').charAt(0).toUpperCase()+'</div>'+
+        '<div><div style="font-weight:600;font-size:.84rem">'+(isAdm?'<span class="b adm" style="font-size:.55rem;margin-right:3px">ADMIN</span>':'')+x(u.name||'Unknown')+'</div>'+
+        (u.referral?'<div style="font-size:.64rem;color:var(--t4)">ref:'+x(u.referral)+'</div>':'')+
+        '</div></div></td>'+
+      '<td style="font-size:.78rem;color:var(--t3)">'+x(u.email||'—')+'</td>'+
+      '<td style="font-size:.8rem"><a href="tel:'+x(mob)+'" style="color:var(--t2);text-decoration:none">'+(mob?x(mob):'<span style="color:var(--t4)">—</span>')+'</a>'+
+        (mob?'<br><a href="https://wa.me/91'+mob.replace(/[^0-9]/g,'')+'" target="_blank" style="font-size:.66rem;color:#34d399;text-decoration:none">WA</a>':'')+
+      '</td>'+
+      '<td style="font-size:.78rem;color:var(--t3)">'+x(cityState)+'</td>'+
+      '<td>'+statusBadge+'</td>'+
+      '<td>'+expiryCell+'</td>'+
+      '<td>'+paid+'</td>'+
+      '<td style="text-align:center">'+(u.verified?'<span style="color:var(--neon)">✅</span>':'<span style="color:#fbbf24">⚠️</span>')+'</td>'+
+      '<td style="font-size:.72rem;color:var(--t4);white-space:nowrap">'+reg+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-gh btn-sm" onclick="openEditUser(this.dataset.uid)" data-uid="'+u.id+'" title="Edit">✏️</button>'+
+      '</td>'+
     '</tr>';
-  }).join(''));
+  });
+  set('u-body', rows);
 }
 
 function filterUsers() {
   var q=($id('u-search').value||'').toLowerCase();
   var p=$id('u-plan').value;
+  var v=($id('u-verified')||{value:'all'}).value;
+  var c=(($id('u-city')||{value:''}).value||'').toLowerCase();
   var f=_users.filter(function(u){
-    var mq=!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.mobile||'').includes(q);
+    var mq=!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.mobile||'').includes(q)||(u.phone||'').includes(q)||(u.city||'').toLowerCase().includes(q);
     var mp=p==='all'||u.planType===p;
-    return mq&&mp;
+    var mv=v==='all'||(v==='yes'&&u.verified)||(v==='no'&&!u.verified);
+    var mc=!c||(u.city||'').toLowerCase().includes(c)||(u.location||'').toLowerCase().includes(c);
+    return mq&&mp&&mv&&mc;
   });
   renderUsers(f);
 }
 
 function exportCSV() {
   if(!_users.length){ toast('No users to export'); return; }
-  var rows=[['#','Name','Email','Mobile','City','Plan','Verified','Registered']];
+  var rows=[['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Registered At','Admin Note']];
   _users.forEach(function(u,i){
-    rows.push([i+1, u.name||'', u.email||'', u.mobile||u.phone||u.contact||'', u.city||u.location||'',
-      u.planType||'free', u.verified?'Yes':'No',
-      u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):(u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):'')]);
+    rows.push([i+1, u.name||'', u.email||'', u.mobile||u.phone||u.contact||'', u.whatsapp||'', u.city||u.location||'', u.state||u.province||'',
+      u.planType||'free', u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'',
+      u.paidAmount||0, u.paymentMethod||'', u.verified?'Yes':'No',
+      u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):(u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):''),
+      u.adminNote||'']);
   });
   var csv=rows.map(function(r){return r.map(function(c){return '"'+(c+'').replace(/"/g,'""')+'"';}).join(',');}).join('\n');
   var a=document.createElement('a');
@@ -927,6 +1044,10 @@ function execApprove(){
     }).then(function(){
       closeM('m-approve');
       toast('✅ Approved! '+email+' → '+(p.planType||'premium').toUpperCase()+' till '+exp.toLocaleDateString('en-IN'));
+      sendEmailNotification(email, p.userName||'User',
+        'K Spider AI - Access Activated!',
+        'Congratulations! Your '+(p.planType||'premium').toUpperCase()+' plan has been activated till '+exp.toLocaleDateString('en-IN')+'. Enjoy all premium features at kspiderai.in. Thank you! — K Spider AI Team'
+      );
       loadPay(); loadUsers(); loadDash();
     }).catch(function(e){toast('❌ '+e.message);});
 }
@@ -1225,6 +1346,183 @@ function showPrMsg(msg){
   el.textContent=msg; el.style.display='inline';
   clearTimeout(el._t);
   el._t=setTimeout(function(){ el.style.display='none'; },3000);
+}
+
+
+// ── ANALYTICS ──
+var _chartPlan=null, _chartMethod=null, _chartGrowth=null;
+
+function loadAnalytics(){
+  var now=Date.now();
+  db.collection('users').get().then(function(snap){
+    var tot=0,prem=0,fran=0,free_=0,exp=0,rev=0;
+    var cityMap={};
+    var growthMap={};
+    snap.forEach(function(d){
+      var u=d.data(); tot++;
+      if(u.planType==='premium') prem++;
+      else if(u.planType==='franchise') fran++;
+      else free_++;
+      if(u.planExpiry){var diff=(new Date(u.planExpiry).getTime()-now)/864e5;if(diff>=0&&diff<=7)exp++;}
+      rev+=Number(u.paidAmount)||0;
+      var city=(u.city||u.location||'').trim();
+      if(city) cityMap[city]=(cityMap[city]||0)+1;
+      var rt=u.registeredAt||(u.verifiedAt?u.verifiedAt:null);
+      if(rt){
+        var d30=new Date(); d30.setDate(d30.getDate()-30);
+        var dt=new Date(rt);
+        if(dt>=d30){
+          var key=dt.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+          growthMap[key]=(growthMap[key]||0)+1;
+        }
+      }
+    });
+    set('an-total',tot); set('an-prem',prem); set('an-fran',fran);
+    set('an-rev','₹'+rev.toLocaleString('en-IN')); set('an-exp',exp);
+    // Plan chart
+    drawDoughnut('chart-plan',['Free','Premium','Franchise'],[free_,prem,fran],['#5a5650','#b8792a','#7c3aed']);
+    // City table
+    var cities=Object.entries(cityMap).sort(function(a,b){return b[1]-a[1];}).slice(0,10);
+    set('city-body',cities.length?cities.map(function(c,i){
+      return '<tr><td style="font-weight:600;font-size:.85rem">'+(i+1)+'. '+x(c[0])+'</td>'+
+        '<td style="font-weight:700;color:var(--gold2)">'+c[1]+'</td>'+
+        '<td style="color:var(--t3);font-size:.8rem">'+Math.round(c[1]/tot*100)+'%</td></tr>';
+    }).join(''):'<tr><td colspan="3" style="text-align:center;color:var(--t4);padding:16px">No city data</td></tr>');
+    // Growth chart - last 30 days
+    var last30=[]; var labels=[];
+    for(var i=29;i>=0;i--){
+      var d=new Date(); d.setDate(d.getDate()-i);
+      var k=d.toLocaleDateString('en-IN',{day:'2-digit',month:'short'});
+      labels.push(i%5===0?k:'');
+      last30.push(growthMap[k]||0);
+    }
+    drawLine('chart-growth',labels,last30,'New Users');
+  });
+  db.collection('payments').get().then(function(snap){
+    var tot=0,methodMap={};
+    snap.forEach(function(d){
+      var p=d.data(); tot++;
+      var m=p.method||p.paymentMethod||'Other';
+      methodMap[m]=(methodMap[m]||0)+(p.amount||0);
+    });
+    set('an-pay',tot);
+    var methods=Object.entries(methodMap);
+    drawDoughnut('chart-method',methods.map(function(m){return m[0];}),methods.map(function(m){return m[1];}),['#b8792a','#3b82f6','#059669','#dc2626','#7c3aed']);
+  });
+}
+
+function drawDoughnut(id,labels,data,colors){
+  var c=document.getElementById(id); if(!c)return;
+  if(c._chartInst) c._chartInst.destroy();
+  if(typeof Chart==='undefined'){loadChartJS(function(){drawDoughnut(id,labels,data,colors);});return;}
+  c._chartInst=new Chart(c,{type:'doughnut',data:{labels:labels,datasets:[{data:data,backgroundColor:colors,borderWidth:2,borderColor:'#1a1814'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#c8c3ba',font:{size:11},padding:8}}}}});
+}
+function drawLine(id,labels,data,label){
+  var c=document.getElementById(id); if(!c)return;
+  if(c._chartInst) c._chartInst.destroy();
+  if(typeof Chart==='undefined'){loadChartJS(function(){drawLine(id,labels,data,label);});return;}
+  c._chartInst=new Chart(c,{type:'bar',data:{labels:labels,datasets:[{label:label,data:data,backgroundColor:'rgba(184,121,42,.5)',borderColor:'#b8792a',borderWidth:1}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8a8479',font:{size:10}}},y:{ticks:{color:'#8a8479',font:{size:10}},beginAtZero:true}}}});
+}
+function loadChartJS(cb){
+  var s=document.createElement('script');
+  s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+  s.onload=cb; document.head.appendChild(s);
+}
+
+// ── BLOG / ANNOUNCEMENTS ──
+function postBlog(){
+  var title=($id('bl-title').value||'').trim();
+  var body=($id('bl-body').value||'').trim();
+  var type=$id('bl-type').value;
+  var active=$id('bl-active').value==='yes';
+  if(!title||!body){toast('Title aur message dono required hain');return;}
+  if(!_user){toast('Login required');return;}
+  var doc={
+    title:title, body:body, type:type, active:active,
+    createdBy:_user.email,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  db.collection('announcements').add(doc).then(function(){
+    toast('Announcement published!');
+    $id('bl-title').value=''; $id('bl-body').value='';
+    loadBlog();
+  }).catch(function(e){toast('Error: '+e.message);});
+}
+
+function loadBlog(){
+  var el=$id('blog-list');
+  if(el) el.innerHTML='<div style="text-align:center;color:var(--t4);padding:20px">Loading...</div>';
+  db.collection('announcements').orderBy('createdAt','desc').limit(20).get().then(function(snap){
+    var items=[]; snap.forEach(function(d){items.push({id:d.id,data:d.data()});});
+    var nb=$id('blog-badge');
+    var activeCount=items.filter(function(i){return i.data.active;}).length;
+    if(nb){nb.style.display=activeCount?'':'none';nb.textContent=activeCount;}
+    if(!items.length){
+      if(el)el.innerHTML='<div style="text-align:center;color:var(--t4);padding:20px">No announcements yet</div>';
+      return;
+    }
+    var typeColors={info:'#3b82f6',success:'#059669',warning:'#f59e0b',promo:'#7c3aed'};
+    var typeLabels={info:'INFO',success:'FEATURE',warning:'WARNING',promo:'PROMO'};
+    var html='';
+    items.forEach(function(item){
+      var d=item.data;
+      var tc=typeColors[d.type]||'#3b82f6';
+      var tl=typeLabels[d.type]||d.type;
+      var dt=d.createdAt?new Date(d.createdAt.seconds*1000).toLocaleDateString('en-IN'):'—';
+      var isActive=d.active?true:false;
+      html+='<div style="border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;margin-bottom:10px;background:var(--bg3)">'+
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">'+
+          '<span style="font-size:.6rem;font-weight:700;padding:3px 8px;border-radius:20px;background:'+tc+'22;color:'+tc+';border:1px solid '+tc+'44">'+tl+'</span>'+
+          '<span style="font-size:.62rem;color:var(--t4)">'+dt+'</span>'+
+          '<span style="margin-left:auto;font-size:.65rem;color:'+(isActive?'#34d399':'#f87171')+'">'+(isActive?'LIVE':'DRAFT')+'</span>'+
+        '</div>'+
+        '<div style="font-weight:600;font-size:.88rem;margin-bottom:5px">'+x(d.title)+'</div>'+
+        '<div style="font-size:.8rem;color:var(--t3);line-height:1.5">'+x(d.body)+'</div>'+
+        '<div style="display:flex;gap:6px;margin-top:10px">'+
+          '<button class="btn btn-gh btn-sm" data-bid="'+item.id+'" data-bactive="'+(isActive?'1':'0')+'" onclick="toggleBlogBtn(this)">'+(isActive?'Unpublish':'Publish')+'</button>'+
+          '<button class="btn btn-r btn-sm" data-bid="'+item.id+'" onclick="deleteBlog(this.dataset.bid)">Delete</button>'+
+        '</div>'+
+      '</div>';
+    });
+    if(el) el.innerHTML=html;
+  }).catch(function(e){toast('Error: '+e.message);});
+}
+
+function toggleBlogBtn(btn){
+  var id=btn.dataset.bid;
+  var isActive=btn.dataset.bactive==='1';
+  toggleBlog(id,isActive);
+}
+
+function toggleBlog(id,isActive){
+  db.collection('announcements').doc(id).update({active:!isActive,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(function(){toast(!isActive?'Published!':'Unpublished');loadBlog();})
+    .catch(function(e){toast('Error: '+e.message);});
+}
+
+function deleteBlog(id){
+  if(!confirm('Delete this announcement?')) return;
+  db.collection('announcements').doc(id).delete()
+    .then(function(){toast('Deleted');loadBlog();})
+    .catch(function(e){toast('Error: '+e.message);});
+}
+
+// ── EMAIL NOTIFICATIONS (via EmailJS) ──
+function sendEmailNotification(toEmail, toName, subject, message){
+  if(typeof emailjs==='undefined') return;
+  emailjs.init({publicKey:'KU5yrIwmM4PMVyqBN'});
+  emailjs.send('service_kspider','template_kspider',{
+    to_email: toEmail,
+    to_name: toName||'User',
+    subject: subject,
+    message: message,
+    from_name: 'K Spider AI Team'
+  }).then(function(){
+    toast('Email sent to '+toEmail);
+  }).catch(function(e){
+    console.warn('Email send failed:',e);
+  });
 }
 
 </script>
