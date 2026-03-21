@@ -840,11 +840,14 @@ function startRealtimeListeners() {
   if (_unsubFranchise){ _unsubFranchise();_unsubFranchise = null; }
 
   // ── USERS — real-time listener ──
+  // NOTE: No orderBy + no limit = catches ALL changes including new docs
+  // orderBy with limit can miss new docs if they sort outside the window
   set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">🔴 Connecting live...</td></tr>');
-  _unsubUsers = db.collection('users').limit(500)
+  _unsubUsers = db.collection('users')
     .onSnapshot(function(snap) {
       _users = [];
       snap.forEach(function(d){ _users.push(Object.assign({id:d.id}, d.data())); });
+      // Sort newest first in JS (not in query — avoids missing new docs)
       _users.sort(function(a,b){
         var ta=a.registeredAt?new Date(a.registeredAt).getTime():(a.verifiedAt?new Date(a.verifiedAt).getTime():0);
         var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
@@ -853,13 +856,24 @@ function startRealtimeListeners() {
       set('users-badge', _users.length);
       checkAutoUnsuspend(_users);
       renderUsers(_users);
-      // Also refresh dashboard counts live
       updateDashCounts(_users);
-      // Show live indicator
       showLiveIndicator('users');
     }, function(err) {
-      console.error('[Admin] Users listener error:', err);
-      set('u-body','<tr><td colspan="12" style="text-align:center;color:#f87171;padding:24px">Connection error. <button class="btn btn-gh btn-sm" onclick="startRealtimeListeners()">Retry</button></td></tr>');
+      console.error('[Admin] Users listener error:', err.code, err.message);
+      // Fallback: try simple get()
+      db.collection('users').get().then(function(snap){
+        _users=[];
+        snap.forEach(function(d){_users.push(Object.assign({id:d.id},d.data()));});
+        _users.sort(function(a,b){
+          var ta=a.registeredAt?new Date(a.registeredAt).getTime():(a.verifiedAt?new Date(a.verifiedAt).getTime():0);
+          var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
+          return tb-ta;
+        });
+        set('users-badge',_users.length);
+        renderUsers(_users);
+        updateDashCounts(_users);
+        set('live-dot','<span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block"></span> OFFLINE');
+      }).catch(function(){});
     });
 
   // ── PENDING PAYMENTS — real-time listener ──
@@ -977,11 +991,13 @@ function loadDash() {
 
 // ── USERS ──
 function loadUsers() {
-  // Restart real-time listener (already running via startRealtimeListeners)
-  // If listener is active, just re-render from cached data
-  if(_users.length > 0) { renderUsers(_users); return; }
-  // Otherwise restart listeners
-  startRealtimeListeners();
+  if(_unsubUsers && _users.length > 0) {
+    // Listener active + data cached — just re-render
+    renderUsers(_users);
+  } else {
+    // No listener or empty — restart
+    startRealtimeListeners();
+  }
 }
 
 function renderUsers(list) {
