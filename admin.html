@@ -110,6 +110,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 /* ALERT BAR */
 #alert-bar{display:none;font-size:.73rem;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:4px 12px;border-radius:20px;cursor:pointer}
 @media(max-width:800px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.sg{grid-template-columns:1fr 1fr}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
@@ -192,6 +193,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
     <div class="topbar">
       <div class="topbar-title" id="page-title">📊 Dashboard</div>
       <div id="alert-bar" onclick="show('users',document.getElementById('n-users'))">🔔 <span id="alert-txt"></span></div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:#34d399;background:rgba(5,150,105,.1);border:1px solid rgba(5,150,105,.25);border-radius:20px;padding:3px 10px" id="live-dot"><span style="width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;animation:blink 2s infinite"></span> LIVE</div>
       <div class="topbar-user">
         <div class="avatar">👑</div>
         <span id="admin-name">Admin</span>
@@ -790,6 +792,10 @@ function showApp(u) {
 }
 
 function doLogout() {
+  // Stop all real-time listeners before logout
+  if (_unsubUsers)    { _unsubUsers();    _unsubUsers = null; }
+  if (_unsubPending)  { _unsubPending();  _unsubPending = null; }
+  if (_unsubFranchise){ _unsubFranchise();_unsubFranchise = null; }
   auth.signOut().then(function() { location.reload(); });
 }
 
@@ -814,7 +820,114 @@ function show(name, el) {
   if (name==='blog')      loadBlog();
 }
 
-function initAll() { loadDash(); loadUsers(); loadPay(); loadFranchise(); loadAccess(); loadTools(); checkExpiringAlert(); }
+function initAll() {
+  startRealtimeListeners(); // Real-time listeners for users, payments, franchise
+  loadDash();
+  loadAccess();
+  loadTools();
+  checkExpiringAlert();
+}
+
+// ── REAL-TIME LISTENERS ──
+var _unsubUsers = null;
+var _unsubPending = null;
+var _unsubFranchise = null;
+
+function startRealtimeListeners() {
+  // Stop any existing listeners
+  if (_unsubUsers)    { _unsubUsers();    _unsubUsers = null; }
+  if (_unsubPending)  { _unsubPending();  _unsubPending = null; }
+  if (_unsubFranchise){ _unsubFranchise();_unsubFranchise = null; }
+
+  // ── USERS — real-time listener ──
+  set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">🔴 Connecting live...</td></tr>');
+  _unsubUsers = db.collection('users').limit(500)
+    .onSnapshot(function(snap) {
+      _users = [];
+      snap.forEach(function(d){ _users.push(Object.assign({id:d.id}, d.data())); });
+      _users.sort(function(a,b){
+        var ta=a.registeredAt?new Date(a.registeredAt).getTime():(a.verifiedAt?new Date(a.verifiedAt).getTime():0);
+        var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
+        return tb-ta;
+      });
+      set('users-badge', _users.length);
+      checkAutoUnsuspend(_users);
+      renderUsers(_users);
+      // Also refresh dashboard counts live
+      updateDashCounts(_users);
+      // Show live indicator
+      showLiveIndicator('users');
+    }, function(err) {
+      console.error('[Admin] Users listener error:', err);
+      set('u-body','<tr><td colspan="12" style="text-align:center;color:#f87171;padding:24px">Connection error. <button class="btn btn-gh btn-sm" onclick="startRealtimeListeners()">Retry</button></td></tr>');
+    });
+
+  // ── PENDING PAYMENTS — real-time listener ──
+  _unsubPending = db.collection('payments').where('status','==','pending').limit(50)
+    .onSnapshot(function(snap) {
+      _pendingPays = [];
+      snap.forEach(function(d){ _pendingPays.push(Object.assign({id:d.id}, d.data())); });
+      var nb = $id('pay-badge');
+      if(nb){ nb.style.display=_pendingPays.length?'':'none'; nb.textContent=_pendingPays.length; }
+      // If payments panel is active, refresh it
+      if(document.getElementById('panel-pay').classList.contains('on')) {
+        renderPendingPays(_pendingPays);
+      }
+      // Flash badge if new payment came in
+      if(_pendingPays.length > 0) showLiveIndicator('pay');
+    }, function(err) {
+      console.error('[Admin] Payments listener error:', err);
+    });
+
+  // ── FRANCHISE INQUIRIES — real-time listener ──
+  _unsubFranchise = db.collection('franchise_inquiries').orderBy('timestamp','desc').limit(50)
+    .onSnapshot(function(snap) {
+      var newCount = 0;
+      var docs = [];
+      snap.forEach(function(d){
+        var fd = d.data();
+        docs.push({id:d.id, data:fd});
+        if(fd.status==='new'||!fd.status) newCount++;
+      });
+      var fb = $id('fi-badge');
+      if(fb){ fb.style.display=newCount?'':'none'; fb.textContent=newCount; }
+      // If franchise panel is active, refresh it
+      if(document.getElementById('panel-franchise').classList.contains('on')) {
+        renderFranchiseInquiries(docs);
+      }
+    }, function(err) {
+      console.error('[Admin] Franchise listener error:', err);
+    });
+}
+
+// ── Live indicator — flashes green dot on nav badge ──
+function showLiveIndicator(panel) {
+  var badge = $id('users-badge');
+  if(panel==='users' && badge) {
+    badge.style.background = '#059669';
+    setTimeout(function(){ badge.style.background = ''; }, 2000);
+  }
+}
+
+// ── Update dashboard counts from live users data ──
+function updateDashCounts(users) {
+  var now = Date.now();
+  var today = new Date(); today.setHours(0,0,0,0);
+  var tot=0, prem=0, fran=0, exp=0, rev=0, tod=0;
+  users.forEach(function(u) {
+    tot++;
+    if(u.planType==='premium') prem++;
+    if(u.planType==='franchise') fran++;
+    if(u.planExpiry){ var diff=(new Date(u.planExpiry).getTime()-now)/864e5; if(diff>=0&&diff<=7) exp++; }
+    rev += Number(u.paidAmount)||0;
+    var rt=u.registeredAt?new Date(u.registeredAt).getTime():(u.verifiedAt?new Date(u.verifiedAt).getTime():0);
+    if(rt >= today.getTime()) tod++;
+  });
+  set('s-users',tot); set('s-today',tod); set('s-prem',prem);
+  set('s-fran',fran); set('s-exp',exp); set('s-rev','₹'+rev.toLocaleString('en-IN'));
+  set('users-badge',tot);
+  if(exp>0){ $id('alert-bar').style.display=''; set('alert-txt',exp+' users expiring in 7 days!'); }
+}
 
 // ── HELPERS ──
 function x(s){ return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -864,19 +977,11 @@ function loadDash() {
 
 // ── USERS ──
 function loadUsers() {
-  set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr>');
-  db.collection('users').limit(500).get().then(function(snap) {
-    _users=[];
-    snap.forEach(function(d){ _users.push(Object.assign({id:d.id},d.data())); });
-    _users.sort(function(a,b){
-      var ta=a.registeredAt?new Date(a.registeredAt).getTime():(a.verifiedAt?new Date(a.verifiedAt).getTime():0);
-      var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
-      return tb-ta;
-    });
-    set('users-badge',_users.length);
-    checkAutoUnsuspend(_users);
-    renderUsers(_users);
-  }).catch(function(e){ set('u-body','<tr><td colspan="12" style="text-align:center;color:#f87171;padding:24px">Error: '+x(e.message)+'</td></tr>'); });
+  // Restart real-time listener (already running via startRealtimeListeners)
+  // If listener is active, just re-render from cached data
+  if(_users.length > 0) { renderUsers(_users); return; }
+  // Otherwise restart listeners
+  startRealtimeListeners();
 }
 
 function renderUsers(list) {
@@ -1156,28 +1261,9 @@ function loadAccess() {
 
 // ── PAYMENTS ──
 function loadPay() {
-  // Pending
-  db.collection('payments').where('status','==','pending').limit(50).get().then(function(snap){
-    _pendingPays=[];
-    snap.forEach(function(d){_pendingPays.push(Object.assign({id:d.id},d.data()));});
-    var nb=$id('pay-badge');
-    if(nb){nb.style.display=_pendingPays.length?'':'none';nb.textContent=_pendingPays.length;}
-    set('pend-body',_pendingPays.length?_pendingPays.map(function(p){
-      return '<tr style="background:rgba(245,158,11,.04)">'+
-        '<td style="font-size:.73rem;color:var(--gold2);font-family:monospace">'+x(p.orderId||p.id||'—')+'</td>'+
-        '<td><div style="font-weight:600;font-size:.83rem">'+x(p.userName||'—')+'</div>'+
-        '<div style="font-size:.72rem;color:var(--t4)">'+x(p.userEmail||'')+'</div>'+
-        '<div style="font-size:.7rem;color:var(--t4)">📱 '+x(p.userMobile||'—')+'</div></td>'+
-        '<td><span class="b '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
-        '<td style="font-weight:700;color:var(--gold2)">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
-        '<td style="font-size:.78rem;font-family:monospace">'+x(p.utr||p.ref||'—')+'</td>'+
-        '<td style="font-size:.73rem;color:var(--t4)">'+fmt(p.timestamp)+'</td>'+
-        '<td style="white-space:nowrap">'+
-          '<button class="btn btn-gr btn-sm" style="margin-right:4px" onclick="openApprove(\''+p.id+'\')">✅ Approve</button>'+
-          '<button class="btn btn-r btn-sm" onclick="rejectPayById(\''+p.id+'\')">❌</button></td></tr>';
-    }).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--neon);padding:20px">✅ No pending payments</td></tr>');
-  });
-  // All payments
+  // Pending payments — rendered by real-time listener
+  renderPendingPaysList(_pendingPays);
+  // All payments history — one-time fetch
   db.collection('payments').limit(200).get().then(function(snap){
     _payments=[];
     snap.forEach(function(d){_payments.push(Object.assign({id:d.id},d.data()));});
@@ -1185,6 +1271,25 @@ function loadPay() {
     renderPayments(_payments);
   });
 }
+
+function renderPendingPaysList(list) {
+  set('pend-body',list&&list.length?list.map(function(p){
+    return '<tr style="background:rgba(245,158,11,.04)">'+
+      '<td style="font-size:.73rem;color:var(--gold2);font-family:monospace">'+x(p.orderId||p.id||'—')+'</td>'+
+      '<td><div style="font-weight:600;font-size:.83rem">'+x(p.userName||'—')+'</div>'+
+      '<div style="font-size:.72rem;color:var(--t4)">'+x(p.userEmail||'')+'</div>'+
+      '<div style="font-size:.7rem;color:var(--t4)">📱 '+x(p.userMobile||'—')+'</div></td>'+
+      '<td><span class="b '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
+      '<td style="font-weight:700;color:var(--gold2)">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
+      '<td style="font-size:.78rem;font-family:monospace">'+x(p.utr||p.ref||'—')+'</td>'+
+      '<td style="font-size:.73rem;color:var(--t4)">'+fmt(p.timestamp)+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-gr btn-sm" style="margin-right:4px" onclick="openApprove(this.dataset.pid)" data-pid="'+p.id+'">✅ Approve</button>'+
+        '<button class="btn btn-r btn-sm" onclick="rejectPayById(this.dataset.pid)" data-pid="'+p.id+'">❌</button></td></tr>';
+  }).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--neon);padding:20px">✅ No pending payments</td></tr>');
+}
+
+
 function renderPayments(list){
   set('pay-body',list.length?list.map(function(p){
     var sc=p.status==='success'?'ok':p.status==='pending'?'warn':'fail';
@@ -1303,8 +1408,30 @@ function loadFranchise(){
 }
 function markSeen(id,btn){
   db.collection('franchise_inquiries').doc(id).update({status:'seen'}).then(function(){
-    toast('Marked as seen'); loadFranchise();
+    toast('Marked as seen');
   });
+}
+
+var _fiDocs = [];
+function renderFranchiseInquiries(docs) {
+  _fiDocs = docs;
+  var newC=0;
+  set('fi-body',docs.length?docs.map(function(item){
+    var f=item.data; var isNew=f.status==='new'||!f.status; if(isNew)newC++;
+    var dt=f.timestamp?new Date(f.timestamp.seconds*1000).toLocaleDateString('en-IN'):'—';
+    return '<tr style="'+(isNew?'background:rgba(245,158,11,.04)':'')+'">' +
+      '<td style="font-weight:600">'+x(f.franchise_name||f.name||'—')+'<br>'+(isNew?'<span class="b warn" style="font-size:.58rem">🔔 NEW</span>':'<span class="b ok" style="font-size:.58rem">Seen</span>')+'</td>'+
+      '<td style="font-size:.8rem;color:var(--t3)">'+x(f.franchise_email||f.email||'—')+'</td>'+
+      '<td style="font-size:.8rem">'+x(f.franchise_mobile||f.mobile||'—')+'</td>'+
+      '<td style="font-size:.8rem">'+x(f.franchise_city||f.city||'—')+'</td>'+
+      '<td style="font-size:.75rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+x(f.franchise_message||f.message||'')+'">'+x(f.franchise_message||f.message||'—')+'</td>'+
+      '<td style="font-size:.74rem;color:var(--t4)">'+dt+'</td>'+
+      '<td style="white-space:nowrap">'+
+        '<button class="btn btn-pu btn-sm" onclick="convertFranchise(this.dataset.em)" data-em="'+x(f.franchise_email||f.email||'')+'">🏢 Convert</button> '+
+        (isNew?'<button class="btn btn-gh btn-sm" onclick="markSeen(this.dataset.iid,this)" data-iid="'+item.id+'">✓</button>':'')+
+      '</td></tr>';
+  }).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px">No inquiries yet</td></tr>');
+  var fb=$id('fi-badge'); if(fb){fb.style.display=newC?'':'none';fb.textContent=newC;}
 }
 function convertFranchise(email){
   $id('ac-em').value=email; $id('ac-plan').value='franchise';
