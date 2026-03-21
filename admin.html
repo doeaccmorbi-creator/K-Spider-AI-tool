@@ -191,7 +191,6 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <main class="main">
     <div class="topbar">
       <div class="topbar-title" id="page-title">📊 Dashboard</div>
-      <button class="btn btn-gh btn-sm" onclick="openSheet()" title="Open Google Sheet" style="font-size:.72rem">📊 Sheet</button>
       <div id="alert-bar" onclick="show('users',document.getElementById('n-users'))">🔔 <span id="alert-txt"></span></div>
       <div class="topbar-user">
         <div class="avatar">👑</div>
@@ -234,14 +233,19 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <option value="yes">✅ Verified</option>
             <option value="no">⚠️ Not Verified</option>
           </select>
+          <select class="sel" id="u-status" onchange="filterUsers()">
+            <option value="all">All Status</option>
+            <option value="active">🟢 Active</option>
+            <option value="suspended">🟡 Suspended</option>
+            <option value="banned">🔴 Banned</option>
+          </select>
           <input class="si2" type="text" id="u-city" placeholder="🏙️ City filter..." oninput="filterUsers()" style="max-width:130px">
           <button class="btn btn-gh btn-sm" onclick="loadUsers()">🔄 Refresh</button>
           <button class="btn btn-gr btn-sm" onclick="exportCSV()">📥 CSV</button>
-          <button class="btn btn-bl btn-sm" onclick="syncToSheet()" id="sync-btn" title="Sync users to Google Sheet">📊 Sync Sheet</button>
         </div>
         <div class="tw"><table>
-          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Registered</th><th>Actions</th></tr></thead>
-          <tbody id="u-body"><tr><td colspan="11" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr></tbody>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Status</th><th>Registered</th><th>Actions</th></tr></thead>
+          <tbody id="u-body"><tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr></tbody>
         </table></div>
       </div>
     </div>
@@ -296,7 +300,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <input class="si2" style="max-width:200px" type="text" id="pay-s" placeholder="Search..." oninput="filterPay()">
         </div>
         <div class="tw"><table>
-          <thead><tr><th>ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th></tr></thead>
+          <thead><tr><th>ID</th><th>User</th><th>Plan</th><th>Amount</th><th>Method</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
           <tbody id="pay-body"><tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px">Loading...</td></tr></tbody>
         </table></div>
       </div>
@@ -437,6 +441,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <canvas id="chart-growth" height="120"></canvas>
         </div>
       </div>
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head"><div class="card-title">💰 Monthly Revenue (Last 6 Months)</div><button class="btn btn-gh btn-sm" onclick="loadAnalytics()">🔄</button></div>
+        <div style="padding:18px">
+          <canvas id="chart-revenue" height="150"></canvas>
+        </div>
+      </div>
       <div class="card">
         <div class="card-head"><div class="card-title">🏙️ Top Cities</div></div>
         <div class="tw"><table>
@@ -511,22 +521,79 @@ tr:hover td{background:rgba(255,255,255,.015)}
 </div>
 
 <div class="mov" id="m-edit-user">
-  <div class="mbox">
-    <div class="mtitle">✏️ Edit User</div>
+  <div class="mbox" style="max-width:480px">
+    <div class="mtitle">👤 User Management</div>
     <input type="hidden" id="eu-id">
-    <div style="font-size:.78rem;color:var(--t3);margin-bottom:12px" id="eu-email"></div>
-    <label class="fl">Plan</label>
-    <select class="fi" id="eu-plan"><option value="free">Free</option><option value="premium">Premium</option><option value="franchise">Franchise</option></select>
-    <label class="fl">Expiry Date</label>
-    <input class="fi" id="eu-exp" type="date">
-    <label class="fl">Amount Paid (₹)</label>
-    <input class="fi" id="eu-amt" type="number">
-    <label class="fl">Admin Note</label>
-    <input class="fi" id="eu-note" type="text" placeholder="Optional">
-    <div class="mbtns">
-      <button class="btn btn-r btn-sm" onclick="disableUser()">🚫 Disable</button>
-      <button class="btn btn-gh" onclick="closeM('m-edit-user')">Cancel</button>
-      <button class="btn btn-g" onclick="saveUserEdit()">💾 Save</button>
+    <!-- User info header -->
+    <div id="eu-header" style="display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:10px;background:var(--bg3);border-radius:10px">
+      <div id="eu-avatar" style="width:38px;height:38px;background:var(--gs);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.9rem;color:var(--gold2);font-weight:800;flex-shrink:0">U</div>
+      <div>
+        <div id="eu-name" style="font-weight:600;font-size:.88rem;color:var(--t1)"></div>
+        <div id="eu-email" style="font-size:.75rem;color:var(--t3)"></div>
+        <div id="eu-status-badge" style="margin-top:3px"></div>
+      </div>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:3px;margin-bottom:14px;background:var(--bg3);border-radius:8px;padding:3px">
+      <button id="eu-tab-details" onclick="euTab('details')" style="flex:1;padding:6px;border:none;border-radius:6px;font-family:inherit;font-size:.75rem;font-weight:600;cursor:pointer;background:var(--bg2);color:var(--t1)">📋 Details</button>
+      <button id="eu-tab-actions" onclick="euTab('actions')" style="flex:1;padding:6px;border:none;border-radius:6px;font-family:inherit;font-size:.75rem;font-weight:600;cursor:pointer;background:transparent;color:var(--t3)">⚡ Actions</button>
+    </div>
+    <!-- Tab: Details -->
+    <div id="eu-pane-details">
+      <label class="fl">Plan</label>
+      <select class="fi" id="eu-plan"><option value="free">Free</option><option value="premium">Premium</option><option value="franchise">Franchise</option></select>
+      <label class="fl">Expiry Date</label>
+      <input class="fi" id="eu-exp" type="date">
+      <label class="fl">Amount Paid (₹)</label>
+      <input class="fi" id="eu-amt" type="number">
+      <label class="fl">Admin Note</label>
+      <input class="fi" id="eu-note" type="text" placeholder="Optional note about this user">
+      <div class="mbtns">
+        <button class="btn btn-gh" onclick="closeM('m-edit-user')">Cancel</button>
+        <button class="btn btn-g" onclick="saveUserEdit()">💾 Save Changes</button>
+      </div>
+    </div>
+    <!-- Tab: Actions -->
+    <div id="eu-pane-actions" style="display:none">
+      <!-- Suspend section -->
+      <div style="background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:600;font-size:.82rem;color:#fbbf24;margin-bottom:8px">🟡 Temporary Suspend</div>
+        <label class="fl">Suspend Duration</label>
+        <select class="fi" id="eu-susp-dur">
+          <option value="1">1 Day</option>
+          <option value="3">3 Days</option>
+          <option value="7">7 Days</option>
+          <option value="14">14 Days</option>
+          <option value="30">30 Days</option>
+        </select>
+        <label class="fl">Reason (shown to user)</label>
+        <input class="fi" id="eu-susp-reason" type="text" placeholder="e.g. Suspicious activity, Policy violation">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-sm" style="flex:1;background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)" onclick="suspendUser()">🟡 Suspend Now</button>
+          <button class="btn btn-gr btn-sm" style="flex:1" onclick="unsuspendUser()">✅ Unsuspend</button>
+        </div>
+      </div>
+      <!-- Ban section -->
+      <div style="background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.2);border-radius:10px;padding:14px;margin-bottom:12px">
+        <div style="font-weight:600;font-size:.82rem;color:#f87171;margin-bottom:8px">🔴 Permanent Ban</div>
+        <label class="fl">Ban Reason</label>
+        <input class="fi" id="eu-ban-reason" type="text" placeholder="e.g. Fraud, Abuse, ToS violation">
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-r btn-sm" style="flex:1" onclick="banUser()">🔴 Ban User</button>
+          <button class="btn btn-gr btn-sm" style="flex:1" onclick="unbanUser()">✅ Remove Ban</button>
+        </div>
+      </div>
+      <!-- Delete section -->
+      <div style="background:rgba(220,38,38,.03);border:1px solid rgba(220,38,38,.12);border-radius:10px;padding:14px">
+        <div style="font-weight:600;font-size:.82rem;color:#f87171;margin-bottom:4px">🗑️ Permanent Delete</div>
+        <div style="font-size:.72rem;color:var(--t4);margin-bottom:8px">⚠️ Ye action reversible nahi hai. User ka poora data Firestore se delete ho jaayega.</div>
+        <label class="fl">Type "DELETE" to confirm</label>
+        <input class="fi" id="eu-del-confirm" type="text" placeholder="Type DELETE to confirm" style="border-color:rgba(220,38,38,.3)">
+        <button class="btn btn-r" style="width:100%" onclick="permanentDeleteUser()">🗑️ Permanently Delete User</button>
+      </div>
+      <div class="mbtns" style="margin-top:12px">
+        <button class="btn btn-gh" onclick="closeM('m-edit-user')">Close</button>
+      </div>
     </div>
   </div>
 </div>
@@ -797,7 +864,7 @@ function loadDash() {
 
 // ── USERS ──
 function loadUsers() {
-  set('u-body','<tr><td colspan="11" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr>');
+  set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr>');
   db.collection('users').limit(500).get().then(function(snap) {
     _users=[];
     snap.forEach(function(d){ _users.push(Object.assign({id:d.id},d.data())); });
@@ -807,13 +874,14 @@ function loadUsers() {
       return tb-ta;
     });
     set('users-badge',_users.length);
+    checkAutoUnsuspend(_users);
     renderUsers(_users);
-  }).catch(function(e){ set('u-body','<tr><td colspan="9" style="text-align:center;color:#f87171;padding:24px">Error: '+x(e.message)+'</td></tr>'); });
+  }).catch(function(e){ set('u-body','<tr><td colspan="12" style="text-align:center;color:#f87171;padding:24px">Error: '+x(e.message)+'</td></tr>'); });
 }
 
 function renderUsers(list) {
   var now=Date.now();
-  if(!list.length){ set('u-body','<tr><td colspan="11" style="text-align:center;color:var(--t4);padding:30px">No users found</td></tr>'); return; }
+  if(!list.length){ set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:30px">No users found</td></tr>'); return; }
   var rows='';
   list.forEach(function(u,i){
     var mob = u.mobile||u.phone||u.contact||'';
@@ -835,7 +903,15 @@ function renderUsers(list) {
       }
     }
     var paid=u.paidAmount?'<span style="color:var(--gold2);font-weight:600">'+Number(u.paidAmount).toLocaleString('en-IN')+'</span>':'<span style="color:var(--t4)">—</span>';
-    rows+='<tr>'+
+    // Account status badge
+    var acctStatus = u.banned?'banned':(u.suspended?'suspended':'active');
+    var acctBadge;
+    if(acctStatus==='banned') acctBadge='<span class="b fail" style="font-size:.65rem">🔴 BANNED</span>';
+    else if(acctStatus==='suspended') acctBadge='<span class="b warn" style="font-size:.65rem">🟡 SUSPENDED</span>';
+    else acctBadge='<span class="b ok" style="font-size:.65rem">🟢 Active</span>';
+    // Row highlight for banned/suspended
+    var rowStyle = u.banned?'background:rgba(220,38,38,.04)':u.suspended?'background:rgba(245,158,11,.04)':'';
+    rows+='<tr style="'+rowStyle+'">'+
       '<td style="color:var(--t4);font-size:.72rem;text-align:center">'+(i+1)+'</td>'+
       '<td style="min-width:130px"><div style="display:flex;align-items:center;gap:7px">'+
         '<div style="width:28px;height:28px;background:var(--gs);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--gold2);font-weight:800;flex-shrink:0">'+(u.name||'U').charAt(0).toUpperCase()+'</div>'+
@@ -851,9 +927,11 @@ function renderUsers(list) {
       '<td>'+expiryCell+'</td>'+
       '<td>'+paid+'</td>'+
       '<td style="text-align:center">'+(u.verified?'<span style="color:var(--neon)">✅</span>':'<span style="color:#fbbf24">⚠️</span>')+'</td>'+
+      '<td>'+acctBadge+'</td>'+
       '<td style="font-size:.72rem;color:var(--t4);white-space:nowrap">'+reg+'</td>'+
       '<td style="white-space:nowrap">'+
-        '<button class="btn btn-gh btn-sm" onclick="openEditUser(this.dataset.uid)" data-uid="'+u.id+'" title="Edit">✏️</button>'+
+        '<button class="btn btn-gh btn-sm" onclick="openEditUser(this.dataset.uid)" data-uid="'+u.id+'" title="Edit User">✏️</button> '+
+        '<a class="btn btn-bl btn-sm" href="mailto:'+x(u.email||'')+'" title="Send Email" style="text-decoration:none;font-size:.7rem">📧</a>'+
       '</td>'+
     '</tr>';
   });
@@ -865,12 +943,14 @@ function filterUsers() {
   var p=$id('u-plan').value;
   var v=($id('u-verified')||{value:'all'}).value;
   var c=(($id('u-city')||{value:''}).value||'').toLowerCase();
+  var st=($id('u-status')||{value:'all'}).value;
   var f=_users.filter(function(u){
     var mq=!q||(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.mobile||'').includes(q)||(u.phone||'').includes(q)||(u.city||'').toLowerCase().includes(q);
     var mp=p==='all'||u.planType===p;
     var mv=v==='all'||(v==='yes'&&u.verified)||(v==='no'&&!u.verified);
     var mc=!c||(u.city||'').toLowerCase().includes(c)||(u.location||'').toLowerCase().includes(c);
-    return mq&&mp&&mv&&mc;
+    var ms=st==='all'||(st==='active'&&!u.banned&&!u.suspended)||(st==='suspended'&&u.suspended)||(st==='banned'&&u.banned);
+    return mq&&mp&&mv&&mc&&ms;
   });
   renderUsers(f);
 }
@@ -897,27 +977,136 @@ function openEditUser(uid) {
   var u=_users.find(function(x){return x.id===uid;})||_access.find(function(x){return x.id===uid;});
   if(!u) return;
   $id('eu-id').value=uid;
-  set('eu-email',x(u.email||''));
+  // Header
+  var av=$id('eu-avatar'); if(av) av.textContent=(u.name||'U').charAt(0).toUpperCase();
+  set('eu-name', x(u.name||'Unknown'));
+  set('eu-email', x(u.email||''));
+  // Status badge
+  var sb=$id('eu-status-badge');
+  if(sb){
+    if(u.banned) sb.innerHTML='<span style="font-size:.7rem;padding:2px 8px;background:rgba(220,38,38,.2);color:#f87171;border-radius:20px;border:1px solid rgba(220,38,38,.3)">🔴 BANNED'+(u.banReason?' — '+x(u.banReason):'')+'</span>';
+    else if(u.suspended) sb.innerHTML='<span style="font-size:.7rem;padding:2px 8px;background:rgba(245,158,11,.2);color:#fbbf24;border-radius:20px;border:1px solid rgba(245,158,11,.3)">🟡 SUSPENDED'+(u.suspendReason?' — '+x(u.suspendReason):'')+'</span>';
+    else sb.innerHTML='<span style="font-size:.7rem;padding:2px 8px;background:rgba(5,150,105,.15);color:#34d399;border-radius:20px;border:1px solid rgba(5,150,105,.3)">🟢 Active</span>';
+  }
+  // Details tab
   $id('eu-plan').value=u.planType||'free';
   $id('eu-exp').value=u.planExpiry?u.planExpiry.substring(0,10):'';
   $id('eu-amt').value=u.paidAmount||0;
   $id('eu-note').value=u.adminNote||'';
+  // Actions tab pre-fill
+  if($id('eu-susp-reason')) $id('eu-susp-reason').value='';
+  if($id('eu-ban-reason')) $id('eu-ban-reason').value=u.banReason||'';
+  if($id('eu-del-confirm')) $id('eu-del-confirm').value='';
+  // Show details tab by default
+  euTab('details');
   openM('m-edit-user');
+}
+function euTab(tab){
+  $id('eu-pane-details').style.display=tab==='details'?'block':'none';
+  $id('eu-pane-actions').style.display=tab==='actions'?'block':'none';
+  $id('eu-tab-details').style.background=tab==='details'?'var(--bg2)':'transparent';
+  $id('eu-tab-details').style.color=tab==='details'?'var(--t1)':'var(--t3)';
+  $id('eu-tab-actions').style.background=tab==='actions'?'var(--bg2)':'transparent';
+  $id('eu-tab-actions').style.color=tab==='actions'?'var(--t1)':'var(--t3)';
 }
 function saveUserEdit() {
   var uid=$id('eu-id').value; if(!uid) return;
   var upd={planType:$id('eu-plan').value,planExpiry:$id('eu-exp').value?new Date($id('eu-exp').value).toISOString():null,
     paidAmount:parseInt($id('eu-amt').value)||0,adminNote:$id('eu-note').value,
-    disabled:false,lastModifiedBy:_user?_user.email:'admin',
+    lastModifiedBy:_user?_user.email:'admin',
     lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()};
   db.collection('users').doc(uid).update(upd).then(function(){
     closeM('m-edit-user'); toast('✅ User updated!'); loadUsers(); loadAccess();
   }).catch(function(e){toast('❌ '+e.message);});
 }
+// ── SUSPEND / BAN / DELETE / UNSUSPEND / UNBAN ──
+
+function suspendUser(){
+  var uid=$id('eu-id').value; if(!uid) return;
+  var days=parseInt($id('eu-susp-dur').value)||1;
+  var reason=($id('eu-susp-reason').value||'').trim()||'Policy violation';
+  if(!confirm('User ko '+days+' din ke liye suspend karna chahte hain?\nReason: '+reason)) return;
+  var suspendUntil=new Date(Date.now()+days*864e5).toISOString();
+  db.collection('users').doc(uid).update({
+    suspended:true, suspendUntil:suspendUntil, suspendReason:reason,
+    planType:'free',
+    suspendedBy:_user?_user.email:'admin',
+    suspendedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    lastModifiedBy:_user?_user.email:'admin'
+  }).then(function(){
+    closeM('m-edit-user');
+    toast('🟡 User '+days+'d ke liye suspended. Reason: '+reason);
+    loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function unsuspendUser(){
+  var uid=$id('eu-id').value; if(!uid) return;
+  if(!confirm('User ko unsuspend karna chahte hain?')) return;
+  db.collection('users').doc(uid).update({
+    suspended:false, suspendUntil:null, suspendReason:null,
+    lastModifiedBy:_user?_user.email:'admin',
+    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    closeM('m-edit-user'); toast('✅ User unsuspended!'); loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function banUser(){
+  var uid=$id('eu-id').value; if(!uid) return;
+  var reason=($id('eu-ban-reason').value||'').trim()||'Permanent ban';
+  if(!confirm('User ko PERMANENTLY BAN karna chahte hain?\nReason: '+reason+'\n\nYe action serious hai — user kuch bhi access nahi kar sakega.')) return;
+  db.collection('users').doc(uid).update({
+    banned:true, banReason:reason, suspended:false,
+    planType:'free',
+    bannedBy:_user?_user.email:'admin',
+    bannedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    lastModifiedBy:_user?_user.email:'admin'
+  }).then(function(){
+    closeM('m-edit-user'); toast('🔴 User permanently BANNED. Reason: '+reason); loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function unbanUser(){
+  var uid=$id('eu-id').value; if(!uid) return;
+  if(!confirm('User ka ban hatana chahte hain?')) return;
+  db.collection('users').doc(uid).update({
+    banned:false, banReason:null,
+    lastModifiedBy:_user?_user.email:'admin',
+    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    closeM('m-edit-user'); toast('✅ Ban removed! User ab access kar sakta hai.'); loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function permanentDeleteUser(){
+  var uid=$id('eu-id').value; if(!uid) return;
+  var confirm_text=($id('eu-del-confirm').value||'').trim();
+  if(confirm_text!=='DELETE'){ toast('❌ "DELETE" type karo confirm karne ke liye'); return; }
+  var u=_users.find(function(x){return x.id===uid;});
+  var email=u?u.email:'';
+  if(!confirm('PERMANENTLY DELETE karna chahte hain?\n\nUser: '+email+'\n\nYe action REVERSIBLE NAHI HAI. Poora data delete ho jaayega.')) return;
+  // Delete from users collection
+  db.collection('users').doc(uid).delete().then(function(){
+    // Also mark payments as deleted_user
+    if(email){
+      db.collection('payments').where('userEmail','==',email).get().then(function(snap){
+        snap.forEach(function(d){
+          d.ref.update({deletedUser:true, deletedAt:firebase.firestore.FieldValue.serverTimestamp()});
+        });
+      }).catch(function(){});
+    }
+    closeM('m-edit-user');
+    toast('🗑️ User permanently deleted!');
+    loadUsers(); loadDash();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
 function disableUser() {
   var uid=$id('eu-id').value;
   if(!confirm('User disable karna chahte hain?')) return;
-  db.collection('users').doc(uid).update({disabled:true,planType:'free'}).then(function(){
+  db.collection('users').doc(uid).update({suspended:true,suspendReason:'Disabled by admin',planType:'free',
+    suspendedBy:_user?_user.email:'admin'}).then(function(){
     closeM('m-edit-user'); toast('User disabled'); loadUsers();
   }).catch(function(e){toast('❌ '+e.message);});
 }
@@ -1006,7 +1195,8 @@ function renderPayments(list){
       '<td style="color:var(--gold2);font-weight:600">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
       '<td style="font-size:.75rem;color:var(--t3)">'+(p.method||p.paymentMethod||'—')+'</td>'+
       '<td><span class="b '+sc+'">'+(p.status||'—')+'</span></td>'+
-      '<td style="font-size:.73rem;color:var(--t4)">'+fmt(p.timestamp)+'</td></tr>';
+      '<td style="font-size:.73rem;color:var(--t4)">'+fmt(p.timestamp)+'</td>'+
+      '<td>'+(p.status==='success'?'<button class="btn btn-gh btn-sm" onclick="markRefund(\''+p.id+'\')" title="Mark as Refunded">↩️ Refund</button>':'')+'</td></tr>';
   }).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px">No payments</td></tr>');
 }
 function filterPay(){
@@ -1404,6 +1594,7 @@ function loadAnalytics(){
     }
     drawLine('chart-growth',labels,last30,'New Users');
   });
+  drawRevenueChart();
   db.collection('payments').get().then(function(snap){
     var tot=0,methodMap={};
     snap.forEach(function(d){
@@ -1532,65 +1723,90 @@ function sendEmailNotification(toEmail, toName, subject, message){
 }
 
 
-// ── GOOGLE SHEET SYNC ──
-var SHEET_ID = '1d5YzhP7bRdAU59FJGmZb8OGTS_mlnvnTSeNWoOX0B4k';
-var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit';
-
-function syncToSheet() {
-  if(!_users.length){ toast('Pehle Users panel load karo'); return; }
-  var btn = $id('sync-btn');
-  if(btn){ btn.textContent='⏳ Syncing...'; btn.disabled=true; }
-  
-  // Build CSV data with all columns
-  var rows = [['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Registered At','Admin Note']];
-  _users.forEach(function(u,i){
-    rows.push([
-      i+1,
-      u.name||'',
-      u.email||'',
-      u.mobile||u.phone||u.contact||'',
-      u.whatsapp||'',
-      u.city||u.location||'',
-      u.state||u.province||'',
-      u.planType||'free',
-      u.planExpiry ? new Date(u.planExpiry).toLocaleDateString('en-IN') : '',
-      u.paidAmount||0,
-      u.paymentMethod||'',
-      u.verified?'Yes':'No',
-      u.registeredAt ? new Date(u.registeredAt).toLocaleString('en-IN') : (u.verifiedAt ? new Date(u.verifiedAt).toLocaleString('en-IN') : ''),
-      u.adminNote||''
-    ]);
-  });
-  
-  // Save to Firestore admin/sheet_sync so it can be read
-  var syncData = {
-    rows: rows,
-    syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    syncedBy: _user ? _user.email : 'admin',
-    totalUsers: _users.length
-  };
-  
-  db.collection('admin').doc('sheet_sync').set(syncData)
-    .then(function(){
-      if(btn){ btn.textContent='📊 Sync Sheet'; btn.disabled=false; }
-      toast('✅ ' + _users.length + ' users synced! Google Sheet open ho raha hai...');
-      // Also download CSV as backup
-      var csv = rows.map(function(r){ return r.map(function(c){ return '"'+(c+'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
-      var a = document.createElement('a');
-      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-      a.download = 'kspider-users-' + new Date().toISOString().slice(0,10) + '.csv';
-      a.click();
-      // Open sheet
-      setTimeout(function(){ window.open(SHEET_URL, '_blank'); }, 1000);
-    })
-    .catch(function(e){
-      if(btn){ btn.textContent='📊 Sync Sheet'; btn.disabled=false; }
-      toast('Error: ' + e.message);
-    });
+// ── MARK REFUND ──
+function markRefund(pid){
+  if(!confirm('Is payment ko REFUNDED mark karna chahte hain? Ye undo hoga nahi.')) return;
+  db.collection('payments').doc(pid).update({
+    status:'refunded',
+    refundedBy:_user?_user.email:'admin',
+    refundedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    toast('↩️ Payment marked as refunded');
+    loadPay();
+  }).catch(function(e){toast('❌ '+e.message);});
 }
 
-function openSheet(){
-  window.open(SHEET_URL, '_blank');
+// ── AUTO-UNSUSPEND CHECK (runs when admin loads users) ──
+function checkAutoUnsuspend(users){
+  var now=Date.now();
+  users.forEach(function(u){
+    if(u.suspended && u.suspendUntil){
+      var until=new Date(u.suspendUntil).getTime();
+      if(until < now){
+        // Auto-unsuspend
+        db.collection('users').doc(u.id).update({
+          suspended:false, suspendUntil:null,
+          autoUnsuspendedAt:firebase.firestore.FieldValue.serverTimestamp()
+        }).catch(function(){});
+        u.suspended=false;
+      }
+    }
+  });
+}
+
+// ── REVENUE BY MONTH CHART ──
+function drawRevenueChart(){
+  if(typeof Chart==='undefined'){loadChartJS(function(){drawRevenueChart();});return;}
+  var c=document.getElementById('chart-revenue'); if(!c)return;
+  if(c._chartInst) c._chartInst.destroy();
+  // Build last 6 months from payments
+  var now=new Date();
+  var months=[];
+  var labels=[];
+  for(var i=5;i>=0;i--){
+    var d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    labels.push(d.toLocaleDateString('en-IN',{month:'short',year:'2-digit'}));
+    months.push({year:d.getFullYear(),month:d.getMonth(),total:0});
+  }
+  db.collection('payments').where('status','==','success').get().then(function(snap){
+    snap.forEach(function(d){
+      var p=d.data();
+      if(!p.timestamp) return;
+      var dt=p.timestamp.seconds?new Date(p.timestamp.seconds*1000):new Date(p.timestamp);
+      months.forEach(function(m){
+        if(dt.getFullYear()===m.year && dt.getMonth()===m.month){
+          m.total+=(p.amount||0);
+        }
+      });
+    });
+    var data=months.map(function(m){return m.total;});
+    c._chartInst=new Chart(c,{
+      type:'bar',
+      data:{
+        labels:labels,
+        datasets:[{
+          label:'Revenue (₹)',
+          data:data,
+          backgroundColor:'rgba(184,121,42,.5)',
+          borderColor:'#b8792a',
+          borderWidth:1,
+          borderRadius:4
+        }]
+      },
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{
+          legend:{display:false},
+          tooltip:{callbacks:{label:function(ctx){return '₹'+ctx.raw.toLocaleString('en-IN');}}}
+        },
+        scales:{
+          x:{ticks:{color:'#8a8479',font:{size:10}}},
+          y:{ticks:{color:'#8a8479',font:{size:10},callback:function(v){return '₹'+v.toLocaleString('en-IN');}},beginAtZero:true}
+        }
+      }
+    });
+  }).catch(function(){});
 }
 
 </script>
