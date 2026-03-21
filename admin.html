@@ -845,17 +845,26 @@ function startRealtimeListeners() {
   set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">🔴 Connecting live...</td></tr>');
   _unsubUsers = db.collection('users')
     .onSnapshot({includeMetadataChanges: false}, function(snap) {
-      // Handle changes incrementally for efficiency
-      snap.docChanges().forEach(function(change) {
-        var data = Object.assign({id: change.doc.id}, change.doc.data());
-        if (change.type === 'added' || change.type === 'modified') {
-          var existing = _users.findIndex(function(u){ return u.id === change.doc.id; });
-          if (existing >= 0) _users[existing] = data;
-          else _users.push(data);
-        } else if (change.type === 'removed') {
-          _users = _users.filter(function(u){ return u.id !== change.doc.id; });
-        }
-      });
+      // On first call: snap.size === docChanges.length (all 'added') — full rebuild
+      // On subsequent calls: only changed docs come through
+      var changes = snap.docChanges();
+      if (changes.length === snap.size && _users.length === 0) {
+        // First load — build entire array
+        _users = [];
+        snap.forEach(function(d){ _users.push(Object.assign({id:d.id}, d.data())); });
+      } else {
+        // Incremental update
+        changes.forEach(function(change) {
+          var data = Object.assign({id: change.doc.id}, change.doc.data());
+          if (change.type === 'added' || change.type === 'modified') {
+            var existing = _users.findIndex(function(u){ return u.id === change.doc.id; });
+            if (existing >= 0) _users[existing] = data;
+            else _users.unshift(data); // Add to front (newest first)
+          } else if (change.type === 'removed') {
+            _users = _users.filter(function(u){ return u.id !== change.doc.id; });
+          }
+        });
+      }
       // Sort newest first
       _users.sort(function(a,b){
         var ta=a.registeredAt?new Date(a.registeredAt).getTime():(a.verifiedAt?new Date(a.verifiedAt).getTime():0);
