@@ -191,6 +191,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <main class="main">
     <div class="topbar">
       <div class="topbar-title" id="page-title">📊 Dashboard</div>
+      <button class="btn btn-gh btn-sm" onclick="openSheet()" title="Open Google Sheet" style="font-size:.72rem">📊 Sheet</button>
       <div id="alert-bar" onclick="show('users',document.getElementById('n-users'))">🔔 <span id="alert-txt"></span></div>
       <div class="topbar-user">
         <div class="avatar">👑</div>
@@ -236,6 +237,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <input class="si2" type="text" id="u-city" placeholder="🏙️ City filter..." oninput="filterUsers()" style="max-width:130px">
           <button class="btn btn-gh btn-sm" onclick="loadUsers()">🔄 Refresh</button>
           <button class="btn btn-gr btn-sm" onclick="exportCSV()">📥 CSV</button>
+          <button class="btn btn-bl btn-sm" onclick="syncToSheet()" id="sync-btn" title="Sync users to Google Sheet">📊 Sync Sheet</button>
         </div>
         <div class="tw"><table>
           <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Registered</th><th>Actions</th></tr></thead>
@@ -1527,6 +1529,68 @@ function sendEmailNotification(toEmail, toName, subject, message){
   }).catch(function(e){
     console.warn('Email send failed:',e);
   });
+}
+
+
+// ── GOOGLE SHEET SYNC ──
+var SHEET_ID = '1d5YzhP7bRdAU59FJGmZb8OGTS_mlnvnTSeNWoOX0B4k';
+var SHEET_URL = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID + '/edit';
+
+function syncToSheet() {
+  if(!_users.length){ toast('Pehle Users panel load karo'); return; }
+  var btn = $id('sync-btn');
+  if(btn){ btn.textContent='⏳ Syncing...'; btn.disabled=true; }
+  
+  // Build CSV data with all columns
+  var rows = [['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Registered At','Admin Note']];
+  _users.forEach(function(u,i){
+    rows.push([
+      i+1,
+      u.name||'',
+      u.email||'',
+      u.mobile||u.phone||u.contact||'',
+      u.whatsapp||'',
+      u.city||u.location||'',
+      u.state||u.province||'',
+      u.planType||'free',
+      u.planExpiry ? new Date(u.planExpiry).toLocaleDateString('en-IN') : '',
+      u.paidAmount||0,
+      u.paymentMethod||'',
+      u.verified?'Yes':'No',
+      u.registeredAt ? new Date(u.registeredAt).toLocaleString('en-IN') : (u.verifiedAt ? new Date(u.verifiedAt).toLocaleString('en-IN') : ''),
+      u.adminNote||''
+    ]);
+  });
+  
+  // Save to Firestore admin/sheet_sync so it can be read
+  var syncData = {
+    rows: rows,
+    syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    syncedBy: _user ? _user.email : 'admin',
+    totalUsers: _users.length
+  };
+  
+  db.collection('admin').doc('sheet_sync').set(syncData)
+    .then(function(){
+      if(btn){ btn.textContent='📊 Sync Sheet'; btn.disabled=false; }
+      toast('✅ ' + _users.length + ' users synced! Google Sheet open ho raha hai...');
+      // Also download CSV as backup
+      var csv = rows.map(function(r){ return r.map(function(c){ return '"'+(c+'').replace(/"/g,'""')+'"'; }).join(','); }).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+      a.download = 'kspider-users-' + new Date().toISOString().slice(0,10) + '.csv';
+      a.click();
+      // Open sheet
+      setTimeout(function(){ window.open(SHEET_URL, '_blank'); }, 1000);
+    })
+    .catch(function(e){
+      if(btn){ btn.textContent='📊 Sync Sheet'; btn.disabled=false; }
+      toast('Error: ' + e.message);
+    });
+}
+
+function openSheet(){
+  window.open(SHEET_URL, '_blank');
 }
 
 </script>

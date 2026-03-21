@@ -430,6 +430,7 @@
       setTimeout(function() {
         if (typeof renderTools === 'function') renderTools('all');
         if (typeof loadAndApplyPricing === 'function') loadAndApplyPricing();
+        if (typeof loadAnnouncements === 'function') loadAnnouncements();
       }, 600);
     }
 
@@ -1378,7 +1379,7 @@ body {
 
 <!-- ANNOUNCEMENT STRIP -->
 <div class="strip" role="marquee" aria-label="Announcements">
-  <div class="strip-inner" aria-hidden="true">
+  <div class="strip-inner" id="ks-announce-strip" aria-hidden="true">
     <span class="si"><span class="sdot"></span> Powered by K Spider AI Tool</span>
     <span class="si">·</span>
     <span class="si"><a href="https://www.kspiderai.in" class="sl">www.kspiderai.in</a></span>
@@ -4376,6 +4377,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
   // Firebase init
   initFirebase();
+  // Load announcements after a short delay (Firebase needs to be ready)
+  setTimeout(function() { if (typeof loadAnnouncements === 'function') loadAnnouncements(); }, 2000);
 
   // Returning user check — agar localStorage mein verified hai toh seedha
   if (isReg()) {
@@ -4490,6 +4493,42 @@ function loadAndApplyPricing() {
       applyPricingToDOM();
     }).catch(function() {});
   } catch(e) {}
+}
+
+// ── ANNOUNCEMENTS — Load from Firestore admin/announcements ──
+function loadAnnouncements() {
+  try {
+    var db = (typeof KS !== 'undefined' && KS.db) ? KS.db : (_db || null);
+    if (!db) return;
+    db.collection('announcements')
+      .where('active','==',true)
+      .orderBy('createdAt','desc')
+      .limit(5)
+      .get()
+      .then(function(snap) {
+        if (snap.empty) return; // Keep default strip if no announcements
+        var items = [];
+        snap.forEach(function(d) { items.push(d.data()); });
+        var typeEmoji = {info:'ℹ️', success:'✅', warning:'⚠️', promo:'🎉'};
+        // Build new strip content
+        var html = '';
+        items.forEach(function(a) {
+          var em = typeEmoji[a.type] || '📢';
+          html += '<span class="si"><span class="sdot"></span> ' + em + ' ' +
+            escHtml(a.title) + '</span><span class="si">·</span>' +
+            '<span class="si">' + escHtml(a.body) + '</span><span class="si">·</span>';
+        });
+        // Duplicate for seamless scroll
+        html = html + html;
+        var strip = document.getElementById('ks-announce-strip');
+        if (strip) strip.innerHTML = html;
+      })
+      .catch(function() {}); // Silently fail — keep default strip
+  } catch(e) {}
+}
+
+function escHtml(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 function applyPricingToDOM() {
