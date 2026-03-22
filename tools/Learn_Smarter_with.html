@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="/tool-guard.js"></script>
-<script src="../ks-guard.js"></script>
+  <script src="../ks-guard.js"></script>
 <!-- ═══════════════════════════════════════════════════════
      K SPIDER AI — Learn Smarter (Free AI Teacher)
      Full SEO + Security | www.kspiderai.in
@@ -2276,6 +2275,122 @@ function genQ(topic, count){
   ];
   return Array.from({length:count},(_,i)=>({...g[i%g.length],topic}));
 }
+// ===================== GOOGLE SHEETS QUESTION BANK =====================
+// HOW TO USE:
+// 1. Create a Google Sheet with columns: Topic | Question | OptionA | OptionB | OptionC | OptionD | Answer(0-3) | Explanation | Year
+// 2. File → Share → Publish to web → CSV → Copy URL
+// 3. Paste each sheet's CSV URL below
+// 4. Set KS_SHEETS_ENABLED = true
+
+const KS_SHEETS_ENABLED = true; // ✅ LIVE — K Spider Question Bank
+
+const KS_SHEET_URLS = {
+  // ✅ ACTIVE SHEETS — K Spider Question Bank
+  'NEET Biology': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0rJfs6_hrYNlm5g7JVtWitLgI0g0HcSWubP4_cRigbt2U0n1vBtLTwcE4biOhu2ZlA-X8tUhJCmhy/pub?gid=1827226949&single=true&output=csv',
+  // 🔜 ADD MORE SUBJECTS BELOW:
+  // 'NEET Physics': 'YOUR_CSV_URL',
+  // 'NEET Chemistry': 'YOUR_CSV_URL',
+  // 'JEE Maths': 'YOUR_CSV_URL',
+  // 'JEE Physics': 'YOUR_CSV_URL',
+  // 'JEE Chemistry': 'YOUR_CSV_URL',
+  // 'UPSC Polity': 'YOUR_CSV_URL',
+  // 'UPSC History': 'YOUR_CSV_URL',
+  // 'UPSC Geography': 'YOUR_CSV_URL',
+  // 'UPSC Economy': 'YOUR_CSV_URL',
+  // 'MBBS Pharmacology': 'YOUR_CSV_URL',
+  // 'MBBS Microbiology': 'YOUR_CSV_URL',
+};
+
+// Cache for sheet data (session-level)
+const KS_SHEET_CACHE = {};
+
+// Parse CSV text into question objects
+function parseSheetCSV(csvText, topicName) {
+  try {
+    const lines = csvText.trim().split('\n');
+    if (lines.length < 2) return [];
+    // Skip header row
+    const questions = [];
+    for (let i = 1; i < lines.length; i++) {
+      const row = parseCSVRow(lines[i]);
+      if (!row || row.length < 7) continue;
+      const [topic, q, optA, optB, optC, optD, ansRaw, exp, yr] = row;
+      const ans = parseInt(ansRaw);
+      if (!q || isNaN(ans) || ans < 0 || ans > 3) continue;
+      questions.push({
+        q: q.trim(),
+        opts: [optA.trim(), optB.trim(), optC.trim(), optD.trim()],
+        ans: ans,
+        exp: (exp || '').trim(),
+        yr: (yr || 'General').trim(),
+        topic: (topic && topic.trim()) ? topic.trim() : topicName,
+        fromSheet: true
+      });
+    }
+    return questions;
+  } catch(e) {
+    console.warn('Sheet parse error:', e);
+    return [];
+  }
+}
+
+// Parse a single CSV row (handles commas inside quotes)
+function parseCSVRow(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+// Fetch questions from Google Sheet for a topic
+async function fetchSheetQs(topic) {
+  if (!KS_SHEETS_ENABLED) return [];
+  const url = KS_SHEET_URLS[topic];
+  if (!url) return [];
+  // Return cached if available
+  if (KS_SHEET_CACHE[topic]) return KS_SHEET_CACHE[topic];
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error('Sheet fetch failed: ' + resp.status);
+    const csv = await resp.text();
+    const qs = parseSheetCSV(csv, topic);
+    KS_SHEET_CACHE[topic] = qs; // Cache for session
+    return qs;
+  } catch(e) {
+    console.warn('Could not fetch sheet for', topic, e.message);
+    return [];
+  }
+}
+
+// Fetch questions for multiple topics from sheets
+async function fetchAllSheetQs(topics, years) {
+  if (!KS_SHEETS_ENABLED) return [];
+  const results = [];
+  for (const topic of topics) {
+    const qs = await fetchSheetQs(topic);
+    // Filter by year if selected
+    if (years && years.length > 0 && !years.includes('Mixed')) {
+      const filtered = qs.filter(q => years.includes(q.yr));
+      results.push(...(filtered.length > 0 ? filtered : qs));
+    } else {
+      results.push(...qs);
+    }
+  }
+  return results;
+}
+
 function getQsLocal(topics, count, years){
   let all=[];
   topics.forEach(t=>{
@@ -2386,34 +2501,52 @@ Rules:
 }
 
 async function getQs(topics, count, years){
-  // Always get local questions first as baseline
-  const localQs=getQsLocal(topics,count,years);
+  // PRIORITY 1: Google Sheets (if enabled)
+  let sheetQs = [];
+  if (KS_SHEETS_ENABLED) {
+    try {
+      sheetQs = await fetchAllSheetQs(topics, years);
+      if (sheetQs.length > 0) toast(`📊 Loaded ${sheetQs.length} questions from K Spider Sheet!`, 's');
+    } catch(e) { console.warn('Sheet fetch error:', e); }
+  }
 
-  // Try AI generation
+  // PRIORITY 2: Built-in hardcoded QB (always available as fallback)
+  const localQs = getQsLocal(topics, count, years);
+  const localOnlyQs = localQs.filter(lq => !sheetQs.some(sq => sq.q === lq.q));
+  const baseQs = [...sheetQs, ...localOnlyQs];
+
+  // PRIORITY 3: Claude AI generation (on top of base)
   const diff=eCfg.diff||'medium';
   showAILoader(topics);
 
   try {
     const aiQs=await generateAIQuestions(topics,Math.max(count,30),diff);
     hideAILoader();
-
     if(aiQs && aiQs.length>0){
-      // Merge: AI questions + local questions (deduplicated)
-      const combined=[...aiQs,...localQs];
-      // Shuffle
+      const aiNew=aiQs.filter(aq=>!baseQs.some(bq=>bq.q===aq.q));
+      const combined=[...aiNew,...baseQs];
       for(let i=combined.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[combined[i],combined[j]]=[combined[j],combined[i]];}
       const result=combined.slice(0,Math.min(count,combined.length));
-      const aiCount=result.filter(q=>q.aiGenerated).length;
-      toast(`🤖 AI generated ${aiCount} fresh questions + ${result.length-aiCount} PYQ questions!`,'s');
+      const aiC=result.filter(q=>q.aiGenerated).length;
+      const shC=result.filter(q=>q.fromSheet).length;
+      const lcC=result.length-aiC-shC;
+      let msg=`🤖 ${aiC} AI`;
+      if(shC>0) msg+=` + 📊 ${shC} Sheet`;
+      if(lcC>0) msg+=` + 📚 ${lcC} Built-in`;
+      toast(msg+' questions loaded!','s');
       return result;
     } else {
-      toast('Using built-in question bank (AI temporarily unavailable)','s');
-      return localQs;
+      if(baseQs.length>0){
+        const shC=baseQs.filter(q=>q.fromSheet).length;
+        toast(shC>0?`📊 ${shC} Sheet + 📚 ${baseQs.length-shC} Built-in questions`:`📚 ${baseQs.length} built-in questions loaded`,'s');
+      }
+      for(let i=baseQs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[baseQs[i],baseQs[j]]=[baseQs[j],baseQs[i]];}
+      return baseQs.slice(0,Math.min(count,baseQs.length));
     }
   } catch(e){
     hideAILoader();
-    toast('Using built-in question bank','s');
-    return localQs;
+    for(let i=baseQs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[baseQs[i],baseQs[j]]=[baseQs[j],baseQs[i]];}
+    return baseQs.slice(0,Math.min(count,baseQs.length));
   }
 }
 
