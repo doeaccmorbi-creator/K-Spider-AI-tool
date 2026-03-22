@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script src="/tool-guard.js"></script>
-<script src="../ks-guard.js"></script>   
 <!-- ═══════════════════════════════════════════════════════
      K SPIDER AI — Knowledge Spider (Free Educational Quiz)
      Full SEO + Security | www.kspiderai.in
@@ -2994,6 +2992,32 @@ function renderHome(){
   }
 }
 
+// ── COUNT ROW HELPER ──────────────────────────────────────
+function renderCntRow(){
+  const cr=$('cnt-row');
+  if(!cr) return;
+  cr.innerHTML='';
+  const pool=getQPool(G.sel.cat, G.sel.lv);
+  const maxAvail=pool.length||50;
+  // Clamp current selection to available max
+  if(G.sel.cnt>maxAvail) G.sel.cnt=maxAvail;
+  [5,10,15,20,25,30,50].filter(n=>n<=maxAvail).concat(['MAX']).forEach(n=>{
+    const isMax=n==='MAX';
+    const val=isMax?maxAvail:n;
+    const b=document.createElement('button');
+    b.className='cnt-btn'+(G.sel.cnt===val?' sel':'');
+    if(isMax||G.sel.cnt===val&&isMax){ b.style.background='linear-gradient(135deg,#4f46e5,#0891b2)'; b.style.color='#fff'; b.style.borderColor='#4f46e5'; }
+    b.textContent=isMax?'MAX ('+maxAvail+' Qs)':n+' Qs';
+    b.onclick=()=>{
+      G.sel.cnt=val;
+      cr.querySelectorAll('.cnt-btn').forEach(x=>{ x.classList.remove('sel'); x.style.background=''; x.style.color=''; x.style.borderColor=''; });
+      b.classList.add('sel');
+      if(isMax){ b.style.background='linear-gradient(135deg,#4f46e5,#0891b2)'; b.style.color='#fff'; b.style.borderColor='#4f46e5'; }
+    };
+    cr.appendChild(b);
+  });
+}
+
 // ── SETUP RENDER ──────────────────────────────────────────
 function renderSetup(){
   const sc = $('setup-cats');
@@ -3005,7 +3029,7 @@ function renderSetup(){
       d.style.setProperty('--ca', c.color);
       if(G.sel.cat===c.id) d.style.borderColor=c.color;
       d.innerHTML=`<span class="cat-icon">${c.icon}</span><div class="cat-name">${c.name}</div><div class="cat-qcnt">500+ Qs</div>`;
-      d.onclick=()=>{ G.sel.cat=c.id; sc.querySelectorAll('.cat-card').forEach(x=>x.style.borderColor=''); d.style.borderColor=c.color; };
+      d.onclick=()=>{ G.sel.cat=c.id; sc.querySelectorAll('.cat-card').forEach(x=>x.style.borderColor=''); d.style.borderColor=c.color; renderCntRow(); };
       sc.appendChild(d);
     });
   }
@@ -3016,21 +3040,11 @@ function renderSetup(){
       const d=document.createElement('div');
       d.className='lv-btn'+(G.sel.lv===lv.id?' sel':'');
       d.innerHTML=`<div class="lv-icon">${lv.icon}</div><div class="lv-name" style="color:${lv.col}">${lv.name}</div><div class="lv-desc">${lv.desc}</div>`;
-      d.onclick=()=>{ G.sel.lv=lv.id; lg.querySelectorAll('.lv-btn').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); };
+      d.onclick=()=>{ G.sel.lv=lv.id; lg.querySelectorAll('.lv-btn').forEach(x=>x.classList.remove('sel')); d.classList.add('sel'); renderCntRow(); };
       lg.appendChild(d);
     });
   }
-  const cr=$('cnt-row');
-  if(cr){
-    cr.innerHTML='';
-    [5,10,15,20].forEach(n=>{
-      const b=document.createElement('button');
-      b.className='cnt-btn'+(G.sel.cnt===n?' sel':'');
-      b.textContent=n+' Qs';
-      b.onclick=()=>{ G.sel.cnt=n; cr.querySelectorAll('.cnt-btn').forEach(x=>x.classList.remove('sel')); b.classList.add('sel'); };
-      cr.appendChild(b);
-    });
-  }
+  renderCntRow();
   const mg=$('mode-grid');
   if(mg){
     mg.innerHTML='';
