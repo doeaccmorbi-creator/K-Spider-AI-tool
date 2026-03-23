@@ -1,0 +1,1933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>VOXAI PRO</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Noto+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ══════════════════════════════════════════
+   RESET
+══════════════════════════════════════════ */
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+
+:root{
+  --bg:#030610;
+  --panel:#07091a;
+  --card:#0b0f20;
+  --card2:#0f1428;
+  --b:rgba(0,212,255,.13);
+  --bh:rgba(0,212,255,.35);
+  --cy:#00d4ff;
+  --cy2:rgba(0,212,255,.08);
+  --cy3:rgba(0,212,255,.18);
+  --pu:#7c3aed;
+  --gr:#00e896;
+  --rd:#ff3860;
+  --am:#ffb700;
+  --tx:#e2eeff;
+  --tx2:#7a92b0;
+  --mu:#2d4060;
+  --fh:'Orbitron',monospace;
+  --fb:'Noto Sans','Noto Sans Devanagari',sans-serif;
+  --r:11px;
+  --hh:52px; /* header height */
+  --nh:44px; /* nav height */
+}
+
+/* ══════════════════════════════════════════
+   LAYOUT — KEY: use exact pixel heights
+   so nothing overflows and scroll works
+══════════════════════════════════════════ */
+html{height:100%;overflow:hidden}
+
+body{
+  height:100%;
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--fb);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  position:relative;
+}
+
+/* animated grid bg */
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 45% at 15% 5%,rgba(124,58,237,.1) 0%,transparent 55%),
+    radial-gradient(ellipse 55% 40% at 85% 95%,rgba(0,212,255,.07) 0%,transparent 55%),
+    repeating-linear-gradient(0deg,transparent,transparent 47px,rgba(0,212,255,.018) 48px),
+    repeating-linear-gradient(90deg,transparent,transparent 47px,rgba(0,212,255,.018) 48px);
+}
+
+/* ══════════════════════════════════════════
+   HEADER  — fixed height
+══════════════════════════════════════════ */
+#hdr{
+  position:relative;z-index:200;
+  flex:0 0 var(--hh);height:var(--hh);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 14px;
+  background:rgba(3,6,16,.98);
+  border-bottom:1px solid var(--b);
+}
+.brand{display:flex;align-items:center;gap:8px}
+.brand-ico{
+  width:32px;height:32px;border-radius:8px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--cy),var(--pu));
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  box-shadow:0 0 18px rgba(0,212,255,.25);
+}
+.brand-txt{font-family:var(--fh);font-size:15px;font-weight:700;letter-spacing:.1em}
+.brand-txt span{color:var(--cy)}
+.brand-badge{
+  font-family:var(--fh);font-size:8px;color:var(--pu);
+  border:1px solid rgba(124,58,237,.4);border-radius:4px;padding:2px 5px;letter-spacing:.12em;
+}
+.hdr-mid{display:flex;align-items:center;gap:7px}
+.spill{
+  display:flex;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:20px;
+  border:1px solid var(--b);background:var(--cy2);
+  font-size:9px;font-family:var(--fh);color:var(--tx2);letter-spacing:.08em;
+}
+.sdot{width:6px;height:6px;border-radius:50%;background:var(--gr);box-shadow:0 0 5px var(--gr);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.cpill{
+  display:none;align-items:center;gap:5px;
+  padding:3px 9px;border-radius:20px;
+  border:1px solid rgba(0,232,150,.3);background:rgba(0,232,150,.07);
+  font-size:9px;font-family:var(--fh);color:var(--gr);letter-spacing:.08em;
+}
+.hdr-btn{
+  width:30px;height:30px;border-radius:7px;border:1px solid var(--b);
+  background:var(--card);color:var(--tx2);cursor:pointer;font-size:13px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;-webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.hdr-btn:hover,.hdr-btn:active{color:var(--cy);border-color:var(--cy);background:var(--cy2)}
+.hdr-btns{display:flex;gap:5px}
+
+/* ══════════════════════════════════════════
+   TAB NAV — fixed height
+══════════════════════════════════════════ */
+#nav{
+  position:relative;z-index:190;
+  flex:0 0 var(--nh);height:var(--nh);
+  display:flex;
+  background:rgba(7,9,26,.98);
+  border-bottom:1px solid var(--b);
+  overflow-x:auto;overflow-y:hidden;
+  scrollbar-width:none;
+}
+#nav::-webkit-scrollbar{display:none}
+.tbtn{
+  flex:1;min-width:65px;height:100%;
+  background:none;border:none;border-bottom:2px solid transparent;
+  color:var(--mu);cursor:pointer;
+  font-family:var(--fh);font-size:10px;font-weight:600;letter-spacing:.04em;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  transition:all .2s;white-space:nowrap;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.tbtn.on{color:var(--cy);border-bottom-color:var(--cy)}
+.tbtn:hover:not(.on){color:var(--tx2)}
+.ti{font-size:13px}
+
+/* ══════════════════════════════════════════
+   CONTENT — fills remaining height exactly
+══════════════════════════════════════════ */
+#wrap{
+  position:relative;z-index:10;
+  flex:1;
+  /* exact remaining height = 100% - header - nav */
+  height:calc(100% - var(--hh) - var(--nh));
+  overflow:hidden;
+  display:flex;flex-direction:column;
+}
+
+/* each page fills wrap completely */
+.pg{
+  display:none;
+  width:100%;height:100%;
+  flex-direction:column;
+  overflow:hidden;
+}
+.pg.on{display:flex}
+
+/* scrollable content inside page */
+.pscroll{
+  flex:1;
+  overflow-y:scroll;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding:14px;
+  display:flex;flex-direction:column;gap:12px;
+  /* force GPU layer for iOS smooth scroll */
+  transform:translateZ(0);
+  will-change:scroll-position;
+}
+.pscroll::-webkit-scrollbar{width:3px}
+.pscroll::-webkit-scrollbar-thumb{background:var(--b);border-radius:2px}
+
+/* ══════════════════════════════════════════
+   CARD
+══════════════════════════════════════════ */
+.card{
+  background:var(--card);border:1px solid var(--b);
+  border-radius:var(--r);padding:14px;flex-shrink:0;
+}
+.ctitle{
+  font-size:10px;font-family:var(--fh);color:var(--tx2);
+  letter-spacing:.15em;text-transform:uppercase;margin-bottom:11px;
+}
+
+/* ══════════════════════════════════════════
+   PAGE 1 — VOICE CHAT
+   special: chat area scrolls, bar is fixed
+══════════════════════════════════════════ */
+#pg-voice{position:relative}
+
+#chat-area{
+  flex:1;
+  overflow-y:scroll;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding:14px;
+  display:flex;flex-direction:column;gap:12px;
+  transform:translateZ(0);
+}
+#chat-area::-webkit-scrollbar{width:3px}
+#chat-area::-webkit-scrollbar-thumb{background:var(--b);border-radius:2px}
+
+/* welcome */
+#welcome{
+  flex:1;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;
+  text-align:center;gap:13px;padding:20px;
+  min-height:260px;
+}
+.w-orb{
+  width:76px;height:76px;border-radius:50%;
+  background:linear-gradient(135deg,rgba(0,212,255,.18),rgba(124,58,237,.18));
+  border:1px solid rgba(0,212,255,.3);
+  display:flex;align-items:center;justify-content:center;font-size:32px;
+  box-shadow:0 0 36px rgba(0,212,255,.14);
+  animation:float 3.5s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+.w-title{font-family:var(--fh);font-size:20px;font-weight:700}
+.w-title span{color:var(--cy)}
+.w-sub{font-size:13px;color:var(--tx2);max-width:290px;line-height:1.7}
+.chips{display:flex;flex-wrap:wrap;gap:7px;justify-content:center}
+.chip{
+  padding:6px 13px;border-radius:20px;
+  border:1px solid var(--b);background:var(--card);
+  font-size:12px;cursor:pointer;color:var(--tx);
+  transition:all .2s;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+}
+.chip:hover,.chip:active{border-color:var(--cy);color:var(--cy);background:var(--cy2)}
+
+/* messages */
+.msg{display:flex;gap:9px;max-width:88%;animation:min .3s ease both}
+@keyframes min{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.msg.u{align-self:flex-end;flex-direction:row-reverse}
+.mav{
+  width:32px;height:32px;border-radius:9px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:15px;
+  border:1px solid var(--b);
+}
+.msg.ai .mav{background:linear-gradient(135deg,rgba(0,212,255,.12),rgba(124,58,237,.12))}
+.msg.u .mav{background:linear-gradient(135deg,rgba(0,232,150,.1),rgba(0,212,255,.1))}
+.mbody{flex:1;min-width:0}
+.mmeta{display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.msg.u .mmeta{flex-direction:row-reverse}
+.mname{font-size:11px;font-weight:600}
+.mtime{font-size:10px;color:var(--mu)}
+.mbbl{
+  padding:10px 13px;border-radius:10px;
+  font-size:14px;line-height:1.65;border:1px solid var(--b);
+  word-break:break-word;white-space:pre-wrap;
+}
+.msg.ai .mbbl{background:var(--card);border-bottom-left-radius:3px}
+.msg.u .mbbl{background:rgba(0,212,255,.07);border-color:rgba(0,212,255,.2);border-bottom-right-radius:3px}
+
+/* typing */
+.tdots{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:12px 15px;background:var(--card);
+  border:1px solid var(--b);border-radius:10px;border-bottom-left-radius:3px;
+}
+.td{width:6px;height:6px;border-radius:50%;background:var(--cy);animation:td 1.2s ease-in-out infinite}
+.td:nth-child(2){animation-delay:.2s}.td:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,60%,100%{transform:translateY(0);opacity:.3}30%{transform:translateY(-6px);opacity:1}}
+
+/* ── voice bottom bar ── */
+#vbar{
+  flex:0 0 auto;
+  position:relative;z-index:50;
+  padding:11px 13px;
+  background:rgba(3,6,16,.99);
+  border-top:1px solid var(--b);
+}
+/* waveform */
+#ww{
+  position:relative;height:44px;border-radius:9px;overflow:hidden;
+  background:var(--card);border:1px solid var(--b);margin-bottom:9px;
+}
+#wc{display:block;width:100%;height:100%}
+#wlbl{position:absolute;top:5px;left:9px;font-size:9px;font-family:var(--fh);color:var(--mu);letter-spacing:.1em}
+#wtim{position:absolute;top:5px;right:9px;font-size:9px;font-family:var(--fh);color:var(--cy)}
+/* status */
+#rstat{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+#rbadge{font-size:9px;font-family:var(--fh);font-weight:700;letter-spacing:.1em;padding:3px 7px;border-radius:4px;flex-shrink:0}
+.rr{background:rgba(0,232,150,.1);color:var(--gr);border:1px solid rgba(0,232,150,.25)}
+.rl{background:rgba(255,56,96,.12);color:var(--rd);border:1px solid rgba(255,56,96,.3)}
+#rtxt{font-size:11px;color:var(--tx2);flex:1}
+#dbm{display:flex;align-items:flex-end;gap:2px;height:15px}
+#dbm span{width:3px;border-radius:1px;height:3px;transition:height .08s}
+/* feat row */
+#frow{display:flex;gap:5px;margin-bottom:9px;flex-wrap:wrap}
+.fbtn{
+  padding:5px 9px;border-radius:7px;border:1px solid var(--b);
+  background:var(--card);color:var(--tx2);cursor:pointer;
+  font-size:10px;font-family:var(--fh);letter-spacing:.04em;
+  transition:all .2s;white-space:nowrap;
+  touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.fbtn.on{color:var(--cy);border-color:var(--cy);background:var(--cy2)}
+.fbtn:active{transform:scale(.96)}
+/* input row */
+#irow{display:flex;align-items:center;gap:8px;position:relative;z-index:51}
+#txtwrap{flex:1;position:relative}
+#txtin{
+  display:block;width:100%;padding:10px 42px 10px 13px;
+  background:var(--card2);border:1.5px solid var(--b);border-radius:10px;
+  color:var(--tx);font-family:var(--fb);font-size:15px;outline:none;
+  -webkit-appearance:none;appearance:none;
+  -webkit-user-select:text;user-select:text;
+  cursor:text;transition:border-color .2s;
+  touch-action:manipulation;
+}
+#txtin:focus{border-color:var(--cy)}
+#txtin::placeholder{color:var(--mu)}
+#sndbtn{
+  position:absolute;right:6px;top:50%;transform:translateY(-50%);
+  width:29px;height:29px;border-radius:7px;
+  background:var(--cy);border:none;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:bold;color:#000;
+  transition:all .2s;z-index:52;touch-action:manipulation;
+}
+#sndbtn:active{transform:translateY(-50%) scale(.93)}
+#micbtn{
+  width:46px;height:46px;border-radius:11px;flex-shrink:0;
+  border:2px solid var(--cy);background:var(--cy2);
+  color:var(--cy);cursor:pointer;font-size:20px;
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;touch-action:manipulation;z-index:52;
+}
+#micbtn.rec{border-color:var(--rd);background:rgba(255,56,96,.1);color:var(--rd);animation:mpulse 1.5s ease-in-out infinite}
+@keyframes mpulse{0%,100%{box-shadow:0 0 0 0 rgba(255,56,96,.35)}50%{box-shadow:0 0 0 10px rgba(255,56,96,0)}}
+
+/* ══════════════════════════════════════════
+   PAGE 2 — CALL
+══════════════════════════════════════════ */
+.corb{
+  width:106px;height:106px;border-radius:50%;position:relative;
+  display:flex;align-items:center;justify-content:center;font-size:42px;
+  background:linear-gradient(135deg,rgba(0,212,255,.14),rgba(124,58,237,.14));
+  border:2px solid rgba(0,212,255,.28);box-shadow:0 0 22px rgba(0,212,255,.12);
+  transition:all .4s;
+}
+.corb .ring{position:absolute;border-radius:50%;border:1px solid rgba(0,212,255,.22);animation:rout 2s ease-out infinite}
+.ring1{inset:-10px;animation-delay:0s}.ring2{inset:-21px;animation-delay:.55s}.ring3{inset:-32px;animation-delay:1.1s}
+@keyframes rout{0%{opacity:.7;transform:scale(1)}100%{opacity:0;transform:scale(1.13)}}
+.corb.active{border-color:rgba(0,232,150,.45);background:linear-gradient(135deg,rgba(0,232,150,.1),rgba(0,212,255,.1))}
+.corb.active .ring{border-color:rgba(0,232,150,.28)}
+.corb.ended .ring{display:none}
+.corb.ended{border-color:rgba(255,56,96,.4)}
+.corb-wrap{display:flex;flex-direction:column;align-items:center;gap:9px;padding:20px 0 14px}
+.can{font-family:var(--fh);font-size:17px;font-weight:700}
+.car{font-size:12px;color:var(--tx2)}
+.ctimer{font-family:var(--fh);font-size:24px;font-weight:700;color:var(--cy);letter-spacing:.1em;display:none}
+.cstat{font-size:11px;color:var(--tx2);font-family:var(--fh);letter-spacing:.06em;text-align:center}
+
+#clog{
+  max-height:130px;overflow-y:auto;background:var(--panel);
+  border:1px solid var(--b);border-radius:9px;
+  padding:10px;display:flex;flex-direction:column;gap:6px;font-size:13px;
+  -webkit-overflow-scrolling:touch;
+}
+#clog::-webkit-scrollbar{width:3px}
+#clog::-webkit-scrollbar-thumb{background:var(--b)}
+.csys{color:var(--mu);font-size:10px;font-style:italic}
+.cyou{color:var(--cy)}.cai{color:var(--tx)}
+
+.cctrls{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:6px 0}
+.cbtn{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+.cico{
+  width:50px;height:50px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:19px;
+  border:2px solid var(--b);background:var(--card);transition:all .2s;
+}
+.cbtn:active .cico{transform:scale(.93)}
+.clbl{font-size:9px;font-family:var(--fh);color:var(--tx2);letter-spacing:.07em}
+.cbtn.cg .cico{background:rgba(0,232,150,.12);border-color:rgba(0,232,150,.4);color:var(--gr)}
+.cbtn.cr .cico{background:rgba(255,56,96,.12);border-color:rgba(255,56,96,.4);color:var(--rd)}
+.cbtn.on .cico{background:var(--cy3);border-color:var(--cy);color:var(--cy)}
+.cbtn.ao .cico{background:rgba(255,183,0,.1);border-color:rgba(255,183,0,.4);color:var(--am)}
+
+.agrid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.aitem{
+  display:flex;align-items:center;gap:9px;padding:10px 11px;
+  border:1px solid var(--b);border-radius:10px;
+  background:var(--panel);cursor:pointer;transition:all .2s;
+  -webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.aitem:hover,.aitem.sel{border-color:var(--cy);background:var(--cy2)}
+.aico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.anm{font-size:13px;font-weight:600}.arl{font-size:10px;color:var(--tx2)}
+.ack{margin-left:auto;color:var(--cy);font-size:14px;display:none}
+.aitem.sel .ack{display:block}
+
+#cinput{display:flex;gap:8px;align-items:center;position:relative;z-index:51}
+#ctxt{
+  flex:1;padding:9px 13px;background:var(--card2);
+  border:1.5px solid var(--b);border-radius:10px;
+  color:var(--tx);font-family:var(--fb);font-size:15px;outline:none;
+  -webkit-appearance:none;-webkit-user-select:text;user-select:text;cursor:text;
+  touch-action:manipulation;
+}
+#ctxt:focus{border-color:var(--cy)}
+#ctxt::placeholder{color:var(--mu)}
+#csndbtn{
+  width:42px;height:42px;border-radius:10px;flex-shrink:0;
+  background:var(--cy);border:none;cursor:pointer;
+  font-size:15px;color:#000;display:flex;align-items:center;justify-content:center;
+  transition:all .2s;touch-action:manipulation;
+}
+#csndbtn:active{transform:scale(.93)}
+
+/* ══════════════════════════════════════════
+   PAGE 3 — GENERATE
+══════════════════════════════════════════ */
+.gtx{
+  width:100%;min-height:90px;padding:11px 13px;
+  background:var(--card2);border:1.5px solid var(--b);border-radius:10px;
+  color:var(--tx);font-family:var(--fb);font-size:14px;line-height:1.7;
+  resize:vertical;outline:none;
+  -webkit-appearance:none;-webkit-user-select:text;user-select:text;cursor:text;
+  touch-action:manipulation;
+}
+.gtx:focus{border-color:var(--cy)}
+.gtx::placeholder{color:var(--mu)}
+
+/* language selector */
+.lsel{
+  width:100%;padding:9px 12px;
+  background:var(--card2);border:1.5px solid var(--b);border-radius:9px;
+  color:var(--tx);font-family:var(--fb);font-size:13px;
+  outline:none;cursor:pointer;-webkit-appearance:none;appearance:none;
+  margin-bottom:10px;
+}
+.lsel:focus{border-color:var(--cy)}
+.lsel option{background:var(--panel);color:var(--tx)}
+
+/* output box */
+#outbox{
+  min-height:80px;padding:13px;
+  background:var(--panel);border:1px solid var(--bh);border-radius:10px;
+  font-size:14px;line-height:1.75;color:var(--tx);
+  white-space:pre-wrap;word-break:break-word;
+  -webkit-user-select:text;user-select:text;
+  font-family:var(--fb);
+}
+
+/* TTS player */
+#tts-player{
+  display:none;align-items:center;gap:9px;
+  padding:11px 13px;background:var(--card);
+  border:1px solid var(--bh);border-radius:10px;
+}
+#tts-player.show{display:flex}
+#pp-btn{
+  width:38px;height:38px;border-radius:50%;background:var(--cy);
+  border:none;font-size:14px;cursor:pointer;color:#000;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .2s;touch-action:manipulation;
+}
+#pp-btn:active{transform:scale(.93)}
+#pbar-wrap{flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+#pbar{height:100%;background:var(--cy);width:0%;transition:width .12s;border-radius:2px}
+#pdur{font-size:10px;font-family:var(--fh);color:var(--cy);flex-shrink:0}
+
+/* voice preset grid */
+.vpgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px}
+.vp{
+  padding:9px 5px;border-radius:9px;border:1px solid var(--b);
+  background:var(--panel);cursor:pointer;text-align:center;
+  transition:all .2s;-webkit-tap-highlight-color:transparent;touch-action:manipulation;
+}
+.vp:hover,.vp.sel{border-color:var(--cy);background:var(--cy2)}
+.vp .ve{font-size:18px;margin-bottom:3px}
+.vp .vn{font-size:11px;font-weight:600}
+.vp .vd{font-size:9px;color:var(--tx2)}
+
+/* template buttons */
+.tplbtn{
+  display:flex;align-items:center;gap:9px;
+  padding:11px 13px;border-radius:9px;
+  border:1px solid var(--b);background:var(--panel);
+  cursor:pointer;font-size:13px;color:var(--tx);
+  transition:all .2s;width:100%;touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;font-family:var(--fb);
+}
+.tplbtn:hover,.tplbtn:active{border-color:var(--cy);color:var(--cy);background:var(--cy2)}
+.tplbtn .tplico{font-size:18px;flex-shrink:0}
+.tplbtn .tpltx .tplttl{font-weight:600;font-size:13px}
+.tplbtn .tpltx .tplsub{font-size:11px;color:var(--tx2);margin-top:1px}
+
+/* ══════════════════════════════════════════
+   PAGE 4 — ANALYTICS
+══════════════════════════════════════════ */
+.mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.mcard{background:var(--card);border:1px solid var(--b);border-radius:10px;padding:13px}
+.mval{font-family:var(--fh);font-size:26px;font-weight:700;color:var(--cy);line-height:1;margin-bottom:3px}
+.mlbl{font-size:10px;color:var(--tx2);letter-spacing:.1em;text-transform:uppercase}
+
+.sbar{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--rd),var(--am),var(--gr));position:relative;margin-bottom:6px}
+.spin{position:absolute;top:50%;width:15px;height:15px;border-radius:50%;background:#fff;border:2px solid var(--bg);box-shadow:0 0 5px rgba(0,0,0,.5);transform:translate(-50%,-50%);transition:left .5s ease}
+.slbls{display:flex;justify-content:space-between;font-size:10px;color:var(--mu)}
+
+.erow{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.enm{font-size:11px;width:62px;flex-shrink:0;color:var(--tx2)}
+.etrk{flex:1;height:5px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+.efill{height:100%;border-radius:3px;transition:width .6s ease}
+.epct{font-size:10px;font-family:var(--fh);color:var(--tx2);width:27px;text-align:right}
+
+.kwcloud{display:flex;flex-wrap:wrap;gap:6px}
+.kwtag{padding:4px 9px;border-radius:20px;border:1px solid var(--b);background:var(--card);font-size:11px;font-family:var(--fh);color:var(--cy);cursor:pointer}
+.kwtag:hover{background:var(--cy2)}
+
+.hlist{display:flex;flex-direction:column;gap:7px}
+.hitem{
+  display:flex;align-items:center;gap:9px;padding:9px 11px;
+  background:var(--panel);border:1px solid var(--b);border-radius:9px;cursor:pointer;
+  transition:border-color .2s;
+}
+.hitem:hover{border-color:var(--cy3)}
+.hico{font-size:17px}.htitle{font-size:12px;font-weight:500;flex:1}.httm{font-size:10px;color:var(--mu);font-family:var(--fh)}
+
+/* ══════════════════════════════════════════
+   PAGE 5 — SETTINGS
+══════════════════════════════════════════ */
+.trow{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04);
+}
+.trow:last-child{border-bottom:none;padding-bottom:0}
+.trow:first-child{padding-top:0}
+.tlbl{font-size:13px;font-weight:500}
+.tsub{font-size:11px;color:var(--tx2);margin-top:2px}
+.tswitch{
+  width:38px;height:22px;border-radius:11px;background:var(--mu);
+  border:1px solid var(--b);cursor:pointer;position:relative;
+  transition:all .3s;flex-shrink:0;touch-action:manipulation;
+}
+.tswitch.on{background:rgba(0,212,255,.22);border-color:var(--cy)}
+.tswitch::after{content:'';position:absolute;width:16px;height:16px;border-radius:50%;background:#4a6080;top:2px;left:2px;transition:all .3s}
+.tswitch.on::after{left:18px;background:var(--cy)}
+
+.slider-row{margin-bottom:11px}
+.stitle{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.slbl{font-size:12px;font-weight:500}
+.sval{font-size:11px;font-family:var(--fh);color:var(--cy)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:rgba(255,255,255,.07);border-radius:2px;outline:none;display:block}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--cy);cursor:pointer;box-shadow:0 0 7px rgba(0,212,255,.45)}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--cy);cursor:pointer;border:none}
+
+/* ══════════════════════════════════════════
+   BUTTONS
+══════════════════════════════════════════ */
+.btn{
+  width:100%;padding:12px;border-radius:9px;border:none;
+  cursor:pointer;font-family:var(--fh);font-size:12px;font-weight:700;
+  letter-spacing:.08em;display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:all .2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;
+}
+.btn:active{transform:scale(.97)}
+.btn.cy{background:linear-gradient(135deg,var(--cy),#0099cc);color:#000}
+.btn.cy:hover{box-shadow:0 0 18px rgba(0,212,255,.3)}
+.btn.pu{background:linear-gradient(135deg,var(--pu),#5b21b6);color:#fff}
+.btn.gr{background:rgba(0,232,150,.12);border:1px solid rgba(0,232,150,.3);color:var(--gr)}
+.btn.rd{background:rgba(255,56,96,.12);border:1px solid rgba(255,56,96,.3);color:var(--rd)}
+.btn.am{background:rgba(255,183,0,.1);border:1px solid rgba(255,183,0,.3);color:var(--am)}
+.brow{display:flex;gap:8px}.brow .btn{flex:1}
+
+/* ══════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════ */
+#toast{
+  position:fixed;bottom:74px;left:50%;
+  transform:translateX(-50%) translateY(14px);
+  background:var(--card2);border:1px solid var(--bh);
+  padding:9px 18px;border-radius:28px;font-size:13px;color:var(--tx);
+  z-index:9999;opacity:0;transition:all .28s;
+  pointer-events:none;white-space:nowrap;max-width:90vw;
+  overflow:hidden;text-overflow:ellipsis;
+}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ══════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════ */
+@media(min-width:540px){
+  .agrid{grid-template-columns:repeat(4,1fr)}
+  .mgrid{grid-template-columns:repeat(4,1fr)}
+  .msg{max-width:70%}
+}
+@media(min-width:768px){
+  #wrap{flex-direction:row}
+  .pg{height:100%}
+}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ════════ HEADER ════════ -->
+<header id="hdr">
+  <div class="brand">
+    <div class="brand-ico">🎙️</div>
+    <div class="brand-txt">VOX<span>AI</span></div>
+    <div class="brand-badge">PRO</div>
+  </div>
+  <div class="hdr-mid">
+    <div class="spill"><div class="sdot"></div><span id="hst">ONLINE</span></div>
+    <div class="cpill" id="cpill">📞 <span id="cdurh">0:00</span></div>
+  </div>
+  <div class="hdr-btns">
+    <button class="hdr-btn" onclick="exportChat()" title="Export">💾</button>
+    <button class="hdr-btn" onclick="clearAll()" title="Clear">🗑️</button>
+    <button class="hdr-btn" onclick="toggleFS()" title="Fullscreen">⛶</button>
+  </div>
+</header>
+
+<!-- ════════ TAB NAV ════════ -->
+<nav id="nav">
+  <button class="tbtn on" onclick="goTab(this,'voice')"><span class="ti">🎙️</span>VOICE</button>
+  <button class="tbtn" onclick="goTab(this,'call')"><span class="ti">📞</span>CALL</button>
+  <button class="tbtn" onclick="goTab(this,'gen')"><span class="ti">✨</span>GENERATE</button>
+  <button class="tbtn" onclick="goTab(this,'stats')"><span class="ti">📊</span>STATS</button>
+  <button class="tbtn" onclick="goTab(this,'cfg')"><span class="ti">⚙️</span>CONFIG</button>
+</nav>
+
+<!-- ════════ MAIN CONTENT ════════ -->
+<div id="wrap">
+
+  <!-- ── PAGE: VOICE CHAT ── -->
+  <div class="pg on" id="pg-voice">
+    <div id="chat-area">
+      <div id="welcome">
+        <div class="w-orb">🎙️</div>
+        <div class="w-title">VOXAI <span>PRO</span></div>
+        <div class="w-sub">🎙️ Tap mic to speak or type below. Supports Hindi, Gujarati &amp; 20+ Indian languages.</div>
+        <div class="chips">
+          <div class="chip" onclick="qsend('Tell me an amazing fact')">💡 Amazing fact</div>
+          <div class="chip" onclick="qsend('ek professional email likho')">✉️ Email likho</div>
+          <div class="chip" onclick="qsend('AI ko simple words mein explain karo')">🤖 AI explain</div>
+          <div class="chip" onclick="qsend('Mujhe motivate karo')">⚡ Motivate me</div>
+          <div class="chip" onclick="qsend('Ek funny joke sunao')">😂 Joke sunao</div>
+          <div class="chip" onclick="qsend('Aap kya kya kar sakte ho?')">🌟 Abilities</div>
+        </div>
+      </div>
+      <div id="msglist" style="display:none;flex-direction:column;gap:12px;"></div>
+    </div>
+
+    <div id="vbar">
+      <div id="ww"><canvas id="wc"></canvas><div id="wlbl">WAVEFORM</div><div id="wtim">00:00</div></div>
+      <div id="rstat">
+        <div id="rbadge" class="rr">● READY</div>
+        <span id="rtxt">Tap mic ya type karo</span>
+        <div id="dbm"></div>
+      </div>
+      <div id="frow">
+        <button class="fbtn on" id="autobtn" onclick="toggleAuto()">🔊 AUTO</button>
+        <button class="fbtn" id="wakebtn" onclick="toggleWake()">👂 WAKE</button>
+        <button class="fbtn" id="contbtn" onclick="toggleCont()">🔁 CONT</button>
+        <button class="fbtn" id="langbtn" onclick="cycleLang()" style="min-width:54px">🌐 EN</button>
+      </div>
+      <div id="irow">
+        <div id="txtwrap">
+          <input type="text" id="txtin" placeholder="Yahan type karo ya mic se boliye…"
+            autocomplete="off" autocorrect="off" spellcheck="false"
+            onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendTxt()}">
+          <button id="sndbtn" onclick="sendTxt()">➤</button>
+        </div>
+        <button id="micbtn" onclick="toggleMic()">🎙️</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PAGE: CALL ── -->
+  <div class="pg" id="pg-call">
+    <div class="pscroll">
+
+      <div class="card">
+        <div class="corb-wrap">
+          <div class="corb" id="corb">
+            <div class="ring ring1"></div><div class="ring ring2"></div><div class="ring ring3"></div>
+            <span id="cemoji">🤖</span>
+          </div>
+          <div class="can" id="caname">Nova</div>
+          <div class="car" id="carole">General AI Assistant</div>
+          <div class="ctimer" id="ctimerel">0:00</div>
+          <div class="cstat" id="cstatel">● IDLE — Agent chunke CALL dabao</div>
+        </div>
+
+        <div id="clog"><div class="csys">— Call transcript yahan aayega —</div></div>
+
+        <div class="cctrls" style="margin-top:13px">
+          <div class="cbtn" id="cb-mute" onclick="toggleMute()">
+            <div class="cico">🎤</div><div class="clbl">MUTE</div>
+          </div>
+          <div class="cbtn cg" id="cb-call" onclick="startCall()">
+            <div class="cico">📞</div><div class="clbl">CALL</div>
+          </div>
+          <div class="cbtn cr" id="cb-end" onclick="endCall()" style="display:none">
+            <div class="cico">📵</div><div class="clbl">END</div>
+          </div>
+          <div class="cbtn on" id="cb-spk" onclick="toggleSpk()">
+            <div class="cico">🔊</div><div class="clbl">SPEAKER</div>
+          </div>
+          <div class="cbtn" id="cb-hold" onclick="toggleHold()">
+            <div class="cico">⏸</div><div class="clbl">HOLD</div>
+          </div>
+          <div class="cbtn" id="cb-rec" onclick="toggleCRec()">
+            <div class="cico">⏺</div><div class="clbl">RECORD</div>
+          </div>
+        </div>
+
+        <div id="cinput" style="margin-top:11px">
+          <input type="text" id="ctxt" placeholder="Call ke dauran type karo…"
+            autocomplete="off" onkeydown="if(event.key==='Enter')sendCallTxt()">
+          <button id="csndbtn" onclick="sendCallTxt()">➤</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Call Agent Chuniye</div>
+        <div class="agrid">
+          <div class="aitem sel" onclick="pickCA(this,'Nova','🤖','General AI','You are Nova, a helpful phone AI. Keep replies to 1-2 sentences max.')">
+            <div class="aico" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed)">🤖</div>
+            <div><div class="anm">Nova</div><div class="arl">General</div></div>
+            <div class="ack">✓</div>
+          </div>
+          <div class="aitem" onclick="pickCA(this,'Aria','👩‍💼','Executive','You are Aria, a professional executive assistant on a phone call. Be formal, precise, very brief.')">
+            <div class="aico" style="background:linear-gradient(135deg,#be185d,#d97706)">👩‍💼</div>
+            <div><div class="anm">Aria</div><div class="arl">Executive</div></div>
+            <div class="ack">✓</div>
+          </div>
+          <div class="aitem" onclick="pickCA(this,'Atlas','🧠','Research','You are Atlas, a research expert on call. Give accurate concise info, max 2 sentences.')">
+            <div class="aico" style="background:linear-gradient(135deg,#065f46,#0891b2)">🧠</div>
+            <div><div class="anm">Atlas</div><div class="arl">Research</div></div>
+            <div class="ack">✓</div>
+          </div>
+          <div class="aitem" onclick="pickCA(this,'Zara','🛠️','Tech Support','You are Zara, tech support on call. Troubleshoot step by step, very briefly.')">
+            <div class="aico" style="background:linear-gradient(135deg,#92400e,#dc2626)">🛠️</div>
+            <div><div class="anm">Zara</div><div class="arl">Tech Help</div></div>
+            <div class="ack">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Call Language</div>
+        <select class="lsel" id="call-lang">
+          <option value="en-US">🇺🇸 English (US)</option>
+          <option value="hi-IN">🇮🇳 Hindi — हिन्दी</option>
+          <option value="gu-IN">🇮🇳 Gujarati — ગુજરાતી</option>
+          <option value="mr-IN">🇮🇳 Marathi — मराठी</option>
+          <option value="bn-IN">🇮🇳 Bengali — বাংলা</option>
+          <option value="ta-IN">🇮🇳 Tamil — தமிழ்</option>
+          <option value="te-IN">🇮🇳 Telugu — తెలుగు</option>
+          <option value="kn-IN">🇮🇳 Kannada — ಕನ್ನಡ</option>
+          <option value="ml-IN">🇮🇳 Malayalam — മലയാളം</option>
+          <option value="pa-IN">🇮🇳 Punjabi — ਪੰਜਾਬੀ</option>
+          <option value="ur-IN">🇮🇳 Urdu — اردو</option>
+        </select>
+        <div class="ctitle" style="margin-bottom:8px">Call Notes</div>
+        <textarea class="gtx" id="call-notes" placeholder="Call ke baare mein notes…" style="min-height:65px"></textarea>
+        <button class="btn gr" onclick="saveNotes()" style="margin-top:8px">💾 Notes Save Karo</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── PAGE: GENERATE ── -->
+  <div class="pg" id="pg-gen">
+    <div class="pscroll">
+
+      <!-- Android TTS fix notice -->
+      <div style="padding:12px 14px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.25);border-radius:10px;font-size:13px;line-height:1.7;color:var(--tx2);">
+        <b style="color:var(--cy)">📢 Speak karne ke liye:</b><br>
+        1. Phone ka <b style="color:var(--tx)">Media Volume</b> poora karo (side button)<br>
+        2. Neeche <b style="color:var(--gr)">🔊 Test Bol</b> dabao — pehle ek baar tap zaroori hai<br>
+        3. Phir koi bhi Speak button kaam karega ✅
+        <br><br>
+        <button class="btn cy" onclick="speakTx('Namaste! Main VOXAI hoon. Ab meri awaaz aa rahi hai. Voice engine ready hai.');toast('🔊 Test chal raha hai...')" style="padding:10px;font-size:13px;">🔊 Test Bol — Pehle Yahan Dabao</button>
+      </div>
+
+      <!-- Language selector -->
+      <div class="card">
+        <div class="ctitle">Output Language / Bhasha Chuniye</div>
+        <select class="lsel" id="out-lang">
+          <optgroup label="🇮🇳 Indian Languages">
+            <option value="hi">🇮🇳 Hindi — हिन्दी</option>
+            <option value="gu">🇮🇳 Gujarati — ગુજરાતી</option>
+            <option value="mr">🇮🇳 Marathi — मराठी</option>
+            <option value="bn">🇮🇳 Bengali — বাংলা</option>
+            <option value="ta">🇮🇳 Tamil — தமிழ்</option>
+            <option value="te">🇮🇳 Telugu — తెలుగు</option>
+            <option value="kn">🇮🇳 Kannada — ಕನ್ನಡ</option>
+            <option value="ml">🇮🇳 Malayalam — മലയാളം</option>
+            <option value="pa">🇮🇳 Punjabi — ਪੰਜਾਬੀ</option>
+            <option value="or">🇮🇳 Odia — ଓଡ଼ିଆ</option>
+            <option value="as">🇮🇳 Assamese — অসমীয়া</option>
+            <option value="ur">🇮🇳 Urdu — اردو</option>
+            <option value="ks">🇮🇳 Kashmiri — كٲشُر</option>
+            <option value="sd">🇮🇳 Sindhi — سنڌي</option>
+            <option value="sa">🇮🇳 Sanskrit — संस्कृत</option>
+            <option value="ne">🇮🇳 Nepali — नेपाली</option>
+            <option value="mai">🇮🇳 Maithili — मैथिली</option>
+            <option value="kok">🇮🇳 Konkani — कोंकणी</option>
+            <option value="doi">🇮🇳 Dogri — डोगरी</option>
+            <option value="mni">🇮🇳 Manipuri — মৈতেই</option>
+            <option value="sat">🇮🇳 Santali — ᱥᱟᱱᱛᱟᱲᱤ</option>
+            <option value="bho">🇮🇳 Bhojpuri — भोजपुरी</option>
+          </optgroup>
+          <optgroup label="🌍 International">
+            <option value="en" selected>🇺🇸 English</option>
+            <option value="es">🇪🇸 Spanish</option>
+            <option value="fr">🇫🇷 French</option>
+            <option value="de">🇩🇪 German</option>
+            <option value="ar">🇸🇦 Arabic</option>
+            <option value="zh">🇨🇳 Chinese</option>
+            <option value="ja">🇯🇵 Japanese</option>
+            <option value="pt">🇧🇷 Portuguese</option>
+            <option value="ru">🇷🇺 Russian</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- Prompt -->
+      <div class="card">
+        <div class="ctitle">AI Text Generator</div>
+        <textarea class="gtx" id="gen-prompt" placeholder="Apna prompt yahan likho… jaise: ek motivational speech likho, ya explain what is machine learning…" style="min-height:100px"></textarea>
+        <div class="brow" style="margin-top:9px">
+          <button class="btn cy" onclick="genText()">✨ Generate</button>
+          <button class="btn pu" onclick="improveText()">🔧 Improve</button>
+        </div>
+      </div>
+
+      <!-- Output -->
+      <div class="card" id="out-card" style="display:none">
+        <div class="ctitle" id="out-lang-label">Generated Output</div>
+        <div id="outbox">Generating…</div>
+        <div class="brow" style="margin-top:10px;flex-wrap:wrap;gap:8px">
+          <button class="btn gr" onclick="speakOut()">🔊 Speak</button>
+          <button class="btn cy" onclick="copyOut()">📋 Copy</button>
+          <button class="btn am" onclick="downloadOut()">💾 Save</button>
+          <button class="btn rd" onclick="translateOut()">🔄 Translate</button>
+        </div>
+      </div>
+
+      <!-- TTS -->
+      <div class="card">
+        <div class="ctitle">Text-to-Speech</div>
+        <textarea class="gtx" id="tts-txt" placeholder="Jo text bolwana ho woh yahan paste karo…" style="min-height:75px"></textarea>
+
+        <div class="ctitle" style="margin:10px 0 8px">Voice Preset</div>
+        <div class="vpgrid">
+          <div class="vp sel" onclick="pickVP(this,1,1)"><div class="ve">🧑</div><div class="vn">Normal</div><div class="vd">1.0×</div></div>
+          <div class="vp" onclick="pickVP(this,1.4,1)"><div class="ve">⚡</div><div class="vn">Fast</div><div class="vd">1.4×</div></div>
+          <div class="vp" onclick="pickVP(this,0.8,0.85)"><div class="ve">🌙</div><div class="vn">Calm</div><div class="vd">0.8×</div></div>
+          <div class="vp" onclick="pickVP(this,1,1.3)"><div class="ve">😊</div><div class="vn">Cheerful</div><div class="vd">↑pitch</div></div>
+        </div>
+
+        <div class="slider-row">
+          <div class="stitle"><span class="slbl">Speed</span><span class="sval" id="sv-sp">1.0×</span></div>
+          <input type="range" min=".5" max="2" step=".1" value="1" oninput="ttsRate=+this.value;upd('sv-sp',this.value+'×')">
+        </div>
+        <div class="slider-row">
+          <div class="stitle"><span class="slbl">Pitch</span><span class="sval" id="sv-pt">1.0</span></div>
+          <input type="range" min=".5" max="2" step=".1" value="1" oninput="ttsPitch=+this.value;upd('sv-pt',this.value)">
+        </div>
+        <div class="slider-row">
+          <div class="stitle"><span class="slbl">Volume</span><span class="sval" id="sv-vl">100%</span></div>
+          <input type="range" min="0" max="1" step=".05" value="1" oninput="ttsVol=+this.value;upd('sv-vl',Math.round(this.value*100)+'%')">
+        </div>
+
+        <select class="lsel" id="tts-voice"><option>Voices load ho rahi hain…</option></select>
+
+        <div id="tts-player">
+          <button id="pp-btn" onclick="togglePP()">▶</button>
+          <div id="pbar-wrap"><div id="pbar"></div></div>
+          <span id="pdur">0:00</span>
+          <button class="btn rd" onclick="stopTTS()" style="width:auto;padding:7px 11px;font-size:10px">■ Stop</button>
+        </div>
+
+        <div class="brow" style="margin-top:9px">
+          <button class="btn cy" onclick="speakTTS()">🔊 Speak</button>
+          <button class="btn rd" onclick="stopTTS()">⏹ Stop</button>
+        </div>
+        <!-- Android help tip -->
+        <div style="margin-top:10px;padding:10px 12px;background:rgba(255,183,0,.08);border:1px solid rgba(255,183,0,.25);border-radius:9px;font-size:12px;color:var(--am);line-height:1.6;">
+          ⚠️ <b>Awaaz nahi aa rahi?</b> Phone ka volume badhao. Android mein pehle ek baar kuch bolo ya tap karo — phir Speak dabao. Chrome browser use karo.
+        </div>
+      </div>
+
+      <!-- Templates -->
+      <div class="card">
+        <div class="ctitle">Quick Templates</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="tplbtn" onclick="tpl('email')"><span class="tplico">📧</span><div class="tpltx"><div class="tplttl">Professional Email</div><div class="tplsub">Formal business email likho</div></div></button>
+          <button class="tplbtn" onclick="tpl('summary')"><span class="tplico">📄</span><div class="tpltx"><div class="tplttl">Text Summarize</div><div class="tplsub">Long text ko short karo</div></div></button>
+          <button class="tplbtn" onclick="tpl('story')"><span class="tplico">📖</span><div class="tpltx"><div class="tplttl">Short Story</div><div class="tplsub">Interesting kahani likho</div></div></button>
+          <button class="tplbtn" onclick="tpl('bio')"><span class="tplico">👤</span><div class="tpltx"><div class="tplttl">Professional Bio</div><div class="tplsub">LinkedIn bio ya about me</div></div></button>
+          <button class="tplbtn" onclick="tpl('social')"><span class="tplico">📱</span><div class="tpltx"><div class="tplttl">Social Media Post</div><div class="tplsub">Instagram/Twitter caption</div></div></button>
+          <button class="tplbtn" onclick="tpl('code')"><span class="tplico">💻</span><div class="tpltx"><div class="tplttl">Code Explain</div><div class="tplsub">Code ko simple language mein samjhao</div></div></button>
+          <button class="tplbtn" onclick="tpl('translate')"><span class="tplico">🌐</span><div class="tpltx"><div class="tplttl">Translate Text</div><div class="tplsub">Kisi bhi language mein translate</div></div></button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── PAGE: STATS ── -->
+  <div class="pg" id="pg-stats">
+    <div class="pscroll">
+
+      <div class="ctitle">Session Metrics</div>
+      <div class="mgrid" style="margin-bottom:13px">
+        <div class="mcard"><div class="mval" id="m-msg">0</div><div class="mlbl">Messages</div></div>
+        <div class="mcard"><div class="mval" id="m-wrd">0</div><div class="mlbl">Words</div></div>
+        <div class="mcard"><div class="mval" id="m-tim">0s</div><div class="mlbl">Session</div></div>
+        <div class="mcard"><div class="mval" id="m-cal">0</div><div class="mlbl">Calls</div></div>
+      </div>
+
+      <div class="card" style="margin-bottom:13px">
+        <div class="ctitle">Sentiment</div>
+        <div class="sbar"><div class="spin" id="spin" style="left:60%"></div></div>
+        <div class="slbls"><span>😠 Negative</span><span>😐 Neutral</span><span>😊 Positive</span></div>
+      </div>
+
+      <div class="card" style="margin-bottom:13px">
+        <div class="ctitle">Emotion Detect</div>
+        <div id="emrows">
+          <div class="erow"><span class="enm">Neutral</span><div class="etrk"><div class="efill" style="width:70%;background:#00d4ff"></div></div><span class="epct">70%</span></div>
+          <div class="erow"><span class="enm">Happy</span><div class="etrk"><div class="efill" style="width:18%;background:#00e896"></div></div><span class="epct">18%</span></div>
+          <div class="erow"><span class="enm">Curious</span><div class="etrk"><div class="efill" style="width:8%;background:#ffb700"></div></div><span class="epct">8%</span></div>
+          <div class="erow"><span class="enm">Excited</span><div class="etrk"><div class="efill" style="width:4%;background:#7c3aed"></div></div><span class="epct">4%</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:13px">
+        <div class="ctitle">Keywords</div>
+        <div class="kwcloud" id="kwcloud"><div class="kwtag">#voice</div><div class="kwtag">#ai</div><div class="kwtag">#hindi</div></div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Activity Log</div>
+        <div class="hlist" id="hlist"><div class="hitem"><div class="hico">🚀</div><div class="htitle">Session started</div><div class="httm">Now</div></div></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── PAGE: CONFIG ── -->
+  <div class="pg" id="pg-cfg">
+    <div class="pscroll">
+
+      <div class="card">
+        <div class="ctitle">Voice Agent</div>
+        <div class="agrid" id="vagrid">
+          <div class="aitem sel" onclick="pickVA(this,'Nova','🤖','Helpful, balanced, creative')">
+            <div class="aico" style="background:linear-gradient(135deg,#1d4ed8,#7c3aed)">🤖</div>
+            <div><div class="anm">Nova</div><div class="arl">General</div></div>
+            <div class="ack">✓</div>
+          </div>
+          <div class="aitem" onclick="pickVA(this,'Aria','👩‍💼','Professional, formal, precise')">
+            <div class="aico" style="background:linear-gradient(135deg,#be185d,#d97706)">👩‍💼</div>
+            <div><div class="anm">Aria</div><div class="arl">Executive</div></div>
+            <div class="ack">✓</div>
+          </div>
+          <div class="aitem" onclick="pickVA(this,'Atlas','🧠','Research, analytical, detailed')">
+            <div class="aico" style="background:linear-gradient(135deg,#065f46,#0891b2)">🧠</div>
+            <div><div class="anm">Atlas</div><div class="arl">Research</div></div>
+            <div class="ack">✓</div>
+          </div>
+          <div class="aitem" onclick="pickVA(this,'Buddy','😄','Friendly, funny, casual')">
+            <div class="aico" style="background:linear-gradient(135deg,#d97706,#dc2626)">😄</div>
+            <div><div class="anm">Buddy</div><div class="arl">Casual</div></div>
+            <div class="ack">✓</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Language &amp; Voice</div>
+        <select class="lsel" id="cfg-lang" onchange="lang=this.value;upd('langbtn','🌐 '+this.value.split('-')[0].toUpperCase())">
+          <optgroup label="🇮🇳 Indian Languages">
+            <option value="hi-IN">हिन्दी — Hindi</option>
+            <option value="gu-IN">ગુજરાતી — Gujarati</option>
+            <option value="mr-IN">मराठी — Marathi</option>
+            <option value="bn-IN">বাংলা — Bengali</option>
+            <option value="ta-IN">தமிழ் — Tamil</option>
+            <option value="te-IN">తెలుగు — Telugu</option>
+            <option value="kn-IN">ಕನ್ನಡ — Kannada</option>
+            <option value="ml-IN">മലയാളം — Malayalam</option>
+            <option value="pa-IN">ਪੰਜਾਬੀ — Punjabi</option>
+            <option value="ur-IN">اردو — Urdu</option>
+          </optgroup>
+          <optgroup label="🌍 International">
+            <option value="en-US" selected>English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="es-ES">Spanish</option>
+            <option value="fr-FR">French</option>
+            <option value="de-DE">German</option>
+            <option value="ja-JP">Japanese</option>
+            <option value="zh-CN">Chinese</option>
+            <option value="ar-SA">Arabic</option>
+          </optgroup>
+        </select>
+        <select class="lsel" id="cfg-voice" onchange="ttsVoiceIdx=+this.value"><option>Loading…</option></select>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">AI Parameters</div>
+        <div class="slider-row">
+          <div class="stitle"><span class="slbl">Temperature</span><span class="sval" id="ss-temp">0.7</span></div>
+          <input type="range" min="0" max="1" step=".05" value=".7" oninput="temperature=+this.value;upd('ss-temp',this.value)">
+        </div>
+        <div class="slider-row">
+          <div class="stitle"><span class="slbl">History Depth</span><span class="sval" id="ss-hist">10</span></div>
+          <input type="range" min="2" max="20" step="2" value="10" oninput="maxHistory=+this.value;upd('ss-hist',this.value)">
+        </div>
+        <div class="ctitle" style="margin-bottom:7px">System Prompt</div>
+        <textarea class="gtx" id="sysprompt" style="min-height:80px">You are a helpful, intelligent voice AI assistant. Be concise, friendly and accurate in your responses.</textarea>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Audio Features</div>
+        <div class="trow">
+          <div><div class="tlbl">Auto-speak Responses</div><div class="tsub">AI jawab khud bol ke sunaye</div></div>
+          <div class="tswitch on" id="ts-auto" onclick="tsw(this,'autoSpeak')"></div>
+        </div>
+        <div class="trow">
+          <div><div class="tlbl">Noise Cancellation</div><div class="tsub">Background noise kam karo</div></div>
+          <div class="tswitch on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="trow">
+          <div><div class="tlbl">Echo Suppression</div><div class="tsub">Audio feedback rokna</div></div>
+          <div class="tswitch on" onclick="this.classList.toggle('on')"></div>
+        </div>
+        <div class="trow">
+          <div><div class="tlbl">Wake Word — Hey Nova</div><div class="tsub">Bol ke activate karo</div></div>
+          <div class="tswitch" id="ts-wake" onclick="tsw(this,'wakeActive');if(wakeActive)startWW()"></div>
+        </div>
+        <div class="trow">
+          <div><div class="tlbl">Continuous Listen</div><div class="tsub">Ek baar mic dabao, hamesha sune</div></div>
+          <div class="tswitch" id="ts-cont" onclick="tsw(this,'contMode')"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">Data &amp; Export</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn cy" onclick="exportChat()">💾 Chat Export Karo</button>
+          <button class="btn gr" onclick="exportCallLog()">📞 Call Log Export</button>
+          <button class="btn am" onclick="exportGenOutput()">✨ Generate Output Save</button>
+          <button class="btn rd" onclick="clearAll()">🗑️ Sab Clear Karo</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div><!-- /#wrap -->
+
+<script>
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let agent = {name:'Nova',emoji:'🤖',style:'Helpful, balanced, creative'};
+let CA = {name:'Nova',emoji:'🤖',role:'General AI Assistant',sys:'You are Nova, a helpful phone AI. Keep replies to 1-2 sentences max.'};
+let lang = 'en-US';
+let ttsRate=1, ttsPitch=1, ttsVol=1, ttsVoiceIdx=0;
+let temperature=0.7, maxHistory=10;
+let autoSpeak=true, wakeActive=false, contMode=false;
+let isMuted=false, isSpeaker=true, isCRec=false, isHold=false;
+let inCall=false, isRec=false;
+let chatHist=[], callHist=[];
+let msgCount=0, wordCount=0, callCount=0;
+let sessStart=Date.now();
+let recSec=0, recTmr=null, callSec=0, callTmr=null;
+let micRec=null, callRec=null, wakeRec=null;
+let synth=window.speechSynthesis, voices=[];
+let mStream=null, aCtx=null, anlsr=null, vFrame=null;
+let lastGenOutput='';
+
+const INDLANGS = [
+  ['en-US','🌐 EN'],['hi-IN','🇮🇳 HI'],['gu-IN','🇮🇳 GU'],
+  ['mr-IN','🇮🇳 MR'],['bn-IN','🇮🇳 BN'],['ta-IN','🇮🇳 TA'],
+  ['te-IN','🇮🇳 TE'],['kn-IN','🇮🇳 KN'],['ml-IN','🇮🇳 ML'],
+  ['pa-IN','🇮🇳 PA'],['ur-IN','🇮🇳 UR'],['es-ES','🇪🇸 ES'],
+];
+let langIdx=0;
+
+// ════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  loadVoices();
+  buildDBMeter();
+  drawIdle();
+  setInterval(refreshMetrics,1000);
+  // Prevent body scroll on mobile
+  document.body.addEventListener('touchmove',e=>{
+    if(e.target===document.body)e.preventDefault();
+  },{passive:false});
+});
+
+// ════════════════════════════════════════════
+//  HELPER
+// ════════════════════════════════════════════
+function upd(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function toast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  clearTimeout(window._tt);
+  window._tt=setTimeout(()=>t.classList.remove('show'),2400);
+}
+
+// ════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════
+function goTab(btn,id){
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('pg-'+id).classList.add('on');
+}
+
+// ════════════════════════════════════════════
+//  VOICE CHAT
+// ════════════════════════════════════════════
+function qsend(t){document.getElementById('txtin').value=t;sendTxt();}
+
+function sendTxt(){
+  const el=document.getElementById('txtin');
+  const t=el.value.trim();if(!t)return;
+  el.value='';
+  setTimeout(()=>el.focus(),50);
+  doInput(t);
+}
+
+function toggleMic(){isRec?stopMic():startMic();}
+
+async function startMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('⚠️ Chrome/Edge use karein voice ke liye');return;}
+  try{
+    mStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+    startVis(mStream);
+  }catch(e){toast('⚠️ Mic permission dena hoga');}
+  micRec=new SR();
+  micRec.lang=lang;micRec.interimResults=true;micRec.continuous=contMode;
+  micRec.onstart=()=>{isRec=true;setRec(true);startRecTmr();};
+  micRec.onresult=e=>{
+    let fin='';
+    for(let i=e.resultIndex;i<e.results.length;i++)
+      if(e.results[i].isFinal)fin+=e.results[i][0].transcript;
+    if(fin)doInput(fin.trim());
+  };
+  micRec.onerror=()=>stopMic();
+  micRec.onend=()=>{if(contMode&&isRec)micRec.start();else stopMic();};
+  try{micRec.start();}catch(e){stopMic();}
+}
+
+function stopMic(){
+  isRec=false;
+  if(micRec){try{micRec.stop();}catch(e){}micRec=null;}
+  if(mStream){mStream.getTracks().forEach(t=>t.stop());mStream=null;}
+  if(vFrame){cancelAnimationFrame(vFrame);vFrame=null;}
+  setRec(false);stopRecTmr();drawIdle();
+}
+
+function setRec(on){
+  const badge=document.getElementById('rbadge');
+  const txt=document.getElementById('rtxt');
+  const btn=document.getElementById('micbtn');
+  if(on){
+    badge.className='rl';badge.textContent='● LIVE';
+    txt.textContent='Sun raha hoon…';
+    btn.classList.add('rec');btn.textContent='⏹';
+  }else{
+    badge.className='rr';badge.textContent='● READY';
+    txt.textContent='Tap mic ya type karo';
+    btn.classList.remove('rec');btn.textContent='🎙️';
+  }
+}
+
+async function doInput(text){
+  if(!text)return;
+  hideWelcome();
+  addMsg('u',text,'🧑');
+  msgCount++;wordCount+=text.split(/\s+/).length;
+  addKW(text);addLog('💬',text.substring(0,42)+(text.length>42?'…':''));
+  chatHist.push({role:'user',content:text});
+  if(chatHist.length>maxHistory*2)chatHist=chatHist.slice(-maxHistory*2);
+  showTyping();
+  try{
+    const sys=document.getElementById('sysprompt').value||
+      `You are ${agent.name}, a voice AI. Style: ${agent.style}. Be concise and conversational.`;
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:800,system:sys,messages:chatHist})
+    });
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    const reply=d.content?.[0]?.text||'Maafi chahta/chahti hoon, jawab nahi de paya.';
+    hideTyping();streamMsg(reply);
+    chatHist.push({role:'assistant',content:reply});
+    msgCount++;wordCount+=reply.split(/\s+/).length;
+    updSent(reply);updEm(reply);
+    if(autoSpeak)speakTx(reply);
+  }catch(e){
+    hideTyping();
+    addMsg('ai','⚠️ Error: '+e.message,agent.emoji);
+  }
+}
+
+function hideWelcome(){
+  document.getElementById('welcome').style.display='none';
+  const ml=document.getElementById('msglist');ml.style.display='flex';
+}
+
+function addMsg(role,text,av){
+  const c=document.getElementById('msglist');
+  const d=document.createElement('div');d.className='msg '+role;
+  const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  d.innerHTML=`<div class="mav">${av}</div>
+    <div class="mbody">
+      <div class="mmeta"><span class="mname">${role==='ai'?agent.name:'Aap'}</span><span class="mtime">${t}</span></div>
+      <div class="mbbl">${safe}</div>
+    </div>`;
+  c.appendChild(d);scrollC();
+}
+
+let typEl=null;
+function showTyping(){
+  const c=document.getElementById('msglist');
+  typEl=document.createElement('div');typEl.className='msg ai';typEl.id='_typ';
+  typEl.innerHTML=`<div class="mav">${agent.emoji}</div><div class="mbody"><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>`;
+  c.appendChild(typEl);scrollC();
+}
+function hideTyping(){const t=document.getElementById('_typ');if(t)t.remove();}
+
+function streamMsg(text){
+  const c=document.getElementById('msglist');
+  const d=document.createElement('div');d.className='msg ai';
+  const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  d.innerHTML=`<div class="mav">${agent.emoji}</div>
+    <div class="mbody">
+      <div class="mmeta"><span class="mname">${agent.name}</span><span class="mtime">${t}</span></div>
+      <div class="mbbl" id="_sb"></div>
+    </div>`;
+  c.appendChild(d);
+  const bbl=d.querySelector('#_sb');bbl.removeAttribute('id');
+  const words=text.split(' ');let i=0;
+  const iv=setInterval(()=>{
+    if(i>=words.length){clearInterval(iv);return;}
+    bbl.textContent+=(i>0?' ':'')+words[i++];scrollC();
+  },35);
+  scrollC();
+}
+
+function scrollC(){
+  const a=document.getElementById('chat-area');
+  requestAnimationFrame(()=>a.scrollTop=a.scrollHeight);
+}
+
+// ════════════════════════════════════════════
+//  CALL AGENT
+// ════════════════════════════════════════════
+function pickCA(el,name,emoji,role,sys){
+  document.querySelectorAll('#pg-call .aitem').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');
+  CA={name,emoji,role,sys};
+  upd('cemoji',emoji);upd('caname',name);upd('carole',role);
+}
+
+function startCall(){
+  if(inCall)return;
+  inCall=true;callCount++;callHist=[];
+  document.getElementById('corb').className='corb active';
+  document.getElementById('cstatel').innerHTML='<span style="color:var(--gr)">● CONNECTED</span>';
+  document.getElementById('ctimerel').style.display='block';
+  document.getElementById('cb-call').style.display='none';
+  document.getElementById('cb-end').style.display='';
+  document.getElementById('cpill').style.display='flex';
+  upd('hst','IN CALL');
+  callSec=0;
+  callTmr=setInterval(()=>{
+    callSec++;
+    const m=Math.floor(callSec/60),s=callSec%60;
+    const str=m+':'+(s<10?'0':'')+s;
+    upd('ctimerel',str);upd('cdurh',str);
+  },1000);
+  addCL('sys','— '+CA.name+' se connected —');
+  const greet='Hello! Main '+CA.name+' hoon. Aap kaise help kar sakta/sakti hoon?';
+  addCL('ai',CA.name+': '+greet);
+  unlockAudio();
+  if(isSpeaker) setTimeout(()=>speakTx(greet), 300);
+  toast('📞 Call shuru — '+CA.name);
+  startCListen();
+}
+
+function endCall(){
+  if(!inCall)return;
+  inCall=false;clearInterval(callTmr);
+  if(callRec){try{callRec.stop();}catch(e){}callRec=null;}
+  document.getElementById('corb').className='corb ended';
+  document.getElementById('cstatel').textContent='● ENDED — '+fmtS(callSec);
+  document.getElementById('ctimerel').style.display='none';
+  document.getElementById('cb-call').style.display='';
+  document.getElementById('cb-end').style.display='none';
+  document.getElementById('cpill').style.display='none';
+  upd('hst','ONLINE');
+  addCL('sys','— Call ended — Duration: '+fmtS(callSec)+' —');
+  synth.cancel();
+  toast('📵 Call khatam — '+fmtS(callSec));
+  addLog('📞','Call with '+CA.name+' — '+fmtS(callSec));
+  setTimeout(()=>{document.getElementById('corb').className='corb';},2000);
+}
+
+function fmtS(s){return Math.floor(s/60)+'m '+(s%60)+'s';}
+
+function addCL(who,text){
+  const c=document.getElementById('clog');
+  const d=document.createElement('div');d.className='c'+who;d.textContent=text;
+  c.appendChild(d);c.scrollTop=c.scrollHeight;
+}
+
+function startCListen(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+  callRec=new SR();callRec.lang=document.getElementById('call-lang').value;
+  callRec.interimResults=false;callRec.continuous=true;
+  callRec.onresult=async e=>{
+    if(!inCall||isMuted||isHold)return;
+    const txt=e.results[e.resultIndex][0].transcript.trim();if(!txt)return;
+    addCL('you','Aap: '+txt);
+    callHist.push({role:'user',content:txt});
+    if(callHist.length>10)callHist=callHist.slice(-10);
+    try{
+      const r=await fetch('https://api.anthropic.com/v1/messages',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,system:CA.sys,messages:callHist})
+      });
+      const d=await r.json();
+      const reply=d.content?.[0]?.text||'Dobara boliye?';
+      addCL('ai',CA.name+': '+reply);
+      callHist.push({role:'assistant',content:reply});
+      if(isSpeaker)speakTx(reply);
+    }catch(e){addCL('sys','— Error —');}
+  };
+  callRec.onerror=()=>{if(inCall)setTimeout(()=>{try{callRec.start();}catch(e){}},600);};
+  callRec.onend=()=>{if(inCall)try{callRec.start();}catch(e){}};
+  try{callRec.start();}catch(e){}
+}
+
+function sendCallTxt(){
+  const el=document.getElementById('ctxt');
+  const text=el.value.trim();if(!text)return;el.value='';
+  if(!inCall){toast('⚠️ Pehle call shuru karo');return;}
+  if(isMuted||isHold){toast(isHold?'⚠️ Call hold pe hai':'⚠️ Mute hai aap');return;}
+  addCL('you','Aap: '+text);
+  callHist.push({role:'user',content:text});
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:150,system:CA.sys,messages:callHist})
+  }).then(r=>r.json()).then(d=>{
+    const reply=d.content?.[0]?.text||'Ok';
+    addCL('ai',CA.name+': '+reply);
+    callHist.push({role:'assistant',content:reply});
+    if(isSpeaker)speakTx(reply);
+  }).catch(()=>addCL('sys','— Error —'));
+}
+
+function toggleMute(){
+  isMuted=!isMuted;
+  const b=document.getElementById('cb-mute');
+  b.classList.toggle('ao',isMuted);
+  b.querySelector('.cico').textContent=isMuted?'🔇':'🎤';
+  b.querySelector('.clbl').textContent=isMuted?'UNMUTE':'MUTE';
+  if(inCall)addCL('sys',isMuted?'— Muted —':'— Unmuted —');
+  toast(isMuted?'🔇 Mute ho gaye':'🎤 Unmute ho gaye');
+}
+function toggleSpk(){
+  isSpeaker=!isSpeaker;
+  document.getElementById('cb-spk').classList.toggle('on',isSpeaker);
+  if(!isSpeaker)synth.cancel();
+  toast(isSpeaker?'🔊 Speaker ON':'🔈 Speaker OFF');
+}
+function toggleHold(){
+  isHold=!isHold;
+  document.getElementById('cb-hold').classList.toggle('ao',isHold);
+  document.getElementById('cstatel').innerHTML=isHold?
+    '<span style="color:var(--am)">⏸ HOLD PE HAI</span>':
+    '<span style="color:var(--gr)">● CONNECTED</span>';
+  if(inCall)addCL('sys',isHold?'— Hold pe dala —':'— Resume hua —');
+  toast(isHold?'⏸ Hold pe hai':'▶ Resume hua');
+}
+function toggleCRec(){
+  isCRec=!isCRec;
+  document.getElementById('cb-rec').classList.toggle('on',isCRec);
+  if(inCall)addCL('sys',isCRec?'— Recording shuru —':'— Recording band —');
+  toast(isCRec?'⏺ Recording shuru':'⏹ Recording band');
+}
+
+// ════════════════════════════════════════════
+//  GENERATE PAGE
+// ════════════════════════════════════════════
+function getLangLabel(){
+  const sel=document.getElementById('out-lang');
+  return sel.options[sel.selectedIndex]?.text||'English';
+}
+function getLangCode(){return document.getElementById('out-lang').value;}
+
+function buildLangSysPrompt(baseTask){
+  const code=getLangCode();
+  const label=getLangLabel();
+  const langMap={
+    hi:'Hindi (हिन्दी)',gu:'Gujarati (ગુજરાતી)',mr:'Marathi (मराठी)',
+    bn:'Bengali (বাংলা)',ta:'Tamil (தமிழ்)',te:'Telugu (తెలుగు)',
+    kn:'Kannada (ಕನ್ನಡ)',ml:'Malayalam (മലയാളം)',pa:'Punjabi (ਪੰਜਾਬੀ)',
+    or:'Odia (ଓଡ଼ିଆ)',as:'Assamese (অসমীয়া)',ur:'Urdu (اردو)',
+    sa:'Sanskrit (संस्कृत)',ne:'Nepali (नेपाली)',bho:'Bhojpuri (भोजपुरी)',
+    mai:'Maithili (मैथिली)',kok:'Konkani (कोंकणी)',doi:'Dogri (डोगरी)',
+    mni:'Manipuri',sat:'Santali',sd:'Sindhi',ks:'Kashmiri',
+    en:'English',es:'Spanish',fr:'French',de:'German',
+    ar:'Arabic',zh:'Chinese',ja:'Japanese',pt:'Portuguese',ru:'Russian'
+  };
+  const tgt=langMap[code]||label;
+  if(code==='en')return baseTask;
+  return `${baseTask}\n\nIMPORTANT: You MUST write your ENTIRE response in ${tgt} language only. Do not use English unless absolutely necessary for technical terms. Write naturally and fluently in ${tgt}.`;
+}
+
+async function genText(){
+  const prompt=document.getElementById('gen-prompt').value.trim();
+  if(!prompt){toast('⚠️ Prompt likho pehle');return;}
+  showOut('⏳ Generate ho raha hai…');
+  try{
+    const sys=buildLangSysPrompt('You are a helpful AI writer. Write high-quality, engaging content as requested.');
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:prompt}]})
+    });
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    const out=d.content?.[0]?.text||'Koi jawab nahi mila.';
+    lastGenOutput=out;
+    showOut(out);
+    upd('out-lang-label','✨ Output — '+getLangLabel());
+    toast('✅ Generate ho gaya — '+getLangLabel());
+  }catch(e){showOut('⚠️ Error: '+e.message);}
+}
+
+async function improveText(){
+  const prompt=document.getElementById('gen-prompt').value.trim();
+  if(!prompt){toast('⚠️ Text likho pehle');return;}
+  showOut('⏳ Improve ho raha hai…');
+  try{
+    const sys=buildLangSysPrompt('You are an expert editor. Improve the given text to make it more professional, clear, and engaging. Maintain the same language as the input text.');
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,system:sys,messages:[{role:'user',content:'Improve this text:\n\n'+prompt}]})
+    });
+    const d=await r.json();
+    if(d.error)throw new Error(d.error.message);
+    const out=d.content?.[0]?.text||'Koi jawab nahi mila.';
+    lastGenOutput=out;showOut(out);
+    upd('out-lang-label','🔧 Improved — '+getLangLabel());
+    toast('✅ Improve ho gaya!');
+  }catch(e){showOut('⚠️ Error: '+e.message);}
+}
+
+async function translateOut(){
+  if(!lastGenOutput){toast('⚠️ Pehle kuch generate karo');return;}
+  showOut('⏳ Translate ho raha hai…');
+  try{
+    const tgt=getLangLabel();
+    const r=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1200,
+        messages:[{role:'user',content:`Translate this text into ${tgt}. Provide only the translated text, nothing else:\n\n${lastGenOutput}`}]})
+    });
+    const d=await r.json();
+    const out=d.content?.[0]?.text||'Translation fail.';
+    lastGenOutput=out;showOut(out);
+    upd('out-lang-label','🔄 Translated → '+tgt);
+    toast('✅ '+tgt+' mein translate ho gaya!');
+  }catch(e){showOut('⚠️ Error: '+e.message);}
+}
+
+function showOut(txt){
+  document.getElementById('out-card').style.display='block';
+  document.getElementById('outbox').textContent=txt;
+  lastGenOutput=txt;
+  // scroll to output
+  setTimeout(()=>{
+    document.getElementById('outbox').scrollIntoView({behavior:'smooth',block:'nearest'});
+  },100);
+}
+
+function speakOut(){
+  if(!lastGenOutput||lastGenOutput.startsWith('⏳')||lastGenOutput.startsWith('⚠️')){toast('⚠️ Koi output nahi');return;}
+  unlockAudio();
+  speakTx(lastGenOutput);
+  toast('🔊 Bol raha hoon…');
+}
+function copyOut(){
+  if(!lastGenOutput)return;
+  navigator.clipboard.writeText(lastGenOutput).then(()=>toast('📋 Copy ho gaya!')).catch(()=>{
+    // fallback
+    const ta=document.createElement('textarea');ta.value=lastGenOutput;
+    document.body.appendChild(ta);ta.select();document.execCommand('copy');
+    document.body.removeChild(ta);toast('📋 Copy ho gaya!');
+  });
+}
+function downloadOut(){
+  if(!lastGenOutput)return;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([lastGenOutput],{type:'text/plain;charset=utf-8'}));
+  a.download='voxai-output-'+Date.now()+'.txt';a.click();
+  toast('💾 Save ho gaya!');
+}
+
+function tpl(type){
+  const templates={
+    email:'Ek professional business email likho jo ek client ko project delay ke baare mein apologize kare aur naya timeline bataye.',
+    summary:'Neeche diye gaye text ko 5 bullet points mein summarize karo:\n\n[Apna text yahan paste karo]',
+    story:'Ek interesting 200-word ki kahani likho jo ek AI ke baare mein ho jo emotions feel karna seekhta hai.',
+    bio:'Ek compelling professional bio likho jo LinkedIn ya website ke liye ho. Include karo: skills, experience aur unique value proposition.',
+    social:'3 engaging social media posts likho AI assistants ke future ke baare mein, emojis aur hashtags ke saath.',
+    code:'Neeche diye code ko simple Hinglish mein explain karo:\n\n[Apna code yahan paste karo]',
+    translate:'Neeche diye text ko [target language] mein translate karo:\n\n[Text yahan paste karo]',
+  };
+  document.getElementById('gen-prompt').value=templates[type]||'';
+  goTab(document.querySelectorAll('.tbtn')[2],'gen');
+  toast('📝 Template load ho gaya');
+}
+
+// TTS
+function speakTTS(){
+  const t=document.getElementById('tts-txt').value.trim();
+  if(!t){toast('⚠️ Text daalo pehle');return;}
+  unlockAudio();
+  speakTx(t);
+  toast('🔊 Bol raha hoon…');
+}
+function stopTTS(){
+  ttsActive=false;
+  synth.cancel();
+  clearInterval(ttsProgIv);
+  setProgBar(0);setPPBtn('▶');
+  toast('⏹ Ruk gaya');
+}
+function togglePP(){
+  if(synth.speaking&&!synth.paused){synth.pause();setPPBtn('▶');}
+  else if(synth.paused){synth.resume();setPPBtn('⏸');}
+}
+function pickVP(el,r,p){
+  document.querySelectorAll('.vp').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');ttsRate=r;ttsPitch=p;
+}
+
+// ════════════════════════════════════════════
+//  TTS ENGINE — ResponsiveVoice + Native fallback
+//  synthesis-failed fix: iframe uses ResponsiveVoice CDN
+// ════════════════════════════════════════════
+let ttsActive = false;
+let ttsProgIv = null;
+let rvReady   = false;
+// synth already declared above — no redeclaration needed
+
+function loadRV(){
+  if(document.getElementById('_rv')) return;
+  const s = document.createElement('script');
+  s.id  = '_rv';
+  s.src = 'https://code.responsivevoice.org/responsivevoice.js?key=FREE';
+  s.onload  = ()=>{ rvReady=true; toast('🔊 Voice engine ready!'); };
+  s.onerror = ()=>{ rvReady=false; };
+  document.head.appendChild(s);
+}
+
+function loadVoices(){
+  loadRV();
+  function fill(){
+    const v = synth ? synth.getVoices() : [];
+    voices = v;
+    ['tts-voice','cfg-voice'].forEach(id=>{
+      const sel=document.getElementById(id);
+      if(!sel) return;
+      sel.innerHTML = v.length
+        ? v.map((vv,i)=>`<option value="${i}">${vv.name} (${vv.lang})</option>`).join('')
+        : '<option>Auto Voice</option>';
+    });
+  }
+  if(synth) synth.addEventListener('voiceschanged', fill);
+  fill();
+  let n=0; const iv=setInterval(()=>{ if(voices.length||n++>30){clearInterval(iv);}else fill(); },300);
+}
+
+function getRVVoice(){
+  const map={
+    hi:'Hindi Female',gu:'Gujarati Female',mr:'Marathi Female',
+    bn:'Bengali Female',ta:'Tamil Female',te:'Telugu Female',
+    kn:'Kannada Female',ml:'Malayalam Female',pa:'Punjabi Female',
+    ur:'Urdu Female',en:'UK English Female',es:'Spanish Female',
+    fr:'French Female',de:'Deutsch Female',ja:'Japanese Female',
+    zh:'Chinese Female',ar:'Arabic Female',pt:'Brazilian Portuguese Female',ru:'Russian Female'
+  };
+  return map[lang.split('-')[0]] || 'UK English Female';
+}
+
+function speakTx(text){
+  if(!text||!text.trim()) return;
+  const clean = text.replace(/[*#_`>•]/g,'').trim().substring(0,800);
+  if(!clean) return;
+  stopTTS();
+  showTTSPlayer(); setProgBar(0); setPPBtn('⏸');
+  ttsActive = true;
+
+  // PRIMARY: ResponsiveVoice — works in any iframe
+  if(rvReady && window.responsiveVoice){
+    window.responsiveVoice.speak(clean, getRVVoice(), {
+      rate   : Math.min(Math.max(+ttsRate||1, 0.5), 1.5),
+      pitch  : Math.min(Math.max(+ttsPitch||1, 0.5), 2),
+      volume : Math.min(Math.max(+ttsVol||1, 0.1), 1),
+      onstart: ()=>{ setPPBtn('⏸'); animProg(clean); },
+      onend  : ()=>{ setPPBtn('▶'); setProgBar(100); ttsActive=false; clearInterval(ttsProgIv); },
+      onerror: ()=>{ toast('⚠️ RV fail — native try…'); nativeSpeak(clean); }
+    });
+    return;
+  }
+
+  // SECONDARY: native SpeechSynthesis
+  nativeSpeak(clean);
+}
+
+function nativeSpeak(clean){
+  if(!synth){ showNoTTS(); return; }
+  synth.cancel();
+  setTimeout(()=>{
+    const u = new SpeechSynthesisUtterance(clean);
+    u.rate=Math.min(Math.max(+ttsRate||1,0.5),2);
+    u.pitch=Math.min(Math.max(+ttsPitch||1,0.5),2);
+    u.volume=Math.min(Math.max(+ttsVol||1,0.1),1);
+    u.lang=lang;
+    const best=voices.find(v=>v.lang===lang)||voices.find(v=>v.lang.startsWith(lang.split('-')[0]))||voices[0];
+    if(best) u.voice=best;
+    u.onstart=()=>{ setPPBtn('⏸'); animProg(clean); };
+    u.onend=()=>{ setPPBtn('▶'); setProgBar(100); ttsActive=false; };
+    u.onerror=(e)=>{
+      if(e.error==='interrupted'||e.error==='canceled') return;
+      ttsActive=false; setPPBtn('▶');
+      showNoTTS();
+    };
+    try{ synth.speak(u); setTimeout(()=>{ if(synth.paused) synth.resume(); },300); }
+    catch(e){ showNoTTS(); }
+  },120);
+}
+
+function animProg(text){
+  const dur=Math.max(1500,(text.split(' ').length/((+ttsRate||1)*2.5))*1000);
+  let p=0; clearInterval(ttsProgIv);
+  ttsProgIv=setInterval(()=>{
+    if(!ttsActive){clearInterval(ttsProgIv);return;}
+    p=Math.min(p+(100/(dur/80)),96); setProgBar(p);
+    if(p>=96) clearInterval(ttsProgIv);
+  },80);
+}
+
+function showNoTTS(){
+  ttsActive=false; setPPBtn('▶');
+  toast('⚠️ Awaaz block hai — neeche solution dekho');
+  if(document.getElementById('_notts')) return;
+  const b=document.createElement('div');
+  b.id='_notts';
+  b.style.cssText='position:fixed;bottom:68px;left:50%;transform:translateX(-50%);width:92vw;max-width:420px;background:#0b0f20;border:1.5px solid rgba(0,212,255,.4);border-radius:13px;padding:16px;z-index:9999;font-size:13px;line-height:1.85;color:#e2eeff';
+  b.innerHTML=`<div style="font-family:Orbitron,monospace;color:#00d4ff;font-size:11px;letter-spacing:.1em;margin-bottom:10px">⚠️ AWAAZ KYUN NAHI AA RAHI?</div>
+<b>Claude.ai ka iframe browser TTS block karta hai.</b><br><br>
+<b style="color:#00e896">✅ Solution 1 — File Download karo:</b><br>
+Upar 💾 button dabao → file save karo → Chrome mein directly kholko → tab awaaz aayegi<br><br>
+<b style="color:#00d4ff">✅ Solution 2 — Chrome Allow karo:</b><br>
+Chrome mein address bar mein jao:<br>
+<span style="background:#1a2040;padding:2px 8px;border-radius:5px;font-size:12px;color:#00d4ff;font-family:monospace">⋮ Menu → Settings → Site Settings → Sound → claude.ai Allow</span><br><br>
+<b style="color:#ffb700">✅ Solution 3 — Text Copy karo:</b><br>
+Output copy karo → Google Translate app → Speaker icon dabao<br><br>
+<button onclick="document.getElementById('_notts').remove()" style="background:#00d4ff;color:#000;border:none;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;width:100%;font-size:13px">✕ Samajh Gaya</button>`;
+  document.body.appendChild(b);
+}
+
+function stopTTS(){
+  ttsActive=false; clearInterval(ttsProgIv);
+  if(rvReady&&window.responsiveVoice) try{window.responsiveVoice.cancel();}catch(e){}
+  if(synth) try{synth.cancel();}catch(e){}
+  setProgBar(0); setPPBtn('▶');
+}
+function togglePP(){
+  if(rvReady&&window.responsiveVoice){ stopTTS(); return; }
+  if(!synth) return;
+  if(synth.speaking&&!synth.paused){ synth.pause(); setPPBtn('▶'); }
+  else if(synth.paused){ synth.resume(); setPPBtn('⏸'); }
+}
+function setPPBtn(t){ const b=document.getElementById('pp-btn'); if(b) b.textContent=t; }
+function setProgBar(p){ const b=document.getElementById('pbar'); if(b) b.style.width=p+'%'; }
+function showTTSPlayer(){ const p=document.getElementById('tts-player'); if(p) p.classList.add('show'); }
+// unlockAudio kept as no-op for compatibility
+function unlockAudio(){}
+
+//  FEATURES
+// ════════════════════════════════════════════
+function toggleAuto(){
+  autoSpeak=!autoSpeak;
+  document.getElementById('autobtn').classList.toggle('on',autoSpeak);
+  if(!autoSpeak)synth.cancel();
+  toast(autoSpeak?'🔊 Auto-speak ON':'🔇 Auto-speak OFF');
+}
+function toggleWake(){
+  wakeActive=!wakeActive;
+  document.getElementById('wakebtn').classList.toggle('on',wakeActive);
+  if(wakeActive)startWW();
+  toast(wakeActive?'👂 Wake word ON':'👂 Wake word OFF');
+}
+function startWW(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
+  wakeRec=new SR();wakeRec.continuous=true;wakeRec.lang=lang;
+  wakeRec.onresult=e=>{
+    const t=e.results[e.resultIndex][0].transcript.toLowerCase();
+    if(['hey nova','hi nova','okay nova','hey vox'].some(w=>t.includes(w))&&!isRec){
+      toast('👂 Wake word mila!');startMic();
+    }
+  };
+  wakeRec.onerror=()=>{};
+  wakeRec.onend=()=>{if(wakeActive)try{wakeRec.start();}catch(e){}};
+  try{wakeRec.start();}catch(e){}
+}
+function toggleCont(){
+  contMode=!contMode;
+  document.getElementById('contbtn').classList.toggle('on',contMode);
+  toast(contMode?'🔁 Continuous ON':'🔁 Continuous OFF');
+}
+function cycleLang(){
+  langIdx=(langIdx+1)%INDLANGS.length;
+  lang=INDLANGS[langIdx][0];
+  document.getElementById('langbtn').textContent=INDLANGS[langIdx][1];
+  document.getElementById('cfg-lang').value=lang;
+  toast('🌐 Language: '+lang);
+}
+
+// ════════════════════════════════════════════
+//  VISUALIZER
+// ════════════════════════════════════════════
+function drawIdle(){
+  const cv=document.getElementById('wc');if(!cv)return;
+  cv.width=cv.offsetWidth||400;cv.height=cv.offsetHeight||44;
+  const ctx=cv.getContext('2d'),w=cv.width,h=cv.height;
+  ctx.clearRect(0,0,w,h);
+  ctx.strokeStyle='rgba(0,212,255,0.18)';ctx.lineWidth=1.5;
+  ctx.beginPath();
+  for(let x=0;x<w;x++){const y=h/2+Math.sin(x*.033)*4;x===0?ctx.moveTo(x,y):ctx.lineTo(x,y);}
+  ctx.stroke();
+}
+function startVis(stream){
+  aCtx=new(window.AudioContext||window.webkitAudioContext)();
+  anlsr=aCtx.createAnalyser();anlsr.fftSize=256;
+  aCtx.createMediaStreamSource(stream).connect(anlsr);
+  const cv=document.getElementById('wc');
+  const ctx=cv.getContext('2d'),data=new Uint8Array(anlsr.frequencyBinCount);
+  function draw(){
+    vFrame=requestAnimationFrame(draw);
+    cv.width=cv.offsetWidth||400;cv.height=cv.offsetHeight||44;
+    anlsr.getByteTimeDomainData(data);
+    const w=cv.width,h=cv.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.lineWidth=2;ctx.strokeStyle='#00d4ff';ctx.shadowColor='#00d4ff';ctx.shadowBlur=8;
+    ctx.beginPath();
+    const sw=w/data.length;let x=0;
+    for(let i=0;i<data.length;i++){const y=(data[i]/128)*h/2;i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);x+=sw;}
+    ctx.lineTo(w,h/2);ctx.stroke();ctx.shadowBlur=0;
+  }
+  draw();
+}
+
+// ════════════════════════════════════════════
+//  DB METER
+// ════════════════════════════════════════════
+function buildDBMeter(){
+  const m=document.getElementById('dbm');
+  const colors=['#00e896','#00e896','#00e896','#ffb700','#ff3860','#ff3860'];
+  for(let i=0;i<6;i++){
+    const b=document.createElement('span');
+    b.style.cssText=`background:${colors[i]};height:3px;display:block`;m.appendChild(b);
+  }
+  setInterval(()=>{
+    const bars=m.children,lv=isRec?Math.random():0;
+    for(let i=0;i<bars.length;i++)
+      bars[i].style.height=(lv>(i/bars.length)?3+Math.random()*12:3)+'px';
+  },80);
+}
+
+// ════════════════════════════════════════════
+//  TIMERS
+// ════════════════════════════════════════════
+function startRecTmr(){
+  recSec=0;stopRecTmr();
+  recTmr=setInterval(()=>{
+    recSec++;
+    const m=String(Math.floor(recSec/60)).padStart(2,'0');
+    const s=String(recSec%60).padStart(2,'0');
+    upd('wtim',m+':'+s);
+  },1000);
+}
+function stopRecTmr(){clearInterval(recTmr);upd('wtim','00:00');}
+
+// ════════════════════════════════════════════
+//  ANALYTICS
+// ════════════════════════════════════════════
+function refreshMetrics(){
+  const el=Math.floor((Date.now()-sessStart)/1000);
+  upd('m-msg',msgCount);upd('m-wrd',wordCount);
+  upd('m-tim',el<60?el+'s':Math.floor(el/60)+'m');upd('m-cal',callCount);
+}
+function updSent(text){
+  const pos=['great','good','excellent','amazing','happy','love','fantastic','perfect','awesome','shukriya','dhanyawad','accha','badhiya','sundar','mast'];
+  const neg=['bad','terrible','wrong','hate','awful','fail','error','problem','sorry','bura','galat','pareshan'];
+  let score=.55;
+  text.toLowerCase().split(/\s+/).forEach(w=>{
+    if(pos.some(p=>w.includes(p)))score+=.05;
+    if(neg.some(n=>w.includes(n)))score-=.05;
+  });
+  document.getElementById('spin').style.left=(Math.max(.05,Math.min(.95,score))*100)+'%';
+}
+function updEm(text){
+  const t=text.toLowerCase();
+  const es=[
+    {s:30+Math.random()*28,c:'#00d4ff'},
+    {s:t.includes('!')||t.includes('great')||t.includes('badhiya')?16+Math.random()*22:Math.random()*10,c:'#00e896'},
+    {s:t.includes('?')||t.includes('wonder')||t.includes('kya')?10+Math.random()*14:Math.random()*7,c:'#ffb700'},
+    {s:Math.random()*7,c:'#7c3aed'},
+  ];
+  const tot=es.reduce((s,e)=>s+e.s,0);
+  document.querySelectorAll('#emrows .erow').forEach((row,i)=>{
+    const pct=Math.round(es[i].s/tot*100);
+    row.querySelector('.efill').style.width=pct+'%';
+    row.querySelector('.efill').style.background=es[i].c;
+    row.querySelector('.epct').textContent=pct+'%';
+  });
+}
+function addKW(text){
+  const stop=new Set(['aur','hai','hain','ko','ka','ki','ke','mein','se','par','pe','yeh','woh','main','aap','tum','hum','jo','kya','kab','kahan','kyun','kaise','ek','do','the','a','an','is','are','was','were','i','you','he','she','it','we','they','what','how','why','when','where','who','this','that','do','does','did','have','has','will','would','could','should','can','to','of','in','on','at','for','with','by','from','about','as','be','and','but','or','so','if','then']);
+  const words=text.toLowerCase().replace(/[^a-z\u0900-\u097f\u0A80-\u0AFF\u0980-\u09FF\u0B80-\u0BFF\u0C00-\u0C7F\u0C80-\u0CFF\u0D00-\u0D7F\s]/g,'').split(/\s+/).filter(w=>w.length>2&&!stop.has(w));
+  const wrap=document.getElementById('kwcloud');
+  words.slice(0,4).forEach(w=>{
+    if([...wrap.querySelectorAll('.kwtag')].some(el=>el.textContent==='#'+w))return;
+    const t=document.createElement('div');t.className='kwtag';t.textContent='#'+w;
+    wrap.appendChild(t);
+    if(wrap.children.length>20)wrap.removeChild(wrap.firstChild);
+  });
+}
+function addLog(icon,title){
+  const list=document.getElementById('hlist');
+  const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const d=document.createElement('div');d.className='hitem';
+  d.innerHTML=`<div class="hico">${icon}</div><div class="htitle">${title}</div><div class="httm">${t}</div>`;
+  list.insertBefore(d,list.firstChild);
+  if(list.children.length>25)list.removeChild(list.lastChild);
+}
+
+// ════════════════════════════════════════════
+//  SETTINGS
+// ════════════════════════════════════════════
+function pickVA(el,name,emoji,style){
+  document.querySelectorAll('#vagrid .aitem').forEach(i=>i.classList.remove('sel'));
+  el.classList.add('sel');
+  agent={name,emoji,style};
+  toast('🤖 Agent: '+name);
+}
+function tsw(el,varName){
+  el.classList.toggle('on');
+  window[varName]=el.classList.contains('on');
+}
+
+// ════════════════════════════════════════════
+//  EXPORT / UTILS
+// ════════════════════════════════════════════
+function exportChat(){
+  if(!chatHist.length){toast('⚠️ Koi conversation nahi');return;}
+  const lines=chatHist.map(m=>`[${m.role.toUpperCase()}]:\n${m.content}`).join('\n\n---\n\n');
+  dl(lines,'voxai-chat-'+Date.now()+'.txt');
+  toast('💾 Chat export ho gaya!');
+}
+function exportCallLog(){
+  const log=document.getElementById('clog').innerText;
+  if(log.includes('yahan aayega')){toast('⚠️ Koi call log nahi');return;}
+  dl(log,'call-log-'+Date.now()+'.txt');
+  toast('💾 Call log export ho gaya!');
+}
+function exportGenOutput(){
+  if(!lastGenOutput||lastGenOutput.startsWith('⏳')){toast('⚠️ Koi output nahi');return;}
+  dl(lastGenOutput,'gen-output-'+Date.now()+'.txt');
+  toast('💾 Output save ho gaya!');
+}
+function saveNotes(){
+  const notes=document.getElementById('call-notes').value.trim();
+  if(!notes){toast('⚠️ Notes khaali hain');return;}
+  dl(notes,'call-notes-'+Date.now()+'.txt');
+  toast('💾 Notes save ho gayi!');
+}
+function dl(content,filename){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([content],{type:'text/plain;charset=utf-8'}));
+  a.download=filename;a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),5000);
+}
+function clearAll(){
+  chatHist=[];msgCount=0;wordCount=0;sessStart=Date.now();
+  document.getElementById('msglist').innerHTML='';
+  document.getElementById('msglist').style.display='none';
+  document.getElementById('welcome').style.display='';
+  document.getElementById('kwcloud').innerHTML='<div class="kwtag">#voice</div><div class="kwtag">#ai</div><div class="kwtag">#hindi</div>';
+  lastGenOutput='';
+  synth.cancel();
+  toast('🗑️ Sab clear ho gaya!');
+}
+function toggleFS(){
+  if(!document.fullscreenElement)document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+}
+</script>
+</body>
+</html>
