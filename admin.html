@@ -1716,25 +1716,58 @@ function deleteFirebaseTool(id){
 // ── MIGRATE ALL HARDCODED TOOLS TO FIREBASE ──
 function migrateTools(){
   if(!db){toast('❌ Firebase not ready');return;}
+  if(!_user){toast('❌ Admin logged in nahi hai');return;}
   if(!confirm('Saare existing tools ko Firebase mein migrate karna chahte ho?\n\nYe ek baar karna kaafi hai. Dobara karne se koi problem nahi.')) return;
 
   toast('⏳ Migrating '+TOOLS.length+' tools...');
-  var batch=db.batch();
-  var order=1000;
-  TOOLS.forEach(function(t){
-    var ref=db.collection('tools').doc(t.id);
-    batch.set(ref, {
-      id:t.id, name:t.name, icon:t.icon,
-      desc:'', file:'tools/'+t.id+'.html',
-      cat:t.cat, plan:t.plan||'free', status:t.status||'live',
-      cls:'tc-w', feats:[], tags:[],
-      order:order, migratedAt:firebase.firestore.FieldValue.serverTimestamp()
-    }, {merge:true});
-    order+=10;
-  });
-  batch.commit()
-    .then(function(){toast('✅ '+TOOLS.length+' tools migrated! Ab Admin se manage karo.');})
-    .catch(function(e){toast('❌ '+e.message);});
+
+  // Chunked batch — max 400 per batch to stay under Firestore 500 limit
+  var chunkSize = 400;
+  var order = 1000;
+  var chunks = [];
+  var toolsCopy = TOOLS.slice();
+  for(var i=0; i<toolsCopy.length; i+=chunkSize){
+    chunks.push(toolsCopy.slice(i, i+chunkSize));
+  }
+
+  var now = new Date().toISOString();
+
+  function commitChunk(idx){
+    if(idx >= chunks.length){
+      toast('✅ '+TOOLS.length+' tools migrated! Ab Admin se manage karo.');
+      loadTools();
+      return;
+    }
+    var batch = db.batch();
+    chunks[idx].forEach(function(t){
+      var ref = db.collection('tools').doc(t.id);
+      batch.set(ref, {
+        id: t.id,
+        name: t.name,
+        icon: t.icon,
+        desc: t.desc || '',
+        file: t.file || ('tools/'+t.id+'.html'),
+        cat: t.cat || 'general',
+        plan: t.plan || 'free',
+        status: t.status || 'live',
+        cls: 'tc-w',
+        feats: t.feats || [],
+        tags: t.tags || [],
+        order: order,
+        migratedAt: now,
+        migratedBy: _user ? _user.email : 'admin'
+      }, {merge: true});
+      order += 10;
+    });
+    batch.commit()
+      .then(function(){ commitChunk(idx+1); })
+      .catch(function(e){
+        console.error('Migrate batch error:', e);
+        toast('❌ Permission Error: Firebase Rules check karo. ' + e.message);
+      });
+  }
+
+  commitChunk(0);
 }
 
 // ── MODAL CLOSE ON OUTSIDE CLICK ──
