@@ -338,6 +338,8 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <button class="btn btn-gh btn-sm" onclick="loadTools()">🔄</button>
           <button class="btn btn-gr btn-sm" onclick="allLive()">✅ All Live</button>
           <button class="btn btn-r btn-sm" onclick="allOff()">🚫 All Off</button>
+          <button class="btn btn-bl btn-sm" onclick="migrateTools()">☁️ Migrate All</button>
+          <button class="btn btn-pu" onclick="openM('m-add-tool')">➕ Add New Tool</button>
           <button class="btn btn-g" onclick="saveTools()">💾 Save Changes</button>
         </div>
       </div>
@@ -600,6 +602,69 @@ tr:hover td{background:rgba(255,255,255,.015)}
   </div>
 </div>
 
+
+<!-- ── ADD NEW TOOL MODAL ── -->
+<div class="mov" id="m-add-tool">
+  <div class="mbox" style="max-width:520px">
+    <div class="mtitle">➕ Naya Tool Add Karo</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 12px">
+      <div>
+        <label class="fl">Tool ID * <span style="font-size:.65rem;color:var(--t4)">(unique, no spaces, e.g. my-tool-v1)</span></label>
+        <input class="fi" id="nt-id" type="text" placeholder="my-tool-v1">
+      </div>
+      <div>
+        <label class="fl">Icon (Emoji) *</label>
+        <input class="fi" id="nt-icon" type="text" placeholder="🔥" maxlength="4">
+      </div>
+    </div>
+    <label class="fl">Tool Name *</label>
+    <input class="fi" id="nt-name" type="text" placeholder="Mera Naya AI Tool">
+    <label class="fl">Description *</label>
+    <textarea class="fi" id="nt-desc" rows="2" placeholder="Is tool ke baare mein likhao..." style="resize:vertical"></textarea>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0 12px">
+      <div>
+        <label class="fl">Category</label>
+        <select class="fi" id="nt-cat">
+          <option value="marketing">Marketing</option>
+          <option value="image">Image</option>
+          <option value="education">Education</option>
+          <option value="health">Health</option>
+          <option value="career">Career</option>
+          <option value="finance">Finance</option>
+          <option value="social">Social</option>
+          <option value="legal">Legal</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">Plan</label>
+        <select class="fi" id="nt-plan">
+          <option value="free">Free</option>
+          <option value="premium">Premium</option>
+          <option value="franchise">Franchise</option>
+        </select>
+      </div>
+      <div>
+        <label class="fl">Status</label>
+        <select class="fi" id="nt-status">
+          <option value="live">🟢 Live</option>
+          <option value="coming_soon">🟡 Coming Soon</option>
+          <option value="off">🔴 Off</option>
+        </select>
+      </div>
+    </div>
+    <label class="fl">File Path * <span style="font-size:.65rem;color:var(--t4)">(GitHub tools folder ka path, e.g. tools/my-tool.html)</span></label>
+    <input class="fi" id="nt-file" type="text" placeholder="tools/my-tool.html">
+    <label class="fl">Features <span style="font-size:.65rem;color:var(--t4)">(har line = ek feature, max 4)</span></label>
+    <textarea class="fi" id="nt-feats" rows="3" placeholder="Feature 1&#10;Feature 2&#10;Feature 3&#10;Feature 4" style="resize:vertical"></textarea>
+    <label class="fl">Tags <span style="font-size:.65rem;color:var(--t4)">(comma se alag karo: tag1, tag2, tag3)</span></label>
+    <input class="fi" id="nt-tags" type="text" placeholder="ai, tool, free, india">
+    <div id="nt-err" style="display:none;padding:8px 12px;background:rgba(220,38,38,.1);border:1px solid rgba(220,38,38,.3);border-radius:8px;font-size:.78rem;color:#f87171;margin-bottom:10px"></div>
+    <div class="mbtns">
+      <button class="btn btn-gh" onclick="closeM('m-add-tool')">Cancel</button>
+      <button class="btn btn-g" onclick="saveNewTool()">🚀 Save & Add to Website</button>
+    </div>
+  </div>
+</div>
 <div class="mov" id="m-edit-tool">
   <div class="mbox">
     <div class="mtitle">✏️ Edit Tool</div>
@@ -1486,18 +1551,34 @@ function loadTools(){
   _tools={};
   TOOLS.forEach(function(t){ _tools[t.id]=Object.assign({},t); });
   renderTools(); updateToolStats();
-  // Then override from Firestore if saved settings exist
-  db.collection('admin').doc('tool_settings').get().then(function(doc){
-    if(!doc.exists) return;
-    var saved=doc.data();
-    TOOLS.forEach(function(t){
-      var s=saved[t.id]||{};
-      if(s.status!==undefined) _tools[t.id].status=s.status;
-      if(s.plan!==undefined)   _tools[t.id].plan=s.plan;
-      if(s.name)               _tools[t.id].name=s.name;
-    });
+
+  // Load Firebase-added tools + admin overrides simultaneously
+  var p1 = db.collection('admin').doc('tool_settings').get().catch(function(){return null;});
+  var p2 = db.collection('tools').get().catch(function(){return null;});
+
+  Promise.all([p1, p2]).then(function(results){
+    // Apply admin overrides (status/plan changes)
+    if(results[0] && results[0].exists){
+      var saved=results[0].data();
+      Object.keys(_tools).forEach(function(id){
+        var s=saved[id]||{};
+        if(s.status!==undefined) _tools[id].status=s.status;
+        if(s.plan!==undefined)   _tools[id].plan=s.plan;
+        if(s.name)               _tools[id].name=s.name;
+      });
+    }
+    // Load Firebase-added tools (not in TOOLS array)
+    if(results[1] && !results[1].empty){
+      results[1].forEach(function(doc){
+        var t=doc.data();
+        t.id=t.id||doc.id;
+        if(t.id && t.name && !_tools[t.id]){
+          _tools[t.id]=Object.assign({feats:[],tags:[],cls:'tc-w'},t);
+        }
+      });
+    }
     _unsaved=0; updateUnsaved(); renderTools(); updateToolStats();
-  }).catch(function(){});
+  });
 }
 function renderTools(){
   var list=Object.values(_tools);
@@ -1513,6 +1594,7 @@ function renderTools(){
           '<input type="checkbox"'+(t.status==='live'?' checked':'')+' onchange="toggleTool(\''+t.id+'\',this)" style="accent-color:var(--neon);width:14px;height:14px"> '+
           '<span id="tl-'+t.id+'">'+(t.status==='live'?'Live':'Off')+'</span></label>'+
         '<button class="btn btn-gh btn-sm" style="font-size:.68rem;padding:3px 8px" onclick="openEditTool(\''+t.id+'\')">✏️</button>'+
+        (t.addedBy?'<button class="btn btn-r btn-sm" style="font-size:.68rem;padding:3px 8px" onclick="deleteFirebaseTool(\''+t.id+'\')">🗑️</button>':'')+
       '</div></div>';
   }).join('');
 }
@@ -1556,6 +1638,103 @@ function saveToolEdit(){
   _tools[id].plan=$id('et-plan').value;
   _unsaved++;updateUnsaved();closeM('m-edit-tool');renderTools();updateToolStats();
   toast('✅ Tool updated — Save Changes karo to apply');
+}
+
+// ── ADD NEW TOOL (Firebase tools collection mein save) ──
+function saveNewTool(){
+  var errEl=$id('nt-err');
+  errEl.style.display='none';
+
+  var tid=($id('nt-id').value||'').trim().toLowerCase().replace(/\s+/g,'-');
+  var nm=($id('nt-name').value||'').trim();
+  var ic=($id('nt-icon').value||'').trim()||'🔧';
+  var ds=($id('nt-desc').value||'').trim();
+  var fl=($id('nt-file').value||'').trim();
+  var cat=$id('nt-cat').value;
+  var plan=$id('nt-plan').value;
+  var status=$id('nt-status').value;
+  var featsRaw=($id('nt-feats').value||'').trim();
+  var tagsRaw=($id('nt-tags').value||'').trim();
+
+  if(!tid){errEl.textContent='❌ Tool ID required'; errEl.style.display='block'; return;}
+  if(!nm){errEl.textContent='❌ Tool Name required'; errEl.style.display='block'; return;}
+  if(!fl){errEl.textContent='❌ File Path required (e.g. tools/my-tool.html)'; errEl.style.display='block'; return;}
+
+  var feats=featsRaw?featsRaw.split('\n').map(function(s){return s.trim();}).filter(Boolean).slice(0,4):[];
+  var tags=tagsRaw?tagsRaw.split(',').map(function(s){return s.trim().toLowerCase();}).filter(Boolean):[];
+  var cls=(plan==='premium')?'tc-r':'tc-w';
+
+  var toolDoc={
+    id:tid, name:nm, icon:ic, desc:ds, file:fl,
+    cat:cat, plan:plan, status:status, cls:cls,
+    feats:feats, tags:tags,
+    order: Date.now(),
+    addedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    addedBy: _user?_user.email:'admin'
+  };
+
+  if(!db){toast('❌ Firebase not ready');return;}
+
+  toast('⏳ Saving...');
+  db.collection('tools').doc(tid).set(toolDoc)
+    .then(function(){
+      // Also add to local _tools for immediate display
+      _tools[tid]=Object.assign({},toolDoc);
+      closeM('m-add-tool');
+      clearAddForm();
+      renderTools(); updateToolStats();
+      toast('🚀 Tool LIVE ho gaya! Website pe automatically show hoga.');
+      // Clear all fields
+    })
+    .catch(function(e){
+      errEl.textContent='❌ Error: '+e.message;
+      errEl.style.display='block';
+    });
+}
+
+function clearAddForm(){
+  ['nt-id','nt-name','nt-icon','nt-desc','nt-file','nt-feats','nt-tags'].forEach(function(id){
+    var el=$id(id); if(el) el.value='';
+  });
+  $id('nt-err').style.display='none';
+}
+
+// ── DELETE FIREBASE TOOL ──
+function deleteFirebaseTool(id){
+  if(!confirm('Kya aap "'+id+'" tool ko hamesha ke liye delete karna chahte hain?\n\nYe sirf Firebase-added tools ke liye kaam karta hai.')) return;
+  if(!db){toast('❌ Firebase not ready');return;}
+  toast('⏳ Deleting...');
+  db.collection('tools').doc(id).delete()
+    .then(function(){
+      delete _tools[id];
+      renderTools(); updateToolStats();
+      toast('🗑️ Tool delete ho gaya!');
+    })
+    .catch(function(e){toast('❌ '+e.message);});
+}
+
+// ── MIGRATE ALL HARDCODED TOOLS TO FIREBASE ──
+function migrateTools(){
+  if(!db){toast('❌ Firebase not ready');return;}
+  if(!confirm('Saare existing tools ko Firebase mein migrate karna chahte ho?\n\nYe ek baar karna kaafi hai. Dobara karne se koi problem nahi.')) return;
+
+  toast('⏳ Migrating '+TOOLS.length+' tools...');
+  var batch=db.batch();
+  var order=1000;
+  TOOLS.forEach(function(t){
+    var ref=db.collection('tools').doc(t.id);
+    batch.set(ref, {
+      id:t.id, name:t.name, icon:t.icon,
+      desc:'', file:'tools/'+t.id+'.html',
+      cat:t.cat, plan:t.plan||'free', status:t.status||'live',
+      cls:'tc-w', feats:[], tags:[],
+      order:order, migratedAt:firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+    order+=10;
+  });
+  batch.commit()
+    .then(function(){toast('✅ '+TOOLS.length+' tools migrated! Ab Admin se manage karo.');})
+    .catch(function(e){toast('❌ '+e.message);});
 }
 
 // ── MODAL CLOSE ON OUTSIDE CLICK ──
