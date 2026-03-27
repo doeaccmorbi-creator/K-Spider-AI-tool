@@ -409,10 +409,27 @@ tr:hover td{background:rgba(255,255,255,.015)}
           </div>
         </div>
       </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:24px">
         <button class="btn btn-g" style="padding:10px 28px;font-size:.9rem" onclick="savePricing()">💾 Save All</button>
         <button class="btn btn-gh" onclick="loadPricing()">🔄 Load from Firebase</button>
         <span id="pr-msg" style="font-size:.8rem;color:var(--neon);display:none"></span>
+      </div>
+
+      <!-- ══ PER-TOOL PRICING ══ -->
+      <div class="card" style="margin-bottom:18px">
+        <div class="card-head" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div class="card-title">🔧 Per-Tool Individual Pricing</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-gh btn-sm" onclick="loadToolPricing()">🔄 Refresh</button>
+            <button class="btn btn-g btn-sm" onclick="saveAllToolPricing()">💾 Save All Tool Prices</button>
+          </div>
+        </div>
+        <div style="padding:14px 20px;font-size:.76rem;color:var(--t3);background:rgba(184,121,42,.05);border-bottom:1px solid var(--br);">
+          ⚙️ <strong style="color:var(--gold2)">Per-Tool Plan:</strong> Yahan har premium tool ka individual price aur duration set karo. Ye pricing user ko tool card ke "Buy Plan" button pe click karne par dikhegi. Free tools ko skip karo.
+        </div>
+        <div id="tool-pricing-grid" style="padding:16px">
+          <div style="text-align:center;padding:30px;color:var(--t4)">⏳ Loading tools...</div>
+        </div>
       </div>
     </div>
     <!-- ── ANALYTICS PANEL ── -->
@@ -513,7 +530,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
       <div>UTR: <strong id="ap-utr" style="color:var(--t1)"></strong></div>
     </div>
     <label class="fl">Duration (days)</label>
+    <div id="ap-days-row">
     <select class="fi" id="ap-days"><option value="365">365 days</option><option value="180">180 days</option><option value="90">90 days</option></select>
+    </div>
     <label class="fl">Admin Note</label>
     <input class="fi" id="ap-note" type="text" placeholder="Optional note">
     <div class="mbtns">
@@ -1380,12 +1399,15 @@ function loadPay() {
 
 function renderPendingPaysList(list) {
   set('pend-body',list&&list.length?list.map(function(p){
+    var planLabel = p.planType==='tool_plan'
+      ? '🔧 '+x(p.toolName||p.toolId||'Tool')+'<div style="font-size:.66rem;color:var(--t4)">'+x(p.durLabel||'')+'</div>'
+      : '<span class="b '+(p.planType||'free')+'">'+(p.planType||'—')+'</span>';
     return '<tr style="background:rgba(245,158,11,.04)">'+
       '<td style="font-size:.73rem;color:var(--gold2);font-family:monospace">'+x(p.orderId||p.id||'—')+'</td>'+
       '<td><div style="font-weight:600;font-size:.83rem">'+x(p.userName||'—')+'</div>'+
       '<div style="font-size:.72rem;color:var(--t4)">'+x(p.userEmail||'')+'</div>'+
       '<div style="font-size:.7rem;color:var(--t4)">📱 '+x(p.userMobile||'—')+'</div></td>'+
-      '<td><span class="b '+(p.planType||'free')+'">'+(p.planType||'—')+'</span></td>'+
+      '<td>'+planLabel+'</td>'+
       '<td style="font-weight:700;color:var(--gold2)">₹'+(p.amount||0).toLocaleString('en-IN')+'</td>'+
       '<td style="font-size:.78rem;font-family:monospace">'+x(p.utr||p.ref||'—')+'</td>'+
       '<td style="font-size:.73rem;color:var(--t4)">'+fmt(p.timestamp)+'</td>'+
@@ -1425,16 +1447,68 @@ function openApprove(pid){
   $id('ap-pid').value=pid;
   set('ap-name',x(_curPay.userName||'—'));
   set('ap-email',x(_curPay.userEmail||'—'));
-  set('ap-plan',(_curPay.planType||'—').toUpperCase()+' Plan');
+
+  // Show tool name for tool_plan payments
+  var planLabel = (_curPay.planType==='tool_plan')
+    ? '🔧 Tool Plan: '+(_curPay.toolName||_curPay.toolId||'—')+' ('+(_curPay.durLabel||'—')+')'
+    : (_curPay.planType||'—').toUpperCase()+' Plan';
+  set('ap-plan', planLabel);
   set('ap-amt','₹'+(_curPay.amount||0).toLocaleString('en-IN'));
   set('ap-utr',x(_curPay.utr||_curPay.ref||'—'));
+
+  // Show/hide duration selector — hide for tool_plan (duration already fixed)
+  var apDaysRow = $id('ap-days-row');
+  if(apDaysRow) apDaysRow.style.display = _curPay.planType==='tool_plan' ? 'none' : '';
+
   openM('m-approve');
 }
+
 function execApprove(){
   var pid=$id('ap-pid').value; var p=_curPay;
   if(!p||!pid) return;
-  var days=parseInt($id('ap-days').value)||365;
-  var email=p.userEmail||''; var key=email.replace(/[.#$/\[\]]/g,'_');
+
+  var email = p.userEmail||'';
+  var key   = email.replace(/[.#$/\[\]]/g,'_');
+
+  // ── TOOL PLAN APPROVAL ──
+  if(p.planType === 'tool_plan'){
+    var durDays = p.durKey==='1m'?30:p.durKey==='3m'?90:p.durKey==='6m'?180:365;
+    var toolExp = new Date(Date.now()+durDays*864e5);
+    var toolId  = p.toolId||'unknown';
+
+    db.collection('payments').doc(pid).update({
+      status:'success', approvedBy:_user?_user.email:'admin',
+      approvedAt:firebase.firestore.FieldValue.serverTimestamp()
+    }).then(function(){
+      // Write toolAccess field on user doc
+      var upd = {};
+      upd['toolAccess_'+toolId] = {
+        toolId:    toolId,
+        toolName:  p.toolName||toolId,
+        expiry:    toolExp.toISOString(),
+        durLabel:  p.durLabel||'',
+        paidAmount:p.amount||0,
+        orderId:   p.orderId||pid,
+        approvedAt:new Date().toISOString(),
+        approvedBy:_user?_user.email:'admin'
+      };
+      // Clear pending entry
+      upd['pendingToolPlan_'+toolId] = firebase.firestore.FieldValue.delete();
+      return db.collection('users').doc(key).set(upd, {merge:true});
+    }).then(function(){
+      closeM('m-approve');
+      toast('✅ Tool Plan Approved! '+email+' → '+p.toolName+' till '+toolExp.toLocaleDateString('en-IN'));
+      sendEmailNotification(email, p.userName||'User',
+        'K Spider AI - Tool Access Activated!',
+        'Congratulations! Your plan for "'+p.toolName+'" has been activated till '+toolExp.toLocaleDateString('en-IN')+' ('+p.durLabel+'). Enjoy using the tool at kspiderai.in. Refund available within 7 days (75%). — K Spider AI Team'
+      );
+      loadPay(); loadUsers(); loadDash();
+    }).catch(function(e){toast('❌ '+e.message);});
+    return;
+  }
+
+  // ── SITE-WIDE PLAN APPROVAL (original flow) ──
+  var days=parseInt(($id('ap-days')||{}).value)||365;
   var exp=new Date(Date.now()+days*864e5);
   db.collection('payments').doc(pid).update({status:'success',approvedBy:_user?_user.email:'admin',approvedAt:firebase.firestore.FieldValue.serverTimestamp()})
     .then(function(){
@@ -1716,58 +1790,25 @@ function deleteFirebaseTool(id){
 // ── MIGRATE ALL HARDCODED TOOLS TO FIREBASE ──
 function migrateTools(){
   if(!db){toast('❌ Firebase not ready');return;}
-  if(!_user){toast('❌ Admin logged in nahi hai');return;}
   if(!confirm('Saare existing tools ko Firebase mein migrate karna chahte ho?\n\nYe ek baar karna kaafi hai. Dobara karne se koi problem nahi.')) return;
 
   toast('⏳ Migrating '+TOOLS.length+' tools...');
-
-  // Chunked batch — max 400 per batch to stay under Firestore 500 limit
-  var chunkSize = 400;
-  var order = 1000;
-  var chunks = [];
-  var toolsCopy = TOOLS.slice();
-  for(var i=0; i<toolsCopy.length; i+=chunkSize){
-    chunks.push(toolsCopy.slice(i, i+chunkSize));
-  }
-
-  var now = new Date().toISOString();
-
-  function commitChunk(idx){
-    if(idx >= chunks.length){
-      toast('✅ '+TOOLS.length+' tools migrated! Ab Admin se manage karo.');
-      loadTools();
-      return;
-    }
-    var batch = db.batch();
-    chunks[idx].forEach(function(t){
-      var ref = db.collection('tools').doc(t.id);
-      batch.set(ref, {
-        id: t.id,
-        name: t.name,
-        icon: t.icon,
-        desc: t.desc || '',
-        file: t.file || ('tools/'+t.id+'.html'),
-        cat: t.cat || 'general',
-        plan: t.plan || 'free',
-        status: t.status || 'live',
-        cls: 'tc-w',
-        feats: t.feats || [],
-        tags: t.tags || [],
-        order: order,
-        migratedAt: now,
-        migratedBy: _user ? _user.email : 'admin'
-      }, {merge: true});
-      order += 10;
-    });
-    batch.commit()
-      .then(function(){ commitChunk(idx+1); })
-      .catch(function(e){
-        console.error('Migrate batch error:', e);
-        toast('❌ Permission Error: Firebase Rules check karo. ' + e.message);
-      });
-  }
-
-  commitChunk(0);
+  var batch=db.batch();
+  var order=1000;
+  TOOLS.forEach(function(t){
+    var ref=db.collection('tools').doc(t.id);
+    batch.set(ref, {
+      id:t.id, name:t.name, icon:t.icon,
+      desc:'', file:'tools/'+t.id+'.html',
+      cat:t.cat, plan:t.plan||'free', status:t.status||'live',
+      cls:'tc-w', feats:[], tags:[],
+      order:order, migratedAt:firebase.firestore.FieldValue.serverTimestamp()
+    }, {merge:true});
+    order+=10;
+  });
+  batch.commit()
+    .then(function(){toast('✅ '+TOOLS.length+' tools migrated! Ab Admin se manage karo.');})
+    .catch(function(e){toast('❌ '+e.message);});
 }
 
 // ── MODAL CLOSE ON OUTSIDE CLICK ──
@@ -1923,6 +1964,169 @@ function showPrMsg(msg){
   clearTimeout(el._t);
   el._t=setTimeout(function(){ el.style.display='none'; },3000);
 }
+
+// ══════════════════════════════════════════════
+// PER-TOOL PRICING SYSTEM
+// ══════════════════════════════════════════════
+
+var _toolPricingData = {}; // cached Firestore data
+
+// Duration options — days
+var TOOL_DURATIONS = [
+  {label:'1 Month',  days:30,  key:'1m'},
+  {label:'3 Months', days:90,  key:'3m'},
+  {label:'6 Months', days:180, key:'6m'},
+  {label:'1 Year',   days:365, key:'1y'}
+];
+
+function loadToolPricing(){
+  var grid = document.getElementById('tool-pricing-grid');
+  if(!grid) return;
+  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⏳ Loading...</div>';
+
+  // Load existing tool pricing from Firestore
+  db.collection('admin').doc('tool_pricing').get().then(function(doc){
+    _toolPricingData = doc.exists ? (doc.data()||{}) : {};
+    renderToolPricingGrid();
+  }).catch(function(e){
+    _toolPricingData = {};
+    renderToolPricingGrid();
+    toast('Tool pricing load error: '+e.message);
+  });
+}
+
+function renderToolPricingGrid(){
+  var grid = document.getElementById('tool-pricing-grid');
+  if(!grid) return;
+
+  // Only show premium/franchise tools — free tools don't need per-tool pricing
+  var premTools = TOOLS.filter(function(t){ return t.plan === 'premium' || t.plan === 'franchise'; });
+
+  // Also include any tools that are in Firestore but marked premium there
+  // (After migrate, tool status from Firestore overrides)
+  // We'll just show all non-free tools + allow admin to toggle
+
+  if(!premTools.length){
+    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⚠️ Koi premium tool nahi mila. Pehle Tools mein kisi tool ka plan "Premium" set karo.</div>';
+    return;
+  }
+
+  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">';
+
+  premTools.forEach(function(t){
+    var saved = _toolPricingData[t.id] || {};
+    var enabled = saved.enabled !== false; // default enabled
+
+    html += '<div style="background:var(--bg4);border:1px solid var(--br);border-radius:14px;padding:16px;position:relative" id="tp-card-'+t.id+'">';
+
+    // Header
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
+    html += '<span style="font-size:1.4rem">'+t.icon+'</span>';
+    html += '<div style="flex:1"><div style="font-weight:700;font-size:.86rem;color:var(--t1)">'+x(t.name)+'</div>';
+    html += '<div style="font-size:.68rem;color:var(--t3);margin-top:2px">ID: '+t.id+'</div></div>';
+
+    // Enable/Disable toggle
+    html += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;color:var(--t3)">';
+    html += '<input type="checkbox" id="tp-en-'+t.id+'" '+(enabled?'checked':'')+' onchange="toggleToolPlanEnabled(\''+t.id+'\')" style="width:14px;height:14px;cursor:pointer"> Active</label>';
+    html += '</div>';
+
+    // Plan type badge
+    var planColor = t.plan==='franchise' ? 'rgba(124,58,237,.2)' : 'rgba(184,121,42,.2)';
+    var planTxt   = t.plan==='franchise' ? '#a78bfa' : 'var(--gold2)';
+    html += '<span style="font-size:.62rem;font-weight:700;padding:3px 8px;border-radius:10px;background:'+planColor+';color:'+planTxt+';display:inline-block;margin-bottom:10px">'+(t.plan==='franchise'?'🏢 FRANCHISE':'💎 PREMIUM')+'</span>';
+
+    // Duration + Price rows
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
+    TOOL_DURATIONS.forEach(function(d){
+      var priceKey = 'price_'+d.key;
+      var savedPrice = saved[priceKey] || '';
+      html += '<div style="background:var(--bg3);border:1px solid var(--br);border-radius:8px;padding:8px">';
+      html += '<div style="font-size:.65rem;color:var(--t3);margin-bottom:4px">'+d.label+'</div>';
+      html += '<div style="display:flex;align-items:center;gap:4px">';
+      html += '<span style="font-size:.78rem;color:var(--t3)">₹</span>';
+      html += '<input type="number" id="tp-'+d.key+'-'+t.id+'" value="'+savedPrice+'" placeholder="0" min="0" style="width:100%;background:transparent;border:none;outline:none;color:var(--t1);font-size:.88rem;font-weight:700;font-family:inherit">';
+      html += '</div></div>';
+    });
+    html += '</div>';
+
+    // Tool description (optional)
+    html += '<div style="font-size:.7rem;color:var(--t4);margin-bottom:10px">'+x(t.desc||'').substring(0,80)+'...</div>';
+
+    // Save individual button
+    html += '<button class="btn btn-gr btn-sm" style="width:100%" onclick="saveOneToolPricing(\''+t.id+'\')">💾 Save '+x(t.name.split(' ')[0])+'</button>';
+
+    html += '</div>'; // end card
+  });
+
+  html += '</div>';
+  grid.innerHTML = html;
+}
+
+function toggleToolPlanEnabled(toolId){
+  // Just a UI toggle — actual save happens on Save button
+}
+
+function saveOneToolPricing(toolId){
+  if(!_user){ toast('Login required'); return; }
+  var enabled = (document.getElementById('tp-en-'+toolId)||{}).checked !== false;
+  var data = { enabled: !!document.getElementById('tp-en-'+toolId) && document.getElementById('tp-en-'+toolId).checked };
+
+  TOOL_DURATIONS.forEach(function(d){
+    var el = document.getElementById('tp-'+d.key+'-'+toolId);
+    data['price_'+d.key] = el ? (parseInt(el.value)||0) : 0;
+    data['days_'+d.key]  = d.days;
+    data['label_'+d.key] = d.label;
+  });
+  data.updatedAt = new Date().toISOString();
+  data.updatedBy = _user.email;
+
+  // Find tool name
+  var tool = TOOLS.find(function(t){ return t.id===toolId; });
+  if(tool){ data.toolName = tool.name; data.toolPlan = tool.plan; data.toolIcon = tool.icon; }
+
+  // Save to Firestore: admin/tool_pricing as a map field
+  var update = {};
+  update[toolId] = data;
+  _toolPricingData[toolId] = data;
+
+  db.collection('admin').doc('tool_pricing').set(update, {merge:true})
+    .then(function(){ toast('✅ '+((tool&&tool.name)||toolId)+' pricing saved!'); })
+    .catch(function(e){ toast('❌ '+e.message); });
+}
+
+function saveAllToolPricing(){
+  if(!_user){ toast('Login required'); return; }
+  var premTools = TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
+  if(!premTools.length){ toast('Koi premium tool nahi'); return; }
+
+  var allData = {};
+  premTools.forEach(function(t){
+    var enabled = document.getElementById('tp-en-'+t.id);
+    var obj = { enabled: enabled ? enabled.checked : true };
+    TOOL_DURATIONS.forEach(function(d){
+      var el = document.getElementById('tp-'+d.key+'-'+t.id);
+      obj['price_'+d.key] = el ? (parseInt(el.value)||0) : 0;
+      obj['days_'+d.key]  = d.days;
+      obj['label_'+d.key] = d.label;
+    });
+    obj.toolName = t.name; obj.toolPlan = t.plan; obj.toolIcon = t.icon;
+    obj.updatedAt = new Date().toISOString();
+    obj.updatedBy = _user.email;
+    allData[t.id] = obj;
+    _toolPricingData[t.id] = obj;
+  });
+
+  db.collection('admin').doc('tool_pricing').set(allData, {merge:true})
+    .then(function(){ toast('✅ Saare '+premTools.length+' tools ki pricing save ho gayi!'); })
+    .catch(function(e){ toast('❌ '+e.message); });
+}
+
+// Auto-load tool pricing when pricing panel opens
+var _origLoadPricingFn = loadPricing;
+loadPricing = function(){
+  _origLoadPricingFn();
+  loadToolPricing();
+};
 
 
 // ── ANALYTICS ──
