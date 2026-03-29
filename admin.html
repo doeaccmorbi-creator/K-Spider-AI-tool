@@ -109,10 +109,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
 #toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg2);border:1px solid var(--br2);border-radius:var(--r8);padding:11px 18px;font-size:.83rem;box-shadow:0 8px 30px rgba(0,0,0,.4);display:none}
 /* ALERT BAR */
 #alert-bar{display:none;font-size:.73rem;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:4px 12px;border-radius:20px;cursor:pointer}
-/* ══ MOBILE HAMBURGER BUTTON ══ */
+/* ══ MOBILE HAMBURGER ══ */
 #mob-menu-btn{display:none;position:fixed;top:12px;left:12px;z-index:200;width:38px;height:38px;background:var(--bg2);border:1px solid var(--br2);border-radius:8px;cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem}
 #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
-/* ══ RESPONSIVE BREAKPOINTS ══ */
+/* ══ RESPONSIVE ══ */
 @media(max-width:900px){
   .sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:100}
   .sidebar.mob-open{transform:translateX(0)}
@@ -125,14 +125,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
   .panel{padding:14px}
   .sg{grid-template-columns:1fr 1fr}
   .tg{grid-template-columns:1fr;padding:12px}
-  .tc{padding:12px}
 }
 @media(max-width:600px){
   .sg{grid-template-columns:1fr 1fr}
   .sc{padding:12px 10px;gap:8px}
   .sv{font-size:1.3rem}
   .card-head{flex-wrap:wrap;gap:6px;padding:12px 14px}
-  .card-title{font-size:.85rem}
   .tw{font-size:.75rem}
   th{padding:8px 10px;font-size:.62rem}
   td{padding:8px 10px;font-size:.76rem}
@@ -141,21 +139,13 @@ tr:hover td{background:rgba(255,255,255,.015)}
   .fr{padding:10px 12px;gap:8px}
   .si2{font-size:.78rem;padding:7px 10px}
   .sel{font-size:.72rem;padding:7px 8px}
-  /* Pricing panel responsive */
-  #panel-pricing > div:first-child{grid-template-columns:1fr !important}
-  /* Access panel responsive */
-  #panel-access > div:first-child{grid-template-columns:1fr !important}
-  /* Analytics 2-col grid */
-  #panel-analytics > div > div{grid-template-columns:1fr !important}
-  /* Tool pricing grid */
-  #tool-pricing-grid > div{grid-template-columns:1fr !important}
-  /* Modals */
+  #panel-pricing>div:first-child{grid-template-columns:1fr !important}
+  #panel-access>div:first-child{grid-template-columns:1fr !important}
+  #tool-pricing-grid>div{grid-template-columns:1fr !important}
   .mbox{padding:18px 14px;max-width:95vw;width:95vw}
-  .mtitle{font-size:.9rem}
 }
 @media(max-width:400px){
   .sg{grid-template-columns:1fr}
-  .topbar-title{font-size:.8rem}
 }
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
@@ -182,7 +172,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
   </div>
 </div>
 
-<!-- MOBILE MENU OVERLAY -->
+<!-- MOBILE OVERLAY -->
 <div id="mob-overlay" onclick="closeMobMenu()"></div>
 
 <!-- ADMIN APP -->
@@ -940,18 +930,16 @@ function doLogout() {
 
 // ── MOBILE MENU ──
 function toggleMobMenu(){
-  var sb = document.querySelector('.sidebar');
-  var ov = document.getElementById('mob-overlay');
+  var sb=document.querySelector('.sidebar'),ov=document.getElementById('mob-overlay');
   if(!sb) return;
-  var isOpen = sb.classList.contains('mob-open');
-  if(isOpen){ sb.classList.remove('mob-open'); if(ov) ov.classList.remove('on'); }
-  else { sb.classList.add('mob-open'); if(ov) ov.classList.add('on'); }
+  var open=sb.classList.contains('mob-open');
+  if(open){sb.classList.remove('mob-open');if(ov)ov.classList.remove('on');}
+  else{sb.classList.add('mob-open');if(ov)ov.classList.add('on');}
 }
 function closeMobMenu(){
-  var sb = document.querySelector('.sidebar');
-  var ov = document.getElementById('mob-overlay');
-  if(sb) sb.classList.remove('mob-open');
-  if(ov) ov.classList.remove('on');
+  var sb=document.querySelector('.sidebar'),ov=document.getElementById('mob-overlay');
+  if(sb)sb.classList.remove('mob-open');
+  if(ov)ov.classList.remove('on');
 }
 
 // ── NAVIGATION ──
@@ -973,8 +961,7 @@ function show(name, el) {
   if (name==='pricing')   loadPricing();
   if (name==='analytics') loadAnalytics();
   if (name==='blog')      loadBlog();
-  // Close mobile sidebar on nav click
-  closeMobMenu();
+  closeMobMenu(); // Close sidebar on mobile after nav click
 }
 
 function initAll() {
@@ -2038,7 +2025,7 @@ function showPrMsg(msg){
 // PER-TOOL PRICING SYSTEM
 // ══════════════════════════════════════════════
 
-var _toolPricingData = {}; // cached Firestore data
+var _toolPricingData = {}; // cached Firestore pricing data
 
 // Duration options — days
 var TOOL_DURATIONS = [
@@ -2051,125 +2038,142 @@ var TOOL_DURATIONS = [
 function loadToolPricing(){
   var grid = document.getElementById('tool-pricing-grid');
   if(!grid) return;
-  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⏳ Loading tools...</div>';
+  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⏳ Loading...</div>';
 
-  // Load tool_pricing data AND Firestore tools collection in parallel
-  var p1 = db.collection('admin').doc('tool_pricing').get().catch(function(){ return null; });
-  var p2 = db.collection('tools').get().catch(function(){ return null; });
+  // Step 1: Load pricing data from Firestore
+  db.collection('admin').doc('tool_pricing').get().then(function(doc){
+    _toolPricingData = doc.exists ? (doc.data()||{}) : {};
 
-  Promise.all([p1, p2]).then(function(results){
-    // Pricing data
-    _toolPricingData = (results[0] && results[0].exists) ? (results[0].data()||{}) : {};
-
-    // Merge Firestore tools with local TOOLS array
-    // Firestore tools override local — if plan is premium/franchise there, show them
-    var firestoreTools = [];
-    if(results[1]){
-      results[1].forEach(function(d){
-        var td = d.data();
-        if(td.plan === 'premium' || td.plan === 'franchise'){
-          firestoreTools.push({
-            id:   td.id || d.id,
-            name: td.name || d.id,
-            icon: td.icon || '🔧',
-            plan: td.plan,
-            desc: td.desc || ''
-          });
-        }
-      });
+    // Step 2: If _tools already loaded (Tools panel visited), render directly
+    if(Object.keys(_tools).length > 0){
+      renderToolPricingGrid();
+      return;
     }
 
-    // Build merged list — Firestore takes priority, then local TOOLS array
-    var localPrem = TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
-    var merged = [];
-    var seenIds = {};
-
-    // Add Firestore tools first
-    firestoreTools.forEach(function(t){
-      if(!seenIds[t.id]){ merged.push(t); seenIds[t.id]=true; }
+    // Step 3: _tools not loaded yet — load tool_settings + tools collection first
+    var p1 = db.collection('admin').doc('tool_settings').get().catch(function(){return null;});
+    var p2 = db.collection('tools').get().catch(function(){return null;});
+    Promise.all([p1,p2]).then(function(res){
+      // Build _tools from TOOLS array
+      if(!Object.keys(_tools).length){
+        TOOLS.forEach(function(t){ _tools[t.id] = Object.assign({},t); });
+      }
+      // Apply tool_settings overrides (plan, status, name)
+      if(res[0] && res[0].exists){
+        var saved = res[0].data();
+        Object.keys(_tools).forEach(function(id){
+          var s = saved[id]||{};
+          if(s.status!==undefined) _tools[id].status = s.status;
+          if(s.plan!==undefined)   _tools[id].plan   = s.plan;
+          if(s.name)               _tools[id].name   = s.name;
+          if(s.icon)               _tools[id].icon   = s.icon;
+        });
+      }
+      // Add Firestore-only tools (added via Add New Tool, not in TOOLS array)
+      if(res[1] && !res[1].empty){
+        res[1].forEach(function(d){
+          var t = d.data(); t.id = t.id||d.id;
+          if(t.id && t.name && !_tools[t.id]){
+            _tools[t.id] = Object.assign({feats:[],tags:[],cls:'tc-w'},t);
+          } else if(t.id && _tools[t.id] && t.plan){
+            // Firestore tools collection plan overrides TOOLS array
+            _tools[t.id].plan = t.plan;
+          }
+        });
+      }
+      renderToolPricingGrid();
     });
-    // Add local tools not already in list
-    localPrem.forEach(function(t){
-      if(!seenIds[t.id]){ merged.push(t); seenIds[t.id]=true; }
-    });
-
-    _toolPricingMerged = merged;
-    renderToolPricingGrid();
   }).catch(function(e){
     _toolPricingData = {};
-    _toolPricingMerged = TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
+    // Fallback: use whatever is in _tools or TOOLS
+    if(!Object.keys(_tools).length){
+      TOOLS.forEach(function(t){ _tools[t.id] = Object.assign({},t); });
+    }
     renderToolPricingGrid();
-    toast('Tool pricing load error: '+e.message);
+    toast('⚠️ Pricing load error: '+e.message);
   });
 }
-
-var _toolPricingMerged = [];
 
 function renderToolPricingGrid(){
   var grid = document.getElementById('tool-pricing-grid');
   if(!grid) return;
 
-  // Use merged list (Firestore + local TOOLS)
-  var premTools = _toolPricingMerged.length ? _toolPricingMerged
-    : TOOLS.filter(function(t){ return t.plan === 'premium' || t.plan === 'franchise'; });
+  // Use _tools (has ALL tools including Firestore overrides + new tools)
+  // Filter: premium or franchise plan only
+  var allTools = Object.values(_tools);
+  var premTools = allTools.filter(function(t){
+    return t.plan === 'premium' || t.plan === 'franchise';
+  });
 
   if(!premTools.length){
-    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⚠️ Koi premium tool nahi mila. Pehle Tools section mein kisi tool ka plan "Premium" set karo, ya Migrate All karo.</div>';
+    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">'+
+      '⚠️ Koi premium/franchise tool nahi mila.<br><br>'+
+      '<span style="font-size:.8rem">Tools section mein jao → kisi tool ka plan "Premium" set karo → wapas Pricing mein aao.</span></div>';
     return;
   }
+
+  // Sort: premium first, franchise second, then alphabetically
+  premTools.sort(function(a,b){
+    if(a.plan===b.plan) return (a.name||'').localeCompare(b.name||'');
+    return a.plan==='premium' ? -1 : 1;
+  });
 
   var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px">';
 
   premTools.forEach(function(t){
-    var saved = _toolPricingData[t.id] || {};
+    var saved   = _toolPricingData[t.id] || {};
     var enabled = saved.enabled !== false;
+    var isF     = t.plan === 'franchise';
+    var planClr = isF ? '#a78bfa' : 'var(--gold2)';
+    var planBg  = isF ? 'rgba(124,58,237,.2)' : 'rgba(184,121,42,.2)';
 
     html += '<div style="background:var(--bg4);border:1px solid var(--br);border-radius:14px;padding:16px" id="tp-card-'+t.id+'">';
 
-    // Header row
-    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
-    html += '<span style="font-size:1.4rem;flex-shrink:0">'+t.icon+'</span>';
-    html += '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.84rem;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+x(t.name)+'</div>';
-    html += '<div style="font-size:.65rem;color:var(--t4);margin-top:1px">ID: '+t.id+'</div></div>';
-    html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.7rem;color:var(--t3);white-space:nowrap;flex-shrink:0">';
+    // Header
+    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">';
+    html += '<span style="font-size:1.3rem;flex-shrink:0">'+(t.icon||'🔧')+'</span>';
+    html += '<div style="flex:1;min-width:0">';
+    html += '<div style="font-weight:700;font-size:.84rem;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+x(t.name)+'</div>';
+    html += '<div style="font-size:.63rem;color:var(--t4)">ID: '+t.id+'</div></div>';
+    html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.7rem;color:var(--t3);flex-shrink:0">';
     html += '<input type="checkbox" id="tp-en-'+t.id+'" '+(enabled?'checked':'')+' style="width:13px;height:13px;cursor:pointer;accent-color:var(--neon)"> Active</label>';
     html += '</div>';
 
     // Plan badge
-    var isF = (t.plan==='franchise');
-    html += '<span style="font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;background:'+(isF?'rgba(124,58,237,.2)':'rgba(184,121,42,.2)')+';color:'+(isF?'#a78bfa':'var(--gold2)')+';display:inline-block;margin-bottom:10px">'+(isF?'🏢 FRANCHISE':'💎 PREMIUM')+'</span>';
+    html += '<span style="font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;background:'+planBg+';color:'+planClr+';display:inline-block;margin-bottom:10px">'+(isF?'🏢 FRANCHISE':'💎 PREMIUM')+'</span>';
 
-    // Price grid
+    // Price inputs — 2x2 grid
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">';
     TOOL_DURATIONS.forEach(function(d){
       var sp = saved['price_'+d.key] || '';
       html += '<div style="background:var(--bg3);border:1px solid var(--br);border-radius:8px;padding:7px 9px">';
-      html += '<div style="font-size:.62rem;color:var(--t3);margin-bottom:3px">'+d.label+'</div>';
+      html += '<div style="font-size:.61rem;color:var(--t3);margin-bottom:3px">'+d.label+'</div>';
       html += '<div style="display:flex;align-items:center;gap:3px">';
-      html += '<span style="font-size:.75rem;color:var(--t3)">₹</span>';
+      html += '<span style="font-size:.74rem;color:var(--t3)">₹</span>';
       html += '<input type="number" id="tp-'+d.key+'-'+t.id+'" value="'+sp+'" placeholder="0" min="0" '
-        + 'style="width:100%;background:transparent;border:none;outline:none;color:var(--t1);font-size:.9rem;font-weight:700;font-family:inherit">';
+           +  'style="width:100%;background:transparent;border:none;outline:none;color:var(--t1);font-size:.9rem;font-weight:700;font-family:inherit">';
       html += '</div></div>';
     });
     html += '</div>';
 
     // Save button
-    html += '<button class="btn btn-gr btn-sm" style="width:100%;padding:7px" onclick="saveOneToolPricing(\''+t.id+'\')">💾 Save</button>';
+    html += '<button class="btn btn-gr btn-sm" style="width:100%;padding:7px" onclick="saveOneToolPricing(\''+t.id+'\')">💾 Save '+x((t.name||'').split(' ')[0])+'</button>';
     html += '</div>';
   });
 
   html += '</div>';
+  html += '<div style="margin-top:14px;font-size:.72rem;color:var(--t4);text-align:center">'+premTools.length+' premium tool(s) found &nbsp;•&nbsp; Free tools are hidden</div>';
   grid.innerHTML = html;
 }
 
 function toggleToolPlanEnabled(toolId){
-  // Just a UI toggle — actual save happens on Save button
+  // UI only — save on button click
 }
 
 function saveOneToolPricing(toolId){
   if(!_user){ toast('Login required'); return; }
-  var enabled = (document.getElementById('tp-en-'+toolId)||{}).checked !== false;
-  var data = { enabled: !!document.getElementById('tp-en-'+toolId) && document.getElementById('tp-en-'+toolId).checked };
+  var enEl = document.getElementById('tp-en-'+toolId);
+  var data = { enabled: enEl ? enEl.checked : true };
 
   TOOL_DURATIONS.forEach(function(d){
     var el = document.getElementById('tp-'+d.key+'-'+toolId);
@@ -2180,11 +2184,10 @@ function saveOneToolPricing(toolId){
   data.updatedAt = new Date().toISOString();
   data.updatedBy = _user.email;
 
-  // Find tool name
-  var tool = TOOLS.find(function(t){ return t.id===toolId; });
-  if(tool){ data.toolName = tool.name; data.toolPlan = tool.plan; data.toolIcon = tool.icon; }
+  // Get tool info from _tools (not just TOOLS array)
+  var tool = _tools[toolId] || TOOLS.find(function(t){ return t.id===toolId; });
+  if(tool){ data.toolName=tool.name; data.toolPlan=tool.plan; data.toolIcon=tool.icon||'🔧'; }
 
-  // Save to Firestore: admin/tool_pricing as a map field
   var update = {};
   update[toolId] = data;
   _toolPricingData[toolId] = data;
@@ -2196,22 +2199,24 @@ function saveOneToolPricing(toolId){
 
 function saveAllToolPricing(){
   if(!_user){ toast('Login required'); return; }
-  var premTools = (_toolPricingMerged && _toolPricingMerged.length)
-    ? _toolPricingMerged
-    : TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
-  if(!premTools.length){ toast('Koi premium tool nahi'); return; }
+  // Use _tools — includes ALL premium tools (hardcoded + Firestore-added + overrides)
+  var allTools  = Object.values(_tools);
+  var premTools = allTools.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
+  if(!premTools.length){ toast('⚠️ Koi premium tool nahi. Tools section mein plan set karo.'); return; }
 
   var allData = {};
   premTools.forEach(function(t){
-    var enabled = document.getElementById('tp-en-'+t.id);
-    var obj = { enabled: enabled ? enabled.checked : true };
+    var enEl = document.getElementById('tp-en-'+t.id);
+    var obj  = { enabled: enEl ? enEl.checked : true };
     TOOL_DURATIONS.forEach(function(d){
       var el = document.getElementById('tp-'+d.key+'-'+t.id);
       obj['price_'+d.key] = el ? (parseInt(el.value)||0) : 0;
       obj['days_'+d.key]  = d.days;
       obj['label_'+d.key] = d.label;
     });
-    obj.toolName = t.name; obj.toolPlan = t.plan; obj.toolIcon = t.icon;
+    obj.toolName  = t.name;
+    obj.toolPlan  = t.plan;
+    obj.toolIcon  = t.icon||'🔧';
     obj.updatedAt = new Date().toISOString();
     obj.updatedBy = _user.email;
     allData[t.id] = obj;
@@ -2219,7 +2224,7 @@ function saveAllToolPricing(){
   });
 
   db.collection('admin').doc('tool_pricing').set(allData, {merge:true})
-    .then(function(){ toast('✅ Saare '+premTools.length+' tools ki pricing save ho gayi!'); })
+    .then(function(){ toast('✅ Saare '+premTools.length+' tools ki pricing saved!'); })
     .catch(function(e){ toast('❌ '+e.message); });
 }
 
