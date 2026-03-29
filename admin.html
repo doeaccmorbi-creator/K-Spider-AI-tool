@@ -109,7 +109,54 @@ tr:hover td{background:rgba(255,255,255,.015)}
 #toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg2);border:1px solid var(--br2);border-radius:var(--r8);padding:11px 18px;font-size:.83rem;box-shadow:0 8px 30px rgba(0,0,0,.4);display:none}
 /* ALERT BAR */
 #alert-bar{display:none;font-size:.73rem;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:4px 12px;border-radius:20px;cursor:pointer}
-@media(max-width:800px){.sidebar{transform:translateX(-100%)}.main{margin-left:0}.sg{grid-template-columns:1fr 1fr}}
+/* ══ MOBILE HAMBURGER BUTTON ══ */
+#mob-menu-btn{display:none;position:fixed;top:12px;left:12px;z-index:200;width:38px;height:38px;background:var(--bg2);border:1px solid var(--br2);border-radius:8px;cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem}
+#mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
+/* ══ RESPONSIVE BREAKPOINTS ══ */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%);transition:transform .25s ease;z-index:100}
+  .sidebar.mob-open{transform:translateX(0)}
+  #mob-menu-btn{display:flex}
+  #mob-overlay.on{display:block}
+  .main{margin-left:0}
+  .topbar{padding:12px 14px 12px 58px}
+  .topbar-title{font-size:.88rem}
+  .topbar-user span{display:none}
+  .panel{padding:14px}
+  .sg{grid-template-columns:1fr 1fr}
+  .tg{grid-template-columns:1fr;padding:12px}
+  .tc{padding:12px}
+}
+@media(max-width:600px){
+  .sg{grid-template-columns:1fr 1fr}
+  .sc{padding:12px 10px;gap:8px}
+  .sv{font-size:1.3rem}
+  .card-head{flex-wrap:wrap;gap:6px;padding:12px 14px}
+  .card-title{font-size:.85rem}
+  .tw{font-size:.75rem}
+  th{padding:8px 10px;font-size:.62rem}
+  td{padding:8px 10px;font-size:.76rem}
+  .btn{padding:6px 10px;font-size:.72rem}
+  .btn-sm{padding:4px 8px;font-size:.68rem}
+  .fr{padding:10px 12px;gap:8px}
+  .si2{font-size:.78rem;padding:7px 10px}
+  .sel{font-size:.72rem;padding:7px 8px}
+  /* Pricing panel responsive */
+  #panel-pricing > div:first-child{grid-template-columns:1fr !important}
+  /* Access panel responsive */
+  #panel-access > div:first-child{grid-template-columns:1fr !important}
+  /* Analytics 2-col grid */
+  #panel-analytics > div > div{grid-template-columns:1fr !important}
+  /* Tool pricing grid */
+  #tool-pricing-grid > div{grid-template-columns:1fr !important}
+  /* Modals */
+  .mbox{padding:18px 14px;max-width:95vw;width:95vw}
+  .mtitle{font-size:.9rem}
+}
+@media(max-width:400px){
+  .sg{grid-template-columns:1fr}
+  .topbar-title{font-size:.8rem}
+}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
@@ -134,6 +181,9 @@ tr:hover td{background:rgba(255,255,255,.015)}
     </div>
   </div>
 </div>
+
+<!-- MOBILE MENU OVERLAY -->
+<div id="mob-overlay" onclick="closeMobMenu()"></div>
 
 <!-- ADMIN APP -->
 <div id="app">
@@ -191,6 +241,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
   <!-- MAIN -->
   <main class="main">
     <div class="topbar">
+      <button id="mob-menu-btn" onclick="toggleMobMenu()" aria-label="Menu">☰</button>
       <div class="topbar-title" id="page-title">📊 Dashboard</div>
       <div id="alert-bar" onclick="show('users',document.getElementById('n-users'))">🔔 <span id="alert-txt"></span></div>
       <div style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:#34d399;background:rgba(5,150,105,.1);border:1px solid rgba(5,150,105,.25);border-radius:20px;padding:3px 10px" id="live-dot"><span style="width:7px;height:7px;border-radius:50%;background:#34d399;display:inline-block;animation:blink 2s infinite"></span> LIVE</div>
@@ -887,6 +938,22 @@ function doLogout() {
   auth.signOut().then(function() { location.reload(); });
 }
 
+// ── MOBILE MENU ──
+function toggleMobMenu(){
+  var sb = document.querySelector('.sidebar');
+  var ov = document.getElementById('mob-overlay');
+  if(!sb) return;
+  var isOpen = sb.classList.contains('mob-open');
+  if(isOpen){ sb.classList.remove('mob-open'); if(ov) ov.classList.remove('on'); }
+  else { sb.classList.add('mob-open'); if(ov) ov.classList.add('on'); }
+}
+function closeMobMenu(){
+  var sb = document.querySelector('.sidebar');
+  var ov = document.getElementById('mob-overlay');
+  if(sb) sb.classList.remove('mob-open');
+  if(ov) ov.classList.remove('on');
+}
+
 // ── NAVIGATION ──
 function show(name, el) {
   document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('on'); });
@@ -906,6 +973,8 @@ function show(name, el) {
   if (name==='pricing')   loadPricing();
   if (name==='analytics') loadAnalytics();
   if (name==='blog')      loadBlog();
+  // Close mobile sidebar on nav click
+  closeMobMenu();
 }
 
 function initAll() {
@@ -1982,80 +2051,111 @@ var TOOL_DURATIONS = [
 function loadToolPricing(){
   var grid = document.getElementById('tool-pricing-grid');
   if(!grid) return;
-  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⏳ Loading...</div>';
+  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⏳ Loading tools...</div>';
 
-  // Load existing tool pricing from Firestore
-  db.collection('admin').doc('tool_pricing').get().then(function(doc){
-    _toolPricingData = doc.exists ? (doc.data()||{}) : {};
+  // Load tool_pricing data AND Firestore tools collection in parallel
+  var p1 = db.collection('admin').doc('tool_pricing').get().catch(function(){ return null; });
+  var p2 = db.collection('tools').get().catch(function(){ return null; });
+
+  Promise.all([p1, p2]).then(function(results){
+    // Pricing data
+    _toolPricingData = (results[0] && results[0].exists) ? (results[0].data()||{}) : {};
+
+    // Merge Firestore tools with local TOOLS array
+    // Firestore tools override local — if plan is premium/franchise there, show them
+    var firestoreTools = [];
+    if(results[1]){
+      results[1].forEach(function(d){
+        var td = d.data();
+        if(td.plan === 'premium' || td.plan === 'franchise'){
+          firestoreTools.push({
+            id:   td.id || d.id,
+            name: td.name || d.id,
+            icon: td.icon || '🔧',
+            plan: td.plan,
+            desc: td.desc || ''
+          });
+        }
+      });
+    }
+
+    // Build merged list — Firestore takes priority, then local TOOLS array
+    var localPrem = TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
+    var merged = [];
+    var seenIds = {};
+
+    // Add Firestore tools first
+    firestoreTools.forEach(function(t){
+      if(!seenIds[t.id]){ merged.push(t); seenIds[t.id]=true; }
+    });
+    // Add local tools not already in list
+    localPrem.forEach(function(t){
+      if(!seenIds[t.id]){ merged.push(t); seenIds[t.id]=true; }
+    });
+
+    _toolPricingMerged = merged;
     renderToolPricingGrid();
   }).catch(function(e){
     _toolPricingData = {};
+    _toolPricingMerged = TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
     renderToolPricingGrid();
     toast('Tool pricing load error: '+e.message);
   });
 }
 
+var _toolPricingMerged = [];
+
 function renderToolPricingGrid(){
   var grid = document.getElementById('tool-pricing-grid');
   if(!grid) return;
 
-  // Only show premium/franchise tools — free tools don't need per-tool pricing
-  var premTools = TOOLS.filter(function(t){ return t.plan === 'premium' || t.plan === 'franchise'; });
-
-  // Also include any tools that are in Firestore but marked premium there
-  // (After migrate, tool status from Firestore overrides)
-  // We'll just show all non-free tools + allow admin to toggle
+  // Use merged list (Firestore + local TOOLS)
+  var premTools = _toolPricingMerged.length ? _toolPricingMerged
+    : TOOLS.filter(function(t){ return t.plan === 'premium' || t.plan === 'franchise'; });
 
   if(!premTools.length){
-    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⚠️ Koi premium tool nahi mila. Pehle Tools mein kisi tool ka plan "Premium" set karo.</div>';
+    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4)">⚠️ Koi premium tool nahi mila. Pehle Tools section mein kisi tool ka plan "Premium" set karo, ya Migrate All karo.</div>';
     return;
   }
 
-  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px">';
+  var html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:14px">';
 
   premTools.forEach(function(t){
     var saved = _toolPricingData[t.id] || {};
-    var enabled = saved.enabled !== false; // default enabled
+    var enabled = saved.enabled !== false;
 
-    html += '<div style="background:var(--bg4);border:1px solid var(--br);border-radius:14px;padding:16px;position:relative" id="tp-card-'+t.id+'">';
+    html += '<div style="background:var(--bg4);border:1px solid var(--br);border-radius:14px;padding:16px" id="tp-card-'+t.id+'">';
 
-    // Header
-    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">';
-    html += '<span style="font-size:1.4rem">'+t.icon+'</span>';
-    html += '<div style="flex:1"><div style="font-weight:700;font-size:.86rem;color:var(--t1)">'+x(t.name)+'</div>';
-    html += '<div style="font-size:.68rem;color:var(--t3);margin-top:2px">ID: '+t.id+'</div></div>';
-
-    // Enable/Disable toggle
-    html += '<label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.72rem;color:var(--t3)">';
-    html += '<input type="checkbox" id="tp-en-'+t.id+'" '+(enabled?'checked':'')+' onchange="toggleToolPlanEnabled(\''+t.id+'\')" style="width:14px;height:14px;cursor:pointer"> Active</label>';
+    // Header row
+    html += '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">';
+    html += '<span style="font-size:1.4rem;flex-shrink:0">'+t.icon+'</span>';
+    html += '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:.84rem;color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+x(t.name)+'</div>';
+    html += '<div style="font-size:.65rem;color:var(--t4);margin-top:1px">ID: '+t.id+'</div></div>';
+    html += '<label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:.7rem;color:var(--t3);white-space:nowrap;flex-shrink:0">';
+    html += '<input type="checkbox" id="tp-en-'+t.id+'" '+(enabled?'checked':'')+' style="width:13px;height:13px;cursor:pointer;accent-color:var(--neon)"> Active</label>';
     html += '</div>';
 
-    // Plan type badge
-    var planColor = t.plan==='franchise' ? 'rgba(124,58,237,.2)' : 'rgba(184,121,42,.2)';
-    var planTxt   = t.plan==='franchise' ? '#a78bfa' : 'var(--gold2)';
-    html += '<span style="font-size:.62rem;font-weight:700;padding:3px 8px;border-radius:10px;background:'+planColor+';color:'+planTxt+';display:inline-block;margin-bottom:10px">'+(t.plan==='franchise'?'🏢 FRANCHISE':'💎 PREMIUM')+'</span>';
+    // Plan badge
+    var isF = (t.plan==='franchise');
+    html += '<span style="font-size:.6rem;font-weight:700;padding:2px 8px;border-radius:10px;background:'+(isF?'rgba(124,58,237,.2)':'rgba(184,121,42,.2)')+';color:'+(isF?'#a78bfa':'var(--gold2)')+';display:inline-block;margin-bottom:10px">'+(isF?'🏢 FRANCHISE':'💎 PREMIUM')+'</span>';
 
-    // Duration + Price rows
-    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">';
+    // Price grid
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">';
     TOOL_DURATIONS.forEach(function(d){
-      var priceKey = 'price_'+d.key;
-      var savedPrice = saved[priceKey] || '';
-      html += '<div style="background:var(--bg3);border:1px solid var(--br);border-radius:8px;padding:8px">';
-      html += '<div style="font-size:.65rem;color:var(--t3);margin-bottom:4px">'+d.label+'</div>';
-      html += '<div style="display:flex;align-items:center;gap:4px">';
-      html += '<span style="font-size:.78rem;color:var(--t3)">₹</span>';
-      html += '<input type="number" id="tp-'+d.key+'-'+t.id+'" value="'+savedPrice+'" placeholder="0" min="0" style="width:100%;background:transparent;border:none;outline:none;color:var(--t1);font-size:.88rem;font-weight:700;font-family:inherit">';
+      var sp = saved['price_'+d.key] || '';
+      html += '<div style="background:var(--bg3);border:1px solid var(--br);border-radius:8px;padding:7px 9px">';
+      html += '<div style="font-size:.62rem;color:var(--t3);margin-bottom:3px">'+d.label+'</div>';
+      html += '<div style="display:flex;align-items:center;gap:3px">';
+      html += '<span style="font-size:.75rem;color:var(--t3)">₹</span>';
+      html += '<input type="number" id="tp-'+d.key+'-'+t.id+'" value="'+sp+'" placeholder="0" min="0" '
+        + 'style="width:100%;background:transparent;border:none;outline:none;color:var(--t1);font-size:.9rem;font-weight:700;font-family:inherit">';
       html += '</div></div>';
     });
     html += '</div>';
 
-    // Tool description (optional)
-    html += '<div style="font-size:.7rem;color:var(--t4);margin-bottom:10px">'+x(t.desc||'').substring(0,80)+'...</div>';
-
-    // Save individual button
-    html += '<button class="btn btn-gr btn-sm" style="width:100%" onclick="saveOneToolPricing(\''+t.id+'\')">💾 Save '+x(t.name.split(' ')[0])+'</button>';
-
-    html += '</div>'; // end card
+    // Save button
+    html += '<button class="btn btn-gr btn-sm" style="width:100%;padding:7px" onclick="saveOneToolPricing(\''+t.id+'\')">💾 Save</button>';
+    html += '</div>';
   });
 
   html += '</div>';
@@ -2096,7 +2196,9 @@ function saveOneToolPricing(toolId){
 
 function saveAllToolPricing(){
   if(!_user){ toast('Login required'); return; }
-  var premTools = TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
+  var premTools = (_toolPricingMerged && _toolPricingMerged.length)
+    ? _toolPricingMerged
+    : TOOLS.filter(function(t){ return t.plan==='premium'||t.plan==='franchise'; });
   if(!premTools.length){ toast('Koi premium tool nahi'); return; }
 
   var allData = {};
