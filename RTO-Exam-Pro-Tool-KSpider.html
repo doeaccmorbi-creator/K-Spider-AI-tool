@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RTO Exam Pro — Powered by KSpiderAI</title>
+  <meta name="description" content="Free RTO Driving Licence Exam Practice. Mock Tests, 30+ Questions, 9 Indian Languages, PWA Support. Powered by KSpiderAI.">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="RTO Exam Pro">
+  <!-- Open Graph -->
+  <meta property="og:title" content="RTO Exam Pro — Free Driving Licence Exam Practice">
+  <meta property="og:description" content="Practice with 30+ real RTO exam questions in 9 Indian languages. Free Mock Tests & Progress Tracking. Powered by KSpiderAI.">
+  <meta property="og:url" content="https://www.kspiderai.in">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════════════════
+       CSS VARIABLES & RESET
+    ═══════════════════════════════════════════════════════════ */
+    :root {
+      --primary: #2563eb;
+      --primary-light: #3b82f6;
+      --primary-dark: #1e3a8a;
+      --accent: #f59e0b;
+      --accent-dark: #d97706;
+      --success: #22c55e;
+      --success-dark: #16a34a;
+      --danger: #ef4444;
+      --danger-dark: #dc2626;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --dark: #0f172a;
+      --text: #0f172a;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 14px;
+      --shadow: 0 4px 16px rgba(0,0,0,0.08);
+      --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
+      --header-h: 64px;
+      --font-heading: 'Sora', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    a { color: var(--primary); text-decoration: none; }
+    button { cursor: pointer; font-family: var(--font-body); }
+    img { max-width: 100%; }
+
+    /* Toast notifications */
+    .toast {
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(20px);
+      background: var(--dark); color: #fff; padding: 10px 20px; border-radius: 999px;
+      font-size: 0.82rem; font-weight: 500; z-index: 9999; opacity: 0; transition: 0.3s; white-space: nowrap;
+      pointer-events: none;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast.toast-success { background: var(--success-dark); }
+    .toast.toast-error { background: var(--danger-dark); }
+    .toast.toast-info { background: var(--primary-dark); }
+
+    /* ═══════════════════════════════════════════════════════════
+       HEADER
+    ═══════════════════════════════════════════════════════════ */
+    .site-header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,0.96); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border); height: var(--header-h);
+    }
+    .header-inner {
+      max-width: 1100px; margin: 0 auto; padding: 0 20px;
+      height: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    }
+    .logo-wrap { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 2px 8px rgba(37,99,235,0.3);
+    }
+    .logo-text { display: flex; flex-direction: column; line-height: 1.2; }
+    .logo-agent { font-family: var(--font-heading); font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .logo-platform { font-size: 0.6rem; color: var(--primary); font-weight: 500; }
+    .nav-tabs { display: flex; gap: 4px; }
+    .nav-tab {
+      padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 500;
+      color: var(--muted); background: none; border: none; transition: 0.2s;
+    }
+    .nav-tab:hover { background: var(--bg); color: var(--primary); }
+    .nav-tab.active { background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .header-right { display: flex; align-items: center; gap: 10px; }
+    .lang-select {
+      padding: 6px 10px; border-radius: 8px; border: 1.5px solid var(--border);
+      font-size: 0.78rem; background: var(--bg); color: var(--text);
+      font-family: var(--font-body); cursor: pointer;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       MOBILE NAV
+    ═══════════════════════════════════════════════════════════ */
+    .mobile-nav {
+      display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
+      background: rgba(255,255,255,0.97); backdrop-filter: blur(12px);
+      border-top: 1px solid var(--border); padding: 8px 0 max(8px, env(safe-area-inset-bottom));
+    }
+    .mobile-nav-inner { display: flex; justify-content: space-around; }
+    .mnav-btn { display: flex; flex-direction: column; align-items: center; gap: 3px; background: none; border: none; padding: 6px 14px; color: var(--muted); font-size: 0.62rem; font-weight: 500; }
+    .mnav-btn .micon { font-size: 1.3rem; }
+    .mnav-btn.active { color: var(--primary); }
+
+    /* ═══════════════════════════════════════════════════════════
+       PAGES
+    ═══════════════════════════════════════════════════════════ */
+    .page { display: none; flex: 1; }
+    .page.active { display: flex; flex-direction: column; }
+    .page-header {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: #fff; padding: 28px 20px;
+    }
+    .page-header h2 { font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700; }
+    .page-header p { font-size: 0.85rem; opacity: 0.8; margin-top: 4px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       BUTTONS
+    ═══════════════════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 22px; border-radius: 10px; font-size: 0.88rem; font-weight: 600;
+      border: none; transition: 0.22s; cursor: pointer; font-family: var(--font-body);
+    }
+    .btn-accent { background: var(--accent); color: #fff; box-shadow: 0 4px 14px rgba(245,158,11,0.35); }
+    .btn-accent:hover { background: var(--accent-dark); transform: translateY(-1px); }
+    .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 4px 14px rgba(37,99,235,0.25); }
+    .btn-primary:hover { background: var(--primary-dark); transform: translateY(-1px); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: var(--success-dark); }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: var(--danger-dark); }
+    .btn-outline { background: var(--card); color: var(--text); border: 1.5px solid var(--border); }
+    .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+    .btn-ghost-white { background: rgba(255,255,255,0.15); color: #fff; border: 1.5px solid rgba(255,255,255,0.4); backdrop-filter: blur(8px); }
+    .btn-ghost-white:hover { background: rgba(255,255,255,0.25); }
+    .btn-lg { padding: 13px 26px; font-size: 0.94rem; }
+    .btn-sm { padding: 7px 14px; font-size: 0.78rem; }
+
+    /* ═══════════════════════════════════════════════════════════
+       HOME PAGE
+    ═══════════════════════════════════════════════════════════ */
+    .hero {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-light) 100%);
+      color: #fff; padding: 56px 20px 70px; position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; top: -60px; right: -80px;
+      width: 400px; height: 400px; background: rgba(255,255,255,0.04);
+      border-radius: 50%; pointer-events: none;
+    }
+    .hero::after {
+      content: ''; position: absolute; bottom: -100px; left: -50px;
+      width: 300px; height: 300px; background: rgba(255,255,255,0.03);
+      border-radius: 50%; pointer-events: none;
+    }
+    .hero-inner { max-width: 700px; margin: 0 auto; text-align: center; position: relative; z-index: 1; }
+    .hero-badge {
+      display: inline-block; background: rgba(255,255,255,0.15); backdrop-filter: blur(8px);
+      padding: 6px 18px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 0.04em; margin-bottom: 20px; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .hero h1 { font-family: var(--font-heading); font-size: 2.4rem; font-weight: 800; line-height: 1.2; margin-bottom: 16px; }
+    .hero h1 span { color: var(--accent); }
+    .hero p { font-size: 1rem; opacity: 0.88; line-height: 1.7; margin-bottom: 28px; }
+    .hero-selectors { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 26px; }
+    .hero-select {
+      padding: 10px 16px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,0.3);
+      background: rgba(255,255,255,0.12); color: #fff; font-size: 0.88rem; font-family: var(--font-body);
+      backdrop-filter: blur(8px); cursor: pointer; min-width: 180px;
+    }
+    .hero-select option { background: var(--dark); color: #fff; }
+    .hero-cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+    .hero-wave { background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 55%, var(--primary-light) 100%); }
+    .hero-wave svg { display: block; }
+
+    .stats-bar { background: #fff; border-bottom: 1px solid var(--border); }
+    .stats-bar-inner { max-width: 900px; margin: 0 auto; padding: 18px 20px; display: flex; gap: 16px; justify-content: space-around; flex-wrap: wrap; }
+    .stat-item { text-align: center; }
+    .stat-item .num { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .stat-item .lbl { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin-top: 2px; }
+
+    /* PWA Install Banner */
+    .pwa-banner {
+      display: none; background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; padding: 12px 20px; gap: 12px; align-items: center;
+      justify-content: space-between; flex-wrap: wrap;
+    }
+    .pwa-banner.show { display: flex; }
+    .pwa-banner p { font-size: 0.85rem; font-weight: 500; }
+    .pwa-close { background: none; border: none; color: rgba(255,255,255,0.7); font-size: 1.2rem; cursor: pointer; }
+
+    /* Offline Banner */
+    .offline-banner {
+      display: none; background: #fef3c7; color: #92400e;
+      padding: 8px 20px; font-size: 0.8rem; text-align: center;
+      border-bottom: 1px solid #fde68a;
+    }
+    .offline-banner.show { display: block; }
+
+    .features { padding: 56px 20px; }
+    .features .container { max-width: 1100px; margin: 0 auto; }
+    .section-title { font-family: var(--font-heading); font-size: 1.6rem; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    .section-sub { text-align: center; color: var(--muted); margin-bottom: 40px; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+    .feature-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; transition: 0.22s;
+    }
+    .feature-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+    .feature-icon { font-size: 2rem; margin-bottom: 12px; }
+    .feature-card h3 { font-family: var(--font-heading); font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.85rem; color: var(--muted); line-height: 1.6; }
+
+    .how-section { background: #fff; padding: 56px 20px; border-top: 1px solid var(--border); }
+    .steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 32px; max-width: 900px; margin: 0 auto; text-align: center; }
+    .step-num {
+      width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center;
+      justify-content: center; margin: 0 auto 16px; color: #fff; font-size: 1.5rem;
+      font-family: var(--font-heading); font-weight: 700;
+    }
+
+    .cta-section {
+      background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+      color: #fff; padding: 56px 20px; text-align: center;
+    }
+    .cta-section h2 { font-family: var(--font-heading); font-size: 1.8rem; font-weight: 800; margin-bottom: 10px; }
+    .cta-section p { opacity: 0.88; margin-bottom: 28px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       PRACTICE PAGE
+    ═══════════════════════════════════════════════════════════ */
+    .practice-body { flex: 1; padding: 24px 20px; max-width: 800px; margin: 0 auto; width: 100%; }
+    .cat-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .cat-btn {
+      padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 500;
+      border: 1.5px solid var(--border); background: var(--card); color: var(--muted); transition: 0.2s;
+    }
+    .cat-btn:hover, .cat-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .q-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 24px; margin-bottom: 16px; box-shadow: var(--shadow);
+    }
+    .q-meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .q-num { font-size: 0.78rem; color: var(--muted); font-weight: 500; }
+    .q-cat { font-size: 0.72rem; padding: 3px 10px; border-radius: 999px; background: #eff6ff; color: var(--primary); font-weight: 600; }
+    .q-progress { height: 4px; background: var(--border); border-radius: 99px; margin-bottom: 18px; overflow: hidden; }
+    .q-progress-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 0.4s; }
+    .question-text { font-family: var(--font-heading); font-size: 1.05rem; font-weight: 600; line-height: 1.5; margin-bottom: 20px; }
+    .options-list { display: flex; flex-direction: column; gap: 10px; }
+    .option-btn {
+      display: flex; align-items: center; gap: 12px;
+      padding: 13px 16px; border-radius: 10px; border: 2px solid var(--border);
+      background: var(--card); text-align: left; font-size: 0.9rem; font-weight: 500;
+      transition: 0.2s; width: 100%; color: var(--text);
+    }
+    .option-btn:hover:not(:disabled) { border-color: var(--primary); background: #eff6ff; }
+    .option-btn.correct { border-color: var(--success); background: #f0fdf4; color: #15803d; }
+    .option-btn.wrong { border-color: var(--danger); background: #fef2f2; color: #dc2626; }
+    .option-letter {
+      width: 28px; height: 28px; border-radius: 50%; border: 2px solid currentColor;
+      display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+      font-weight: 700; flex-shrink: 0;
+    }
+    .explanation-box {
+      margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+      background: #f0fdf4; border-left: 4px solid var(--success); font-size: 0.87rem; line-height: 1.6;
+      display: none; animation: fadeIn 0.3s ease;
+    }
+    .explanation-box.show { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    .q-actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 18px; flex-wrap: wrap; }
+    .bookmark-btn {
+      padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+      background: var(--card); font-size: 0.8rem; color: var(--muted); transition: 0.2s;
+    }
+    .bookmark-btn.bookmarked { border-color: var(--accent); color: var(--accent); background: #fffbeb; }
+    .wa-share-btn {
+      padding: 8px 14px; border-radius: 8px; border: 1.5px solid #22c55e;
+      background: #f0fdf4; font-size: 0.8rem; color: #15803d; transition: 0.2s;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .wa-share-btn:hover { background: #22c55e; color: #fff; }
+
+    /* ═══════════════════════════════════════════════════════════
+       TEST PAGE
+    ═══════════════════════════════════════════════════════════ */
+    .test-setup { padding: 28px 20px; max-width: 600px; margin: 0 auto; width: 100%; }
+    .setup-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 28px; box-shadow: var(--shadow);
+    }
+    .setup-card h3 { font-family: var(--font-heading); font-size: 1.15rem; font-weight: 700; margin-bottom: 20px; }
+    .setup-row { margin-bottom: 14px; }
+    .setup-row label { display: block; font-size: 0.82rem; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .setup-row select {
+      width: 100%; padding: 10px 14px; border-radius: 8px; border: 1.5px solid var(--border);
+      font-size: 0.9rem; background: var(--bg); color: var(--text); font-family: var(--font-body);
+    }
+    .info-row { display: flex; gap: 10px; margin: 18px 0; }
+    .info-box { flex: 1; padding: 12px; border-radius: 10px; background: #eff6ff; text-align: center; }
+    .info-box .val { font-family: var(--font-heading); font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+    .info-box .key { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+
+    .test-active { padding: 16px 20px; max-width: 800px; margin: 0 auto; width: 100%; }
+    .test-bar {
+      display: flex; justify-content: space-between; align-items: center;
+      background: var(--card); padding: 12px 18px; border-radius: 10px;
+      border: 1px solid var(--border); margin-bottom: 14px; gap: 10px; flex-wrap: wrap;
+    }
+    .timer {
+      font-family: var(--font-heading); font-size: 1rem; font-weight: 700;
+      color: var(--primary); display: flex; align-items: center; gap: 6px;
+    }
+    .timer.warning { color: var(--danger); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .test-q-counter { font-size: 0.82rem; color: var(--muted); font-weight: 500; }
+    .test-nav-row { display: flex; justify-content: space-between; margin-top: 14px; gap: 10px; }
+
+    /* Question Palette */
+    .q-palette {
+      display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px;
+      background: var(--card); padding: 14px; border-radius: 10px; border: 1px solid var(--border);
+    }
+    .palette-btn {
+      width: 32px; height: 32px; border-radius: 6px; font-size: 0.75rem; font-weight: 700;
+      border: 1.5px solid var(--border); background: var(--bg); color: var(--muted);
+      display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.15s;
+    }
+    .palette-btn.answered { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .palette-btn.current { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(245,158,11,0.3); }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESULT PAGE
+    ═══════════════════════════════════════════════════════════ */
+    .result-page { padding: 28px 20px; max-width: 720px; margin: 0 auto; width: 100%; }
+    .result-hero {
+      text-align: center; padding: 32px 24px; border-radius: var(--radius);
+      margin-bottom: 20px; color: #fff; position: relative; overflow: hidden;
+    }
+    .result-hero.pass { background: linear-gradient(135deg, #16a34a, var(--success)); }
+    .result-hero.fail { background: linear-gradient(135deg, #dc2626, var(--danger)); }
+    .result-score { font-family: var(--font-heading); font-size: 4.5rem; font-weight: 800; line-height: 1; }
+    .result-label { font-size: 1.1rem; font-weight: 600; margin-top: 8px; }
+    .result-sub { font-size: 0.85rem; opacity: 0.9; margin-top: 6px; }
+    .result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .result-stat {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; text-align: center;
+    }
+    .result-stat .val { font-family: var(--font-heading); font-size: 1.4rem; font-weight: 700; }
+    .result-stat .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+
+    /* Donut Chart Canvas */
+    .chart-wrap { display: flex; justify-content: center; margin: 16px 0; }
+    canvas#donut-chart { max-width: 200px; }
+
+    .review-section { margin-top: 20px; }
+    .review-section h3 { font-family: var(--font-heading); font-size: 1rem; font-weight: 700; margin-bottom: 12px; }
+    .review-item {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px; margin-bottom: 8px;
+    }
+    .review-item .r-q { font-size: 0.88rem; font-weight: 600; margin-bottom: 8px; line-height: 1.4; }
+    .review-item .r-ans { font-size: 0.8rem; display: flex; gap: 8px; align-items: flex-start; flex-wrap: wrap; }
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+    .badge-correct { background: #dcfce7; color: #15803d; }
+    .badge-wrong { background: #fee2e2; color: #dc2626; }
+    .badge-skip { background: #f1f5f9; color: #64748b; }
+
+    /* History Bar Chart */
+    .bar-chart-section { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 16px 0; }
+    .bar-chart-section h4 { font-family: var(--font-heading); font-size: 0.88rem; font-weight: 700; margin-bottom: 12px; }
+    canvas#bar-chart { width: 100%; max-height: 120px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       DASHBOARD
+    ═══════════════════════════════════════════════════════════ */
+    .dashboard-body { padding: 24px 20px; max-width: 960px; margin: 0 auto; width: 100%; }
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .dash-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 18px; text-align: center;
+    }
+    .dash-card .icon { font-size: 1.8rem; margin-bottom: 8px; }
+    .dash-card .val { font-family: var(--font-heading); font-size: 1.8rem; font-weight: 800; color: var(--primary); }
+    .dash-card .lbl { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    .section-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; margin-bottom: 16px; }
+    .section-card h3 { font-family: var(--font-heading); font-size: 0.95rem; font-weight: 700; margin-bottom: 16px; }
+
+    /* Category bars */
+    .bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .bar-label { font-size: 0.75rem; color: var(--muted); width: 110px; text-align: right; flex-shrink: 0; }
+    .bar-track { flex: 1; height: 10px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--primary), var(--primary-light)); transition: width 0.8s ease; }
+    .bar-val { font-size: 0.72rem; font-weight: 600; color: var(--primary); width: 30px; }
+
+    /* History list */
+    .history-item {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .h-score { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; }
+    .h-score.pass-c { color: var(--success-dark); }
+    .h-score.fail-c { color: var(--danger); }
+    .h-meta { font-size: 0.76rem; color: var(--muted); margin-top: 2px; }
+
+    /* Bookmarks */
+    .bookmark-item {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 16px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+    }
+    .bookmark-item .bq { font-size: 0.85rem; font-weight: 600; line-height: 1.4; flex: 1; }
+    .bookmark-item .bc { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+    .remove-bm { background: none; border: none; color: var(--danger); font-size: 1rem; cursor: pointer; flex-shrink: 0; padding: 2px; }
+
+    /* ═══════════════════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════════════════ */
+    .site-footer { background: var(--dark); color: #94a3b8; padding: 32px 20px 20px; margin-top: auto; }
+    .footer-inner { max-width: 1100px; margin: 0 auto; }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; margin-bottom: 24px; }
+    .footer-brand .brand-name { font-family: var(--font-heading); font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+    .footer-brand p { font-size: 0.82rem; line-height: 1.6; }
+    .footer-kspider { margin-top: 14px; display: inline-block; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.08); }
+    .footer-kspider span { font-size: 0.68rem; color: #64748b; display: block; }
+    .footer-kspider a { font-size: 0.8rem; color: var(--primary-light); font-weight: 600; }
+    .footer-col h4 { font-size: 0.8rem; font-weight: 600; color: #fff; margin-bottom: 10px; }
+    .footer-col ul { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+    .footer-col ul li a { font-size: 0.8rem; color: #94a3b8; transition: 0.2s; }
+    .footer-col ul li a:hover { color: var(--primary-light); }
+    .footer-bottom { border-top: 1px solid rgba(255,255,255,0.08); padding-top: 16px; font-size: 0.78rem; }
+    .footer-bottom p { margin-bottom: 4px; }
+    .watermark { position: fixed; bottom: 16px; right: 16px; opacity: 0.06; font-size: 0.65rem; font-weight: 700; color: var(--primary); pointer-events: none; z-index: 0; letter-spacing: 0.1em; }
+
+    /* ═══════════════════════════════════════════════════════════
+       MODAL
+    ═══════════════════════════════════════════════════════════ */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 500; align-items: center; justify-content: center; padding: 20px; }
+    .modal-overlay.open { display: flex; }
+    .modal { background: var(--card); border-radius: var(--radius); padding: 28px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.25s ease; }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    .modal h3 { font-family: var(--font-heading); font-size: 1.1rem; font-weight: 700; margin-bottom: 10px; }
+    .modal p { font-size: 0.88rem; color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; }
+
+    /* ═══════════════════════════════════════════════════════════
+       EMPTY STATE
+    ═══════════════════════════════════════════════════════════ */
+    .empty { text-align: center; padding: 52px 20px; color: var(--muted); }
+    .empty .icon { font-size: 2.8rem; margin-bottom: 10px; }
+    .empty p { font-size: 0.88rem; }
+
+    /* ═══════════════════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════════════════ */
+    @media(max-width: 700px) {
+      .hero h1 { font-size: 1.65rem; }
+      .nav-tabs { display: none; }
+      .lang-select { display: none; }
+      .mobile-nav { display: flex !important; }
+      body { padding-bottom: 72px; }
+      .footer-grid { grid-template-columns: 1fr; gap: 20px; }
+      .result-stats { grid-template-columns: repeat(2,1fr); }
+      .result-score { font-size: 3.5rem; }
+      .test-bar { gap: 8px; }
+    }
+    @media(max-width: 480px) {
+      .info-row { gap: 8px; }
+      .hero h1 { font-size: 1.45rem; }
+      .hero-selectors select { min-width: 140px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════ HEADER ══ -->
+<header class="site-header">
+  <div class="header-inner">
+    <div class="logo-wrap" onclick="showPage('home')">
+      <div class="logo-icon">🚗</div>
+      <div class="logo-text">
+        <span class="logo-agent">RTO Exam Pro</span>
+        <span class="logo-platform">Powered by KSpiderAI</span>
+      </div>
+    </div>
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-page="home" onclick="showPage('home')">🏠 Home</button>
+      <button class="nav-tab" data-page="practice" onclick="showPage('practice')">📚 Practice</button>
+      <button class="nav-tab" data-page="test-setup" onclick="showPage('test-setup')">✏️ Mock Test</button>
+      <button class="nav-tab" data-page="dashboard" onclick="showPage('dashboard')">📊 Dashboard</button>
+    </nav>
+    <div class="header-right">
+      <select class="lang-select" id="header-lang" onchange="setLang(this.value)">
+        <option value="en">🌐 English</option>
+        <option value="hi">हिंदी</option>
+        <option value="gu">ગુજરાતી</option>
+        <option value="mr">मराठी</option>
+        <option value="ta">தமிழ்</option>
+        <option value="te">తెలుగు</option>
+        <option value="kn">ಕನ್ನಡ</option>
+        <option value="bn">বাংলা</option>
+        <option value="pa">ਪੰਜਾਬੀ</option>
+      </select>
+    </div>
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════ OFFLINE BANNER ══ -->
+<div class="offline-banner" id="offline-banner">⚠️ You are offline. Using saved data.</div>
+
+<!-- ══════════════════════════════════════════ PWA BANNER ══ -->
+<div class="pwa-banner" id="pwa-banner">
+  <p>📱 <strong>Install RTO Exam Pro</strong> — Practice anytime, even offline!</p>
+  <div style="display:flex;gap:8px;align-items:center">
+    <button class="btn btn-sm" style="background:#fff;color:var(--primary);font-weight:700" id="pwa-install-btn">Install App</button>
+    <button class="pwa-close" id="pwa-close">✕</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ MOBILE NAV ══ -->
+<div class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mnav-btn active" data-page="home" onclick="showPage('home')"><span class="micon">🏠</span>Home</button>
+    <button class="mnav-btn" data-page="practice" onclick="showPage('practice')"><span class="micon">📚</span>Practice</button>
+    <button class="mnav-btn" data-page="test-setup" onclick="showPage('test-setup')"><span class="micon">✏️</span>Test</button>
+    <button class="mnav-btn" data-page="dashboard" onclick="showPage('dashboard')"><span class="micon">📊</span>Progress</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ HOME PAGE ══ -->
+<div class="page active" id="page-home">
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-badge" id="home-badge">🏆 India's Trusted RTO Exam Preparation Platform</div>
+      <h1 id="home-title">Crack Your <span>Driving Licence</span><br>Exam with Confidence</h1>
+      <p id="home-sub">Practice with 30+ real RTO exam questions, take timed mock tests, and track your progress. Trusted by thousands of learners across India.</p>
+      <div class="hero-selectors">
+        <select class="hero-select" id="hero-lang" onchange="setLang(this.value)">
+          <option value="">🌐 Select Language</option>
+          <option value="en">English</option>
+          <option value="hi">हिंदी (Hindi)</option>
+          <option value="gu">ગુજરાતી (Gujarati)</option>
+          <option value="mr">मराठी (Marathi)</option>
+          <option value="ta">தமிழ் (Tamil)</option>
+          <option value="te">తెలుగు (Telugu)</option>
+          <option value="kn">ಕನ್ನಡ (Kannada)</option>
+          <option value="bn">বাংলা (Bengali)</option>
+          <option value="pa">ਪੰਜਾਬੀ (Punjabi)</option>
+        </select>
+        <select class="hero-select" id="hero-state" onchange="appState.selectedState=this.value">
+          <option value="">📍 Select State</option>
+          <option>All India (General)</option>
+          <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option>
+          <option>Bihar</option><option>Chhattisgarh</option><option>Goa</option>
+          <option selected>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option>
+          <option>Jharkhand</option><option>Karnataka</option><option>Kerala</option>
+          <option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option>
+          <option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option>
+          <option>Odisha</option><option>Punjab</option><option>Rajasthan</option>
+          <option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option>
+          <option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option>
+          <option>West Bengal</option><option>Delhi</option>
+        </select>
+      </div>
+      <div class="hero-cta">
+        <button class="btn btn-accent btn-lg" onclick="showPage('practice')">📚 Start Practice</button>
+        <button class="btn btn-ghost-white btn-lg" onclick="showPage('test-setup')">✏️ Take Mock Test</button>
+      </div>
+    </div>
+  </section>
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none" style="width:100%;height:30px;display:block">
+      <path d="M0,30 C360,0 1080,60 1440,30 L1440,40 L0,40 Z" fill="#f8fafc"/>
+    </svg>
+  </div>
+  <div class="stats-bar">
+    <div class="stats-bar-inner">
+      <div class="stat-item"><div class="num">30+</div><div class="lbl" id="stat-q">Questions</div></div>
+      <div class="stat-item"><div class="num">8+</div><div class="lbl" id="stat-cat">Categories</div></div>
+      <div class="stat-item"><div class="num">29+</div><div class="lbl" id="stat-st">States</div></div>
+      <div class="stat-item"><div class="num">9</div><div class="lbl" id="stat-lang">Languages</div></div>
+      <div class="stat-item"><div class="num">Free</div><div class="lbl" id="stat-free">Always Free</div></div>
+    </div>
+  </div>
+  <section class="features">
+    <div class="container">
+      <h2 class="section-title">Everything You Need to Pass</h2>
+      <p class="section-sub">Comprehensive preparation tools for the Indian RTO Driving Licence exam</p>
+      <div class="features-grid">
+        <div class="feature-card"><div class="feature-icon">📚</div><h3>Unlimited Practice</h3><p>Browse all questions by category with instant feedback and detailed explanations for every answer.</p></div>
+        <div class="feature-card"><div class="feature-icon">⏱️</div><h3>Timed Mock Tests</h3><p>Simulate the real RTO exam with 20 randomly selected questions and a 20-minute countdown timer.</p></div>
+        <div class="feature-card"><div class="feature-icon">📊</div><h3>Progress Tracking</h3><p>Monitor your test history, average scores, and identify weak areas with visual charts.</p></div>
+        <div class="feature-card"><div class="feature-icon">🔖</div><h3>Smart Bookmarks</h3><p>Bookmark difficult questions for later review. Saved locally on your device, always accessible.</p></div>
+        <div class="feature-card"><div class="feature-icon">🌐</div><h3>9 Indian Languages</h3><p>Available in Hindi, Gujarati, Marathi, Tamil, Telugu, Kannada, Bengali, Punjabi & English.</p></div>
+        <div class="feature-card"><div class="feature-icon">📱</div><h3>PWA — Install as App</h3><p>Install on your phone and use offline! Works like a native app — no Play Store needed.</p></div>
+      </div>
+    </div>
+  </section>
+  <section class="how-section">
+    <div class="container" style="max-width:1100px;margin:0 auto">
+      <h2 class="section-title">How It Works</h2>
+      <p class="section-sub">Three simple steps to ace your RTO exam</p>
+      <div class="steps-grid">
+        <div>
+          <div class="step-num" style="background:linear-gradient(135deg,var(--primary),var(--primary-light));box-shadow:0 4px 16px rgba(37,99,235,0.3)">1</div>
+          <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:8px">Choose Your State</h3>
+          <p style="font-size:0.85rem;color:var(--muted)">Select your state and preferred language to start with relevant practice material.</p>
+        </div>
+        <div>
+          <div class="step-num" style="background:linear-gradient(135deg,var(--accent),var(--accent-dark));box-shadow:0 4px 16px rgba(245,158,11,0.3)">2</div>
+          <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:8px">Practice Daily</h3>
+          <p style="font-size:0.85rem;color:var(--muted)">Go through questions by category with instant feedback, explanations and bookmarks.</p>
+        </div>
+        <div>
+          <div class="step-num" style="background:linear-gradient(135deg,var(--success),var(--success-dark));box-shadow:0 4px 16px rgba(34,197,94,0.3)">3</div>
+          <h3 style="font-family:var(--font-heading);font-weight:700;margin-bottom:8px">Take Mock Test</h3>
+          <p style="font-size:0.85rem;color:var(--muted)">Test yourself under real exam conditions and review detailed results to improve.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+  <section class="cta-section">
+    <h2>Ready to Get Your Driving Licence?</h2>
+    <p>Join thousands of learners who passed their RTO exam using our platform</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-accent btn-lg" onclick="showPage('practice')">📚 Start Practicing Now →</button>
+      <button class="btn btn-ghost-white btn-lg" onclick="showPage('dashboard')">📊 View Dashboard</button>
+    </div>
+  </section>
+  <!-- FOOTER inside home page -->
+  <footer class="site-footer">
+    <div class="footer-inner">
+      <div class="footer-grid">
+        <div class="footer-brand">
+          <div class="brand-name">RTO Exam Pro</div>
+          <p>India's comprehensive platform for RTO Driving Licence exam preparation. Practice, learn, and succeed.</p>
+          <div class="footer-kspider">
+            <span>Powered by</span>
+            <a href="https://www.kspiderai.in" target="_blank" rel="noopener">www.kspiderai.in</a>
+          </div>
+        </div>
+        <div class="footer-col">
+          <h4>Quick Links</h4>
+          <ul>
+            <li><a href="#" onclick="showPage('home');return false">🏠 Home</a></li>
+            <li><a href="#" onclick="showPage('practice');return false">📚 Practice</a></li>
+            <li><a href="#" onclick="showPage('test-setup');return false">✏️ Mock Test</a></li>
+            <li><a href="#" onclick="showPage('dashboard');return false">📊 Dashboard</a></li>
+          </ul>
+        </div>
+        <div class="footer-col">
+          <h4>Categories</h4>
+          <ul>
+            <li><a href="#" onclick="showPage('practice');filterCat('Traffic Signals');return false">Traffic Signals</a></li>
+            <li><a href="#" onclick="showPage('practice');filterCat('Road Signs');return false">Road Signs</a></li>
+            <li><a href="#" onclick="showPage('practice');filterCat('Speed Limits');return false">Speed Limits</a></li>
+            <li><a href="#" onclick="showPage('practice');filterCat('Road Rules');return false">Road Rules</a></li>
+            <li><a href="#" onclick="showPage('practice');filterCat('Road Safety');return false">Road Safety</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© <span id="yr"></span> KSpiderAI. All rights reserved. | <a href="https://www.kspiderai.in" style="color:var(--primary-light)" target="_blank">KSpiderAI</a></p>
+        <p style="font-size:0.72rem;opacity:0.55;margin-top:4px">⚠️ This is NOT an official government app. For official info visit parivahan.gov.in</p>
+        <p style="margin-top:4px">Made with ❤️ for Indian Drivers | <a href="https://www.kspiderai.in" style="color:var(--primary-light)" target="_blank">KSpiderAI</a></p>
+      </div>
+    </div>
+  </footer>
+</div>
+
+<!-- ══════════════════════════════════════════ PRACTICE PAGE ══ -->
+<div class="page" id="page-practice">
+  <div class="page-header">
+    <h2>📚 Practice Questions</h2>
+    <p>Browse all questions by category. Practice at your own pace.</p>
+  </div>
+  <div class="practice-body">
+    <div class="cat-grid" id="cat-grid"></div>
+    <div id="practice-container"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ TEST SETUP ══ -->
+<div class="page" id="page-test-setup">
+  <div class="page-header">
+    <h2>✏️ Mock Test</h2>
+    <p>Simulate the real RTO exam with timed questions.</p>
+  </div>
+  <div class="test-setup">
+    <div class="setup-card">
+      <h3>⚙️ Configure Your Test</h3>
+      <div class="setup-row">
+        <label>Number of Questions</label>
+        <select id="test-count">
+          <option value="10">10 Questions</option>
+          <option value="15">15 Questions</option>
+          <option value="20" selected>20 Questions (Standard)</option>
+          <option value="30">30 Questions (Full)</option>
+        </select>
+      </div>
+      <div class="setup-row">
+        <label>Category</label>
+        <select id="test-cat">
+          <option value="">All Categories (Recommended)</option>
+        </select>
+      </div>
+      <div class="info-row">
+        <div class="info-box"><div class="val">20</div><div class="key">Minutes</div></div>
+        <div class="info-box"><div class="val">70%</div><div class="key">Pass Mark</div></div>
+        <div class="info-box"><div class="val" id="total-q-count">30</div><div class="key">Total Q's</div></div>
+      </div>
+      <button class="btn btn-primary btn-lg" style="width:100%;justify-content:center;margin-bottom:12px" onclick="startTest()">🚀 Start Mock Test</button>
+      <button class="btn btn-outline" style="width:100%;justify-content:center" onclick="shareApp()">📤 Share App via WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ TEST ACTIVE ══ -->
+<div class="page" id="page-test-active">
+  <div class="page-header">
+    <h2>✏️ Mock Test — In Progress</h2>
+    <p>Answer all questions before the timer ends.</p>
+  </div>
+  <div class="test-active">
+    <div class="test-bar">
+      <div class="timer" id="timer">⏱️ 20:00</div>
+      <div class="test-q-counter" id="test-counter">Q 1 / 20</div>
+      <button class="btn btn-danger btn-sm" onclick="confirmEnd()">End Test</button>
+    </div>
+    <div class="q-progress"><div class="q-progress-fill" id="test-progress" style="width:5%"></div></div>
+    <div id="test-container"></div>
+    <div class="test-nav-row">
+      <button class="btn btn-outline" id="test-prev" onclick="testNav(-1)">← Previous</button>
+      <button class="btn btn-primary" id="test-next" onclick="testNav(1)">Next →</button>
+    </div>
+    <div class="q-palette" id="q-palette"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ RESULT ══ -->
+<div class="page" id="page-result">
+  <div class="result-page">
+    <div class="result-hero" id="result-hero">
+      <div class="result-score" id="result-score">85%</div>
+      <div class="result-label" id="result-label">🎉 PASSED!</div>
+      <div class="result-sub" id="result-sub">Great job!</div>
+    </div>
+    <div class="result-stats">
+      <div class="result-stat"><div class="val" id="r-correct" style="color:var(--success)">0</div><div class="lbl">Correct ✅</div></div>
+      <div class="result-stat"><div class="val" id="r-wrong" style="color:var(--danger)">0</div><div class="lbl">Wrong ❌</div></div>
+      <div class="result-stat"><div class="val" id="r-time">--:--</div><div class="lbl">Time Taken</div></div>
+    </div>
+    <!-- Donut Chart -->
+    <div class="chart-wrap"><canvas id="donut-chart" width="200" height="200"></canvas></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
+      <button class="btn btn-primary" onclick="showPage('test-setup')">🔄 Retake Test</button>
+      <button class="btn btn-outline" id="wa-result-btn">📤 Share on WhatsApp</button>
+      <button class="btn btn-outline" onclick="showPage('dashboard')">📊 View Dashboard</button>
+    </div>
+    <!-- Bar chart for history -->
+    <div class="bar-chart-section" id="history-bar-wrap" style="display:none">
+      <h4>📈 Your Last 5 Tests</h4>
+      <canvas id="bar-chart" width="600" height="120"></canvas>
+    </div>
+    <div class="review-section">
+      <h3>📋 Answer Review</h3>
+      <div id="review-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ DASHBOARD ══ -->
+<div class="page" id="page-dashboard">
+  <div class="page-header">
+    <h2>📊 Your Progress Dashboard</h2>
+    <p>Track your performance and saved questions.</p>
+  </div>
+  <div class="dashboard-body">
+    <div class="dash-grid">
+      <div class="dash-card"><div class="icon">🎯</div><div class="val" id="d-tests">0</div><div class="lbl">Tests Taken</div></div>
+      <div class="dash-card"><div class="icon">⭐</div><div class="val" id="d-avg">—</div><div class="lbl">Average Score</div></div>
+      <div class="dash-card"><div class="icon">✅</div><div class="val" id="d-best">—</div><div class="lbl">Best Score</div></div>
+      <div class="dash-card"><div class="icon">🔖</div><div class="val" id="d-bookmarks">0</div><div class="lbl">Bookmarks</div></div>
+    </div>
+    <!-- Category Performance -->
+    <div class="section-card">
+      <h3>📚 Questions by Category</h3>
+      <div class="bar-chart" id="cat-chart"></div>
+    </div>
+    <!-- Test History -->
+    <div class="section-card">
+      <h3>📅 Test History</h3>
+      <div id="history-list"></div>
+      <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="clearHistory()">🗑️ Clear History</button>
+    </div>
+    <!-- Bookmarks -->
+    <div class="section-card">
+      <h3>🔖 Saved Questions</h3>
+      <div id="bookmarks-list"></div>
+    </div>
+    <!-- WhatsApp Share -->
+    <div class="section-card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#bbf7d0">
+      <h3 style="color:var(--success-dark)">📤 Share with Friends</h3>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px">Help your friends pass their RTO exam too!</p>
+      <button class="btn btn-success" onclick="shareApp()">📤 Share App on WhatsApp</button>
+    </div>
+    <!-- AdSense Placeholder -->
+    <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="XXXX" data-ad-format="auto" data-full-width-responsive="true"></ins> -->
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════ MODAL ══ -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Confirm</h3>
+    <p id="modal-msg">Are you sure?</p>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="modal-confirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="watermark">kspiderai.in</div>
+
+<!-- ══════════════════════════════════════════ JAVASCRIPT ══ -->
+<script>
+"use strict";
+
+/* ════════════════════════════════════════════════════════════
+   QUESTIONS DATABASE (30 Questions, 8+ Categories)
+════════════════════════════════════════════════════════════ */
+const QUESTIONS = [
+  { id:1, question:"What does a RED traffic light signal mean?", options:["Go","Stop","Slow down","Proceed with caution"], answer:1, explanation:"A RED traffic light means STOP. You must stop your vehicle before the stop line and wait until the light turns green.", category:"Traffic Signals" },
+  { id:2, question:"What is the maximum speed limit for a vehicle in a residential area (unless otherwise posted)?", options:["40 km/h","50 km/h","30 km/h","60 km/h"], answer:2, explanation:"The maximum speed limit in a residential area is 30 km/h unless otherwise posted by road signs.", category:"Speed Limits" },
+  { id:3, question:"When should you use the horn while driving?", options:["To greet friends","Only in emergencies to warn others","To express frustration","Whenever you want"], answer:1, explanation:"The horn should only be used to warn other road users in emergency situations. Unnecessary honking is a traffic offence.", category:"Road Rules" },
+  { id:4, question:"What is the minimum age to obtain a Learner's Licence in India?", options:["16 years","18 years","17 years","21 years"], answer:0, explanation:"The minimum age to obtain a Learner's Licence for motorcycles without gear is 16 years. For other vehicles, it is 18 years.", category:"Licensing" },
+  { id:5, question:"A solid white line on the road means:", options:["You may overtake","Do not cross / No overtaking","Road narrows ahead","Parking allowed"], answer:1, explanation:"A solid white line means you must NOT cross or overtake. It indicates that overtaking is dangerous in that area.", category:"Road Markings" },
+  { id:6, question:"What should you do when an ambulance with sirens ON approaches from behind?", options:["Speed up to clear the way","Stop immediately in the middle of the road","Move to the left and allow it to pass","Continue driving normally"], answer:2, explanation:"When an emergency vehicle with sirens approaches, you must move to the left side of the road and stop to allow it to pass safely.", category:"Emergency Vehicles" },
+  { id:7, question:"What does a YELLOW traffic light mean?", options:["Speed up before it turns red","Stop if it is safe to do so","Continue at same speed","Turn left only"], answer:1, explanation:"A YELLOW light means CAUTION - stop if it is safe to do so. If you are too close to stop safely, proceed with caution.", category:"Traffic Signals" },
+  { id:8, question:"The BAC (Blood Alcohol Content) limit for driving in India is:", options:["30 mg per 100 ml of blood","80 mg per 100 ml of blood","50 mg per 100 ml of blood","Zero tolerance"], answer:0, explanation:"As per Indian Motor Vehicles Act, the permissible BAC limit is 30 mg per 100 ml of blood. Driving above this limit is a serious offence.", category:"Road Safety" },
+  { id:9, question:"Which document is NOT mandatory to carry while driving a vehicle?", options:["Driving Licence","Registration Certificate (RC)","Vehicle Insurance","Vehicle Purchase Invoice"], answer:3, explanation:"The purchase invoice is not a mandatory document. You must always carry: Driving Licence, RC, valid Insurance, and Pollution Under Control (PUC) certificate.", category:"Documents" },
+  { id:10, question:"At an uncontrolled intersection, who has the right of way?", options:["The vehicle coming from the right","The vehicle coming from the left","The larger vehicle","The faster vehicle"], answer:0, explanation:"At an uncontrolled intersection, vehicles coming from the RIGHT have the right of way. You must yield to vehicles on your right.", category:"Road Rules" },
+  { id:11, question:"What is the speed limit for heavy vehicles on National Highways?", options:["80 km/h","100 km/h","60 km/h","70 km/h"], answer:0, explanation:"The maximum speed limit for heavy vehicles (trucks, buses) on National Highways is 80 km/h.", category:"Speed Limits" },
+  { id:12, question:"Overtaking on a blind curve is:", options:["Allowed if road is clear","Allowed only in daytime","Never allowed","Allowed for two-wheelers only"], answer:2, explanation:"Overtaking on a blind curve is NEVER allowed as you cannot see oncoming traffic, making it extremely dangerous.", category:"Road Rules" },
+  { id:13, question:"What does a STOP sign (red octagon) mean?", options:["Slow down and proceed","Stop and go only when safe","Parking zone","Road closed ahead"], answer:1, explanation:"A STOP sign means you must bring your vehicle to a complete stop and only proceed when the way is clear and it is safe to do so.", category:"Road Signs" },
+  { id:14, question:"Which lane should you drive in on a multi-lane road?", options:["Rightmost lane always","Any lane as per your preference","Left lane for normal driving, right for overtaking","Middle lane for safety"], answer:2, explanation:"On multi-lane roads, keep to the LEFT lane for normal driving. The right lane should only be used for overtaking.", category:"Lane Discipline" },
+  { id:15, question:"How far before turning should you give an indicator signal?", options:["10 metres","30 metres","50 metres","100 metres"], answer:1, explanation:"You should give an indicator (turn signal) at least 30 metres before making a turn to warn other road users.", category:"Road Rules" },
+  { id:16, question:"A GIVE WAY (YIELD) sign means:", options:["Stop completely and wait","Slow down and give way to traffic on the main road","Road ends ahead","No entry"], answer:1, explanation:"A GIVE WAY sign means slow down and be prepared to stop if necessary to allow traffic on the main road to pass first.", category:"Road Signs" },
+  { id:17, question:"What is the penalty for driving without a valid licence in India?", options:["Fine up to ₹500","Fine up to ₹5,000","Fine up to ₹10,000","Fine up to ₹1,000"], answer:1, explanation:"As per the Motor Vehicles (Amendment) Act 2019, driving without a valid licence attracts a fine up to ₹5,000.", category:"Penalties" },
+  { id:18, question:"What do hazard warning lights (all four indicators flashing) indicate?", options:["Vehicle is turning right","Vehicle is broken down or in emergency","Vehicle is about to overtake","Vehicle is reversing"], answer:1, explanation:"Hazard warning lights (all four indicators flashing simultaneously) indicate that the vehicle has broken down or is in an emergency situation.", category:"Vehicle Systems" },
+  { id:19, question:"The 'No Parking' sign has what appearance?", options:["Blue circle with P crossed out","Red circle with P crossed out","Yellow triangle","Red octagon"], answer:1, explanation:"The 'No Parking' sign is a RED circle with a blue P crossed out (diagonal red line through it), indicating parking is prohibited.", category:"Road Signs" },
+  { id:20, question:"What should you do if your vehicle breaks down on a highway?", options:["Leave it in the middle and seek help","Move it to the side, use hazard lights, place warning triangle","Call police from the vehicle","Wait inside for help"], answer:1, explanation:"If your vehicle breaks down, move it to the roadside, switch on hazard lights, and place a warning triangle 50-100 metres behind to warn approaching traffic.", category:"Road Safety" },
+  { id:21, question:"When is it mandatory to wear a seatbelt?", options:["Only on highways","Only in front seats","At all times for all occupants","Only when police are present"], answer:2, explanation:"Wearing a seatbelt is mandatory for ALL occupants (front and rear) at all times as per the Motor Vehicles Act.", category:"Road Safety" },
+  { id:22, question:"What is the minimum tread depth required for car tyres?", options:["2 mm","1.6 mm","3 mm","0.5 mm"], answer:1, explanation:"The minimum legal tyre tread depth is 1.6 mm. Tyres below this depth are unsafe and illegal to use on public roads.", category:"Vehicle Safety" },
+  { id:23, question:"A flashing GREEN arrow at traffic signals means:", options:["Stop - green phase ending","You may proceed in that direction with caution","Emergency vehicles approaching","Road closed"], answer:1, explanation:"A flashing green arrow means you MAY proceed in the direction indicated but must give way to pedestrians and other vehicles.", category:"Traffic Signals" },
+  { id:24, question:"What is the fine for not wearing a helmet while riding a two-wheeler?", options:["₹500","₹1,000","₹2,000","₹5,000"], answer:1, explanation:"As per the Motor Vehicles (Amendment) Act 2019, the fine for not wearing a helmet is ₹1,000 and/or disqualification from holding a licence for 3 months.", category:"Penalties" },
+  { id:25, question:"What does double yellow centre lines on a road mean?", options:["Overtaking allowed from both sides","No overtaking from either side","Overtaking allowed only from left","Parking permitted"], answer:1, explanation:"Double yellow centre lines mean NO overtaking from EITHER side. It indicates an area with restricted visibility or dangerous conditions.", category:"Road Markings" },
+  { id:26, question:"How far should headlights illuminate the road ahead at night?", options:["50 metres","100 metres","150 metres","200 metres"], answer:1, explanation:"Headlights (high beam) should illuminate the road for at least 100 metres ahead. Low beam should cover at least 30 metres.", category:"Vehicle Safety" },
+  { id:27, question:"What is 'tailgating'?", options:["Driving with boot open","Following another vehicle too closely","Parking at the tail of a vehicle","Reversing at high speed"], answer:1, explanation:"Tailgating means following another vehicle too closely, leaving insufficient stopping distance. It is dangerous and a traffic violation.", category:"Road Rules" },
+  { id:28, question:"The Pollution Under Control (PUC) certificate is valid for how long?", options:["6 months","1 year","2 years","3 months"], answer:0, explanation:"A PUC certificate is generally valid for 6 months. It certifies that a vehicle's emission levels are within permissible limits.", category:"Documents" },
+  { id:29, question:"When approaching a school zone, you should:", options:["Maintain normal speed","Honk to alert children","Reduce speed and be extra cautious","Use high beam lights"], answer:2, explanation:"In school zones, you must reduce speed significantly and be extra cautious as children may unexpectedly enter the road.", category:"Special Zones" },
+  { id:30, question:"Which of the following is a mandatory safety feature in all new cars sold in India?", options:["GPS Navigation","Airbags (minimum 2)","Reversing Camera","Cruise Control"], answer:1, explanation:"As per government regulations, all new passenger vehicles must have a minimum of 2 airbags (driver + co-driver) as a mandatory safety feature.", category:"Vehicle Safety" }
+];
+
+/* ════════════════════════════════════════════════════════════
+   i18n — TRANSLATIONS (EN, HI, GU inline)
+════════════════════════════════════════════════════════════ */
+const I18N = {
+  en: {
+    nav: { home:"🏠 Home", practice:"📚 Practice", test:"✏️ Mock Test", dashboard:"📊 Dashboard" },
+    home: { badge:"🏆 India's Trusted RTO Exam Preparation Platform", btn_practice:"📚 Start Practice", btn_test:"✏️ Take Mock Test", stat_q:"Questions", stat_cat:"Categories", stat_st:"States", stat_lang:"Languages", stat_free:"Always Free" },
+    practice: { title:"Practice Questions", all:"All Categories", prev:"← Previous", next:"Next →", bookmark:"🔖 Bookmark", bookmarked:"🔖 Saved ✓", explanation:"📖 Explanation", correct:"✅ Correct!", wrong:"❌ Wrong Answer", share_wa:"📤 Share on WhatsApp" },
+    test: { title:"Mock Test", start:"🚀 Start Mock Test", submit:"Submit Test", time_left:"Time Left", q_of:"Q {current} / {total}", confirm_submit:"Submit this test? Your remaining questions will be marked as skipped.", progress:"Progress" },
+    result: { title:"Your Result", passed:"🎉 PASSED!", failed:"😔 Not Passed", correct:"Correct", wrong:"Wrong", skipped:"Skipped", time_taken:"Time Taken", review:"📋 Answer Review", retry:"🔄 Retake Test", share_result:"📤 Share on WhatsApp", share_app:"📤 Share App", passing_score:"Pass Score" },
+    dashboard: { title:"Progress Dashboard", tests:"Tests Taken", avg:"Average Score", best:"Best Score", bm:"Bookmarks", history:"Test History", no_data:"No tests taken yet. Take a mock test to see your history here.", by_cat:"Questions by Category", saved:"Saved Questions", share_title:"Share with Friends", share_sub:"Help your friends pass their RTO exam too!" },
+    common: { offline:"⚠️ You are offline. Using saved data.", install:"Install App", share:"Share", close:"Close", disclaimer:"⚠️ This is NOT an official government app. For official info visit parivahan.gov.in." }
+  },
+  hi: {
+    nav: { home:"🏠 होम", practice:"📚 अभ्यास", test:"✏️ Mock Test", dashboard:"📊 डैशबोर्ड" },
+    home: { badge:"🏆 भारत का विश्वसनीय RTO परीक्षा Platform", btn_practice:"📚 अभ्यास शुरू करें", btn_test:"✏️ Mock Test दें", stat_q:"प्रश्न", stat_cat:"विषय", stat_st:"राज्य", stat_lang:"भाषाएं", stat_free:"हमेशा Free" },
+    practice: { title:"अभ्यास प्रश्न", all:"सभी विषय", prev:"← पिछला", next:"अगला →", bookmark:"🔖 सेव करें", bookmarked:"🔖 सेव किया ✓", explanation:"📖 समझाइश", correct:"✅ सही!", wrong:"❌ गलत जवाब", share_wa:"📤 WhatsApp पर शेयर करें" },
+    test: { title:"Mock Test", start:"🚀 Test शुरू करें", submit:"Test जमा करें", time_left:"बचा समय", q_of:"प्रश्न {current} / {total}", confirm_submit:"क्या आप Test जमा करना चाहते हैं?", progress:"Progress" },
+    result: { title:"आपका Result", passed:"🎉 पास!", failed:"😔 पास नहीं हुए", correct:"सही", wrong:"गलत", skipped:"छोड़े", time_taken:"लगा समय", review:"📋 उत्तर देखें", retry:"🔄 फिर से Test दें", share_result:"📤 Result शेयर करें", share_app:"📤 App शेयर करें", passing_score:"Pass Score" },
+    dashboard: { title:"डैशबोर्ड", tests:"Tests दिए", avg:"औसत Score", best:"सबसे अच्छा Score", bm:"Save प्रश्न", history:"हाल के Tests", no_data:"अभी तक कोई Data नहीं। Mock Test दें।", by_cat:"विषय अनुसार प्रश्न", saved:"सेव किए प्रश्न", share_title:"दोस्तों के साथ शेयर करें", share_sub:"अपने दोस्तों को भी RTO Exam पास करने में मदद करें!" },
+    common: { offline:"⚠️ आप Offline हैं। Saved Data से चल रहा है।", install:"App Install करें", share:"शेयर करें", close:"बंद करें", disclaimer:"⚠️ यह कोई सरकारी App नहीं है।" }
+  },
+  gu: {
+    nav: { home:"🏠 હોમ", practice:"📚 પ્રેક્ટિસ", test:"✏️ Mock Test", dashboard:"📊 ડેશબોર્ડ" },
+    home: { badge:"🏆 ભારતનું વિશ્વસનીય RTO પરીક્ષા Platform", btn_practice:"📚 પ્રેક્ટિસ શરૂ કરો", btn_test:"✏️ Mock Test આપો", stat_q:"સવાલ", stat_cat:"વિષય", stat_st:"રાજ્ય", stat_lang:"ભાષા", stat_free:"હંમેશા Free" },
+    practice: { title:"પ્રેક્ટિસ સવાલ", all:"બધા વિષય", prev:"← પાછળ", next:"આગળ →", bookmark:"🔖 Save કરો", bookmarked:"🔖 Save થયું ✓", explanation:"📖 સમજૂતી", correct:"✅ સાચો!", wrong:"❌ ખોટો જવાબ", share_wa:"📤 WhatsApp પર Share કરો" },
+    test: { title:"Mock Test", start:"🚀 Test શરૂ કરો", submit:"Test Submit કરો", time_left:"બચ્યો સમય", q_of:"સવાલ {current} / {total}", confirm_submit:"શું તમે Test Submit કરવા માગો છો?", progress:"Progress" },
+    result: { title:"તમારું Result", passed:"🎉 પાસ!", failed:"😔 પાસ ન થયા", correct:"સાચા", wrong:"ખોટા", skipped:"છોડ્યા", time_taken:"લાગેલો સમય", review:"📋 જવાબ જુઓ", retry:"🔄 ફરી Test આપો", share_result:"📤 Result Share કરો", share_app:"📤 App Share કરો", passing_score:"Pass Score" },
+    dashboard: { title:"ડેશબોર્ડ", tests:"Test આપ્યા", avg:"સરેરાશ Score", best:"સૌથી વધારે Score", bm:"Save સવાલ", history:"તાજેતરના Test", no_data:"હજી સુધી Data નથી. Mock Test આપો.", by_cat:"વિષય પ્રમાણે સવાલ", saved:"Save કરેલ સવાલ", share_title:"મિત્રો સાથે Share કરો", share_sub:"તમારા મિત્રોને પણ RTO Exam પાસ કરવામાં મદદ કરો!" },
+    common: { offline:"⚠️ તમે Offline છો. Saved Data વપરાય છે.", install:"App Install કરો", share:"Share કરો", close:"બંધ કરો", disclaimer:"⚠️ આ કોઈ સરકારી App નથી." }
+  }
+};
+
+// fallback to english for unsupported langs
+function t(path, lang) {
+  const keys = path.split('.');
+  let obj = I18N[lang] || I18N['en'];
+  for (const k of keys) { obj = obj && obj[k]; }
+  if (obj === undefined) {
+    let fallback = I18N['en'];
+    for (const k of keys) { fallback = fallback && fallback[k]; }
+    return fallback || path;
+  }
+  return obj;
+}
+
+/* ════════════════════════════════════════════════════════════
+   APP STATE
+════════════════════════════════════════════════════════════ */
+const appState = {
+  lang: localStorage.getItem('rto_lang') || 'en',
+  selectedState: 'Gujarat',
+  currentCat: 'All',
+  practiceIndex: 0,
+  selectedAnswers: {},
+  bookmarks: JSON.parse(localStorage.getItem('rto_bookmarks') || '[]'),
+  history: JSON.parse(localStorage.getItem('rto_history') || '[]'),
+  testQuestions: [],
+  testAnswers: {},
+  testIndex: 0,
+  timeLeft: 1200,
+  timerInterval: null,
+  lastResult: null
+};
+
+const CATEGORIES = [...new Set(QUESTIONS.map(q => q.category))];
+const PASS_SCORE = 70;
+const TEST_DURATION = 1200; // 20 min in seconds
+
+/* ════════════════════════════════════════════════════════════
+   PAGE NAVIGATION
+════════════════════════════════════════════════════════════ */
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.mnav-btn').forEach(t => t.classList.remove('active'));
+  const page = document.getElementById('page-' + id);
+  if (page) page.classList.add('active');
+  document.querySelectorAll(`[data-page="${id}"]`).forEach(el => el.classList.add('active'));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  if (id === 'practice') renderPractice();
+  if (id === 'dashboard') renderDashboard();
+}
+
+/* ════════════════════════════════════════════════════════════
+   i18n — LANGUAGE SYSTEM
+════════════════════════════════════════════════════════════ */
+function setLang(lang) {
+  if (!lang) return;
+  appState.lang = lang;
+  localStorage.setItem('rto_lang', lang);
+  document.getElementById('header-lang').value = lang;
+  document.getElementById('hero-lang').value = lang;
+  // Update nav tabs
+  document.querySelector('[data-page="home"]').textContent = t('nav.home', lang);
+  document.querySelector('[data-page="practice"]').textContent = t('nav.practice', lang);
+  document.querySelector('[data-page="test-setup"]').textContent = t('nav.test', lang);
+  document.querySelectorAll('[data-page="dashboard"]').forEach(el => el.textContent = t('nav.dashboard', lang));
+  // Update home stats
+  document.getElementById('stat-q').textContent = t('home.stat_q', lang);
+  document.getElementById('stat-cat').textContent = t('home.stat_cat', lang);
+  document.getElementById('stat-st').textContent = t('home.stat_st', lang);
+  document.getElementById('stat-lang').textContent = t('home.stat_lang', lang);
+  document.getElementById('stat-free').textContent = t('home.stat_free', lang);
+  // offline
+  document.getElementById('offline-banner').textContent = t('common.offline', lang);
+  showToast('Language changed!', 'info');
+}
+
+/* ════════════════════════════════════════════════════════════
+   PRACTICE
+════════════════════════════════════════════════════════════ */
+function filterCat(cat) {
+  appState.currentCat = cat || 'All';
+  appState.practiceIndex = 0;
+  appState.selectedAnswers = {};
+  renderPractice();
+}
+
+function renderPractice() {
+  const lang = appState.lang;
+  const filtered = appState.currentCat === 'All' ? QUESTIONS : QUESTIONS.filter(q => q.category === appState.currentCat);
+
+  // Category buttons
+  const cats = ['All', ...CATEGORIES];
+  document.getElementById('cat-grid').innerHTML = cats.map(c =>
+    `<button class="cat-btn ${appState.currentCat === c ? 'active' : ''}" onclick="filterCat('${c}')">${c === 'All' ? t('practice.all', lang) : c}</button>`
+  ).join('');
+
+  if (!filtered.length) {
+    document.getElementById('practice-container').innerHTML = `<div class="empty"><div class="icon">🔍</div><p>No questions in this category.</p></div>`;
+    return;
+  }
+
+  const idx = Math.min(appState.practiceIndex, filtered.length - 1);
+  appState.practiceIndex = idx;
+  const q = filtered[idx];
+  const letters = ['A','B','C','D'];
+  const answered = appState.selectedAnswers[q.id];
+  const bm = appState.bookmarks.includes(q.id);
+  const pct = Math.round(((idx + 1) / filtered.length) * 100);
+
+  document.getElementById('practice-container').innerHTML = `
+    <div class="q-card">
+      <div class="q-meta">
+        <span class="q-num">${t('practice.all', lang) !== 'All Categories' ? '' : ''}Q ${idx+1} / ${filtered.length}</span>
+        <span class="q-cat">${q.category}</span>
+      </div>
+      <div class="q-progress"><div class="q-progress-fill" style="width:${pct}%"></div></div>
+      <div class="question-text">${q.question}</div>
+      <div class="options-list">
+        ${q.options.map((opt, i) => {
+          let cls = '';
+          if (answered !== undefined) {
+            if (i === q.answer) cls = 'correct';
+            else if (i === answered) cls = 'wrong';
+          }
+          return `<button class="option-btn ${cls}" onclick="answerPractice(${q.id},${i})" ${answered !== undefined ? 'disabled' : ''}>
+            <span class="option-letter">${letters[i]}</span>${opt}
+          </button>`;
+        }).join('')}
+      </div>
+      <div class="explanation-box ${answered !== undefined ? 'show' : ''}" id="exp-box">
+        ${answered !== undefined ? (answered === q.answer ? `<strong>${t('practice.correct', lang)}</strong> ` : `<strong>${t('practice.wrong', lang)}</strong> `) : ''}
+        📖 ${q.explanation}
+      </div>
+      <div class="q-actions">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="bookmark-btn ${bm ? 'bookmarked' : ''}" onclick="toggleBookmark(${q.id})" id="bm-${q.id}">
+            ${bm ? t('practice.bookmarked', lang) : t('practice.bookmark', lang)}
+          </button>
+          <button class="wa-share-btn" onclick="shareQuestion(${q.id})">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+            WhatsApp
+          </button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-outline btn-sm" onclick="navPractice(-1)" ${idx === 0 ? 'disabled' : ''}>${t('practice.prev', lang)}</button>
+          <button class="btn btn-primary btn-sm" onclick="navPractice(1)" ${idx === filtered.length-1 ? 'disabled' : ''}>${t('practice.next', lang)}</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function answerPractice(qId, optIdx) {
+  appState.selectedAnswers[qId] = optIdx;
+  renderPractice();
+}
+
+function navPractice(dir) {
+  const filtered = appState.currentCat === 'All' ? QUESTIONS : QUESTIONS.filter(q => q.category === appState.currentCat);
+  appState.practiceIndex = Math.max(0, Math.min(filtered.length - 1, appState.practiceIndex + dir));
+  renderPractice();
+}
+
+function toggleBookmark(qId) {
+  const idx = appState.bookmarks.indexOf(qId);
+  if (idx === -1) {
+    appState.bookmarks.push(qId);
+    showToast('Question bookmarked!', 'success');
+  } else {
+    appState.bookmarks.splice(idx, 1);
+    showToast('Bookmark removed', 'info');
+  }
+  localStorage.setItem('rto_bookmarks', JSON.stringify(appState.bookmarks));
+  renderPractice();
+}
+
+function shareQuestion(qId) {
+  const q = QUESTIONS.find(q => q.id === qId);
+  if (!q) return;
+  const text = `📝 RTO Exam Question:\n\n*${q.question}*\n\n✅ Answer: ${String.fromCharCode(65 + q.answer)}. ${q.options[q.answer]}\n📂 Category: ${q.category}\n\nPractice more FREE: https://www.kspiderai.in\nPowered by *KSpiderAI* 🕷️`;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
+/* ════════════════════════════════════════════════════════════
+   MOCK TEST
+════════════════════════════════════════════════════════════ */
+function startTest() {
+  const count = parseInt(document.getElementById('test-count').value);
+  const cat = document.getElementById('test-cat').value;
+  let pool = cat ? QUESTIONS.filter(q => q.category === cat) : QUESTIONS;
+  // shuffle
+  pool = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(count, pool.length));
+  appState.testQuestions = pool;
+  appState.testAnswers = {};
+  appState.testIndex = 0;
+  appState.timeLeft = TEST_DURATION;
+  // Start timer
+  clearInterval(appState.timerInterval);
+  appState.timerInterval = setInterval(tickTimer, 1000);
+  renderTestQ();
+  renderPalette();
+  showPage('test-active');
+}
+
+function tickTimer() {
+  appState.timeLeft--;
+  const m = Math.floor(appState.timeLeft / 60);
+  const s = appState.timeLeft % 60;
+  const el = document.getElementById('timer');
+  if (el) {
+    el.textContent = `⏱️ ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    el.className = 'timer' + (appState.timeLeft <= 120 ? ' warning' : '');
+  }
+  if (appState.timeLeft <= 0) { clearInterval(appState.timerInterval); submitTest(); }
+}
+
+function renderTestQ() {
+  const qs = appState.testQuestions;
+  const idx = appState.testIndex;
+  const q = qs[idx];
+  const letters = ['A','B','C','D'];
+  const pct = Math.round(((idx + 1) / qs.length) * 100);
+  const answered = appState.testAnswers[idx];
+
+  document.getElementById('test-progress').style.width = pct + '%';
+  document.getElementById('test-counter').textContent = `Q ${idx+1} / ${qs.length}`;
+
+  document.getElementById('test-container').innerHTML = `
+    <div class="q-card">
+      <div class="q-meta">
+        <span class="q-num">Question ${idx+1}</span>
+        <span class="q-cat">${q.category}</span>
+      </div>
+      <div class="question-text">${q.question}</div>
+      <div class="options-list">
+        ${q.options.map((opt, i) => {
+          const sel = answered === i;
+          return `<button class="option-btn" onclick="selectTestAns(${i})"
+            style="${sel ? 'border-color:var(--primary);background:#eff6ff;' : ''}">
+            <span class="option-letter">${letters[i]}</span>${opt}
+          </button>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+  const prevBtn = document.getElementById('test-prev');
+  const nextBtn = document.getElementById('test-next');
+  if (prevBtn) prevBtn.disabled = idx === 0;
+  if (nextBtn) {
+    if (idx === qs.length - 1) {
+      nextBtn.textContent = '🏁 Submit Test';
+      nextBtn.onclick = () => confirmSubmit();
+    } else {
+      nextBtn.textContent = 'Next →';
+      nextBtn.onclick = () => testNav(1);
+    }
+  }
+  renderPalette();
+}
+
+function renderPalette() {
+  const qs = appState.testQuestions;
+  document.getElementById('q-palette').innerHTML = qs.map((q, i) =>
+    `<button class="palette-btn ${appState.testAnswers[i] !== undefined ? 'answered' : ''} ${i === appState.testIndex ? 'current' : ''}"
+      onclick="appState.testIndex=${i};renderTestQ()">${i+1}</button>`
+  ).join('');
+}
+
+function selectTestAns(i) {
+  appState.testAnswers[appState.testIndex] = i;
+  renderTestQ();
+}
+
+function testNav(dir) {
+  appState.testIndex = Math.max(0, Math.min(appState.testQuestions.length - 1, appState.testIndex + dir));
+  renderTestQ();
+}
+
+function confirmSubmit() {
+  const lang = appState.lang;
+  showModal(t('test.title', lang), t('test.confirm_submit', lang), submitTest);
+}
+
+function confirmEnd() {
+  showModal('End Test?', 'Are you sure you want to end the test? Your current answers will be submitted.', submitTest);
+}
+
+function submitTest() {
+  clearInterval(appState.timerInterval);
+  const timeTaken = TEST_DURATION - appState.timeLeft;
+  const m = Math.floor(timeTaken / 60), s = timeTaken % 60;
+  const timeStr = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+
+  let correct = 0, wrong = 0, skipped = 0;
+  appState.testQuestions.forEach((q, i) => {
+    if (appState.testAnswers[i] === undefined) skipped++;
+    else if (appState.testAnswers[i] === q.answer) correct++;
+    else wrong++;
+  });
+
+  const total = appState.testQuestions.length;
+  const pct = Math.round((correct / total) * 100);
+  const passed = pct >= PASS_SCORE;
+  const lang = appState.lang;
+
+  appState.lastResult = { correct, wrong, skipped, total, pct, passed };
+
+  // Save history
+  const rec = { date: new Date().toLocaleDateString('en-IN'), pct, correct, wrong, skipped, total, time: timeStr, passed };
+  appState.history.unshift(rec);
+  if (appState.history.length > 20) appState.history = appState.history.slice(0, 20);
+  localStorage.setItem('rto_history', JSON.stringify(appState.history));
+
+  // Render result
+  document.getElementById('result-hero').className = 'result-hero ' + (passed ? 'pass' : 'fail');
+  document.getElementById('result-score').textContent = pct + '%';
+  document.getElementById('result-label').textContent = passed ? t('result.passed', lang) : t('result.failed', lang);
+  document.getElementById('result-sub').textContent = passed
+    ? `Congratulations! You scored ${pct}%. You are ready for the RTO exam!`
+    : `You scored ${pct}%. Pass mark is ${PASS_SCORE}%. Keep practicing!`;
+  document.getElementById('r-correct').textContent = correct;
+  document.getElementById('r-wrong').textContent = wrong;
+  document.getElementById('r-time').textContent = timeStr;
+
+  // WhatsApp result share
+  document.getElementById('wa-result-btn').onclick = () => shareResult(pct, correct, wrong, skipped);
+
+  // Draw donut chart
+  drawDonut('donut-chart', { correct, wrong, skipped });
+
+  // Draw bar chart if history
+  if (appState.history.length > 1) {
+    document.getElementById('history-bar-wrap').style.display = 'block';
+    drawBarChart('bar-chart', appState.history.slice(0, 5).reverse());
+  }
+
+  // Review list
+  const letters = ['A','B','C','D'];
+  document.getElementById('review-list').innerHTML = appState.testQuestions.map((q, i) => {
+    const userAns = appState.testAnswers[i];
+    const isRight = userAns === q.answer;
+    const isSkipped = userAns === undefined;
+    return `<div class="review-item">
+      <div class="r-q">${i+1}. ${q.question}</div>
+      <div class="r-ans">
+        <span class="badge ${isSkipped ? 'badge-skip' : isRight ? 'badge-correct' : 'badge-wrong'}">
+          ${isSkipped ? '⏭️ Skipped' : isRight ? '✅ Correct' : '❌ Wrong'}
+        </span>
+        <span style="font-size:0.78rem;color:var(--muted)">
+          ${isSkipped ? '' : `Your: ${letters[userAns]}. ${q.options[userAns]} | `}
+          ✅ Correct: ${letters[q.answer]}. ${q.options[q.answer]}
+        </span>
+      </div>
+    </div>`;
+  }).join('');
+
+  showPage('result');
+}
+
+/* ════════════════════════════════════════════════════════════
+   CHARTS (Pure Canvas — No external libs)
+════════════════════════════════════════════════════════════ */
+function drawDonut(canvasId, { correct, wrong, skipped }) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width = 200, H = canvas.height = 200;
+  const cx = W/2, cy = H/2, r = 80, inner = 50;
+  const total = correct + wrong + skipped || 1;
+  const slices = [
+    { val: correct, color: '#22c55e' },
+    { val: wrong,   color: '#ef4444' },
+    { val: skipped, color: '#94a3b8' }
+  ].filter(s => s.val > 0);
+  ctx.clearRect(0, 0, W, H);
+  let start = -Math.PI / 2;
+  slices.forEach(slice => {
+    const sweep = (slice.val / total) * 2 * Math.PI;
+    ctx.beginPath(); ctx.moveTo(cx, cy);
+    ctx.arc(cx, cy, r, start, start + sweep); ctx.closePath();
+    ctx.fillStyle = slice.color; ctx.fill();
+    start += sweep;
+  });
+  // Donut hole
+  ctx.beginPath(); ctx.arc(cx, cy, inner, 0, 2*Math.PI);
+  ctx.fillStyle = '#ffffff'; ctx.fill();
+  // Center text
+  const pct = Math.round((correct / total) * 100);
+  ctx.fillStyle = '#1e3a5f'; ctx.font = 'bold 26px sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(`${pct}%`, cx, cy - 8);
+  ctx.font = '12px sans-serif'; ctx.fillStyle = '#64748b';
+  ctx.fillText('Score', cx, cy + 14);
+}
+
+function drawBarChart(canvasId, history) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas || !history.length) return;
+  const ctx = canvas.getContext('2d');
+  const W = canvas.offsetWidth || 600, H = 120;
+  canvas.width = W; canvas.height = H;
+  ctx.clearRect(0, 0, W, H);
+  const pad = 10, barW = Math.min(60, (W - pad*2) / history.length - 8);
+  const spacing = (W - pad*2) / history.length;
+  history.forEach((rec, i) => {
+    const x = pad + i * spacing + (spacing - barW) / 2;
+    const barH = Math.round((rec.pct / 100) * (H - 30));
+    ctx.fillStyle = rec.passed ? '#22c55e' : '#ef4444';
+    ctx.beginPath();
+    ctx.roundRect ? ctx.roundRect(x, H - barH - 20, barW, barH, 4) : ctx.rect(x, H - barH - 20, barW, barH);
+    ctx.fill();
+    ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`${rec.pct}%`, x + barW/2, H - barH - 24);
+    ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif';
+    const d = rec.date.split('/'); ctx.fillText(d[0]+'/'+d[1], x + barW/2, H - 5);
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════════════════════════ */
+function renderDashboard() {
+  const h = appState.history;
+  const lang = appState.lang;
+  document.getElementById('d-tests').textContent = h.length;
+  document.getElementById('d-bookmarks').textContent = appState.bookmarks.length;
+
+  if (h.length) {
+    const avg = Math.round(h.reduce((s, r) => s + r.pct, 0) / h.length);
+    const best = Math.max(...h.map(r => r.pct));
+    document.getElementById('d-avg').textContent = avg + '%';
+    document.getElementById('d-best').textContent = best + '%';
+  } else {
+    document.getElementById('d-avg').textContent = '—';
+    document.getElementById('d-best').textContent = '—';
+  }
+
+  // Category chart
+  document.getElementById('cat-chart').innerHTML = CATEGORIES.map(cat => {
+    const qs = QUESTIONS.filter(q => q.category === cat);
+    return `<div class="bar-row">
+      <div class="bar-label">${cat.length > 14 ? cat.slice(0,12)+'…' : cat}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round((qs.length/QUESTIONS.length)*100*3)}%"></div></div>
+      <div class="bar-val">${qs.length}q</div>
+    </div>`;
+  }).join('');
+
+  // History
+  const histEl = document.getElementById('history-list');
+  if (!h.length) {
+    histEl.innerHTML = `<div class="empty"><div class="icon">📝</div><p>${t('dashboard.no_data', lang)}</p></div>`;
+  } else {
+    histEl.innerHTML = h.map(r => `
+      <div class="history-item">
+        <div>
+          <div class="h-score ${r.passed ? 'pass-c' : 'fail-c'}">${r.pct}% ${r.passed ? '✅' : '❌'}</div>
+          <div class="h-meta">${r.date} · ${r.correct}/${r.total} correct · ${r.time}</div>
+        </div>
+        <span class="badge ${r.passed ? 'badge-correct' : 'badge-wrong'}">${r.passed ? 'PASSED' : 'FAILED'}</span>
+      </div>`).join('');
+  }
+
+  // Bookmarks
+  const bmEl = document.getElementById('bookmarks-list');
+  if (!appState.bookmarks.length) {
+    bmEl.innerHTML = `<div class="empty"><div class="icon">🔖</div><p>No bookmarks yet. Bookmark questions during practice.</p></div>`;
+  } else {
+    bmEl.innerHTML = appState.bookmarks.map(id => {
+      const q = QUESTIONS.find(q => q.id === id);
+      if (!q) return '';
+      return `<div class="bookmark-item">
+        <div>
+          <div class="bq">${q.question}</div>
+          <div class="bc">${q.category} · ✅ ${q.options[q.answer]}</div>
+        </div>
+        <button class="remove-bm" onclick="removeBookmark(${id})" title="Remove">✕</button>
+      </div>`;
+    }).join('');
+  }
+}
+
+function removeBookmark(id) {
+  appState.bookmarks = appState.bookmarks.filter(b => b !== id);
+  localStorage.setItem('rto_bookmarks', JSON.stringify(appState.bookmarks));
+  renderDashboard();
+  showToast('Bookmark removed', 'info');
+}
+
+function clearHistory() {
+  showModal('Clear History?', 'This will delete all your test history. This cannot be undone.', () => {
+    appState.history = [];
+    localStorage.setItem('rto_history', '[]');
+    renderDashboard();
+    closeModal();
+    showToast('History cleared', 'info');
+  });
+}
+
+/* ════════════════════════════════════════════════════════════
+   WHATSAPP SHARING
+════════════════════════════════════════════════════════════ */
+const APP_URL = 'https://www.kspiderai.in';
+
+function shareResult(score, correct, wrong, skipped) {
+  const lang = appState.lang;
+  const msgs = {
+    en: `🚗 I scored *${score}%* on RTO Exam Pro Mock Test!\n✅ Correct: ${correct} | ❌ Wrong: ${wrong} | ⏭️ Skipped: ${skipped}\n\nPractice FREE: ${APP_URL}\n\nPowered by *KSpiderAI* 🕷️`,
+    hi: `🚗 मैंने RTO Exam Pro Mock Test में *${score}%* Score किया!\n✅ सही: ${correct} | ❌ गलत: ${wrong} | ⏭️ छोड़े: ${skipped}\n\nFREE Practice करें: ${APP_URL}\n\nPowered by *KSpiderAI* 🕷️`,
+    gu: `🚗 મેં RTO Exam Pro Mock Test માં *${score}%* Score કર્યો!\n✅ સાચા: ${correct} | ❌ ખોટા: ${wrong} | ⏭️ છોડ્યા: ${skipped}\n\nFREE Practice કરો: ${APP_URL}\n\nPowered by *KSpiderAI* 🕷️`
+  };
+  const text = msgs[lang] || msgs.en;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
+function shareApp() {
+  const lang = appState.lang;
+  const msgs = {
+    en: `📚 Preparing for your Driving Licence exam?\n\nTry *RTO Exam Pro* — FREE practice tests in 9 Indian Languages!\n✅ 30+ Questions\n⏱️ Timed Mock Tests\n📊 Progress Tracking\n🔖 Bookmarks\n\n🔗 ${APP_URL}\n\nPowered by *KSpiderAI* 🕷️`,
+    hi: `📚 Driving Licence Exam की तैयारी कर रहे हैं?\n\n*RTO Exam Pro* Try करें — 9 भाषाओं में FREE Practice!\n✅ 30+ प्रश्न\n⏱️ Timed Mock Tests\n📊 Progress Tracking\n\n🔗 ${APP_URL}\n\nPowered by *KSpiderAI* 🕷️`,
+    gu: `📚 Driving Licence Exam ની તૈયારી કરો છો?\n\n*RTO Exam Pro* Try કરો — 9 ભારતીય ભાષાઓ માં FREE Practice!\n✅ 30+ સવાલ\n⏱️ Timed Mock Tests\n📊 Progress Tracking\n\n🔗 ${APP_URL}\n\nPowered by *KSpiderAI* 🕷️`
+  };
+  const text = msgs[lang] || msgs.en;
+  window.open('https://wa.me/?text=' + encodeURIComponent(text), '_blank', 'noopener');
+}
+
+/* ════════════════════════════════════════════════════════════
+   MODAL
+════════════════════════════════════════════════════════════ */
+function showModal(title, msg, onConfirm) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-msg').textContent = msg;
+  document.getElementById('modal-confirm').onclick = () => { onConfirm(); closeModal(); };
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+
+/* ════════════════════════════════════════════════════════════
+   TOAST
+════════════════════════════════════════════════════════════ */
+function showToast(msg, type = 'info') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, 2500);
+}
+
+/* ════════════════════════════════════════════════════════════
+   PWA — INSTALL PROMPT
+════════════════════════════════════════════════════════════ */
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  setTimeout(() => document.getElementById('pwa-banner').classList.add('show'), 3000);
+});
+document.getElementById('pwa-install-btn').addEventListener('click', async () => {
+  if (deferredPrompt) {
+    deferredPrompt.prompt();
+    const result = await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('pwa-banner').classList.remove('show');
+    if (result.outcome === 'accepted') showToast('App installed! 🎉', 'success');
+  }
+});
+document.getElementById('pwa-close').addEventListener('click', () => {
+  document.getElementById('pwa-banner').classList.remove('show');
+});
+
+/* ════════════════════════════════════════════════════════════
+   OFFLINE DETECTION
+════════════════════════════════════════════════════════════ */
+function updateOnlineStatus() {
+  const banner = document.getElementById('offline-banner');
+  if (!navigator.onLine) banner.classList.add('show');
+  else banner.classList.remove('show');
+}
+window.addEventListener('online', updateOnlineStatus);
+window.addEventListener('offline', updateOnlineStatus);
+updateOnlineStatus();
+
+/* ════════════════════════════════════════════════════════════
+   SECURITY
+════════════════════════════════════════════════════════════ */
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key)) || (e.ctrlKey && e.key === 'U'))
+    e.preventDefault();
+});
+
+/* ════════════════════════════════════════════════════════════
+   ANALYTICS (Lightweight — no external)
+════════════════════════════════════════════════════════════ */
+const Analytics = {
+  log(event, data = {}) {
+    try {
+      const logs = JSON.parse(localStorage.getItem('rto_analytics') || '[]');
+      logs.push({ event, data, ts: Date.now() });
+      if (logs.length > 100) logs.splice(0, logs.length - 100);
+      localStorage.setItem('rto_analytics', JSON.stringify(logs));
+    } catch(e) {}
+  }
+};
+
+/* ════════════════════════════════════════════════════════════
+   INIT
+════════════════════════════════════════════════════════════ */
+document.getElementById('yr').textContent = new Date().getFullYear();
+
+// Populate test category select
+const testCatSel = document.getElementById('test-cat');
+CATEGORIES.forEach(c => {
+  const o = document.createElement('option');
+  o.value = c; o.textContent = c;
+  testCatSel.appendChild(o);
+});
+
+// Restore language
+if (appState.lang !== 'en') {
+  setLang(appState.lang);
+}
+
+// Modal close on overlay click
+document.getElementById('modal').addEventListener('click', function(e) { if (e.target === this) closeModal(); });
+
+// Analytics — page view
+Analytics.log('app_open', { lang: appState.lang });
+
+// Service Worker registration (for PWA offline support)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    // SW would be registered here in multi-file version
+    // In single-file mode, PWA install prompt still works
+  });
+}
+</script>
+</body>
+</html>
