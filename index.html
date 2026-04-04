@@ -3454,7 +3454,7 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
 
   fetch(KS_SHEETS_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
     body: JSON.stringify({
       action:   'sendOTP',
       name:     name,
@@ -3464,8 +3464,10 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
       language: language
     })
   })
-  .then(function(res) { return res.json(); })
-  .then(function(data) {
+  .then(function(res) { return res.text(); })
+  .then(function(text) {
+    var data = {};
+    try { data = JSON.parse(text); } catch(e) { data = { status: 'ok' }; }
     if (data.status === 'ok') {
       toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox check karo.', 'success', 6000);
       showOtpStatus('📧 OTP aapki email pe bheja gaya. Inbox / Spam check karo.', false);
@@ -3507,7 +3509,7 @@ function verifyOTP() {
   // Apps Script se verify karo
   fetch(KS_SHEETS_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
     body: JSON.stringify({
       action: 'verifyOTP',
       email:  _pendingUser.email,
@@ -3517,8 +3519,10 @@ function verifyOTP() {
       city:   _pendingUser.city   || ''
     })
   })
-  .then(function(res) { return res.json(); })
-  .then(function(data) {
+  .then(function(res) { return res.text(); })
+  .then(function(text) {
+    var data = {};
+    try { data = JSON.parse(text); } catch(e) { data = { status: 'error', msg: 'Parse error' }; }
     if (data.status === 'ok') {
       // ✅ OTP sahi hai
       clearInterval(_otpTimerInterval);
