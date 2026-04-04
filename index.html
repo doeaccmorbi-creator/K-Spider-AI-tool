@@ -2858,34 +2858,112 @@ function initFirebase() {
 }
 
 /* ── Firebase: User save karo ── */
+// ══════════════════════════════════════════════════════
+// GOOGLE SHEETS AUTO-SYNC — Web App URL yahan daalo
+// Google Apps Script deploy karke URL paste karo
+// ══════════════════════════════════════════════════════
+var KS_SHEETS_URL = 'https://script.google.com/macros/s/AKfycby8x_dzQL-D6AqVcxMNhf4cydAUp-RbJ1WVURY-8zO_DSIo4Rc78trrWl8J9hb_mHiq/exec';
+
+function syncUserToGoogleSheets(userData) {
+  if (!KS_SHEETS_URL || KS_SHEETS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') return;
+  try {
+    fetch(KS_SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'addOrUpdateUser',
+        name:         userData.name || '',
+        email:        userData.email || '',
+        mobile:       userData.mobile || '',
+        city:         userData.city || '',
+        language:     userData.language || 'en',
+        verified:     userData.verified || false,
+        planType:     userData.planType || 'free',
+        registeredAt: userData.registeredAt || new Date().toISOString(),
+        verifiedAt:   userData.verifiedAt || '',
+        loginCount:   userData.loginCount || 1,
+        lastLogin:    new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }),
+        source:       'kspiderai.in'
+      })
+    }).then(function(){ console.log('[KSpider] Google Sheets sync ✅'); })
+      .catch(function(e){ console.warn('[KSpider] Sheets sync failed:', e); });
+  } catch(e) { console.warn('[KSpider] Sheets sync error:', e); }
+}
+
 function saveUserToFirebase(userData, callback) {
   if (!initFirebase() || !_db) { if (callback) callback(false); return; }
   var key = userData.email.replace(/[.#$\/\[\]]/g, '_');
-  _db.collection('users').doc(key).set({
-    name:          userData.name,
-    email:         userData.email,
-    mobile:        userData.mobile,
-    city:          userData.city || '',
-    language:      userData.language || 'en',
-    verified:      userData.verified || false,
-    registeredAt:  userData.registeredAt,
-    verifiedAt:    userData.verifiedAt || null,
-    toolsUsed:     userData.toolsUsed || 0,
-    premium:       userData.premium || false,
-    planType:      userData.planType || 'free',
-    planExpiry:    userData.planExpiry || null,
-    paymentStatus: userData.paymentStatus || 'none',
-    paidAmount:    userData.paidAmount || 0,
-    lastSeen:      new Date().toISOString(),
-    source:        'kspiderai.in'
-  }, { merge: true })
-  .then(function() {
-    console.log('[KSpider] User saved to Firebase ✅');
-    if (callback) callback(true);
-  })
-  .catch(function(err) {
-    console.error('[KSpider] Firebase save error:', err);
-    if (callback) callback(false);
+
+  // ── Login count increment karo ──
+  _db.collection('users').doc(key).get().then(function(existingDoc) {
+    var prevLoginCount = 0;
+    var prevLastLogin  = null;
+    if (existingDoc.exists) {
+      var d = existingDoc.data();
+      prevLoginCount = d.loginCount || 0;
+      prevLastLogin  = d.lastLogin  || null;
+    }
+    var newLoginCount = userData.verified ? prevLoginCount + 1 : prevLoginCount;
+
+    _db.collection('users').doc(key).set({
+      name:          userData.name,
+      email:         userData.email,
+      mobile:        userData.mobile,
+      city:          userData.city || '',
+      language:      userData.language || 'en',
+      verified:      userData.verified || false,
+      registeredAt:  userData.registeredAt,
+      verifiedAt:    userData.verifiedAt || null,
+      toolsUsed:     userData.toolsUsed || 0,
+      premium:       userData.premium || false,
+      planType:      userData.planType || 'free',
+      planExpiry:    userData.planExpiry || null,
+      paymentStatus: userData.paymentStatus || 'none',
+      paidAmount:    userData.paidAmount || 0,
+      lastSeen:      new Date().toISOString(),
+      loginCount:    newLoginCount,
+      lastLogin:     userData.verified ? new Date().toISOString() : (prevLastLogin || null),
+      source:        'kspiderai.in'
+    }, { merge: true })
+    .then(function() {
+      console.log('[KSpider] User saved to Firebase ✅');
+      // Google Sheets sync karo
+      syncUserToGoogleSheets(Object.assign({}, userData, { loginCount: newLoginCount }));
+      if (callback) callback(true);
+    })
+    .catch(function(err) {
+      console.error('[KSpider] Firebase save error:', err);
+      if (callback) callback(false);
+    });
+  }).catch(function(err) {
+    // Fallback — without login count
+    _db.collection('users').doc(key).set({
+      name:          userData.name,
+      email:         userData.email,
+      mobile:        userData.mobile,
+      city:          userData.city || '',
+      language:      userData.language || 'en',
+      verified:      userData.verified || false,
+      registeredAt:  userData.registeredAt,
+      verifiedAt:    userData.verifiedAt || null,
+      toolsUsed:     userData.toolsUsed || 0,
+      premium:       userData.premium || false,
+      planType:      userData.planType || 'free',
+      planExpiry:    userData.planExpiry || null,
+      paymentStatus: userData.paymentStatus || 'none',
+      paidAmount:    userData.paidAmount || 0,
+      lastSeen:      new Date().toISOString(),
+      loginCount:    1,
+      source:        'kspiderai.in'
+    }, { merge: true })
+    .then(function() {
+      syncUserToGoogleSheets(Object.assign({}, userData, { loginCount: 1 }));
+      if (callback) callback(true);
+    })
+    .catch(function(err2) {
+      if (callback) callback(false);
+    });
   });
 }
 
@@ -2915,7 +2993,21 @@ function fetchUserFromFirebase(email, callback) {
   var key = email.replace(/[.#$\/\[\]]/g, '_');
   _db.collection('users').doc(key).get()
   .then(function(doc) {
-    callback(doc.exists ? doc.data() : null);
+    if (!doc.exists) { callback(null); return; }
+    var userData = doc.data();
+    // ── Login count update on every return login ──
+    var newCount = (userData.loginCount || 0) + 1;
+    var now = new Date().toISOString();
+    _db.collection('users').doc(key).update({
+      loginCount: newCount,
+      lastLogin:  now,
+      lastSeen:   now
+    }).catch(function(){});
+    userData.loginCount = newCount;
+    userData.lastLogin  = now;
+    // Google Sheets sync on login
+    syncUserToGoogleSheets(userData);
+    callback(userData);
   })
   .catch(function() { callback(null); });
 }
