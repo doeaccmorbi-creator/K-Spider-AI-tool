@@ -2862,6 +2862,9 @@ function initFirebase() {
 // GOOGLE SHEETS AUTO-SYNC — Web App URL yahan daalo
 // Google Apps Script deploy karke URL paste karo
 // ══════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════
+// GOOGLE APPS SCRIPT URL — OTP + Sheets dono kaam karta hai
+// ══════════════════════════════════════════════════════
 var KS_SHEETS_URL = 'https://script.google.com/macros/s/AKfycby8x_dzQL-D6AqVcxMNhf4cydAUp-RbJ1WVURY-8zO_DSIo4Rc78trrWl8J9hb_mHiq/exec';
 
 function syncUserToGoogleSheets(userData) {
@@ -3435,122 +3438,116 @@ function startOTPTimer() {
    MAIN FIX: sendOTPEmail — ab dedicated variables use karta hai
    EmailJS template mein {{to_name}}, {{to_email}}, {{otp_code}} use karo
    ══════════════════════════════════════════════════════ */
-function showOtpOnScreen(otp, email) {
-  // OTP seedha screen par dikhao — email pe depend nahi
-  var msgEl = document.getElementById('otp-status-msg');
-  if (msgEl) msgEl.textContent = otp;
-  var inp = document.getElementById('otp-input');
-  if (inp) { inp.value = ''; }
-  window._pendingOTP = null; // no fallback timer needed
-}
-
 /* ══════════════════════════════════════════════════════
-   ADMIN ALERT HELPER — Har event pe admin ko email bhejo
-   alert_type: 'NEW_REGISTRATION' | 'EMAIL_VERIFIED' | 'TOOL_LAUNCHED'
+   OTP SYSTEM — Google Apps Script + Gmail
+   OTP sirf email pe jaata hai — screen pe nahi dikhta
    ══════════════════════════════════════════════════════ */
-function sendAdminAlert(alertType, userData, extraInfo) {
-  var dateStr = new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
-  var alertEmoji = {'NEW_REGISTRATION':'🆕','EMAIL_VERIFIED':'✅','TOOL_LAUNCHED':'🚀','UPI_PAYMENT_SUBMITTED':'💰','PRO_PURCHASE':'🎉'}[alertType] || '📩';
-  var bodyText = [
-    alertEmoji+' '+alertType+' — K Spider AI',
-    '━━━━━━━━━━━━━━━━━━━━━━━━',
-    'Name   : '+(userData.name   ||'N/A'),
-    'Email  : '+(userData.email  ||'N/A'),
-    'Mobile : '+(userData.mobile ||'N/A'),
-    'City   : '+(userData.city   ||'N/A'),
-    'Date   : '+dateStr,
-    'Info   : '+(extraInfo||'N/A'),
-    '━━━━━━━━━━━━━━━━━━━━━━━━',
-    'Source : www.kspiderai.in'
-  ].join('\n');
-  var adminParams = {
-    to_email:    'kspider221206@gmail.com',
-    to_name:     'K Spider Admin',
-    from_name:   'K Spider AI System',
-    reply_to:    userData.email || 'noreply@kspiderai.in',
-    subject:     alertEmoji+' '+alertType+' | K Spider AI — '+(userData.name||'User'),
-    message:     bodyText,
-    alert_type:  alertEmoji+' '+alertType,
-    user_name:   userData.name   ||'N/A',
-    user_email:  userData.email  ||'N/A',
-    user_mobile: userData.mobile ||'N/A',
-    user_city:   userData.city   ||'N/A',
-    reg_date:    dateStr,
-    extra_info:  bodyText
-  };
-  function doAdminAlert(attempt) {
-    attempt = attempt || 1;
-    if (typeof emailjs === 'undefined') {
-      if (attempt <= 10) { setTimeout(function(){ doAdminAlert(attempt+1); }, 500); return; }
-      console.warn('[KSpider] EmailJS not loaded — admin alert skipped'); return;
-    }
-    try {
-      if (!window._ejsReady) {
-        emailjs.init({ publicKey: EJS_PUBLIC_KEY });
-        window._ejsReady = true;
-      }
-    } catch(e) {}
-    var ejsAdminPayload = {
-      service_id:  EJS_SERVICE,
-      template_id: EJS_ADMIN_TEMPLATE,
-      user_id:     EJS_PUBLIC_KEY,
-      accessToken: EJS_PUBLIC_KEY,
-      template_params: adminParams
-    };
-    fetch('https://api.emailjs.com/api/v1.0/email/send', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'origin': 'https://www.kspiderai.in' },
-      body: JSON.stringify(ejsAdminPayload)
-    })
-    .then(function(res) {
-      if (res.ok) { console.log('[KSpider] Admin alert sent ✅ Type:', alertType); }
-      else { return res.text().then(function(t){ throw new Error(res.status+': '+t); }); }
-    })
-    .catch(function(err) { console.warn('[KSpider] Admin alert FAILED:', alertType, err.message||err); });
-  }
-  doAdminAlert(1);
-}
 
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  // OTP seedha screen par dikhao — EmailJS free plan mein allowed origins nahi
-  showOtpOnScreen(otp, email);
-  // Admin ko Firestore se notify karo (no email needed)
-  sendAdminAlert('NEW_REGISTRATION', {name:name, email:email, mobile:mobile, city:city, language:language}, 'New user registered');
+  // OTP Apps Script ke zariye Gmail se bhejo
+  if (!KS_SHEETS_URL) {
+    toast('⚠️ OTP system setup nahi hai. Admin se contact karo.', 'warn', 5000);
+    return;
+  }
+  var btn = document.getElementById('rb');
+  if (btn) { btn.innerHTML = '<div class="sp-icon"></div> OTP bheja ja raha hai...'; btn.disabled = true; }
+
+  fetch(KS_SHEETS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action:   'sendOTP',
+      name:     name,
+      email:    email,
+      mobile:   mobile,
+      city:     city,
+      language: language
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.status === 'ok') {
+      toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox check karo.', 'success', 6000);
+      showOtpStatus('📧 OTP aapki email pe bheja gaya. Inbox / Spam check karo.', false);
+    } else {
+      toast('❌ OTP send nahi hua: ' + (data.msg||'Unknown error'), 'error', 6000);
+      showOtpStatus('OTP send nahi hua. Resend karo.', true);
+    }
+    if (btn) { btn.innerHTML = 'Register &amp; Get Free Access →'; btn.disabled = false; }
+  })
+  .catch(function(err) {
+    console.warn('[KSpider] OTP send error:', err);
+    toast('❌ Network error. Internet check karo aur resend karo.', 'error', 5000);
+    showOtpStatus('Network error. Resend karo.', true);
+    if (btn) { btn.innerHTML = 'Register &amp; Get Free Access →'; btn.disabled = false; }
+  });
+}
+
+/* Admin alert — Apps Script se */
+function sendAdminAlert(alertType, userData, extraInfo) {
+  // Admin alerts ab Apps Script handle karta hai automatically
+  // (sendOTP aur verifyOTP ke andar already hota hai)
+  console.log('[KSpider] Admin alert:', alertType, userData.email||'');
 }
 
 function verifyOTP() {
   var entered = (document.getElementById('otp-input').value || '').trim();
   hideOtpStatus();
-  if (!entered || entered.length !== 6) { showOtpStatus('Kripya 6-digit OTP darj karein.', true); return; }
-  if (!_otpCode || !_otpExpiry) { showOtpStatus('OTP nahi mila. Resend karo.', true); return; }
-  if (Date.now() > _otpExpiry) { showOtpStatus('OTP expire ho gaya. Resend karo.', true); return; }
-  if (entered !== _otpCode) { showOtpStatus('Galat OTP. Dobara try karo.', true); return; }
-
-  clearInterval(_otpTimerInterval);
-  _otpCode = null;
-  _pendingUser.verified = true;
-  _pendingUser.verifiedAt = new Date().toISOString();
-
-  // localStorage mein save (local fast access ke liye)
-  saveUser(_pendingUser);
-
-  // Firebase mein bhi save karo (permanent, cross-device)
-  saveUserToFirebase(_pendingUser, function(ok) {
-    if (ok) console.log('[KSpider] User permanently saved to Firebase ✅');
-    else console.warn('[KSpider] Firebase save failed — only localStorage saved');
-  });
-
-  closeM('otp-ov');
-
-  // Admin ko EMAIL_VERIFIED alert — alag admin template se
-  sendAdminAlert('EMAIL_VERIFIED', _pendingUser, 'User ne OTP verify kiya successfully');
-
-  updateUW();
-  toast('🎉 Welcome, ' + _pendingUser.name + '! Email verify ho gaya — K Spider AI Tools access karo!', 'success', 7000);
-  if (typeof gtag !== 'undefined') {
-    gtag('event', 'registration_verified', { event_category: 'kspider', event_label: _pendingUser.city || 'unknown' });
+  if (!entered || entered.length !== 6) {
+    showOtpStatus('Kripya 6-digit OTP darj karein.', true); return;
   }
-  _pendingUser = null;
+  if (!_pendingUser) {
+    showOtpStatus('Session expire ho gaya. Dobara register karo.', true); return;
+  }
+
+  // OTP verify button disable karo
+  var btn = document.getElementById('otp-btn');
+  if (btn) { btn.textContent = '⏳ Verifying...'; btn.disabled = true; }
+
+  // Apps Script se verify karo
+  fetch(KS_SHEETS_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      action: 'verifyOTP',
+      email:  _pendingUser.email,
+      otp:    entered,
+      name:   _pendingUser.name,
+      mobile: _pendingUser.mobile || '',
+      city:   _pendingUser.city   || ''
+    })
+  })
+  .then(function(res) { return res.json(); })
+  .then(function(data) {
+    if (data.status === 'ok') {
+      // ✅ OTP sahi hai
+      clearInterval(_otpTimerInterval);
+      _pendingUser.verified  = true;
+      _pendingUser.verifiedAt = new Date().toISOString();
+
+      saveUser(_pendingUser);
+      saveUserToFirebase(_pendingUser, function(ok) {
+        if (ok) console.log('[KSpider] User saved to Firebase ✅');
+      });
+
+      closeM('otp-ov');
+      updateUW();
+      toast('🎉 Welcome, ' + _pendingUser.name + '! Email verify ho gaya — K Spider AI Tools access karo!', 'success', 7000);
+      if (typeof gtag !== 'undefined') {
+        gtag('event', 'registration_verified', { event_category: 'kspider', event_label: _pendingUser.city || 'unknown' });
+      }
+      _pendingUser = null;
+    } else {
+      // ❌ OTP galat ya expire
+      showOtpStatus(data.msg || 'Galat OTP. Dobara try karo.', true);
+      if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
+    }
+  })
+  .catch(function(err) {
+    console.warn('[KSpider] OTP verify error:', err);
+    showOtpStatus('Network error. Internet check karo.', true);
+    if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
+  });
 }
 
 function resendOTP() {
@@ -3563,11 +3560,9 @@ function resendOTP() {
   }
   _rl['resend_otp'] = now;
   hideOtpStatus();
-  _otpCode = generateOTP();
-  _otpExpiry = Date.now() + 5 * 60 * 1000;
-  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
   startOTPTimer();
-  toast('Naya OTP ' + _pendingUser.email + ' par bheja gaya!', 'info', 5000);
+  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', '');
+  toast('📧 Naya OTP ' + _pendingUser.email + ' par bheja ja raha hai!', 'info', 5000);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -3636,30 +3631,27 @@ function submitReg(e) {
     // Will be updated to verified:true after OTP
     saveUserToFirebase(_pendingUser, function(){});
 
-    _otpCode   = generateOTP();
-    _otpExpiry = Date.now() + 5 * 60 * 1000;
+    // OTP modal prepare karo
+    closeM('reg-ov');
+    var dispEl = document.getElementById('otp-email-display');
+    if (dispEl) dispEl.textContent = _pendingUser.email;
+    var otpInp = document.getElementById('otp-input');
+    if (otpInp) otpInp.value = '';
+    hideOtpStatus();
+    openM('otp-ov');
+    startOTPTimer();
 
-    // OTP modal pehle prepare karo
-  closeM('reg-ov');
-  var dispEl = document.getElementById('otp-email-display');
-  if (dispEl) dispEl.textContent = _pendingUser.email;
-  var otpInp = document.getElementById('otp-input');
-  if (otpInp) otpInp.value = '';
-  hideOtpStatus();   // ← sirf yahan clear karo — BEFORE sendOTPEmail
-  openM('otp-ov');
-  startOTPTimer();
+    // OTP Apps Script se Gmail pe bhejo — screen pe nahi dikhega
+    sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', '');
 
-  // OTP bhejo — showOtpOnScreen andar call hoga, modal already open hai
-  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
-
-    toast('📧 OTP bheja ja raha hai...', 'info', 3000);
+    toast('📧 OTP aapki email pe bheja ja raha hai...', 'info', 3000);
 
     // Button reset
     setTimeout(function() {
       _rs = false;
       btn.innerHTML = 'Register &amp; Get Free Access →';
       btn.disabled = false;
-    }, 1000);
+    }, 2000);
 
   }); // end checkEmailExists
 }
