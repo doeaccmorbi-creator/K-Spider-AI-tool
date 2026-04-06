@@ -285,12 +285,10 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <input class="si2" type="text" id="u-city" placeholder="🏙️ City filter..." oninput="filterUsers()" style="max-width:130px">
           <button class="btn btn-gh btn-sm" onclick="loadUsers()">🔄 Refresh</button>
           <button class="btn btn-gr btn-sm" onclick="exportCSV()">📥 CSV</button>
-          <button class="btn btn-bl btn-sm" onclick="openSheetsConfig()" title="Google Sheets Settings">📊 Sheets</button>
-          <button class="btn btn-g btn-sm" onclick="syncAllToSheets()" title="Sync all users to Google Sheets">☁️ Sync All</button>
         </div>
         <div class="tw"><table>
-          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Status</th><th>🔐 Logins</th><th>🕐 Last Login</th><th>Registered</th><th>Actions</th></tr></thead>
-          <tbody id="u-body"><tr><td colspan="14" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr></tbody>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Status</th><th>Registered</th><th>Actions</th></tr></thead>
+          <tbody id="u-body"><tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">Loading...</td></tr></tbody>
         </table></div>
       </div>
     </div>
@@ -783,12 +781,10 @@ var TOOLS = [
   {id:'ai-prompt-engine',       name:'AI Prompt Engine',            icon:'🧠',cat:'marketing',status:'live',       plan:'free'},
   {id:'ai-file-converter',      name:'AI File Converter',           icon:'🔄',cat:'image',    status:'live',       plan:'free'},
   {id:'pharmacy-master',        name:'Pharmacy Master Pro',         icon:'💊',cat:'health',   status:'live',       plan:'premium'},
-  {id:'pharma-marketing-tool',    name:'KSpider Pharma Marketing Tool', icon:'📣',cat:'health',   status:'live',       plan:'free'},
   {id:'india-fbook',            name:'K Spider India F-Book',       icon:'🇮🇳',cat:'social',  status:'live',       plan:'free'},
   {id:'linkshare',              name:'K Spider LinkShare',          icon:'🔗',cat:'marketing',status:'live',       plan:'free'},
   {id:'multipost',              name:'K Spider MultiPost',          icon:'📤',cat:'social',   status:'live',       plan:'free'},
   {id:'doctor-elite-pro-max',   name:'Doctor Elite Pro Max',        icon:'🩺',cat:'health',   status:'live',       plan:'premium'},
-  {id:'kspider-doctor-ai-v3',   name:'K Spider Doctor AI v3',       icon:'🏥',cat:'health',   status:'live',       plan:'premium'},
   {id:'kspider-400-tools',      name:'KSpider 400+ Tools',          icon:'🕷️',cat:'marketing',status:'live',       plan:'free'},
   {id:'knowledge-spider',       name:'Knowledge Spider',            icon:'🧠',cat:'education',status:'live',       plan:'free'},
   {id:'wa-broadcast-pro',       name:'WA Broadcast Pro',            icon:'📡',cat:'marketing',status:'live',       plan:'premium'},
@@ -800,7 +796,7 @@ var TOOLS = [
   {id:'file-analyzer-pro',      name:'File Analyzer Pro',           icon:'🔍',cat:'image',    status:'live',       plan:'free'},
   {id:'review-booster-pro',     name:'Review Booster Pro',          icon:'⭐',cat:'marketing',status:'live',       plan:'free'},
   {id:'voxai-pro',              name:'VOXAI Pro — Voice Agent',     icon:'🎙️',cat:'marketing',status:'live',       plan:'free'},
-  {id:'rto-exam-pro',           name:'RTO Exam Pro',                icon:'🚗',cat:'education',status:'live',       plan:'free'},
+  {id:'pharma-marketing-tool',  name:'Pharma Marketing Master Tool',icon:'💊',cat:'marketing',status:'live',       plan:'free'},
   {id:'social-captions',        name:'Social Media Caption AI',     icon:'✍️',cat:'social',   status:'coming_soon',plan:'free'},
   {id:'biz-name-gen',           name:'Business Name Generator',     icon:'🏢',cat:'finance',  status:'coming_soon',plan:'free'},
   {id:'health-checker',         name:'Health Symptom Checker',      icon:'🏥',cat:'health',   status:'coming_soon',plan:'free'},
@@ -991,7 +987,7 @@ function startRealtimeListeners() {
   // ── USERS — real-time listener ──
   // NOTE: No orderBy + no limit = catches ALL changes including new docs
   // orderBy with limit can miss new docs if they sort outside the window
-  set('u-body','<tr><td colspan="14" style="text-align:center;color:var(--t4);padding:24px">🔴 Connecting live...</td></tr>');
+  set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:24px">🔴 Connecting live...</td></tr>');
   _unsubUsers = db.collection('users')
     .onSnapshot({includeMetadataChanges: false}, function(snap) {
       // On first call: snap.size === docChanges.length (all 'added') — full rebuild
@@ -1172,7 +1168,7 @@ function loadUsers() {
 
 function renderUsers(list) {
   var now=Date.now();
-  if(!list.length){ set('u-body','<tr><td colspan="14" style="text-align:center;color:var(--t4);padding:30px">No users found</td></tr>'); return; }
+  if(!list.length){ set('u-body','<tr><td colspan="12" style="text-align:center;color:var(--t4);padding:30px">No users found</td></tr>'); return; }
   var rows='';
   list.forEach(function(u,i){
     var mob = u.mobile||u.phone||u.contact||'';
@@ -1202,30 +1198,7 @@ function renderUsers(list) {
     else acctBadge='<span class="b ok" style="font-size:.65rem">🟢 Active</span>';
     // Row highlight for banned/suspended
     var rowStyle = u.banned?'background:rgba(220,38,38,.04)':u.suspended?'background:rgba(245,158,11,.04)':'';
-
-    // ── Login count ──
-    var loginCount = u.loginCount || 0;
-    var loginBadgeColor = loginCount >= 10 ? '#34d399' : loginCount >= 3 ? '#fbbf24' : 'var(--t4)';
-    var loginBadge = '<span style="font-weight:700;color:'+loginBadgeColor+';font-size:.88rem">'+loginCount+'</span>'
-      + (loginCount > 0 ? '<div style="font-size:.6rem;color:var(--t4)">times</div>' : '');
-
-    // ── Last login + "Online Now" check (active within 5 mins) ──
-    var lastLoginCell = '<span style="color:var(--t4);font-size:.72rem">Never</span>';
-    var onlineNow = false;
-    if(u.lastLogin || u.lastSeen) {
-      var lastTs = u.lastLogin ? new Date(u.lastLogin).getTime() : new Date(u.lastSeen).getTime();
-      var minsAgo = Math.floor((now - lastTs) / 60000);
-      onlineNow = minsAgo < 5;
-      var lastStr;
-      if(minsAgo < 1) lastStr = 'Just now';
-      else if(minsAgo < 60) lastStr = minsAgo+'m ago';
-      else if(minsAgo < 1440) lastStr = Math.floor(minsAgo/60)+'h ago';
-      else lastStr = new Date(lastTs).toLocaleDateString('en-IN');
-      lastLoginCell = (onlineNow ? '<span style="display:inline-flex;align-items:center;gap:4px;color:#34d399;font-size:.7rem;font-weight:700"><span style="width:6px;height:6px;border-radius:50%;background:#34d399;display:inline-block;animation:blink 1.2s infinite"></span>ONLINE</span><br>' : '')
-        + '<span style="font-size:.72rem;color:'+(onlineNow?'#34d399':'var(--t3)')+'">'+lastStr+'</span>';
-    }
-
-    rows+='<tr style="'+rowStyle+(onlineNow?';border-left:3px solid #34d399':'')+'">'+
+    rows+='<tr style="'+rowStyle+'">'+
       '<td style="color:var(--t4);font-size:.72rem;text-align:center">'+(i+1)+'</td>'+
       '<td style="min-width:130px"><div style="display:flex;align-items:center;gap:7px">'+
         '<div style="width:28px;height:28px;background:var(--gs);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;color:var(--gold2);font-weight:800;flex-shrink:0">'+(u.name||'U').charAt(0).toUpperCase()+'</div>'+
@@ -1242,8 +1215,6 @@ function renderUsers(list) {
       '<td>'+paid+'</td>'+
       '<td style="text-align:center">'+(u.verified?'<span style="color:var(--neon)">✅</span>':'<span style="color:#fbbf24">⚠️</span>')+'</td>'+
       '<td>'+acctBadge+'</td>'+
-      '<td style="text-align:center">'+loginBadge+'</td>'+
-      '<td style="text-align:center">'+lastLoginCell+'</td>'+
       '<td style="font-size:.72rem;color:var(--t4);white-space:nowrap">'+reg+'</td>'+
       '<td style="white-space:nowrap">'+
         '<button class="btn btn-gh btn-sm" onclick="openEditUser(this.dataset.uid)" data-uid="'+u.id+'" title="Edit User">✏️</button> '+
@@ -1273,13 +1244,11 @@ function filterUsers() {
 
 function exportCSV() {
   if(!_users.length){ toast('No users to export'); return; }
-  var rows=[['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Login Count','Last Login','Registered At','Admin Note']];
+  var rows=[['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Registered At','Admin Note']];
   _users.forEach(function(u,i){
     rows.push([i+1, u.name||'', u.email||'', u.mobile||u.phone||u.contact||'', u.whatsapp||'', u.city||u.location||'', u.state||u.province||'',
       u.planType||'free', u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'',
       u.paidAmount||0, u.paymentMethod||'', u.verified?'Yes':'No',
-      u.loginCount||0,
-      u.lastLogin?new Date(u.lastLogin).toLocaleString('en-IN'):(u.lastSeen?new Date(u.lastSeen).toLocaleString('en-IN'):''),
       u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):(u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):''),
       u.adminNote||'']);
   });
@@ -1288,73 +1257,6 @@ function exportCSV() {
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download='kspider-users-'+new Date().toISOString().slice(0,10)+'.csv';
   a.click(); toast('✅ Exported '+_users.length+' users');
-}
-
-// ══════════════════════════════════════════════════════
-// GOOGLE SHEETS INTEGRATION
-// ══════════════════════════════════════════════════════
-var _sheetsUrl = localStorage.getItem('ks_admin_sheets_url') || '';
-
-function openSheetsConfig() {
-  var url = prompt('Google Apps Script Web App URL daalo\n(Deploy > Web App se copy karo):', _sheetsUrl);
-  if (url === null) return;
-  if (url && url.startsWith('https://script.google.com')) {
-    _sheetsUrl = url.trim();
-    localStorage.setItem('ks_admin_sheets_url', _sheetsUrl);
-    toast('✅ Sheets URL save ho gayi! Ab "Sync All" click karo.');
-  } else if (url === '') {
-    _sheetsUrl = '';
-    localStorage.removeItem('ks_admin_sheets_url');
-    toast('⚠️ Sheets URL remove ho gayi.');
-  } else {
-    toast('❌ Valid Google Apps Script URL daalo (https://script.google.com/...)','error',5000);
-  }
-}
-
-function syncAllToSheets() {
-  if (!_sheetsUrl) {
-    toast('Pehle Sheets URL set karo — "📊 Sheets" button click karo','warn',5000);
-    return;
-  }
-  if (!_users.length) { toast('No users to sync'); return; }
-  toast('⏳ Syncing '+_users.length+' users to Google Sheets...');
-  var synced=0, failed=0;
-  var batchSize = 10;
-  var userData = _users.map(function(u){
-    return {
-      action:'addOrUpdateUser',
-      name:         u.name||'',
-      email:        u.email||'',
-      mobile:       u.mobile||u.phone||'',
-      city:         u.city||'',
-      language:     u.language||'',
-      verified:     u.verified?'Yes':'No',
-      planType:     u.planType||'free',
-      registeredAt: u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):'',
-      verifiedAt:   u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):'',
-      loginCount:   u.loginCount||0,
-      lastLogin:    u.lastLogin?new Date(u.lastLogin).toLocaleString('en-IN'):(u.lastSeen?new Date(u.lastSeen).toLocaleString('en-IN'):''),
-      paidAmount:   u.paidAmount||0,
-      paymentStatus:u.paymentStatus||'',
-      source:       'kspiderai.in'
-    };
-  });
-
-  // Batch sync
-  function syncBatch(idx) {
-    if (idx >= userData.length) {
-      toast('✅ Sync complete! '+synced+' users synced to Google Sheets.');
-      return;
-    }
-    var batch = userData.slice(idx, idx+batchSize);
-    fetch(_sheetsUrl, {
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'batchUpdate', users: batch })
-    }).then(function(){ synced+=batch.length; syncBatch(idx+batchSize); })
-      .catch(function(){ failed+=batch.length; syncBatch(idx+batchSize); });
-  }
-  syncBatch(0);
 }
 
 // ── USER EDIT ──
