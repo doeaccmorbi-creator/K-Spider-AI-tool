@@ -285,12 +285,14 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <option value="active">🟢 Active</option>
             <option value="suspended">🟡 Suspended</option>
             <option value="banned">🔴 Banned</option>
+            <option value="unknown">❓ Unknown (No Data)</option>
           </select>
           <input class="si2" type="text" id="u-city" placeholder="🏙️ City filter..." oninput="filterUsers()" style="max-width:130px">
           <button class="btn btn-gh btn-sm" onclick="loadUsers()">🔄 Refresh</button>
           <button class="btn btn-gr btn-sm" onclick="exportCSV()">📥 CSV</button>
           <button class="btn btn-bl btn-sm" onclick="openSheetsConfig()" title="Google Sheets Settings">📊 Sheets</button>
           <button class="btn btn-g btn-sm" onclick="syncAllToSheets()" title="Sync all users to Google Sheets">☁️ Sync All</button>
+          <button class="btn btn-sm" style="background:#dc2626;color:#fff;border:none" onclick="deleteUnknownUsers()" title="Delete all users with no name/email/mobile">🗑️ Delete Unknown</button>
         </div>
         <div class="tw"><table>
           <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Status</th><th>🔐 Logins</th><th>🕐 Last Login</th><th>Registered</th><th>Actions</th></tr></thead>
@@ -1403,10 +1405,33 @@ function filterUsers() {
     var mp=p==='all'||u.planType===p;
     var mv=v==='all'||(v==='yes'&&u.verified)||(v==='no'&&!u.verified);
     var mc=!c||(u.city||'').toLowerCase().includes(c)||(u.location||'').toLowerCase().includes(c);
-    var ms=st==='all'||(st==='active'&&!u.banned&&!u.suspended)||(st==='suspended'&&u.suspended)||(st==='banned'&&u.banned);
+    var isUnknown=!u.name&&!u.email&&!u.mobile&&!u.phone;
+    var ms=st==='all'||(st==='active'&&!u.banned&&!u.suspended&&!isUnknown)||(st==='suspended'&&u.suspended)||(st==='banned'&&u.banned)||(st==='unknown'&&isUnknown);
     return mq&&mp&&mv&&mc&&ms;
   });
   renderUsers(f);
+}
+
+function deleteUnknownUsers() {
+  var unknown = _users.filter(function(u){ return !u.name && !u.email && !u.mobile && !u.phone; });
+  if(!unknown.length){ toast('✅ Koi unknown user nahi mila!'); return; }
+  if(!confirm('⚠️ ' + unknown.length + ' unknown user(s) delete karne hain jinke paas koi naam/email/mobile nahi hai. Confirm?')) return;
+  var db = window._fb && window._fb.db;
+  if(!db){ toast('❌ Firestore connect nahi hai'); return; }
+  var done=0, fail=0;
+  unknown.forEach(function(u){
+    db.collection('users').doc(u.id).delete().then(function(){
+      done++;
+      if(done+fail===unknown.length){
+        toast('🗑️ ' + done + ' unknown user(s) delete ho gaye' + (fail?' | ❌ '+fail+' fail':''));
+      }
+    }).catch(function(){
+      fail++;
+      if(done+fail===unknown.length){
+        toast('🗑️ ' + done + ' delete | ❌ ' + fail + ' fail');
+      }
+    });
+  });
 }
 
 function exportCSV() {
