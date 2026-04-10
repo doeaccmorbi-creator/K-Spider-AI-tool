@@ -289,8 +289,8 @@ tr:hover td{background:rgba(255,255,255,.015)}
           <input class="si2" type="text" id="u-city" placeholder="🏙️ City filter..." oninput="filterUsers()" style="max-width:130px">
           <button class="btn btn-gh btn-sm" onclick="loadUsers()">🔄 Refresh</button>
           <button class="btn btn-gr btn-sm" onclick="exportCSV()">📥 CSV</button>
-          <button class="btn btn-bl btn-sm" onclick="openSheetsConfig()" title="Google Sheets Settings">📊 Sheets</button>
-          <button class="btn btn-g btn-sm" onclick="syncAllToSheets()" title="Sync all users to Google Sheets">☁️ Sync All</button>
+          <button class="btn btn-bl btn-sm" onclick="openSheetLink()" title="Google Sheet mein dekho">📊 Sheet</button>
+          <button class="btn btn-g btn-sm" onclick="syncToSheet()" title="Firestore se Google Sheet mein sync karo">☁️ Sync All</button>
         </div>
         <div class="tw"><table>
           <thead><tr><th>#</th><th>Name</th><th>Email</th><th>📱 Mobile</th><th>🏙️ City / State</th><th>Plan</th><th>Expiry</th><th>Paid ₹</th><th>Verified</th><th>Status</th><th>🔐 Logins</th><th>🕐 Last Login</th><th>Registered</th><th>Actions</th></tr></thead>
@@ -685,9 +685,12 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <input class="fi" id="ad-expiry" type="date">
 
             <!-- LIVE PREVIEW -->
-            <label class="fl" style="margin-top:8px">Live Preview</label>
-            <div id="ad-preview-box" style="background:var(--bg3);border:1px dashed rgba(255,255,255,.15);border-radius:8px;padding:12px;min-height:60px;display:flex;align-items:center;justify-content:center;margin-bottom:12px">
-              <span style="font-size:.75rem;color:var(--t4)">Preview will appear here...</span>
+            <label class="fl" style="margin-top:8px">📐 Live Preview <span style="font-size:.65rem;color:var(--t4);font-weight:400">(website pe exactly aise dikhega)</span></label>
+            <div id="ad-preview-box" style="background:var(--bg3);border:1px solid rgba(184,121,42,.2);border-radius:10px;padding:14px;min-height:80px;margin-bottom:12px;transition:all .2s">
+              <div style="text-align:center;padding:10px 0">
+                <div style="font-size:1.5rem;margin-bottom:6px">🖼️</div>
+                <div style="font-size:.75rem;color:var(--t4)">Ad type select karo → preview yahan dikhega</div>
+              </div>
             </div>
 
             <button class="btn btn-g" style="width:100%;padding:12px;font-size:.9rem" id="ad-save-btn" onclick="saveAd()">📢 Save &amp; Publish Ad</button>
@@ -1497,86 +1500,86 @@ function exportCSV() {
 // ══════════════════════════════════════════════════════
 // GOOGLE SHEETS INTEGRATION
 // ══════════════════════════════════════════════════════
-// Public CSV URL for user count (published Google Sheet)
+// Public CSV URL — ye sheet publicly published hai
 var SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThBY8aMyw6ZVhe5Rd2LNnmcVNQwEfG_EjI8dIAQ2J6fYUId69iDjzPHdhT_idyZdxyIL8zPzzsgOvB/pub?gid=1645336419&single=true&output=csv';
-var _sheetsUrl = localStorage.getItem('ks_admin_sheets_url') || '';
+// Sheet view URL (edit link se extract karo ya pub link)
+var SHEETS_VIEW_URL = 'https://docs.google.com/spreadsheets/d/1cUb-ERIU6zJp_m2QoZClsVD4fbOeAQpphHsi8LNHbzM/edit#gid=1645336419';
 
-// ── Fetch total user count from public Google Sheets CSV ──
+// ── Open sheet in new tab ──
+function openSheetLink(){
+  window.open(SHEETS_VIEW_URL, '_blank');
+}
+
+// ── Fetch total user count from Google Sheets CSV ──
 function fetchSheetUserCount(callback) {
   fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
     .then(function(r){ return r.text(); })
     .then(function(csv){
-      // CSV rows: row 1 = header (TEST OK..., Name, Email, ...), rows 2+ = users
       var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      // First row is meta/header, actual data rows start from row 2 (index 1 = column headers, index 2+ = data)
-      var dataRows = lines.slice(2); // skip row1 (meta) + row2 (headers)
-      var count = dataRows.length;
-      if(callback) callback(count);
+      // Row 1 = meta (TEST OK...), Row 2 = column headers, Row 3+ = actual user data
+      var dataRows = lines.slice(2);
+      if(callback) callback(dataRows.length);
     })
-    .catch(function(e){ console.warn('[Sheets CSV] Error:', e.message); });
+    .catch(function(e){ console.warn('[Sheets CSV] Fetch error:', e.message); });
 }
 
-function openSheetsConfig() {
-  var url = prompt('Google Apps Script Web App URL daalo\n(Deploy > Web App se copy karo):', _sheetsUrl);
-  if (url === null) return;
-  if (url && url.startsWith('https://script.google.com')) {
-    _sheetsUrl = url.trim();
-    localStorage.setItem('ks_admin_sheets_url', _sheetsUrl);
-    toast('✅ Sheets URL save ho gayi! Ab "Sync All" click karo.');
-  } else if (url === '') {
-    _sheetsUrl = '';
-    localStorage.removeItem('ks_admin_sheets_url');
-    toast('⚠️ Sheets URL remove ho gayi.');
-  } else {
-    toast('❌ Valid Google Apps Script URL daalo (https://script.google.com/...)','error',5000);
-  }
+// ── Sync All: fetch Firestore users → download as CSV (for manual import to Sheet) ──
+// Also shows count from Google Sheet CSV
+function syncToSheet(){
+  if(!_users.length){ toast('No users to sync'); return; }
+
+  // Step 1: Show current sheet count
+  toast('⏳ Fetching Google Sheet user count...');
+  fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
+    .then(function(r){ return r.text(); })
+    .then(function(csv){
+      var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+      var sheetCount = Math.max(0, lines.length - 2); // subtract meta + header rows
+      var fireCount  = _users.length;
+
+      // Step 2: Download updated CSV for manual import
+      var rows=[['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Login Count','Last Login','Registered At','Language','Admin Note']];
+      _users.forEach(function(u,i){
+        rows.push([
+          i+1,
+          u.name||'',
+          u.email||'',
+          u.mobile||u.phone||u.contact||'',
+          u.whatsapp||u.mobile||u.phone||'',
+          u.city||u.location||'',
+          u.state||u.province||'',
+          u.planType||'free',
+          u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'',
+          u.paidAmount||0,
+          u.paymentMethod||'',
+          u.verified?'Yes':'No',
+          u.loginCount||0,
+          u.lastLogin?new Date(u.lastLogin).toLocaleString('en-IN'):(u.lastSeen?new Date(u.lastSeen).toLocaleString('en-IN'):''),
+          u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):(u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):''),
+          u.language||'',
+          u.adminNote||''
+        ]);
+      });
+      var csvStr = rows.map(function(r){
+        return r.map(function(c){ return '"'+(c+'').replace(/"/g,'""')+'"'; }).join(',');
+      }).join('\n');
+      var a = document.createElement('a');
+      a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csvStr);
+      a.download = 'kspider-users-sync-'+new Date().toISOString().slice(0,10)+'.csv';
+      a.click();
+
+      toast('✅ Sheet mein '+sheetCount+' users · Firestore mein '+fireCount+' users · CSV download ho gaya — Sheet mein import karo!');
+    })
+    .catch(function(){
+      // If CSV fetch fails, just export local
+      exportCSV();
+      toast('✅ CSV downloaded — Google Sheet mein manually import karo');
+    });
 }
 
-function syncAllToSheets() {
-  if (!_sheetsUrl) {
-    toast('Pehle Sheets URL set karo — "📊 Sheets" button click karo','warn',5000);
-    return;
-  }
-  if (!_users.length) { toast('No users to sync'); return; }
-  toast('⏳ Syncing '+_users.length+' users to Google Sheets...');
-  var synced=0, failed=0;
-  var batchSize = 10;
-  var userData = _users.map(function(u){
-    return {
-      action:'addOrUpdateUser',
-      name:         u.name||'',
-      email:        u.email||'',
-      mobile:       u.mobile||u.phone||'',
-      city:         u.city||'',
-      language:     u.language||'',
-      verified:     u.verified?'Yes':'No',
-      planType:     u.planType||'free',
-      registeredAt: u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):'',
-      verifiedAt:   u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):'',
-      loginCount:   u.loginCount||0,
-      lastLogin:    u.lastLogin?new Date(u.lastLogin).toLocaleString('en-IN'):(u.lastSeen?new Date(u.lastSeen).toLocaleString('en-IN'):''),
-      paidAmount:   u.paidAmount||0,
-      paymentStatus:u.paymentStatus||'',
-      source:       'kspiderai.in'
-    };
-  });
-
-  // Batch sync
-  function syncBatch(idx) {
-    if (idx >= userData.length) {
-      toast('✅ Sync complete! '+synced+' users synced to Google Sheets.');
-      return;
-    }
-    var batch = userData.slice(idx, idx+batchSize);
-    fetch(_sheetsUrl, {
-      method:'POST', mode:'no-cors',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ action:'batchUpdate', users: batch })
-    }).then(function(){ synced+=batch.length; syncBatch(idx+batchSize); })
-      .catch(function(){ failed+=batch.length; syncBatch(idx+batchSize); });
-  }
-  syncBatch(0);
-}
+// Keep old name for backward compat
+function syncAllToSheets(){ syncToSheet(); }
+function openSheetsConfig(){ openSheetLink(); }
 
 // ── USER EDIT ──
 function openEditUser(uid) {
@@ -2859,63 +2862,74 @@ function updatePreview(){
   var box = $id('ad-preview-box');
   if(!box) return;
   var type = $id('ad-type') ? $id('ad-type').value : 'image';
+
   if(type==='image'){
     var url = ($id('ad-img-url')||{}).value||'';
     var alt = ($id('ad-img-alt')||{}).value||'Ad';
     var clickUrl = ($id('ad-click-url')||{}).value||'';
     if(url){
       box.innerHTML =
-        '<div style="width:100%;background:#0a0a0a;border-radius:8px;overflow:hidden;position:relative">'+
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;overflow:hidden">'+
           (clickUrl ? '<a href="'+url+'" target="_blank" style="display:block">' : '') +
           '<img src="'+url+'" alt="'+x(alt)+'" style="width:100%;max-height:160px;object-fit:contain;display:block" '+
-            'onerror="this.parentNode.innerHTML=\'<div style=text-align:center;padding:18px><span style=color:#f87171;font-size:.78rem>❌ Image load nahi hua<br><span style=color:var(--t4);font-size:.68rem>URL check karo — direct image link hona chahiye</span></span></div>\'">' +
+            'onerror="this.parentNode.innerHTML=\'<div style=text-align:center;padding:18px><span style=color:#f87171;font-size:.78rem>❌ Image load nahi hua — direct image URL chahiye</span></div>\'">' +
           (clickUrl ? '</a>' : '') +
           '<div style="font-size:.62rem;color:var(--t4);padding:4px 8px;text-align:right">🖼️ Image Ad Preview</div>'+
         '</div>';
     } else {
       box.innerHTML =
-        '<div style="width:100%;background:#0a0a0a;border-radius:8px;border:2px dashed rgba(255,255,255,.1);padding:28px;text-align:center">'+
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;border:2px dashed rgba(255,255,255,.1);padding:24px;text-align:center">'+
           '<div style="font-size:1.8rem;margin-bottom:6px">🖼️</div>'+
           '<div style="font-size:.75rem;color:var(--t4)">Image URL daalo to preview dikhega</div>'+
           '<div style="font-size:.65rem;color:var(--t4);margin-top:4px">Supported: JPG · PNG · WebP · GIF</div>'+
         '</div>';
     }
+
   } else if(type==='text'){
-    var hl  = ($id('ad-text-headline')||{}).value||'Your Ad Headline';
-    var dsc = ($id('ad-text-desc')||{}).value||'';
-    var btn = ($id('ad-text-btn')||{}).value||'Learn More';
-    var bg  = ($id('ad-text-bg')||{}).value||'#e8520a';
-    var clickUrl2 = ($id('ad-click-url')||{}).value||'';
-    // Compute text color based on bg brightness
-    var r=parseInt(bg.slice(1,3),16), g=parseInt(bg.slice(3,5),16), b2=parseInt(bg.slice(5,7),16);
+    var hl       = ($id('ad-text-headline')||{}).value || 'Aapka Ad Headline Yahan';
+    var dsc      = ($id('ad-text-desc')||{}).value     || '';
+    var btn      = ($id('ad-text-btn')||{}).value      || 'Abhi Dekho';
+    var bg       = ($id('ad-text-bg')||{}).value       || '#e8520a';
+    var clickUrl2 = ($id('ad-click-url')||{}).value    || '';
+    var isPlaceholder = !($id('ad-text-headline')||{}).value;
+
+    // Compute contrasting text color
+    var r=parseInt(bg.slice(1,3),16)||232,
+        g=parseInt(bg.slice(3,5),16)||82,
+        b2=parseInt(bg.slice(5,7),16)||10;
     var bright = (r*299+g*587+b2*114)/1000;
-    var tc = bright > 128 ? '#222' : '#fff';
-    var btnBg = bright > 128 ? 'rgba(0,0,0,.2)' : 'rgba(255,255,255,.25)';
-    // Gather info fields
+    var tc    = bright > 128 ? '#222222' : '#ffffff';
+    var btnBg = bright > 128 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.25)';
+
+    // Gather optional info fields
     var infoHtml = '';
-    var companyName = ($id('ad-show-company')&&$id('ad-show-company').checked && $id('ad-company-name')) ? ($id('ad-company-name').value||'').trim() : '';
-    var offerText   = ($id('ad-show-offer')  &&$id('ad-show-offer').checked   && $id('ad-offer-text'))   ? ($id('ad-offer-text').value||'').trim()   : '';
-    var phone       = ($id('ad-show-phone')  &&$id('ad-show-phone').checked   && $id('ad-contact-phone')) ? ($id('ad-contact-phone').value||'').trim() : '';
-    var email2      = ($id('ad-show-email')  &&$id('ad-show-email').checked   && $id('ad-contact-email')) ? ($id('ad-contact-email').value||'').trim() : '';
-    var url2        = ($id('ad-show-url')    &&$id('ad-show-url').checked     && $id('ad-contact-url'))   ? ($id('ad-contact-url').value||'').trim()   : '';
-    var location2   = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location'))? ($id('ad-contact-location').value||'').trim(): '';
-    if(companyName) infoHtml += '<div style="font-size:.72rem;font-weight:800;color:'+tc+';letter-spacing:.04em;margin-bottom:2px">🏢 '+x(companyName)+'</div>';
-    if(offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;color:'+tc+';background:rgba(255,255,255,.18);display:inline-block;padding:2px 10px;border-radius:20px;margin-bottom:4px">🎉 '+x(offerText)+'</div>';
-    if(phone)       infoHtml += '<span style="font-size:.7rem;color:'+tc+';margin-right:8px">📱 <a href="https://wa.me/91'+phone.replace(/[^0-9]/g,'')+'" target="_blank" style="color:'+tc+';text-decoration:underline">'+x(phone)+'</a></span>';
-    if(email2)      infoHtml += '<span style="font-size:.7rem;color:'+tc+';margin-right:8px">✉️ <a href="mailto:'+x(email2)+'" target="_blank" style="color:'+tc+';text-decoration:underline">'+x(email2)+'</a></span>';
-    if(url2)        infoHtml += '<span style="font-size:.7rem;color:'+tc+'">🌐 <a href="'+x(url2)+'" target="_blank" style="color:'+tc+';text-decoration:underline">'+x(url2.replace(/^https?:\/\//,''))+'</a></span>';
-    if(location2)   infoHtml += '<div style="font-size:.68rem;color:'+tc+';opacity:.85;margin-top:2px">📍 '+x(location2)+'</div>';
+    var companyName = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name'))  ? ($id('ad-company-name').value||'').trim()     : '';
+    var offerText   = ($id('ad-show-offer')  &&$id('ad-show-offer').checked  &&$id('ad-offer-text'))    ? ($id('ad-offer-text').value||'').trim()       : '';
+    var phone       = ($id('ad-show-phone')  &&$id('ad-show-phone').checked  &&$id('ad-contact-phone')) ? ($id('ad-contact-phone').value||'').trim()    : '';
+    var email2      = ($id('ad-show-email')  &&$id('ad-show-email').checked  &&$id('ad-contact-email')) ? ($id('ad-contact-email').value||'').trim()    : '';
+    var url2        = ($id('ad-show-url')    &&$id('ad-show-url').checked    &&$id('ad-contact-url'))   ? ($id('ad-contact-url').value||'').trim()      : '';
+    var location2   = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location'))? ($id('ad-contact-location').value||'').trim():  '';
+
+    if(companyName) infoHtml += '<div style="font-size:.73rem;font-weight:800;color:'+tc+';letter-spacing:.03em;margin-bottom:3px">🏢 '+x(companyName)+'</div>';
+    if(offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;color:'+tc+';background:rgba(255,255,255,.2);display:inline-block;padding:2px 12px;border-radius:20px;margin-bottom:5px">🎉 '+x(offerText)+'</div>';
+    var contactLine = '';
+    if(phone)  contactLine += '<a href="https://wa.me/91'+phone.replace(/[^0-9]/g,'')+'" target="_blank" style="color:'+tc+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">📱 '+x(phone)+'</a>';
+    if(email2) contactLine += '<a href="mailto:'+x(email2)+'" style="color:'+tc+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">✉️ '+x(email2)+'</a>';
+    if(url2)   contactLine += '<a href="'+x(url2)+'" target="_blank" style="color:'+tc+';text-decoration:underline;font-size:.7rem" onclick="event.stopPropagation()">🌐 '+x(url2.replace(/^https?:\/\//,''))+'</a>';
+    if(contactLine) infoHtml += '<div style="margin-bottom:5px;line-height:1.9">'+contactLine+'</div>';
+    if(location2)   infoHtml += '<div style="font-size:.68rem;color:'+tc+';opacity:.82;margin-bottom:4px">📍 '+x(location2)+'</div>';
+
     box.innerHTML =
       '<div style="width:100%">'+
-        '<div style="background:'+bg+';border-radius:10px;padding:14px 18px;text-align:center;'+(clickUrl2?'cursor:pointer':'')+'" '+(clickUrl2?'onclick="window.open(\''+clickUrl2+'\',\'_blank\')"':'')+'>'+
-          (companyName?'':'')+ // rendered inside infoHtml
-          '<div style="font-size:.95rem;font-weight:800;color:'+tc+';margin-bottom:4px">'+x(hl)+'</div>'+
-          (dsc?'<div style="font-size:.76rem;color:'+tc+';opacity:.88;margin-bottom:8px;line-height:1.4">'+x(dsc)+'</div>':'')+
-          (infoHtml?'<div style="margin-bottom:8px;line-height:1.8">'+infoHtml+'</div>':'')+
-          '<span style="background:'+btnBg+';color:'+tc+';padding:5px 18px;border-radius:20px;font-size:.74rem;font-weight:700">'+x(btn)+'</span>'+
+        '<div style="background:'+bg+';border-radius:10px;padding:14px 18px;text-align:center;cursor:'+(clickUrl2?'pointer':'default')+'"'+(clickUrl2?' onclick="window.open(\''+x(clickUrl2)+'\',\'_blank\')"':'')+'>'+
+          '<div style="font-size:.95rem;font-weight:800;color:'+tc+';margin-bottom:'+(dsc||infoHtml?'4px':'8px')+';'+(isPlaceholder?'opacity:.45':'')+'">'+(isPlaceholder?'[ Aapka Headline Yahan ]':x(hl))+'</div>'+
+          (dsc?'<div style="font-size:.78rem;color:'+tc+';opacity:.88;margin-bottom:8px;line-height:1.45">'+x(dsc)+'</div>':'')+
+          (infoHtml?'<div style="margin-bottom:8px">'+infoHtml+'</div>':'')+
+          '<span style="background:'+btnBg+';color:'+tc+';padding:5px 18px;border-radius:20px;font-size:.75rem;font-weight:700;display:inline-block">'+x(btn)+'</span>'+
         '</div>'+
-        '<div style="font-size:.62rem;color:var(--t4);padding:4px 2px;text-align:right">📝 Text Ad Preview · Website pe exactly aise dikhega</div>'+
+        '<div style="font-size:.62rem;color:var(--t4);padding:5px 2px;text-align:right">📝 Text Ad Preview · Website pe exactly aise dikhega</div>'+
       '</div>';
+
   } else if(type==='html'){
     var code = ($id('ad-html-code')||{}).value||'';
     if(code){
@@ -2923,7 +2937,7 @@ function updatePreview(){
       box.innerHTML =
         '<div style="width:100%">'+
           '<div style="background:#0d0d0d;border-radius:8px;padding:10px;overflow:hidden">'+safe+'</div>'+
-          '<div style="font-size:.62rem;color:var(--t4);padding:4px 2px;text-align:right">💻 HTML Ad Preview (scripts disabled for safety)</div>'+
+          '<div style="font-size:.62rem;color:var(--t4);padding:4px 2px;text-align:right">💻 HTML Ad Preview</div>'+
         '</div>';
     } else {
       box.innerHTML =
@@ -3051,7 +3065,11 @@ function clearAdForm(){
   document.querySelectorAll('#ad-slots-checkboxes input').forEach(function(c,i){ c.checked=(i===0); });
   var ft = $id('ad-form-title'); if(ft) ft.textContent='➕ Create New Ad';
   var pb = $id('ad-preview-box');
-  if(pb) pb.innerHTML='<span style="font-size:.75rem;color:var(--t4)">Preview will appear here...</span>';
+  if(pb) pb.innerHTML=
+    '<div style="text-align:center;padding:14px 0">'+
+      '<div style="font-size:1.5rem;margin-bottom:6px">📢</div>'+
+      '<div style="font-size:.75rem;color:var(--t4)">Ad type select karo → preview yahan dikhega</div>'+
+    '</div>';
   adTypeChange();
 }
 
