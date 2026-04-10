@@ -1466,109 +1466,26 @@ function exportCSV() {
 // GOOGLE SHEETS INTEGRATION
 // ══════════════════════════════════════════════════════
 var _sheetsUrl = localStorage.getItem('ks_admin_sheets_url') || '';
-var _sheetsFetchUrl = localStorage.getItem('ks_admin_sheets_fetch_url') || '';
 
 function openSheetsConfig() {
-  // Build a nice dialog showing both URLs
-  var msg = 'Google Sheets / Apps Script URL daalo:\n\n' +
-    '• Google Sheets pubhtml URL (docs.google.com/spreadsheets/...) — Users FETCH karne ke liye\n' +
-    '• Google Apps Script URL (script.google.com/...) — Users SYNC karne ke liye\n\n' +
-    'Abhi saved URL: ' + (_sheetsUrl || _sheetsFetchUrl || 'None') + '\n\nNew URL daalo (ya blank chhod ke Clear karo):';
-  var url = prompt(msg, _sheetsUrl || _sheetsFetchUrl || '');
+  var url = prompt('Google Apps Script Web App URL daalo\n(Deploy > Web App se copy karo):', _sheetsUrl);
   if (url === null) return;
-  url = (url || '').trim();
-  if (url === '') {
-    _sheetsUrl = '';
-    _sheetsFetchUrl = '';
-    localStorage.removeItem('ks_admin_sheets_url');
-    localStorage.removeItem('ks_admin_sheets_fetch_url');
-    toast('⚠️ Sheets URL remove ho gayi.');
-  } else if (url.startsWith('https://script.google.com')) {
-    _sheetsUrl = url;
+  if (url && url.startsWith('https://script.google.com')) {
+    _sheetsUrl = url.trim();
     localStorage.setItem('ks_admin_sheets_url', _sheetsUrl);
-    toast('✅ Apps Script URL save! Ab "☁️ Sync All" click karo Firebase → Sheets sync ke liye.');
-  } else if (url.includes('docs.google.com/spreadsheets')) {
-    // Convert to JSON/CSV fetch URL if needed
-    _sheetsFetchUrl = url;
-    localStorage.setItem('ks_admin_sheets_fetch_url', _sheetsFetchUrl);
-    toast('✅ Google Sheet URL save! Ab "☁️ Sync All" click karo — sheet se users fetch honge.');
+    toast('✅ Sheets URL save ho gayi! Ab "Sync All" click karo.');
+  } else if (url === '') {
+    _sheetsUrl = '';
+    localStorage.removeItem('ks_admin_sheets_url');
+    toast('⚠️ Sheets URL remove ho gayi.');
   } else {
-    toast('❌ Valid URL daalo: docs.google.com/spreadsheets/... ya script.google.com/...');
+    toast('❌ Valid Google Apps Script URL daalo (https://script.google.com/...)','error',5000);
   }
-}
-
-// ── Fetch users FROM Google Sheets (pubhtml URL) and show in admin ──
-function fetchUsersFromSheet(fetchUrl, callback) {
-  // Convert pubhtml URL to CSV export URL
-  // Input:  https://docs.google.com/spreadsheets/d/e/XXXXX/pubhtml?gid=YYYYY&single=true
-  // Output: https://docs.google.com/spreadsheets/d/e/XXXXX/pub?gid=YYYYY&single=true&output=csv
-  var csvUrl = fetchUrl
-    .replace('/pubhtml', '/pub')
-    .replace('output=html', 'output=csv');
-  // If no output param, add it
-  if (csvUrl.indexOf('output=') === -1) {
-    csvUrl += (csvUrl.indexOf('?') === -1 ? '?' : '&') + 'output=csv';
-  }
-
-  toast('⏳ Google Sheet se users fetch ho rahe hain...');
-
-  fetch(csvUrl)
-    .then(function(r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.text();
-    })
-    .then(function(csv) {
-      var lines = csv.trim().split('\n');
-      if (lines.length < 2) { toast('⚠️ Sheet mein koi data nahi mila.'); return; }
-      // Parse header row
-      var headers = lines[0].split(',').map(function(h) { return h.replace(/^"|"$/g,'').trim().toLowerCase(); });
-      var sheetUsers = [];
-      for (var i = 1; i < lines.length; i++) {
-        var cols = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g) || lines[i].split(',');
-        cols = cols.map(function(c) { return (c||'').replace(/^"|"$/g,'').trim(); });
-        var row = {};
-        headers.forEach(function(h, idx) { row[h] = cols[idx] || ''; });
-        // Skip rows without name AND email
-        if (!row['name'] && !row['email']) continue;
-        sheetUsers.push({
-          name:     row['name'] || row['username'] || '',
-          email:    row['email'] || '',
-          mobile:   row['mobile'] || row['phone'] || row['contact'] || '',
-          city:     row['city'] || row['location'] || '',
-          language: row['language'] || row['lang'] || '',
-          verified: (row['verified']||'').toLowerCase() === 'yes',
-          planType: (row['plan'] || row['plantype'] || 'free').toLowerCase(),
-          source:   'google_sheet'
-        });
-      }
-      if (callback) callback(sheetUsers);
-    })
-    .catch(function(e) {
-      toast('❌ Sheet fetch error: ' + e.message + '. Sheet publicly published hai?');
-    });
 }
 
 function syncAllToSheets() {
-  // If we have a Google Sheet pubhtml/fetch URL — fetch users FROM sheet
-  if (_sheetsFetchUrl) {
-    fetchUsersFromSheet(_sheetsFetchUrl, function(sheetUsers) {
-      if (!sheetUsers.length) { toast('⚠️ Sheet mein koi valid user nahi mila.'); return; }
-      var existingEmails = {};
-      _users.forEach(function(u) { if(u.email) existingEmails[u.email.toLowerCase()] = true; });
-      var newUsers = sheetUsers.filter(function(u) {
-        return u.email && !existingEmails[u.email.toLowerCase()];
-      });
-      var merged = _users.slice();
-      newUsers.forEach(function(u) {
-        merged.push(Object.assign({ id: 'sheet_'+u.email.replace(/[^a-z0-9]/gi,'_'), _sheetOnly: true }, u));
-      });
-      renderUsers(merged);
-      toast('✅ Sheet se ' + sheetUsers.length + ' users fetched! ' + newUsers.length + ' naye users display mein add hue.');
-    });
-    return;
-  }
   if (!_sheetsUrl) {
-    toast('Pehle Sheets URL set karo — "📊 Sheets" button click karo');
+    toast('Pehle Sheets URL set karo — "📊 Sheets" button click karo','warn',5000);
     return;
   }
   if (!_users.length) { toast('No users to sync'); return; }
@@ -2884,25 +2801,61 @@ function updatePreview(){
   var type = $id('ad-type') ? $id('ad-type').value : 'image';
   if(type==='image'){
     var url = ($id('ad-img-url')||{}).value||'';
+    var alt = ($id('ad-img-alt')||{}).value||'Ad';
+    var clickUrl = ($id('ad-click-url')||{}).value||'';
     if(url){
-      box.innerHTML = '<img src="'+url+'" style="max-width:100%;max-height:80px;border-radius:6px" onerror="this.parentNode.innerHTML=\'<span style=color:var(--t4);font-size:.75rem>Image not found</span>\'">';
+      box.innerHTML =
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;overflow:hidden;position:relative">'+
+          (clickUrl ? '<a href="'+url+'" target="_blank" style="display:block">' : '') +
+          '<img src="'+url+'" alt="'+x(alt)+'" style="width:100%;max-height:160px;object-fit:contain;display:block" '+
+            'onerror="this.parentNode.innerHTML=\'<div style=text-align:center;padding:18px><span style=color:#f87171;font-size:.78rem>❌ Image load nahi hua<br><span style=color:var(--t4);font-size:.68rem>URL check karo — direct image link hona chahiye</span></span></div>\'">' +
+          (clickUrl ? '</a>' : '') +
+          '<div style="font-size:.62rem;color:var(--t4);padding:4px 8px;text-align:right">🖼️ Image Ad Preview</div>'+
+        '</div>';
     } else {
-      box.innerHTML = '<span style="font-size:.75rem;color:var(--t4)">Enter image URL to preview</span>';
+      box.innerHTML =
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;border:2px dashed rgba(255,255,255,.1);padding:28px;text-align:center">'+
+          '<div style="font-size:1.8rem;margin-bottom:6px">🖼️</div>'+
+          '<div style="font-size:.75rem;color:var(--t4)">Image URL daalo to preview dikhega</div>'+
+          '<div style="font-size:.65rem;color:var(--t4);margin-top:4px">Supported: JPG · PNG · WebP · GIF</div>'+
+        '</div>';
     }
   } else if(type==='text'){
-    var hl  = ($id('ad-text-headline')||{}).value||'Your Headline';
+    var hl  = ($id('ad-text-headline')||{}).value||'Your Ad Headline';
     var dsc = ($id('ad-text-desc')||{}).value||'';
     var btn = ($id('ad-text-btn')||{}).value||'Learn More';
     var bg  = ($id('ad-text-bg')||{}).value||'#e8520a';
-    box.innerHTML = '<div style="background:'+bg+';padding:10px 14px;border-radius:8px;text-align:center;color:#fff;width:100%">'+
-      '<div style="font-size:.88rem;font-weight:800">'+x(hl)+'</div>'+
-      (dsc?'<div style="font-size:.75rem;opacity:.85;margin:3px 0">'+x(dsc)+'</div>':'')+
-      '<span style="background:rgba(255,255,255,.25);padding:3px 12px;border-radius:20px;font-size:.72rem;font-weight:700">'+x(btn)+'</span>'+
+    var clickUrl2 = ($id('ad-click-url')||{}).value||'';
+    // Compute text color based on bg brightness
+    var r=parseInt(bg.slice(1,3),16), g=parseInt(bg.slice(3,5),16), b2=parseInt(bg.slice(5,7),16);
+    var bright = (r*299+g*587+b2*114)/1000;
+    var tc = bright > 128 ? '#222' : '#fff';
+    var btnBg = bright > 128 ? 'rgba(0,0,0,.2)' : 'rgba(255,255,255,.25)';
+    box.innerHTML =
+      '<div style="width:100%">'+
+        '<div style="background:'+bg+';border-radius:10px;padding:16px 18px;text-align:center;'+(clickUrl2?'cursor:pointer':'')+'" '+(clickUrl2?'onclick="window.open(\''+clickUrl2+'\',\'_blank\')"':'')+'>'+
+          '<div style="font-size:.95rem;font-weight:800;color:'+tc+';margin-bottom:4px">'+x(hl)+'</div>'+
+          (dsc?'<div style="font-size:.76rem;color:'+tc+';opacity:.88;margin-bottom:10px;line-height:1.4">'+x(dsc)+'</div>':'')+
+          '<span style="background:'+btnBg+';color:'+tc+';padding:5px 18px;border-radius:20px;font-size:.74rem;font-weight:700">'+x(btn)+'</span>'+
+        '</div>'+
+        '<div style="font-size:.62rem;color:var(--t4);padding:4px 2px;text-align:right">📝 Text Ad Preview · Website pe exactly aise dikhega</div>'+
       '</div>';
   } else if(type==='html'){
     var code = ($id('ad-html-code')||{}).value||'';
-    box.innerHTML = code ? '<div style="max-height:80px;overflow:hidden;width:100%">'+code+'</div>'
-                         : '<span style="font-size:.75rem;color:var(--t4)">Enter HTML to preview</span>';
+    if(code){
+      var safe = code.replace(/<script[\s\S]*?<\/script>/gi,'').replace(/on\w+="[^"]*"/gi,'');
+      box.innerHTML =
+        '<div style="width:100%">'+
+          '<div style="background:#0d0d0d;border-radius:8px;padding:10px;overflow:hidden">'+safe+'</div>'+
+          '<div style="font-size:.62rem;color:var(--t4);padding:4px 2px;text-align:right">💻 HTML Ad Preview (scripts disabled for safety)</div>'+
+        '</div>';
+    } else {
+      box.innerHTML =
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;border:2px dashed rgba(255,255,255,.1);padding:20px;text-align:center">'+
+          '<div style="font-size:1.5rem;margin-bottom:6px">💻</div>'+
+          '<div style="font-size:.75rem;color:var(--t4)">HTML code daalo to preview dikhega</div>'+
+        '</div>';
+    }
   }
 }
 
@@ -3140,13 +3093,26 @@ function loadAdRequests(){
         var d=doc.data();
         var dt=d.createdAt?new Date(d.createdAt.seconds*1000).toLocaleDateString('en-IN'):'—';
         var c=sc[d.status]||'#8a8479';
+        var adContent = d.adContent || {};
+        var contactLine = x(d.email||'');
+        if(d.phone) contactLine += ' · 📱 '+x(d.phone);
+        if(d.altPhone) contactLine += ' · 📞 '+x(d.altPhone);
+        var locationLine = [d.city, d.state].filter(Boolean).map(x).join(', ');
         html+='<div style="border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:12px;margin-bottom:10px;background:var(--bg3)">'+
           '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px">'+
             '<span style="font-size:.84rem;font-weight:700">'+x(d.company||d.name||'Unknown')+'</span>'+
             '<span style="font-size:.64rem;font-weight:700;color:'+c+'">'+((d.status||'pending').toUpperCase())+'</span>'+
           '</div>'+
-          '<div style="font-size:.74rem;color:var(--t3);margin-bottom:3px">📧 '+x(d.email||'')+(d.phone?' · 📞 '+x(d.phone):'')+'</div>'+
-          (d.adType?'<div style="font-size:.71rem;color:var(--t4)">Type: '+x(d.adType)+(d.budget?' · Budget: ₹'+x(d.budget):'')+'</div>':'')+
+          (d.designation?'<div style="font-size:.72rem;color:var(--t3);margin-bottom:2px">👤 '+x(d.name||'')+(d.designation?' · '+x(d.designation):'')+'</div>':'<div style="font-size:.72rem;color:var(--t3);margin-bottom:2px">👤 '+x(d.name||'')+'</div>')+
+          '<div style="font-size:.74rem;color:var(--t3);margin-bottom:3px">📧 '+contactLine+'</div>'+
+          (locationLine?'<div style="font-size:.71rem;color:var(--t4);margin-bottom:3px">📍 '+locationLine+(d.address?' · '+x(d.address):'')+'</div>':'')+
+          (d.gst?'<div style="font-size:.68rem;color:var(--t4);margin-bottom:3px">GST: '+x(d.gst)+'</div>':'')+
+          (d.website?'<div style="font-size:.71rem;color:var(--t4);margin-bottom:3px">🌐 <a href="'+x(d.website)+'" target="_blank" style="color:var(--gold2)">'+x(d.website)+'</a></div>':'')+
+          (d.adType?'<div style="font-size:.71rem;color:var(--t4)">Type: '+x(d.adType)+(d.budget?' · Budget: ₹'+x(d.budget):'')+(d.duration?' · Duration: '+x(d.duration):'')+(d.target?' · Target: '+x(d.target):'')+'</div>':'')+
+          // Show ad content preview if available
+          (adContent.textHeadline?'<div style="margin:6px 0;background:'+( adContent.textBgColor||'#e8520a')+';border-radius:6px;padding:8px 12px;text-align:center"><div style="font-size:.82rem;font-weight:800;color:#fff">'+x(adContent.textHeadline)+'</div>'+(adContent.textDesc?'<div style="font-size:.7rem;color:rgba(255,255,255,.85)">'+x(adContent.textDesc)+'</div>':'')+'<span style="background:rgba(255,255,255,.25);color:#fff;padding:2px 10px;border-radius:20px;font-size:.66rem;font-weight:700">'+(adContent.textBtn||'Learn More')+'</span></div>':'')+
+          (adContent.imageUrl?'<div style="margin:6px 0"><img src="'+x(adContent.imageUrl)+'" style="max-width:100%;max-height:60px;border-radius:4px;object-fit:contain" onerror="this.style.display=\'none\'"></div>':'')+
+          (adContent.htmlCode?'<div style="font-size:.68rem;color:var(--t4);margin:4px 0;padding:4px 8px;background:rgba(59,130,246,.08);border-radius:4px">💻 Custom HTML ad provided</div>':'')+
           (d.message?'<div style="font-size:.75rem;color:var(--t3);margin-top:4px;padding-top:4px;border-top:1px solid rgba(255,255,255,.06)">'+x(d.message)+'</div>':'')+
           '<div style="font-size:.64rem;color:var(--t4);margin-top:4px">'+dt+'</div>'+
           (d.status==='pending'?
