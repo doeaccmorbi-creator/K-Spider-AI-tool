@@ -5728,9 +5728,23 @@ function ksCookieDecline(){
       var hl  = safeHtml(ad.headline||'');
       var dsc = safeHtml(ad.description||'');
       var btn = safeHtml(ad.btnText||'Learn More');
+      // Info fields
+      var inf = ad.infoFields||{};
+      var sf  = ad.showFields||{};
+      var infoHtml = '';
+      if(sf.company && inf.companyName) infoHtml += '<div style="font-size:.72rem;font-weight:800;color:#fff;letter-spacing:.04em;margin-bottom:2px">🏢 '+safeHtml(inf.companyName)+'</div>';
+      if(sf.offer   && inf.offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;background:rgba(255,255,255,.2);display:inline-block;padding:2px 10px;border-radius:20px;margin-bottom:4px;color:#fff">🎉 '+safeHtml(inf.offerText)+'</div>';
+      if(sf.phone   && inf.phone){
+        var waNum = inf.phone.replace(/[^0-9]/g,'');
+        infoHtml += '<span style="font-size:.7rem;margin-right:8px"><a href="https://wa.me/91'+waNum+'" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline" onclick="event.stopPropagation()">📱 '+safeHtml(inf.phone)+'</a></span>';
+      }
+      if(sf.email && inf.email)   infoHtml += '<span style="font-size:.7rem;margin-right:8px"><a href="mailto:'+safeHtml(inf.email)+'" style="color:#fff;text-decoration:underline" onclick="event.stopPropagation()">✉️ '+safeHtml(inf.email)+'</a></span>';
+      if(sf.url   && inf.url)     infoHtml += '<span style="font-size:.7rem;margin-right:8px"><a href="'+safeHtml(inf.url)+'" target="_blank" rel="noopener" style="color:#fff;text-decoration:underline" onclick="event.stopPropagation()">🌐 '+safeHtml(inf.url.replace(/^https?:\/\//,''))+'</a></span>';
+      if(sf.location && inf.location) infoHtml += '<div style="font-size:.68rem;color:rgba(255,255,255,.85);margin-top:2px">📍 '+safeHtml(inf.location)+'</div>';
       inner = '<div style="background:'+bg+';padding:12px 20px;border-radius:8px;text-align:center;color:#fff;width:100%;cursor:'+(hasLink?'pointer':'default')+'">'+
         '<div style="font-size:.95rem;font-weight:800;margin-bottom:3px">'+hl+'</div>'+
         (dsc?'<div style="font-size:.80rem;opacity:.88;margin-bottom:6px">'+dsc+'</div>':'')+
+        (infoHtml?'<div style="margin-bottom:8px;line-height:1.8">'+infoHtml+'</div>':'')+
         '<span style="background:rgba(255,255,255,.22);padding:4px 14px;border-radius:20px;font-size:.76rem;font-weight:700">'+btn+'</span>'+
         '</div>';
 
