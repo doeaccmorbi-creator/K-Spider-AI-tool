@@ -1408,7 +1408,7 @@ function renderUsers(list) {
     else if(acctStatus==='suspended') acctBadge='<span class="b warn" style="font-size:.65rem">🟡 SUSPENDED</span>';
     else acctBadge='<span class="b ok" style="font-size:.65rem">🟢 Active</span>';
     // Row highlight for banned/suspended/sheet-only
-    var rowStyle = u.banned?'background:rgba(220,38,38,.04)':u.suspended?'background:rgba(245,158,11,.04)':u._fromSheet?'background:rgba(59,130,246,.05);border-left:3px solid rgba(59,130,246,.4)':'';
+    var rowStyle = u.banned?'background:rgba(220,38,38,.04)':u.suspended?'background:rgba(245,158,11,.04)':(u._fromSheet&&(u.id||'').indexOf('sheet_')===0)?'background:rgba(59,130,246,.05);border-left:3px solid rgba(59,130,246,.4)':'';
 
     // ── Login count ──
     var loginCount = u.loginCount || 0;
@@ -1452,9 +1452,21 @@ function renderUsers(list) {
       '<td style="text-align:center">'+loginBadge+'</td>'+
       '<td style="text-align:center">'+lastLoginCell+'</td>'+
       '<td style="font-size:.72rem;color:var(--t4);white-space:nowrap">'+reg+'</td>'+
-      '<td style="white-space:nowrap">'+
-        '<button class="btn btn-gh btn-sm" onclick="openEditUser(this.dataset.uid)" data-uid="'+u.id+'" title="Edit User">✏️</button> '+
-        '<a class="btn btn-bl btn-sm" href="mailto:'+x(u.email||'')+'" title="Send Email" style="text-decoration:none;font-size:.7rem">📧</a>'+
+      '<td style="white-space:nowrap;min-width:160px">'+
+        '<button class="btn btn-gh btn-sm" onclick="openEditUser(this.dataset.uid)" data-uid="'+u.id+'" title="Edit / Manage User" style="margin-bottom:3px">✏️ Edit</button> '+
+        '<a class="btn btn-bl btn-sm" href="mailto:'+x(u.email||'')+'" title="Send Email" style="text-decoration:none;font-size:.7rem;margin-bottom:3px">📧</a>'+
+        (u.banned
+          ? '<button class="btn btn-gr btn-sm" onclick="quickUnban(this.dataset.uid)" data-uid="'+u.id+'" title="Remove Ban" style="display:block;width:100%;margin-top:3px;font-size:.66rem">✅ Unban</button>'
+          : (u.suspended
+            ? '<button class="btn btn-gr btn-sm" onclick="quickUnsuspend(this.dataset.uid)" data-uid="'+u.id+'" title="Remove Suspend" style="display:block;width:100%;margin-top:3px;font-size:.66rem">✅ Unsuspend</button>'
+            : '<button class="btn btn-sm" onclick="quickSuspend(this.dataset.uid)" data-uid="'+u.id+'" title="Suspend 7 days" style="display:block;width:100%;margin-top:3px;font-size:.66rem;background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3)">🟡 Suspend</button>'
+          )
+        )+
+        (!u.banned
+          ? '<button class="btn btn-r btn-sm" onclick="quickBan(this.dataset.uid)" data-uid="'+u.id+'" title="Ban User" style="display:block;width:100%;margin-top:3px;font-size:.66rem">🔴 Ban</button>'
+          : ''
+        )+
+        '<button class="btn btn-r btn-sm" onclick="quickDelete(this.dataset.uid)" data-uid="'+u.id+'" title="Permanently Delete" style="display:block;width:100%;margin-top:3px;font-size:.62rem;opacity:.7">🗑️ Delete</button>'+
       '</td>'+
     '</tr>';
   });
@@ -1476,6 +1488,97 @@ function filterUsers() {
     return mq&&mp&&mv&&mc&&ms;
   });
   renderUsers(f);
+}
+
+// ══ QUICK ACTION FUNCTIONS (from table row buttons) ══
+
+function quickSuspend(uid){
+  if(!uid) return;
+  var u = _users.find(function(x){return x.id===uid;});
+  if(!u) return;
+  var days = parseInt(prompt('Kitne din ke liye suspend karna hai?\n(Default: 7 din)', '7'))||7;
+  if(!days) return;
+  var reason = prompt('Reason (Enter dabao to skip):', 'Suspended by admin')||'Suspended by admin';
+  if(!confirm('User "'+((u.name||u.email)||uid)+'" ko '+days+' din ke liye suspend karo?\nReason: '+reason)) return;
+  var suspendUntil = new Date(Date.now()+days*864e5).toISOString();
+  db.collection('users').doc(uid).update({
+    suspended:true, suspendUntil:suspendUntil, suspendReason:reason,
+    planType:'free', suspendedBy:_user?_user.email:'admin',
+    suspendedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    toast('🟡 User '+days+' din ke liye suspended');
+    loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function quickUnsuspend(uid){
+  if(!uid) return;
+  var u = _users.find(function(x){return x.id===uid;});
+  if(!confirm('User "'+(u?(u.name||u.email):uid)+'" ko unsuspend karo?')) return;
+  db.collection('users').doc(uid).update({
+    suspended:false, suspendUntil:null, suspendReason:null,
+    lastModifiedBy:_user?_user.email:'admin',
+    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    toast('✅ User unsuspend ho gaya');
+    loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function quickBan(uid){
+  if(!uid) return;
+  var u = _users.find(function(x){return x.id===uid;});
+  var reason = prompt('Ban reason likhao (required):','Policy violation');
+  if(!reason) return;
+  if(!confirm('User "'+(u?(u.name||u.email):uid)+'" ko PERMANENTLY BAN karo?\nReason: '+reason+'\n\nYe action serious hai!')) return;
+  db.collection('users').doc(uid).update({
+    banned:true, banReason:reason, suspended:false,
+    planType:'free', bannedBy:_user?_user.email:'admin',
+    bannedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    toast('🔴 User permanently banned. Reason: '+reason);
+    loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function quickUnban(uid){
+  if(!uid) return;
+  var u = _users.find(function(x){return x.id===uid;});
+  if(!confirm('User "'+(u?(u.name||u.email):uid)+'" ka ban hatao?')) return;
+  db.collection('users').doc(uid).update({
+    banned:false, banReason:null,
+    lastModifiedBy:_user?_user.email:'admin',
+    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(function(){
+    toast('✅ Ban hat gaya');
+    loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
+function quickDelete(uid){
+  if(!uid) return;
+  var u = _users.find(function(x){return x.id===uid;});
+  if((u && (u.id||'').indexOf('sheet_')===0)){
+    // Sheet-only user — just remove from display
+    if(!confirm('Is sheet-only user ko admin list se remove karo?')) return;
+    _users = _users.filter(function(x){return x.id!==uid;});
+    renderUsers(_users);
+    toast('🗑️ Sheet user removed from view');
+    return;
+  }
+  var email = u ? (u.email||'') : '';
+  var confirmTxt = prompt('PERMANENTLY DELETE karne ke liye "DELETE" type karo:\nUser: '+(email||uid));
+  if(confirmTxt !== 'DELETE'){ toast('❌ "DELETE" type karo confirm karne ke liye'); return; }
+  if(!confirm('LAST WARNING: Ye action REVERSIBLE NAHI hai. User ka poora Firestore data delete ho jaayega.')) return;
+  db.collection('users').doc(uid).delete().then(function(){
+    if(email){
+      db.collection('payments').where('userEmail','==',email).get().then(function(snap){
+        snap.forEach(function(d){ d.ref.update({deletedUser:true, deletedAt:firebase.firestore.FieldValue.serverTimestamp()}); });
+      }).catch(function(){});
+    }
+    toast('🗑️ User permanently delete ho gaya');
+    loadUsers(); loadDash();
+  }).catch(function(e){toast('❌ '+e.message);});
 }
 
 function exportCSV() {
@@ -1505,10 +1608,22 @@ var SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThBY8aMyw
 // Sheet view URL (edit link se extract karo ya pub link)
 var SHEETS_VIEW_URL = 'https://docs.google.com/spreadsheets/d/1cUb-ERIU6zJp_m2QoZClsVD4fbOeAQpphHsi8LNHbzM/edit#gid=1645336419';
 
-// ── Open sheet in new tab (Sheet button) — ab sirf data fetch karke admin mein dikhao ──
-function openSheetLink(){
-  fetchAndMergeSheetUsers();
+// ── Open sheet in new tab ──
+// ── Parse CSV line (handles quoted commas) ──
+function parseCSVLine(line){
+  var result=[],cur='',inQ=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;}}
+    else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
+    else{cur+=ch;}
+  }
+  result.push(cur.trim());
+  return result;
 }
+
+// ── Sheet button: fetch & merge sheet users into admin ──
+function openSheetLink(){ fetchAndMergeSheetUsers(); }
 
 // ── Fetch total user count from Google Sheets CSV ──
 function fetchSheetUserCount(callback) {
@@ -1516,27 +1631,13 @@ function fetchSheetUserCount(callback) {
     .then(function(r){ return r.text(); })
     .then(function(csv){
       var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      // Row 1 = meta (TEST OK...), Row 2 = column headers, Row 3+ = actual user data
-      var dataRows = lines.slice(2);
+      var dataRows = lines.slice(2); // Row 0=meta, Row 1=headers, Row 2+=data
       if(callback) callback(dataRows.length);
     })
     .catch(function(e){ console.warn('[Sheets CSV] Fetch error:', e.message); });
 }
 
-// ── Parse CSV line correctly (handles quoted commas) ──
-function parseCSVLine(line){
-  var result=[]; var cur=''; var inQ=false;
-  for(var i=0;i<line.length;i++){
-    var ch=line[i];
-    if(ch==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;} }
-    else if(ch===','&&!inQ){ result.push(cur.trim());cur=''; }
-    else{ cur+=ch; }
-  }
-  result.push(cur.trim());
-  return result;
-}
-
-// ── Fetch Google Sheet users and merge/display in admin ──
+// ── Sync All + Sheet button: Fetch Google Sheet CSV → show ALL users in admin ──
 function fetchAndMergeSheetUsers(){
   toast('⏳ Google Sheet se data fetch ho raha hai...');
   fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
@@ -1546,68 +1647,89 @@ function fetchAndMergeSheetUsers(){
     })
     .then(function(csv){
       var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      // Row 0 = meta/timestamp, Row 1 = headers, Row 2+ = data
+      // Row 0=meta/timestamp, Row 1=headers, Row 2+=data
       if(lines.length < 3){ toast('⚠️ Sheet mein koi user data nahi mila'); return; }
-      var headers = parseCSVLine(lines[1]);
-      // Map header names to indices (case-insensitive)
-      function hIdx(name){ return headers.findIndex(function(h){ return h.toLowerCase()===name.toLowerCase(); }); }
-      var iName=hIdx('Name'); var iEmail=hIdx('Email'); var iMobile=hIdx('Mobile');
-      var iCity=hIdx('City'); var iLang=hIdx('Language'); var iVerified=hIdx('Verified');
 
+      var headers = parseCSVLine(lines[1]);
+      function hIdx(name){ return headers.findIndex(function(h){ return h.toLowerCase().trim()===name.toLowerCase().trim(); }); }
+      var iName=hIdx('Name'), iEmail=hIdx('Email'), iMobile=hIdx('Mobile');
+      var iCity=hIdx('City'), iLang=hIdx('Language'), iVerified=hIdx('Verified');
+
+      // Parse all sheet rows
       var sheetUsers = [];
-      for(var i=2;i<lines.length;i++){
+      for(var i=2; i<lines.length; i++){
         var cols = parseCSVLine(lines[i]);
-        if(!cols[iEmail]&&!cols[iName]) continue; // skip empty rows
+        var email = (iEmail>=0 ? cols[iEmail] : '').trim().toLowerCase();
+        var name  = (iName>=0  ? cols[iName]  : '').trim();
+        if(!email && !name) continue;
         sheetUsers.push({
-          id: 'sheet_'+(i-1),
-          name: (iName>=0?cols[iName]:'')||'Unknown',
-          email: iEmail>=0?cols[iEmail]:'',
-          mobile: iMobile>=0?cols[iMobile]:'',
-          phone: iMobile>=0?cols[iMobile]:'',
-          city: iCity>=0?cols[iCity]:'',
-          language: iLang>=0?cols[iLang]:'',
-          verified: iVerified>=0?(cols[iVerified]||'').toLowerCase()==='yes':false,
+          _sheetRow: i-1,
+          name:     name || 'Unknown',
+          email:    email,
+          mobile:   iMobile>=0 ? cols[iMobile].trim() : '',
+          phone:    iMobile>=0 ? cols[iMobile].trim() : '',
+          city:     iCity>=0   ? cols[iCity].trim()   : '',
+          language: iLang>=0   ? cols[iLang].trim()   : '',
+          verified: iVerified>=0 ? (cols[iVerified]||'').trim().toLowerCase()==='yes' : false,
           planType: 'free',
           _fromSheet: true
         });
       }
 
-      // Merge: sheet users jo firestore mein nahi hain unhe add karo (email match se deduplicate)
-      var firestoreEmails = {};
-      _users.forEach(function(u){ if(u.email) firestoreEmails[u.email.toLowerCase()]=true; });
+      // Build email map of Firestore users for merging
+      var fireMap = {};
+      _users.forEach(function(u){ if(u.email) fireMap[u.email.toLowerCase().trim()] = u; });
 
-      var newFromSheet = sheetUsers.filter(function(su){
-        return su.email && !firestoreEmails[su.email.toLowerCase()];
+      // Merge: for each sheet user, use Firestore data if exists, else use sheet data
+      var merged = [];
+      var sheetEmails = {};
+      sheetUsers.forEach(function(su){
+        sheetEmails[su.email] = true;
+        if(su.email && fireMap[su.email]){
+          // User exists in Firestore — show Firestore data (has full info)
+          merged.push(fireMap[su.email]);
+        } else {
+          // New user from sheet only
+          su.id = 'sheet_'+su._sheetRow;
+          merged.push(su);
+        }
       });
 
-      // Combined list: firestore users + new sheet-only users
-      var combined = _users.slice().concat(newFromSheet);
+      // Also include Firestore-only users (not in sheet) — show them too
+      _users.forEach(function(u){
+        if(!u.email || !sheetEmails[u.email.toLowerCase().trim()]){
+          merged.push(u);
+        }
+      });
 
-      // Show in table
-      renderUsers(combined);
+      // Deduplicate by id
+      var seen = {}; var final = [];
+      merged.forEach(function(u){
+        var key = u.id || u.email || Math.random();
+        if(!seen[key]){ seen[key]=true; final.push(u); }
+      });
 
-      // Update badge count
-      var ub=$id('users-badge'); if(ub) ub.textContent=combined.length;
+      // Sort: Firestore users first (have id not starting with sheet_), then sheet-only
+      final.sort(function(a,b){
+        var aSheet = (a._fromSheet && (a.id||'').indexOf('sheet_')===0) ? 1 : 0;
+        var bSheet = (b._fromSheet && (b.id||'').indexOf('sheet_')===0) ? 1 : 0;
+        return aSheet - bSheet;
+      });
 
-      var msg = '✅ Sheet se '+sheetUsers.length+' users fetch kiye · ';
-      if(newFromSheet.length>0){
-        msg += newFromSheet.length+' naye users admin mein add kiye (sheet-only, highlighted)';
-      } else {
-        msg += 'Sab users already Firestore mein hain — '+combined.length+' total show ho rahe hain';
-      }
-      toast(msg);
+      renderUsers(final);
+      var ub=$id('users-badge'); if(ub) ub.textContent = final.length;
+      set('s-users', sheetUsers.length);
+
+      var newCount = final.filter(function(u){ return u._fromSheet && (u.id||'').indexOf('sheet_')===0; }).length;
+      toast('✅ Sheet: '+sheetUsers.length+' users | Firestore: '+_users.length+' users | Admin mein '+final.length+' total show ho rahe hain'+(newCount?' ('+newCount+' sirf sheet mein)':''));
     })
     .catch(function(e){
-      toast('❌ Sheet fetch error: '+e.message+' — Check CORS / Sheet public hai?');
-      console.error('[Sheet Fetch]', e);
+      toast('❌ Sheet fetch error: '+e.message);
+      console.error('[SheetFetch]', e);
     });
 }
 
-// ── Sync All: fetch Google Sheet CSV → parse → merge → show in admin (NO download) ──
-function syncToSheet(){
-  fetchAndMergeSheetUsers();
-}
-
+function syncToSheet(){ fetchAndMergeSheetUsers(); }
 // Keep old name for backward compat
 function syncAllToSheets(){ syncToSheet(); }
 function openSheetsConfig(){ openSheetLink(); }
