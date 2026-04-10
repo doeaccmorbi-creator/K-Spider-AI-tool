@@ -1164,6 +1164,8 @@ var _unsubUsers = null;
 var _unsubPending = null;
 var _unsubFranchise = null;
 var _unsubAds = null;
+var _firestoreUsers = []; // Backup of pure Firestore users for re-merge
+var _sheetFetchDone = false; // Track if initial sheet fetch happened
 
 function startRealtimeListeners() {
   // Stop any existing listeners
@@ -1215,10 +1217,18 @@ function startRealtimeListeners() {
         var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
         return tb-ta;
       });
+      // Keep Firestore backup for re-merges
+      _firestoreUsers = _users.slice();
       set('users-badge', _users.length);
       checkAutoUnsuspend(_users);
-      renderUsers(_users);
-      updateDashCounts(_users);
+      // Auto-fetch sheet on first load to show all registered users
+      if (!_sheetFetchDone) {
+        _sheetFetchDone = true;
+        fetchAndMergeSheetUsers(true); // silent=true, auto mode
+      } else {
+        renderUsers(_users);
+        updateDashCounts(_users);
+      }
       showLiveIndicator('users');
       console.log('[Admin] Users updated:', _users.length, 'total,', snap.docChanges().length, 'changes');
     }, function(err) {
@@ -1233,9 +1243,10 @@ function startRealtimeListeners() {
           var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
           return tb-ta;
         });
+        _firestoreUsers = _users.slice();
         set('users-badge',_users.length);
-        renderUsers(_users);
-        updateDashCounts(_users);
+        if (!_sheetFetchDone) { _sheetFetchDone = true; fetchAndMergeSheetUsers(true); }
+        else { renderUsers(_users); updateDashCounts(_users); }
         var ld=$id('live-dot');
         if(ld) ld.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block"></span> OFFLINE';
       }).catch(function(e){ toast('❌ Data load failed: '+e.message); });
@@ -1368,11 +1379,12 @@ function loadDash() {
 
 // ── USERS ──
 function loadUsers() {
-  if(_unsubUsers && _users.length > 0) {
-    // Listener active + data cached — just re-render
-    renderUsers(_users);
+  if(_unsubUsers && _firestoreUsers.length > 0) {
+    // Listener active + data cached — re-merge with sheet for latest data
+    fetchAndMergeSheetUsers(true);
   } else {
-    // No listener or empty — restart
+    // No listener or empty — restart listeners (sheet fetch will auto-trigger after)
+    _sheetFetchDone = false;
     startRealtimeListeners();
   }
 }
@@ -1638,8 +1650,8 @@ function fetchSheetUserCount(callback) {
 }
 
 // ── Sync All + Sheet button: Fetch Google Sheet CSV → show ALL users in admin ──
-function fetchAndMergeSheetUsers(){
-  toast('⏳ Google Sheet se data fetch ho raha hai...');
+function fetchAndMergeSheetUsers(silent){
+  if(!silent) toast('⏳ Google Sheet se data fetch ho raha hai...');
   fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
     .then(function(r){
       if(!r.ok) throw new Error('HTTP '+r.status);
@@ -1676,9 +1688,10 @@ function fetchAndMergeSheetUsers(){
         });
       }
 
-      // Build email map of Firestore users for merging
+      // Build email map of Firestore users for merging (use backup so we always merge from pure Firestore)
+      var fsUsers = _firestoreUsers.length ? _firestoreUsers : _users;
       var fireMap = {};
-      _users.forEach(function(u){ if(u.email) fireMap[u.email.toLowerCase().trim()] = u; });
+      fsUsers.forEach(function(u){ if(u.email) fireMap[u.email.toLowerCase().trim()] = u; });
 
       // Merge: for each sheet user, use Firestore data if exists, else use sheet data
       var merged = [];
@@ -1696,7 +1709,7 @@ function fetchAndMergeSheetUsers(){
       });
 
       // Also include Firestore-only users (not in sheet) — show them too
-      _users.forEach(function(u){
+      fsUsers.forEach(function(u){
         if(!u.email || !sheetEmails[u.email.toLowerCase().trim()]){
           merged.push(u);
         }
@@ -1716,15 +1729,21 @@ function fetchAndMergeSheetUsers(){
         return aSheet - bSheet;
       });
 
+      // ── Update _users with merged data so filterUsers() and other functions work correctly ──
+      _users = final;
+
       renderUsers(final);
       var ub=$id('users-badge'); if(ub) ub.textContent = final.length;
       set('s-users', sheetUsers.length);
+      updateDashCounts(final);
 
       var newCount = final.filter(function(u){ return u._fromSheet && (u.id||'').indexOf('sheet_')===0; }).length;
-      toast('✅ Sheet: '+sheetUsers.length+' users | Firestore: '+_users.length+' users | Admin mein '+final.length+' total show ho rahe hain'+(newCount?' ('+newCount+' sirf sheet mein)':''));
+      if(!silent) toast('✅ Sheet: '+sheetUsers.length+' users | Firestore: '+_firestoreUsers.length+' users | Admin mein '+final.length+' total show ho rahe hain'+(newCount?' ('+newCount+' sirf sheet mein)':''));
+      else if(newCount>0) toast('✅ '+final.length+' users loaded ('+newCount+' sheet-only new users found)');
     })
     .catch(function(e){
-      toast('❌ Sheet fetch error: '+e.message);
+      if(!silent) toast('❌ Sheet fetch error: '+e.message);
+      else { renderUsers(_users); updateDashCounts(_users); } // fallback: show Firestore only
       console.error('[SheetFetch]', e);
     });
 }
