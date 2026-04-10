@@ -1164,8 +1164,7 @@ var _unsubUsers = null;
 var _unsubPending = null;
 var _unsubFranchise = null;
 var _unsubAds = null;
-var _firestoreUsers = []; // Backup of pure Firestore users for re-merge
-var _sheetFetchDone = false; // Track if initial sheet fetch happened
+var _firestoreUsers = []; // Pure Firestore users backup for re-merges
 
 function startRealtimeListeners() {
   // Stop any existing listeners
@@ -1217,18 +1216,11 @@ function startRealtimeListeners() {
         var tb=b.registeredAt?new Date(b.registeredAt).getTime():(b.verifiedAt?new Date(b.verifiedAt).getTime():0);
         return tb-ta;
       });
-      // Keep Firestore backup for re-merges
-      _firestoreUsers = _users.slice();
+      _firestoreUsers = _users.slice(); // Keep pure Firestore backup for sheet merges
       set('users-badge', _users.length);
       checkAutoUnsuspend(_users);
-      // Auto-fetch sheet on first load to show all registered users
-      if (!_sheetFetchDone) {
-        _sheetFetchDone = true;
-        fetchAndMergeSheetUsers(true); // silent=true, auto mode
-      } else {
-        renderUsers(_users);
-        updateDashCounts(_users);
-      }
+      renderUsers(_users);
+      updateDashCounts(_users);
       showLiveIndicator('users');
       console.log('[Admin] Users updated:', _users.length, 'total,', snap.docChanges().length, 'changes');
     }, function(err) {
@@ -1245,8 +1237,8 @@ function startRealtimeListeners() {
         });
         _firestoreUsers = _users.slice();
         set('users-badge',_users.length);
-        if (!_sheetFetchDone) { _sheetFetchDone = true; fetchAndMergeSheetUsers(true); }
-        else { renderUsers(_users); updateDashCounts(_users); }
+        renderUsers(_users);
+        updateDashCounts(_users);
         var ld=$id('live-dot');
         if(ld) ld.innerHTML='<span style="width:7px;height:7px;border-radius:50%;background:#f59e0b;display:inline-block"></span> OFFLINE';
       }).catch(function(e){ toast('❌ Data load failed: '+e.message); });
@@ -1379,12 +1371,11 @@ function loadDash() {
 
 // ── USERS ──
 function loadUsers() {
-  if(_unsubUsers && _firestoreUsers.length > 0) {
-    // Listener active + data cached — re-merge with sheet for latest data
-    fetchAndMergeSheetUsers(true);
+  if(_unsubUsers && _users.length > 0) {
+    // Listener active + data cached — just re-render
+    renderUsers(_users);
   } else {
-    // No listener or empty — restart listeners (sheet fetch will auto-trigger after)
-    _sheetFetchDone = false;
+    // No listener or empty — restart
     startRealtimeListeners();
   }
 }
@@ -1637,21 +1628,39 @@ function parseCSVLine(line){
 // ── Sheet button: fetch & merge sheet users into admin ──
 function openSheetLink(){ fetchAndMergeSheetUsers(); }
 
+// ── Detect CSV header row & data start ──
+// Sheet structure: Row 1 = "TEST OK - <timestamp>, Name, Email, Mobile, City, Language, Verified"
+// Column A = meta/timestamp; columns B-G = real headers.
+// So lines[0] IS the header row and data starts from lines[1].
+function detectCSVStructure(lines) {
+  var line0 = (lines[0]||'').toLowerCase();
+  if(line0.indexOf('name')!==-1 && line0.indexOf('email')!==-1) {
+    return { headerLine: 0, dataStart: 1 };
+  }
+  var line1 = (lines[1]||'').toLowerCase();
+  if(line1.indexOf('name')!==-1 && line1.indexOf('email')!==-1) {
+    return { headerLine: 1, dataStart: 2 };
+  }
+  // Last fallback
+  return { headerLine: 0, dataStart: 1 };
+}
+
 // ── Fetch total user count from Google Sheets CSV ──
 function fetchSheetUserCount(callback) {
   fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
     .then(function(r){ return r.text(); })
     .then(function(csv){
       var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      var dataRows = lines.slice(2); // Row 0=meta, Row 1=headers, Row 2+=data
+      var struct = detectCSVStructure(lines);
+      var dataRows = lines.slice(struct.dataStart);
       if(callback) callback(dataRows.length);
     })
     .catch(function(e){ console.warn('[Sheets CSV] Fetch error:', e.message); });
 }
 
 // ── Sync All + Sheet button: Fetch Google Sheet CSV → show ALL users in admin ──
-function fetchAndMergeSheetUsers(silent){
-  if(!silent) toast('⏳ Google Sheet se data fetch ho raha hai...');
+function fetchAndMergeSheetUsers(){
+  toast('⏳ Google Sheet se data fetch ho raha hai...');
   fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
     .then(function(r){
       if(!r.ok) throw new Error('HTTP '+r.status);
@@ -1659,77 +1668,108 @@ function fetchAndMergeSheetUsers(silent){
     })
     .then(function(csv){
       var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      // Row 0=meta/timestamp, Row 1=headers, Row 2+=data
-      if(lines.length < 3){ toast('⚠️ Sheet mein koi user data nahi mila'); return; }
+      if(lines.length < 2){ toast('⚠️ Sheet mein koi data nahi mila'); return; }
 
-      var headers = parseCSVLine(lines[1]);
-      function hIdx(name){ return headers.findIndex(function(h){ return h.toLowerCase().trim()===name.toLowerCase().trim(); }); }
+      // ── Auto-detect header row ──
+      // Sheet row 1 in Google Sheets = "TEST OK - <timestamp>, Name, Email, Mobile, City, Language, Verified"
+      // Col A = meta/timestamp; Col B-G = real headers. lines[0] IS the header row.
+      var struct = detectCSVStructure(lines);
+      var headerCols = parseCSVLine(lines[struct.headerLine]);
+
+      // Column A (index 0) of the header row is the meta/timestamp cell — skip it.
+      // Real column headers start at index 1: Name, Email, Mobile, City, Language, Verified
+      // We find each by name anywhere in the header row (robust against position changes).
+      function hIdx(name){
+        return headerCols.findIndex(function(h){
+          return h.toLowerCase().trim()===name.toLowerCase().trim();
+        });
+      }
       var iName=hIdx('Name'), iEmail=hIdx('Email'), iMobile=hIdx('Mobile');
       var iCity=hIdx('City'), iLang=hIdx('Language'), iVerified=hIdx('Verified');
 
-      // Parse all sheet rows
+      // Debug: log what we found
+      console.log('[SheetFetch] Header row index:', struct.headerLine, '| Data start:', struct.dataStart);
+      console.log('[SheetFetch] Columns — Name:'+iName+' Email:'+iEmail+' Mobile:'+iMobile+' City:'+iCity+' Verified:'+iVerified);
+      console.log('[SheetFetch] Header cols:', headerCols);
+
+      // If we couldn't find Name/Email columns, sheet structure is unexpected
+      if(iName < 0 && iEmail < 0){
+        toast('⚠️ Sheet headers nahi mile (Name/Email column not found). Console check karo.');
+        console.error('[SheetFetch] Could not find Name/Email in headers:', headerCols);
+        return;
+      }
+
+      // Parse all user data rows
       var sheetUsers = [];
-      for(var i=2; i<lines.length; i++){
+      for(var i=struct.dataStart; i<lines.length; i++){
         var cols = parseCSVLine(lines[i]);
-        var email = (iEmail>=0 ? cols[iEmail] : '').trim().toLowerCase();
-        var name  = (iName>=0  ? cols[iName]  : '').trim();
+        var email = (iEmail>=0 && cols[iEmail] ? cols[iEmail] : '').trim().toLowerCase();
+        var name  = (iName>=0  && cols[iName]  ? cols[iName]  : '').trim();
+        // Skip completely empty rows or rows that only have a row number in col A
         if(!email && !name) continue;
+        // Skip if only col A has content (row number) and rest is empty
+        var hasRealData = false;
+        for(var j=1; j<cols.length; j++){ if(cols[j]&&cols[j].trim()){ hasRealData=true; break; } }
+        if(!hasRealData) continue;
+
         sheetUsers.push({
-          _sheetRow: i-1,
+          _sheetRow: i - struct.dataStart + 1,
           name:     name || 'Unknown',
           email:    email,
-          mobile:   iMobile>=0 ? cols[iMobile].trim() : '',
-          phone:    iMobile>=0 ? cols[iMobile].trim() : '',
-          city:     iCity>=0   ? cols[iCity].trim()   : '',
-          language: iLang>=0   ? cols[iLang].trim()   : '',
+          mobile:   (iMobile>=0 && cols[iMobile]) ? cols[iMobile].trim() : '',
+          phone:    (iMobile>=0 && cols[iMobile]) ? cols[iMobile].trim() : '',
+          city:     (iCity>=0   && cols[iCity])   ? cols[iCity].trim()   : '',
+          language: (iLang>=0   && cols[iLang])   ? cols[iLang].trim()   : '',
           verified: iVerified>=0 ? (cols[iVerified]||'').trim().toLowerCase()==='yes' : false,
           planType: 'free',
           _fromSheet: true
         });
       }
 
-      // Build email map of Firestore users for merging (use backup so we always merge from pure Firestore)
-      var fsUsers = _firestoreUsers.length ? _firestoreUsers : _users;
+      console.log('[SheetFetch] Parsed', sheetUsers.length, 'users from sheet');
+
+      // ── Build Firestore email map for merging ──
+      var fsUsers = (_firestoreUsers && _firestoreUsers.length) ? _firestoreUsers : _users;
       var fireMap = {};
       fsUsers.forEach(function(u){ if(u.email) fireMap[u.email.toLowerCase().trim()] = u; });
 
-      // Merge: for each sheet user, use Firestore data if exists, else use sheet data
+      // ── Merge: sheet users first (in sheet order) ──
       var merged = [];
       var sheetEmails = {};
       sheetUsers.forEach(function(su){
-        sheetEmails[su.email] = true;
+        if(su.email) sheetEmails[su.email] = true;
         if(su.email && fireMap[su.email]){
-          // User exists in Firestore — show Firestore data (has full info)
+          // In Firestore — use rich Firestore data
           merged.push(fireMap[su.email]);
         } else {
-          // New user from sheet only
-          su.id = 'sheet_'+su._sheetRow;
+          // Sheet-only user (not yet in Firestore)
+          su.id = 'sheet_' + su._sheetRow;
           merged.push(su);
         }
       });
 
-      // Also include Firestore-only users (not in sheet) — show them too
+      // Also include Firestore-only users not in sheet
       fsUsers.forEach(function(u){
         if(!u.email || !sheetEmails[u.email.toLowerCase().trim()]){
           merged.push(u);
         }
       });
 
-      // Deduplicate by id
+      // ── Deduplicate by id or email ──
       var seen = {}; var final = [];
       merged.forEach(function(u){
-        var key = u.id || u.email || Math.random();
+        var key = u.id || u.email || ('_r'+Math.random());
         if(!seen[key]){ seen[key]=true; final.push(u); }
       });
 
-      // Sort: Firestore users first (have id not starting with sheet_), then sheet-only
+      // ── Sort: Firestore users first, then sheet-only ──
       final.sort(function(a,b){
         var aSheet = (a._fromSheet && (a.id||'').indexOf('sheet_')===0) ? 1 : 0;
         var bSheet = (b._fromSheet && (b.id||'').indexOf('sheet_')===0) ? 1 : 0;
         return aSheet - bSheet;
       });
 
-      // ── Update _users with merged data so filterUsers() and other functions work correctly ──
+      // ── Update _users so filterUsers() works on full data ──
       _users = final;
 
       renderUsers(final);
@@ -1738,12 +1778,10 @@ function fetchAndMergeSheetUsers(silent){
       updateDashCounts(final);
 
       var newCount = final.filter(function(u){ return u._fromSheet && (u.id||'').indexOf('sheet_')===0; }).length;
-      if(!silent) toast('✅ Sheet: '+sheetUsers.length+' users | Firestore: '+_firestoreUsers.length+' users | Admin mein '+final.length+' total show ho rahe hain'+(newCount?' ('+newCount+' sirf sheet mein)':''));
-      else if(newCount>0) toast('✅ '+final.length+' users loaded ('+newCount+' sheet-only new users found)');
+      toast('✅ Sheet: '+sheetUsers.length+' | Firestore: '+fsUsers.length+' | Total: '+final.length+(newCount?' ('+newCount+' sheet-only)':''));
     })
     .catch(function(e){
-      if(!silent) toast('❌ Sheet fetch error: '+e.message);
-      else { renderUsers(_users); updateDashCounts(_users); } // fallback: show Firestore only
+      toast('❌ Sheet fetch error: '+e.message);
       console.error('[SheetFetch]', e);
     });
 }
