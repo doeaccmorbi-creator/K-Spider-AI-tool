@@ -1466,26 +1466,109 @@ function exportCSV() {
 // GOOGLE SHEETS INTEGRATION
 // ══════════════════════════════════════════════════════
 var _sheetsUrl = localStorage.getItem('ks_admin_sheets_url') || '';
+var _sheetsFetchUrl = localStorage.getItem('ks_admin_sheets_fetch_url') || '';
 
 function openSheetsConfig() {
-  var url = prompt('Google Apps Script Web App URL daalo\n(Deploy > Web App se copy karo):', _sheetsUrl);
+  // Build a nice dialog showing both URLs
+  var msg = 'Google Sheets / Apps Script URL daalo:\n\n' +
+    '• Google Sheets pubhtml URL (docs.google.com/spreadsheets/...) — Users FETCH karne ke liye\n' +
+    '• Google Apps Script URL (script.google.com/...) — Users SYNC karne ke liye\n\n' +
+    'Abhi saved URL: ' + (_sheetsUrl || _sheetsFetchUrl || 'None') + '\n\nNew URL daalo (ya blank chhod ke Clear karo):';
+  var url = prompt(msg, _sheetsUrl || _sheetsFetchUrl || '');
   if (url === null) return;
-  if (url && url.startsWith('https://script.google.com')) {
-    _sheetsUrl = url.trim();
-    localStorage.setItem('ks_admin_sheets_url', _sheetsUrl);
-    toast('✅ Sheets URL save ho gayi! Ab "Sync All" click karo.');
-  } else if (url === '') {
+  url = (url || '').trim();
+  if (url === '') {
     _sheetsUrl = '';
+    _sheetsFetchUrl = '';
     localStorage.removeItem('ks_admin_sheets_url');
+    localStorage.removeItem('ks_admin_sheets_fetch_url');
     toast('⚠️ Sheets URL remove ho gayi.');
+  } else if (url.startsWith('https://script.google.com')) {
+    _sheetsUrl = url;
+    localStorage.setItem('ks_admin_sheets_url', _sheetsUrl);
+    toast('✅ Apps Script URL save! Ab "☁️ Sync All" click karo Firebase → Sheets sync ke liye.');
+  } else if (url.includes('docs.google.com/spreadsheets')) {
+    // Convert to JSON/CSV fetch URL if needed
+    _sheetsFetchUrl = url;
+    localStorage.setItem('ks_admin_sheets_fetch_url', _sheetsFetchUrl);
+    toast('✅ Google Sheet URL save! Ab "☁️ Sync All" click karo — sheet se users fetch honge.');
   } else {
-    toast('❌ Valid Google Apps Script URL daalo (https://script.google.com/...)','error',5000);
+    toast('❌ Valid URL daalo: docs.google.com/spreadsheets/... ya script.google.com/...');
   }
 }
 
+// ── Fetch users FROM Google Sheets (pubhtml URL) and show in admin ──
+function fetchUsersFromSheet(fetchUrl, callback) {
+  // Convert pubhtml URL to CSV export URL
+  // Input:  https://docs.google.com/spreadsheets/d/e/XXXXX/pubhtml?gid=YYYYY&single=true
+  // Output: https://docs.google.com/spreadsheets/d/e/XXXXX/pub?gid=YYYYY&single=true&output=csv
+  var csvUrl = fetchUrl
+    .replace('/pubhtml', '/pub')
+    .replace('output=html', 'output=csv');
+  // If no output param, add it
+  if (csvUrl.indexOf('output=') === -1) {
+    csvUrl += (csvUrl.indexOf('?') === -1 ? '?' : '&') + 'output=csv';
+  }
+
+  toast('⏳ Google Sheet se users fetch ho rahe hain...');
+
+  fetch(csvUrl)
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.text();
+    })
+    .then(function(csv) {
+      var lines = csv.trim().split('\n');
+      if (lines.length < 2) { toast('⚠️ Sheet mein koi data nahi mila.'); return; }
+      // Parse header row
+      var headers = lines[0].split(',').map(function(h) { return h.replace(/^"|"$/g,'').trim().toLowerCase(); });
+      var sheetUsers = [];
+      for (var i = 1; i < lines.length; i++) {
+        var cols = lines[i].match(/(".*?"|[^,]+)(?=,|$)/g) || lines[i].split(',');
+        cols = cols.map(function(c) { return (c||'').replace(/^"|"$/g,'').trim(); });
+        var row = {};
+        headers.forEach(function(h, idx) { row[h] = cols[idx] || ''; });
+        // Skip rows without name AND email
+        if (!row['name'] && !row['email']) continue;
+        sheetUsers.push({
+          name:     row['name'] || row['username'] || '',
+          email:    row['email'] || '',
+          mobile:   row['mobile'] || row['phone'] || row['contact'] || '',
+          city:     row['city'] || row['location'] || '',
+          language: row['language'] || row['lang'] || '',
+          verified: (row['verified']||'').toLowerCase() === 'yes',
+          planType: (row['plan'] || row['plantype'] || 'free').toLowerCase(),
+          source:   'google_sheet'
+        });
+      }
+      if (callback) callback(sheetUsers);
+    })
+    .catch(function(e) {
+      toast('❌ Sheet fetch error: ' + e.message + '. Sheet publicly published hai?');
+    });
+}
+
 function syncAllToSheets() {
+  // If we have a Google Sheet pubhtml/fetch URL — fetch users FROM sheet
+  if (_sheetsFetchUrl) {
+    fetchUsersFromSheet(_sheetsFetchUrl, function(sheetUsers) {
+      if (!sheetUsers.length) { toast('⚠️ Sheet mein koi valid user nahi mila.'); return; }
+      var existingEmails = {};
+      _users.forEach(function(u) { if(u.email) existingEmails[u.email.toLowerCase()] = true; });
+      var newUsers = sheetUsers.filter(function(u) {
+        return u.email && !existingEmails[u.email.toLowerCase()];
+      });
+      var merged = _users.slice();
+      newUsers.forEach(function(u) {
+        merged.push(Object.assign({ id: 'sheet_'+u.email.replace(/[^a-z0-9]/gi,'_'), _sheetOnly: true }, u));
+      });
+      renderUsers(merged);
+      toast('✅ Sheet se ' + sheetUsers.length + ' users fetched! ' + newUsers.length + ' naye users display mein add hue.');
+    });
+    return;
+  }
   if (!_sheetsUrl) {
-    toast('Pehle Sheets URL set karo — "📊 Sheets" button click karo','warn',5000);
+    toast('Pehle Sheets URL set karo — "📊 Sheets" button click karo');
     return;
   }
   if (!_users.length) { toast('No users to sync'); return; }
