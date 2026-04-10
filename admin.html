@@ -1407,8 +1407,8 @@ function renderUsers(list) {
     if(acctStatus==='banned') acctBadge='<span class="b fail" style="font-size:.65rem">🔴 BANNED</span>';
     else if(acctStatus==='suspended') acctBadge='<span class="b warn" style="font-size:.65rem">🟡 SUSPENDED</span>';
     else acctBadge='<span class="b ok" style="font-size:.65rem">🟢 Active</span>';
-    // Row highlight for banned/suspended
-    var rowStyle = u.banned?'background:rgba(220,38,38,.04)':u.suspended?'background:rgba(245,158,11,.04)':'';
+    // Row highlight for banned/suspended/sheet-only
+    var rowStyle = u.banned?'background:rgba(220,38,38,.04)':u.suspended?'background:rgba(245,158,11,.04)':u._fromSheet?'background:rgba(59,130,246,.05);border-left:3px solid rgba(59,130,246,.4)':'';
 
     // ── Login count ──
     var loginCount = u.loginCount || 0;
@@ -1505,9 +1505,9 @@ var SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThBY8aMyw
 // Sheet view URL (edit link se extract karo ya pub link)
 var SHEETS_VIEW_URL = 'https://docs.google.com/spreadsheets/d/1cUb-ERIU6zJp_m2QoZClsVD4fbOeAQpphHsi8LNHbzM/edit#gid=1645336419';
 
-// ── Open sheet in new tab ──
+// ── Open sheet in new tab (Sheet button) — ab sirf data fetch karke admin mein dikhao ──
 function openSheetLink(){
-  window.open(SHEETS_VIEW_URL, '_blank');
+  fetchAndMergeSheetUsers();
 }
 
 // ── Fetch total user count from Google Sheets CSV ──
@@ -1523,58 +1523,89 @@ function fetchSheetUserCount(callback) {
     .catch(function(e){ console.warn('[Sheets CSV] Fetch error:', e.message); });
 }
 
-// ── Sync All: fetch Firestore users → download as CSV (for manual import to Sheet) ──
-// Also shows count from Google Sheet CSV
-function syncToSheet(){
-  if(!_users.length){ toast('No users to sync'); return; }
+// ── Parse CSV line correctly (handles quoted commas) ──
+function parseCSVLine(line){
+  var result=[]; var cur=''; var inQ=false;
+  for(var i=0;i<line.length;i++){
+    var ch=line[i];
+    if(ch==='"'){ if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;} }
+    else if(ch===','&&!inQ){ result.push(cur.trim());cur=''; }
+    else{ cur+=ch; }
+  }
+  result.push(cur.trim());
+  return result;
+}
 
-  // Step 1: Show current sheet count
-  toast('⏳ Fetching Google Sheet user count...');
+// ── Fetch Google Sheet users and merge/display in admin ──
+function fetchAndMergeSheetUsers(){
+  toast('⏳ Google Sheet se data fetch ho raha hai...');
   fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
-    .then(function(r){ return r.text(); })
+    .then(function(r){
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      return r.text();
+    })
     .then(function(csv){
       var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      var sheetCount = Math.max(0, lines.length - 2); // subtract meta + header rows
-      var fireCount  = _users.length;
+      // Row 0 = meta/timestamp, Row 1 = headers, Row 2+ = data
+      if(lines.length < 3){ toast('⚠️ Sheet mein koi user data nahi mila'); return; }
+      var headers = parseCSVLine(lines[1]);
+      // Map header names to indices (case-insensitive)
+      function hIdx(name){ return headers.findIndex(function(h){ return h.toLowerCase()===name.toLowerCase(); }); }
+      var iName=hIdx('Name'); var iEmail=hIdx('Email'); var iMobile=hIdx('Mobile');
+      var iCity=hIdx('City'); var iLang=hIdx('Language'); var iVerified=hIdx('Verified');
 
-      // Step 2: Download updated CSV for manual import
-      var rows=[['#','Name','Email','Mobile','WhatsApp','City','State','Plan','Expiry','Paid (Rs)','Payment Method','Verified','Login Count','Last Login','Registered At','Language','Admin Note']];
-      _users.forEach(function(u,i){
-        rows.push([
-          i+1,
-          u.name||'',
-          u.email||'',
-          u.mobile||u.phone||u.contact||'',
-          u.whatsapp||u.mobile||u.phone||'',
-          u.city||u.location||'',
-          u.state||u.province||'',
-          u.planType||'free',
-          u.planExpiry?new Date(u.planExpiry).toLocaleDateString('en-IN'):'',
-          u.paidAmount||0,
-          u.paymentMethod||'',
-          u.verified?'Yes':'No',
-          u.loginCount||0,
-          u.lastLogin?new Date(u.lastLogin).toLocaleString('en-IN'):(u.lastSeen?new Date(u.lastSeen).toLocaleString('en-IN'):''),
-          u.registeredAt?new Date(u.registeredAt).toLocaleString('en-IN'):(u.verifiedAt?new Date(u.verifiedAt).toLocaleString('en-IN'):''),
-          u.language||'',
-          u.adminNote||''
-        ]);
+      var sheetUsers = [];
+      for(var i=2;i<lines.length;i++){
+        var cols = parseCSVLine(lines[i]);
+        if(!cols[iEmail]&&!cols[iName]) continue; // skip empty rows
+        sheetUsers.push({
+          id: 'sheet_'+(i-1),
+          name: (iName>=0?cols[iName]:'')||'Unknown',
+          email: iEmail>=0?cols[iEmail]:'',
+          mobile: iMobile>=0?cols[iMobile]:'',
+          phone: iMobile>=0?cols[iMobile]:'',
+          city: iCity>=0?cols[iCity]:'',
+          language: iLang>=0?cols[iLang]:'',
+          verified: iVerified>=0?(cols[iVerified]||'').toLowerCase()==='yes':false,
+          planType: 'free',
+          _fromSheet: true
+        });
+      }
+
+      // Merge: sheet users jo firestore mein nahi hain unhe add karo (email match se deduplicate)
+      var firestoreEmails = {};
+      _users.forEach(function(u){ if(u.email) firestoreEmails[u.email.toLowerCase()]=true; });
+
+      var newFromSheet = sheetUsers.filter(function(su){
+        return su.email && !firestoreEmails[su.email.toLowerCase()];
       });
-      var csvStr = rows.map(function(r){
-        return r.map(function(c){ return '"'+(c+'').replace(/"/g,'""')+'"'; }).join(',');
-      }).join('\n');
-      var a = document.createElement('a');
-      a.href = 'data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csvStr);
-      a.download = 'kspider-users-sync-'+new Date().toISOString().slice(0,10)+'.csv';
-      a.click();
 
-      toast('✅ Sheet mein '+sheetCount+' users · Firestore mein '+fireCount+' users · CSV download ho gaya — Sheet mein import karo!');
+      // Combined list: firestore users + new sheet-only users
+      var combined = _users.slice().concat(newFromSheet);
+
+      // Show in table
+      renderUsers(combined);
+
+      // Update badge count
+      var ub=$id('users-badge'); if(ub) ub.textContent=combined.length;
+
+      var msg = '✅ Sheet se '+sheetUsers.length+' users fetch kiye · ';
+      if(newFromSheet.length>0){
+        msg += newFromSheet.length+' naye users admin mein add kiye (sheet-only, highlighted)';
+      } else {
+        msg += 'Sab users already Firestore mein hain — '+combined.length+' total show ho rahe hain';
+      }
+      toast(msg);
     })
-    .catch(function(){
-      // If CSV fetch fails, just export local
-      exportCSV();
-      toast('✅ CSV downloaded — Google Sheet mein manually import karo');
+    .catch(function(e){
+      toast('❌ Sheet fetch error: '+e.message+' — Check CORS / Sheet public hai?');
+      console.error('[Sheet Fetch]', e);
     });
+}
+
+// ── Sync All: fetch Google Sheet CSV → parse → merge → show in admin (NO download) ──
+function syncToSheet(){
+  fetchAndMergeSheetUsers();
 }
 
 // Keep old name for backward compat
