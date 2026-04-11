@@ -617,6 +617,29 @@ footer{position:relative;z-index:1;border-top:1px solid var(--bd);background:rgb
 .sctop.on{opacity:1}.sctop:hover{border-color:var(--c1);color:var(--c1)}
 @media(max-width:700px){.frow{grid-template-columns:1fr}.swpb{transform:rotate(90deg)}.hnav .hl:not(.pro){display:none}.ftg{grid-template-columns:1fr 1fr}.bd{padding:14px 12px}}
 @media(max-width:460px){.ftg{grid-template-columns:1fr}.hero h1{font-size:26px}.tabs{padding:6px 6px 0}.tab{padding:6px 8px;font-size:10px}}
+/* ── Video Studio ─────────────────────────────────────── */
+.vstab{background:var(--card2);border:1px solid var(--bd);border-radius:8px;color:var(--t2);font:600 11px var(--fm);padding:7px 14px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.vstab.on{background:linear-gradient(135deg,#ec4899,#8b5cf6);border-color:transparent;color:#fff}
+.vstab:hover:not(.on){border-color:var(--c1);color:var(--c1)}
+.vs-drop{border:2px dashed rgba(0,245,255,0.3);border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;transition:all .2s;color:var(--t2);font:500 13px var(--fb);background:rgba(0,245,255,0.03)}
+.vs-drop:hover,.vs-drop.vs-drag{border-color:var(--c1);background:rgba(0,245,255,0.08);color:var(--t1)}
+.vs-clip-item{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:7px 10px;margin-bottom:6px;cursor:grab;user-select:none;transition:all .15s}
+.vs-clip-item:hover{border-color:var(--c1)}
+.vs-clip-item.dragging{opacity:.4;border-color:var(--c1)}
+.vs-clip-num{background:rgba(0,245,255,0.15);color:var(--c1);border-radius:5px;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font:700 10px var(--fm);flex-shrink:0}
+.vs-clip-info{flex:1;min-width:0}
+.vs-clip-name{font:600 11px var(--fm);color:var(--t1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vs-clip-meta{font:400 10px var(--fm);color:var(--tm);margin-top:2px}
+.vs-clip-del{background:rgba(239,68,68,0.15);border:none;color:#f87171;border-radius:5px;width:22px;height:22px;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.vs-clip-del:hover{background:rgba(239,68,68,0.3)}
+.vs-photo-thumb{position:relative;width:80px;height:60px;border-radius:7px;overflow:hidden;border:2px solid var(--bd);cursor:grab;flex-shrink:0;transition:border-color .15s}
+.vs-photo-thumb:hover{border-color:var(--c1)}
+.vs-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.vs-ph-del{position:absolute;top:2px;right:2px;background:rgba(0,0,0,0.75);color:#fff;border:none;border-radius:4px;width:16px;height:16px;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+.vs-ph-num{position:absolute;bottom:2px;left:2px;background:rgba(0,0,0,0.7);color:var(--c1);font:700 9px var(--fm);border-radius:3px;padding:1px 4px;pointer-events:none}
+.vs-result-box{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:14px;margin-top:8px}
+.vs-track-row{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:8px;flex-wrap:wrap}
+.vs-track-del{background:rgba(239,68,68,0.15);border:none;color:#f87171;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px}
 </style>
 <script>
 // Online/Offline status
@@ -687,6 +710,7 @@ window.addEventListener('load',    _updateStatus);
   <button class="tab" data-cat="doc" onclick="swC(this,'doc')"><i class="fa-solid fa-file-word"></i> Document</button>
   <button class="tab" data-cat="audio" onclick="swC(this,'audio')"><i class="fa-solid fa-music"></i> Audio</button>
   <button class="tab" data-cat="video" onclick="swC(this,'video')"><i class="fa-solid fa-video"></i> Video</button>
+  <button class="tab" data-cat="vstudio" onclick="swC(this,'vstudio')"><i class="fa-solid fa-clapperboard"></i> Video Studio ✨</button>
   <button class="tab" data-cat="pdf" onclick="swC(this,'pdf')"><i class="fa-solid fa-file-pdf"></i> PDF</button>
   <button class="tab" data-cat="arch" onclick="swC(this,'arch')"><i class="fa-solid fa-file-zipper"></i> Archive</button>
       <button class="tab" data-cat="editor" onclick="swC(this,'editor')"><i class="fa-solid fa-pen-to-square"></i> Image Editor</button>
@@ -1248,6 +1272,188 @@ window.addEventListener('load',    _updateStatus);
 
 </div></div></div>
 
+<!-- ╔══════════════════════════════════════════════════════╗ -->
+<!-- ║         VIDEO STUDIO — K Spider AI                  ║ -->
+<!-- ╚══════════════════════════════════════════════════════╝ -->
+<div id="vstudio-panel" class="pbox" style="display:none">
+  <div class="phead">
+    <span class="nbdg">✨ NEW</span>
+    <h3>Video Studio — Join, Create &amp; Mix</h3>
+  </div>
+
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+    <button class="vstab on" data-vs="join-video" onclick="vsSwitch(this,'join-video')">🎬 Join Videos</button>
+    <button class="vstab" data-vs="photos-video" onclick="vsSwitch(this,'photos-video')">🖼️ Photos→Video</button>
+    <button class="vstab" data-vs="music-mix" onclick="vsSwitch(this,'music-mix')">🎵 Add Music</button>
+  </div>
+
+  <!-- JOIN VIDEOS -->
+  <div id="vs-join-video" class="vs-pane">
+    <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:10px">📂 Add Multiple Video Clips (MP4, MOV, WEBM, AVI, MKV)</div>
+    <div class="vs-drop" onclick="document.getElementById('vsVideoInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsHandleVideoDrop(event)">
+      <i class="fa-solid fa-film" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
+      <b>Drop Video Clips Here</b><br>
+      <small style="color:var(--tm)">or click to browse — add multiple clips, drag to reorder</small>
+    </div>
+    <input type="file" id="vsVideoInput" multiple accept="video/*" style="display:none" onchange="vsAddVideos(this.files)">
+    <div id="vs-video-list" style="margin-top:10px"></div>
+    <div style="background:rgba(0,245,255,0.05);border:1px solid rgba(0,245,255,0.15);border-radius:10px;padding:12px;margin-top:12px">
+      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎵 Background Music (Optional)</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="vj-bgm-type" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none" onchange="vsToggleMusicUpload('vj')">
+          <option value="none">No Music</option>
+          <option value="device">📁 Import from Device</option>
+          <option value="upbeat">🎵 Upbeat (Generated)</option>
+          <option value="calm">🧘 Calm Ambient</option>
+          <option value="cinematic">🎬 Cinematic</option>
+        </select>
+        <input type="file" id="vj-music-file" accept="audio/*" style="display:none" onchange="vsLoadMusic('vj',this)">
+        <button id="vj-music-btn" class="pvb" style="display:none" onclick="document.getElementById('vj-music-file').click()"><i class="fa-solid fa-upload"></i> Choose Music File</button>
+        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
+          <input type="checkbox" id="vj-sync-dur" style="accent-color:var(--c1)"> 🔗 Sync Duration to Music
+        </label>
+      </div>
+      <div id="vj-music-info" style="margin-top:6px;font:400 10px var(--fm);color:var(--tm)"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
+        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Music Volume</label>
+        <input type="range" id="vj-vol" min="0" max="100" value="40" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('vj-vol-lbl').textContent=this.value+'%'">
+        <span id="vj-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">40%</span>
+      </div>
+    </div>
+    <div class="vopts" style="margin-top:12px">
+      <div class="og"><label>Output Resolution</label><select id="vj-res"><option value="1920x1080" selected>1080p HD</option><option value="1280x720">720p</option><option value="854x480">480p</option></select></div>
+      <div class="og"><label>Frame Rate</label><select id="vj-fps"><option value="30" selected>30 fps</option><option value="24">24 fps</option><option value="60">60 fps</option></select></div>
+      <div class="og"><label>Transition</label><select id="vj-trans"><option value="none">Cut (Direct)</option><option value="fade" selected>Fade Black</option><option value="wipe">Wipe Left</option></select></div>
+      <div class="og"><label>Watermark</label><select id="vj-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None (Pro)</option></select></div>
+    </div>
+    <button id="vs-join-btn" class="cvbtn" onclick="vsJoinVideos()" style="margin-top:14px;background:linear-gradient(135deg,#ec4899,#8b5cf6);width:100%">
+      <i class="fa-solid fa-film"></i> Join Videos &amp; Download
+    </button>
+    <div id="vs-join-log" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto"></div>
+    <div id="vs-join-result" style="margin-top:10px"></div>
+  </div>
+
+  <!-- PHOTOS TO VIDEO -->
+  <div id="vs-photos-video" class="vs-pane" style="display:none">
+    <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:10px">🖼️ Add Multiple Photos (JPG, PNG, WEBP)</div>
+    <div class="vs-drop" onclick="document.getElementById('vsPhotoInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsHandlePhotoDrop(event)">
+      <i class="fa-solid fa-images" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
+      <b>Drop Photos Here</b><br>
+      <small style="color:var(--tm)">Drag thumbnails below to reorder</small>
+    </div>
+    <input type="file" id="vsPhotoInput" multiple accept="image/*" style="display:none" onchange="vsAddPhotos(this.files)">
+    <div id="vs-photo-list" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px"></div>
+    <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-top:12px">
+      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">⏱ Duration Settings</div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font:500 11px var(--fb);color:var(--t2)">Seconds per photo:</label>
+        <input type="number" id="ph-dur" value="3" min="1" max="30" style="width:60px;background:var(--card2);border:1px solid var(--bd);border-radius:5px;color:var(--t1);font:600 12px var(--fm);padding:4px 8px;text-align:center;outline:none">
+        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
+          <input type="checkbox" id="ph-sync-music" style="accent-color:var(--c1)" onchange="vsTogglePhotoSync(this)"> 🔗 Set Duration from Music Length
+        </label>
+      </div>
+    </div>
+    <div style="background:rgba(0,245,255,0.05);border:1px solid rgba(0,245,255,0.15);border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎬 Slideshow Effect</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="ph-effect" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none">
+          <option value="kenburns" selected>Ken Burns (Zoom+Pan)</option>
+          <option value="fade">Crossfade</option>
+          <option value="slide">Slide Left</option>
+          <option value="zoom">Zoom In</option>
+          <option value="none">No Transition</option>
+        </select>
+        <select id="ph-zoom-dir" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none">
+          <option value="auto">Auto Direction</option>
+          <option value="in">Zoom In Only</option>
+          <option value="out">Zoom Out Only</option>
+        </select>
+      </div>
+    </div>
+    <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎵 Background Music</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <select id="ph-bgm-type" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none" onchange="vsToggleMusicUpload('ph')">
+          <option value="none">No Music</option>
+          <option value="device">📁 Import from Device</option>
+          <option value="upbeat">🎵 Upbeat (Generated)</option>
+          <option value="calm">🧘 Calm Ambient</option>
+          <option value="cinematic">🎬 Cinematic</option>
+          <option value="romantic">💕 Romantic</option>
+        </select>
+        <input type="file" id="ph-music-file" accept="audio/*" style="display:none" onchange="vsLoadMusic('ph',this)">
+        <button id="ph-music-btn" class="pvb" style="display:none" onclick="document.getElementById('ph-music-file').click()"><i class="fa-solid fa-upload"></i> Choose Music File</button>
+      </div>
+      <div id="ph-music-info" style="margin-top:6px;font:400 10px var(--fm);color:var(--tm)"></div>
+      <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
+        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Volume</label>
+        <input type="range" id="ph-vol" min="0" max="100" value="60" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('ph-vol-lbl').textContent=this.value+'%'">
+        <span id="ph-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">60%</span>
+      </div>
+    </div>
+    <div class="vopts" style="margin-top:12px">
+      <div class="og"><label>Output Resolution</label><select id="ph-res"><option value="1920x1080" selected>1080p HD</option><option value="1280x720">720p</option><option value="854x480">480p</option></select></div>
+      <div class="og"><label>Frame Rate</label><select id="ph-fps"><option value="30" selected>30 fps</option><option value="24">24 fps</option></select></div>
+      <div class="og"><label>Watermark</label><select id="ph-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None (Pro)</option></select></div>
+    </div>
+    <button class="cvbtn" onclick="vsPhotosToVideo()" style="margin-top:14px;background:linear-gradient(135deg,#fbbf24,#ec4899);width:100%">
+      <i class="fa-solid fa-images"></i> Create Slideshow Video
+    </button>
+    <div id="vs-photos-log" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto"></div>
+    <div id="vs-photos-result" style="margin-top:10px"></div>
+  </div>
+
+  <!-- ADD MUSIC TO VIDEO -->
+  <div id="vs-music-mix" class="vs-pane" style="display:none">
+    <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:10px">🎬 Choose Video File</div>
+    <div class="vs-drop" onclick="document.getElementById('vsMixVideoInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsHandleMixVideoDrop(event)">
+      <i class="fa-solid fa-video" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
+      <b>Drop Video File Here</b><br>
+      <small style="color:var(--tm)">MP4, WEBM, MOV</small>
+    </div>
+    <input type="file" id="vsMixVideoInput" accept="video/*" style="display:none" onchange="vsLoadMixVideo(this)">
+    <div id="mix-video-info" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm)"></div>
+    <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:12px;margin-top:12px">
+      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎵 Music Tracks (Add Multiple)</div>
+      <button class="pvb" onclick="vsMixAddTrack()" style="margin-bottom:10px"><i class="fa-solid fa-plus"></i> Add Music Track</button>
+      <div id="mix-tracks-list"></div>
+    </div>
+    <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-top:10px">
+      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">⚙ Mix Options</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
+          <input type="checkbox" id="mix-keep-audio" checked style="accent-color:var(--c1)"> Keep Original Audio
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
+          <input type="checkbox" id="mix-fade" checked style="accent-color:var(--c1)"> Fade In/Out Music
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
+          <input type="checkbox" id="mix-loop-music" style="accent-color:var(--c1)"> Loop Music if Shorter
+        </label>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
+        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Music Vol</label>
+        <input type="range" id="mix-vol" min="0" max="100" value="50" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('mix-vol-lbl').textContent=this.value+'%'">
+        <span id="mix-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">50%</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px;align-items:center">
+        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Orig Audio</label>
+        <input type="range" id="mix-orig-vol" min="0" max="100" value="70" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('mix-orig-vol-lbl').textContent=this.value+'%'">
+        <span id="mix-orig-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">70%</span>
+      </div>
+    </div>
+    <div class="vopts" style="margin-top:12px">
+      <div class="og"><label>Watermark</label><select id="mix-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None (Pro)</option></select></div>
+    </div>
+    <button class="cvbtn" onclick="vsMixAudio()" style="margin-top:14px;background:linear-gradient(135deg,#fbbf24,#10b981);width:100%">
+      <i class="fa-solid fa-music"></i> Mix Audio Into Video
+    </button>
+    <div id="vs-mix-log" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto"></div>
+    <div id="vs-mix-result" style="margin-top:10px"></div>
+  </div>
+
+</div><!-- end vstudio-panel -->
+
 <section class="sec">
   <div class="sh"><div><h2>Popular <span>Conversion Tools</span></h2><p>Click any to instantly load</p></div></div>
   <div class="tgrd" id="tgrd"></div>
@@ -1289,7 +1495,7 @@ window.addEventListener('load',    _updateStatus);
       <div class="fbr"><a href="https://kspiderai.in" class="logo"><div class="logo-ic">&#x1F577;</div><div class="logo-tx"><b>K SPIDER AI</b><small>FOR KREATION</small></div></a><p>India free AI tools platform. 400+ tools. By Gaurang Raval and Khush Raval, Ahmedabad.</p></div>
       <div class="fc"><h4>Platform</h4><a href="https://kspiderai.in">Home</a><a href="https://kspiderai.in/blog.html">Blog</a><a href="https://kspiderai.in#tools">All Tools</a><a href="https://kspiderai.in#pricing">Pricing</a></div>
       <div class="fc"><h4>Legal</h4><a href="https://kspiderai.in/legal/index.html#privacy-policy">Privacy</a><a href="https://kspiderai.in/legal/index.html#terms">Terms</a><a href="https://kspiderai.in/legal/index.html">Legal</a></div>
-      <div class="fc"><h4>Connect</h4><a href="https://www.youtube.com/@KSpider4Kreaction" target="_blank">YouTube</a>Email<a href="https://kspiderai.in#franchise">Franchise</a></div>
+      <div class="fc"><h4>Connect</h4><a href="https://www.youtube.com/@KSpider4Kreation" target="_blank">YouTube</a>Email<a href="https://kspiderai.in#franchise">Franchise</a></div>
     </div>
     <div class="ftbot"><span>Copyright 2025 K Spider for Kreation &bull; Gaurang Raval and Khush Raval &bull; Ahmedabad &#x1F1EE;&#x1F1F3;</span><span><a href="https://kspiderai.in/legal/index.html#privacy-policy">Privacy</a> &bull; <a href="https://kspiderai.in/legal/index.html#terms">Terms</a> &bull; <a href="https://kspiderai.in">kspiderai.in</a></span></div>
   </div>
@@ -4109,6 +4315,831 @@ self.addEventListener('fetch', e => {
   });
 
 })();
+
+// ╔══════════════════════════════════════════════════════════╗
+// ║   VIDEO STUDIO — K Spider AI  (Join · Slideshow · Mix)  ║
+// ║   By Gaurang Raval & Khush Raval — kspiderai.in         ║
+// ╚══════════════════════════════════════════════════════════╝
+(function(){
+'use strict';
+
+// ── State ──────────────────────────────────────────────────
+const VS = {
+  videoClips    : [],   // {file, url, name, duration}
+  photoFiles    : [],   // {file, url, name, img}
+  mixVideoFile  : null,
+  mixVideoEl    : null,
+  mixTracks     : [],   // {id, file, url, name, duration, buffer}
+  musicBuffers  : {},   // prefix → AudioBuffer
+  trackCounter  : 0
+};
+
+// ── Patch swC to handle vstudio tab ─────────────────────────
+const _origSwC = window.swC;
+window.swC = function(btn, cat) {
+  const isVS = (cat === 'vstudio');
+  const vsp  = document.getElementById('vstudio-panel');
+  if (vsp) vsp.style.display = isVS ? 'block' : 'none';
+  if (isVS) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+    btn.classList.add('on');
+    // hide normal converter UI
+    ['pbox','frow','advbtnel'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = 'none';
+    });
+    return;
+  }
+  if (_origSwC) _origSwC(btn, cat);
+};
+
+// ── Video Studio sub-tab switch ─────────────────────────────
+function vsSwitch(btn, pane) {
+  document.querySelectorAll('.vstab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  document.querySelectorAll('.vs-pane').forEach(p => p.style.display = 'none');
+  const el = document.getElementById('vs-' + pane);
+  if (el) el.style.display = 'block';
+}
+window.vsSwitch = vsSwitch;
+
+// ── Watermark draw helper ───────────────────────────────────
+function vsDrawWatermark(ctx, W, H) {
+  ctx.save();
+  const pad = 10, h = 22;
+  const txt = '🕷 K Spider AI • kspiderai.in';
+  ctx.font = `bold ${Math.max(11, H * 0.017)}px Arial`;
+  const tw = ctx.measureText(txt).width;
+  const x  = W - tw - pad - 10;
+  const y  = H - pad - h;
+  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(x - 6, y, tw + 12, h, 5) : ctx.rect(x - 6, y, tw + 12, h);
+  ctx.fill();
+  ctx.fillStyle = '#00f5ff';
+  ctx.fillText(txt, x, y + h - 6);
+  ctx.restore();
+}
+
+// ── Utility ─────────────────────────────────────────────────
+function fmtDur(s) {
+  if (!s || isNaN(s)) return '?';
+  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2,'0')}`;
+}
+function fmtSzVS(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(2) + ' MB';
+}
+function vsLog(id, msg, type) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const c = type === 'err' ? '#f87171' : type === 'ok' ? '#34d399' : '#a3a3a3';
+  el.innerHTML += `<div style="color:${c}">${msg}</div>`;
+  el.scrollTop = el.scrollHeight;
+}
+function vsResult(id, blob, fname) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  const url = URL.createObjectURL(blob);
+  el.innerHTML = `<div class="vs-result-box">
+    <div style="font:600 12px var(--fm);color:#34d399;margin-bottom:8px">✅ Done! ${fmtSzVS(blob.size)}</div>
+    <video src="${url}" controls style="width:100%;border-radius:8px;max-height:220px;background:#000"></video>
+    <a href="${url}" download="${fname}" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 16px;background:linear-gradient(135deg,#10b981,#06b6d4);border-radius:8px;color:#fff;font:600 12px var(--fm);text-decoration:none">
+      <i class="fa-solid fa-download"></i> Download ${fname}
+    </a>
+  </div>`;
+}
+
+// ── AudioContext helpers ─────────────────────────────────────
+let _vsActx = null;
+function vsActx() {
+  if (!_vsActx || _vsActx.state === 'closed') _vsActx = new (window.AudioContext || window.webkitAudioContext)();
+  return _vsActx;
+}
+
+// Generate a simple loopable BGM buffer (same approach as existing PPT tool)
+async function vsGenBGM(type, dur) {
+  const actx = vsActx();
+  if (actx.state === 'suspended') await actx.resume();
+  const sr = actx.sampleRate, len = Math.ceil(dur * sr);
+  const buf = actx.createBuffer(2, len, sr);
+  for (let ch = 0; ch < 2; ch++) {
+    const d = buf.getChannelData(ch);
+    for (let i = 0; i < len; i++) {
+      const t = i / sr;
+      let v = 0;
+      if (type === 'upbeat') {
+        v = 0.18 * Math.sin(2 * Math.PI * 392 * t)
+          + 0.12 * Math.sin(2 * Math.PI * 523 * t)
+          + 0.08 * Math.sin(2 * Math.PI * 659 * t)
+          + 0.04 * (Math.random() * 2 - 1);
+      } else if (type === 'calm') {
+        v = 0.14 * Math.sin(2 * Math.PI * 220 * t)
+          + 0.10 * Math.sin(2 * Math.PI * 330 * t)
+          + 0.06 * Math.sin(2 * Math.PI * 440 * t * 0.5);
+      } else if (type === 'cinematic') {
+        v = 0.20 * Math.sin(2 * Math.PI * 130 * t)
+          + 0.10 * Math.sin(2 * Math.PI * 260 * t)
+          + 0.06 * Math.sin(2 * Math.PI * 196 * t + 0.5);
+      } else if (type === 'romantic') {
+        v = 0.15 * Math.sin(2 * Math.PI * 330 * t)
+          + 0.10 * Math.sin(2 * Math.PI * 440 * t)
+          + 0.07 * Math.sin(2 * Math.PI * 523 * t);
+      }
+      // Fade in/out
+      const fi = Math.min(1, i / (sr * 1.5));
+      const fo = Math.min(1, (len - i) / (sr * 1.5));
+      d[i] = v * fi * fo;
+    }
+  }
+  return buf;
+}
+
+// Load AudioBuffer from File
+async function vsFileToBuffer(file) {
+  const actx = vsActx();
+  if (actx.state === 'suspended') await actx.resume();
+  const ab = await file.arrayBuffer();
+  return await actx.decodeAudioData(ab);
+}
+
+// Render AudioBuffer to WAV Blob
+function vsBufferToWavBlob(buf) {
+  const numCh = buf.numberOfChannels, sr = buf.sampleRate, len = buf.length;
+  const wav = new ArrayBuffer(44 + len * numCh * 2);
+  const view = new DataView(wav);
+  function ws(o,s){for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i))}
+  function wu16(o,v){view.setUint16(o,v,true)}
+  function wu32(o,v){view.setUint32(o,v,true)}
+  ws(0,'RIFF'); wu32(4,36+len*numCh*2); ws(8,'WAVE');
+  ws(12,'fmt '); wu32(16,16); wu16(20,1); wu16(22,numCh);
+  wu32(24,sr); wu32(28,sr*numCh*2); wu16(32,numCh*2); wu16(34,16);
+  ws(36,'data'); wu32(40,len*numCh*2);
+  let off = 44;
+  for (let i = 0; i < len; i++) {
+    for (let c = 0; c < numCh; c++) {
+      const s = Math.max(-1, Math.min(1, buf.getChannelData(c)[i]));
+      view.setInt16(off, s * 0x7FFF, true); off += 2;
+    }
+  }
+  return new Blob([wav], {type:'audio/wav'});
+}
+
+// ══════════════════════════════════════════════════════════
+// 1. JOIN VIDEOS
+// ══════════════════════════════════════════════════════════
+function vsHandleVideoDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('vs-drag');
+  vsAddVideos(e.dataTransfer.files);
+}
+window.vsHandleVideoDrop = vsHandleVideoDrop;
+
+function vsAddVideos(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('video/')) return;
+    const url = URL.createObjectURL(f);
+    VS.videoClips.push({ file: f, url, name: f.name, duration: 0 });
+    // Get duration
+    const v = document.createElement('video');
+    v.src = url;
+    v.onloadedmetadata = () => {
+      const clip = VS.videoClips.find(c => c.url === url);
+      if (clip) { clip.duration = v.duration; vsRenderVideoList(); }
+    };
+  });
+  vsRenderVideoList();
+}
+window.vsAddVideos = vsAddVideos;
+
+function vsRenderVideoList() {
+  const el = document.getElementById('vs-video-list');
+  if (!el) return;
+  if (!VS.videoClips.length) { el.innerHTML = ''; return; }
+  let html = `<div style="font:600 9px var(--fm);color:var(--tm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+    ${VS.videoClips.length} clip(s) — drag to reorder</div>`;
+  VS.videoClips.forEach((c, i) => {
+    html += `<div class="vs-clip-item" draggable="true" data-idx="${i}"
+      ondragstart="vsDragStart(event,${i})" ondragover="vsDragOver(event,${i})" ondrop="vsDropClip(event,${i})">
+      <div class="vs-clip-num">${i+1}</div>
+      <div class="vs-clip-info">
+        <div class="vs-clip-name">${c.name}</div>
+        <div class="vs-clip-meta">${fmtDur(c.duration)} · ${fmtSzVS(c.file.size)}</div>
+      </div>
+      <button class="vs-clip-del" onclick="vsDelClip(${i})" title="Remove">✕</button>
+    </div>`;
+  });
+  const total = VS.videoClips.reduce((a,c) => a + (c.duration||0), 0);
+  html += `<div style="font:500 10px var(--fm);color:var(--tm);margin-top:4px">Total: ${fmtDur(total)}</div>`;
+  el.innerHTML = html;
+}
+window.vsRenderVideoList = vsRenderVideoList;
+
+let vsDragIdx = -1;
+function vsDragStart(e, i) { vsDragIdx = i; e.currentTarget.classList.add('dragging'); }
+window.vsDragStart = vsDragStart;
+function vsDragOver(e, i) { e.preventDefault(); }
+window.vsDragOver = vsDragOver;
+function vsDropClip(e, i) {
+  e.preventDefault();
+  if (vsDragIdx < 0 || vsDragIdx === i) { vsDragIdx = -1; vsRenderVideoList(); return; }
+  const moved = VS.videoClips.splice(vsDragIdx, 1)[0];
+  VS.videoClips.splice(i, 0, moved);
+  vsDragIdx = -1; vsRenderVideoList();
+}
+window.vsDropClip = vsDropClip;
+function vsDelClip(i) { URL.revokeObjectURL(VS.videoClips[i].url); VS.videoClips.splice(i,1); vsRenderVideoList(); }
+window.vsDelClip = vsDelClip;
+
+function vsToggleMusicUpload(prefix) {
+  const sel = document.getElementById(prefix + '-bgm-type');
+  const btn = document.getElementById(prefix + '-music-btn');
+  if (!sel || !btn) return;
+  btn.style.display = (sel.value === 'device') ? 'inline-flex' : 'none';
+}
+window.vsToggleMusicUpload = vsToggleMusicUpload;
+
+function vsLoadMusic(prefix, input) {
+  const f = input.files[0];
+  if (!f) return;
+  VS.musicBuffers[prefix] = null; // reset
+  const infoEl = document.getElementById(prefix + '-music-info');
+  const url = URL.createObjectURL(f);
+  const a = document.createElement('audio');
+  a.src = url;
+  a.onloadedmetadata = () => {
+    if (infoEl) infoEl.textContent = `✅ ${f.name} (${fmtDur(a.duration)})`;
+    // Store for sync
+    if (prefix === 'ph') {
+      VS._phMusicDur = a.duration;
+      const syncChk = document.getElementById('ph-sync-music');
+      if (syncChk && syncChk.checked) {
+        const photos = VS.photoFiles.length;
+        if (photos > 0) document.getElementById('ph-dur').value = Math.max(1, Math.floor(a.duration / photos));
+      }
+    }
+  };
+  vsFileToBuffer(f).then(buf => { VS.musicBuffers[prefix] = buf; }).catch(() => {});
+}
+window.vsLoadMusic = vsLoadMusic;
+
+function vsTogglePhotoSync(chk) {
+  if (!chk.checked) return;
+  const durIn = document.getElementById('ph-dur');
+  const photos = VS.photoFiles.length;
+  const musicDur = VS._phMusicDur || 0;
+  if (photos > 0 && musicDur > 0) {
+    durIn.value = Math.max(1, Math.floor(musicDur / photos));
+    toast('⏱ Duration set from music length!', 'ok');
+  } else {
+    toast('Add music & photos first', 'er');
+    chk.checked = false;
+  }
+}
+window.vsTogglePhotoSync = vsTogglePhotoSync;
+
+async function vsGetMusicBuffer(prefix, totalDur) {
+  // If device file loaded
+  if (VS.musicBuffers[prefix]) return VS.musicBuffers[prefix];
+  const sel = document.getElementById(prefix + '-bgm-type');
+  const type = sel ? sel.value : 'none';
+  if (type === 'none' || type === 'device') return null;
+  return await vsGenBGM(type, totalDur + 2);
+}
+
+async function vsJoinVideos() {
+  if (VS.videoClips.length < 2) { toast('Add at least 2 video clips!', 'er'); return; }
+  const logId = 'vs-join-log', resId = 'vs-join-result';
+  document.getElementById(logId).innerHTML = '';
+  document.getElementById(resId).innerHTML = '';
+  document.getElementById('vs-join-btn').disabled = true;
+
+  const resVal = document.getElementById('vj-res').value;
+  const [VW, VH] = resVal.split('x').map(Number);
+  const fps     = parseInt(document.getElementById('vj-fps').value) || 30;
+  const trans   = document.getElementById('vj-trans').value;
+  const wmark   = document.getElementById('vj-wmark').value === 'on';
+  const vol     = parseInt(document.getElementById('vj-vol').value) / 100;
+  const syncDur = document.getElementById('vj-sync-dur').checked;
+
+  vsLog(logId, '🎬 Preparing canvas recorder...', 'info');
+
+  // Setup canvas + capture
+  const canvas  = document.createElement('canvas');
+  canvas.width  = VW; canvas.height = VH;
+  const ctx     = canvas.getContext('2d');
+
+  // Audio setup
+  const actx     = vsActx();
+  if (actx.state === 'suspended') await actx.resume();
+  const audioDest = actx.createMediaStreamDestination();
+  const masterGain = actx.createGain();
+  masterGain.connect(audioDest);
+
+  const totalDur = VS.videoClips.reduce((a,c) => a + (c.duration||5), 0);
+
+  // BGM
+  let bgmBuf = await vsGetMusicBuffer('vj', totalDur);
+  if (bgmBuf) {
+    const bgmSrc  = actx.createBufferSource();
+    bgmSrc.buffer = bgmBuf;
+    bgmSrc.loop   = bgmBuf.duration < totalDur;
+    const bgmGain = actx.createGain();
+    bgmGain.gain.value = vol;
+    bgmSrc.connect(bgmGain); bgmGain.connect(masterGain);
+    bgmSrc.start();
+    vsLog(logId, `🎵 Background music active (vol: ${Math.round(vol*100)}%)`, 'info');
+  }
+
+  // If sync duration to music, truncate/loop clips accordingly
+  // (Just cap total recording to music duration)
+  const recDur = (syncDur && bgmBuf) ? Math.min(totalDur, bgmBuf.duration) : totalDur;
+
+  // MediaRecorder
+  const vidStream = canvas.captureStream(fps);
+  const combined  = new MediaStream([...vidStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
+  const mime      = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+  const mr        = new MediaRecorder(combined, {mimeType: mime, videoBitsPerSecond: 6_000_000});
+  const chunks    = [];
+  mr.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+  mr.start(100);
+
+  const FADE_FRAMES = Math.round(fps * 0.4); // 0.4s fade
+  let   timeAcc = 0;
+
+  for (let ci = 0; ci < VS.videoClips.length; ci++) {
+    const clip = VS.videoClips[ci];
+    if (syncDur && timeAcc >= recDur) break;
+
+    vsLog(logId, `🎞 Playing clip ${ci+1}/${VS.videoClips.length}: ${clip.name}`, 'info');
+    const vidEl = document.createElement('video');
+    vidEl.src   = clip.url;
+    vidEl.muted = !!bgmBuf; // mute original if BGM active
+
+    await new Promise(res => { vidEl.oncanplay = res; vidEl.load(); });
+    vidEl.play();
+
+    const clipDur  = clip.duration || 5;
+    const clipEnd  = timeAcc + clipDur;
+    const frameMs  = 1000 / fps;
+    let   frameIdx = 0;
+
+    await new Promise(resolve => {
+      let done = false;
+      function drawFrame() {
+        if (done) return;
+        const elapsed = timeAcc + (frameIdx * frameMs / 1000);
+        if (elapsed >= Math.min(clipEnd, recDur)) {
+          vidEl.pause(); done = true; resolve(); return;
+        }
+        ctx.clearRect(0, 0, VW, VH);
+        ctx.drawImage(vidEl, 0, 0, VW, VH);
+
+        // Transition overlay
+        if (trans === 'fade') {
+          const alpha = frameIdx < FADE_FRAMES ? (1 - frameIdx/FADE_FRAMES) : 0;
+          if (alpha > 0) { ctx.fillStyle = `rgba(0,0,0,${alpha})`; ctx.fillRect(0,0,VW,VH); }
+        } else if (trans === 'wipe' && frameIdx < FADE_FRAMES) {
+          const x = VW * (frameIdx / FADE_FRAMES);
+          ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW - x, VH);
+        }
+
+        // Clip counter HUD
+        ctx.save();
+        ctx.font = 'bold 13px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(10, 10, 90, 22); ctx.fillStyle = '#00f5ff';
+        ctx.fillText(`Clip ${ci+1} / ${VS.videoClips.length}`, 15, 26);
+        ctx.restore();
+
+        if (wmark) vsDrawWatermark(ctx, VW, VH);
+
+        frameIdx++;
+        requestAnimationFrame(drawFrame);
+      }
+      drawFrame();
+    });
+
+    vidEl.pause();
+    timeAcc += clipDur;
+  }
+
+  mr.stop();
+  await new Promise(r => { mr.onstop = r; });
+
+  const blob  = new Blob(chunks, {type: mime});
+  const fname = 'KSpider_Joined_' + Date.now() + '.webm';
+  vsResult(resId, blob, fname);
+  vsLog(logId, `✅ Joined! ${fmtSzVS(blob.size)}`, 'ok');
+  document.getElementById('vs-join-btn').disabled = false;
+}
+window.vsJoinVideos = vsJoinVideos;
+
+// ══════════════════════════════════════════════════════════
+// 2. PHOTOS → VIDEO (SLIDESHOW)
+// ══════════════════════════════════════════════════════════
+function vsHandlePhotoDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('vs-drag');
+  vsAddPhotos(e.dataTransfer.files);
+}
+window.vsHandlePhotoDrop = vsHandlePhotoDrop;
+
+function vsAddPhotos(files) {
+  Array.from(files).forEach(f => {
+    if (!f.type.startsWith('image/')) return;
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.src = url;
+    VS.photoFiles.push({ file: f, url, name: f.name, img });
+  });
+  vsRenderPhotoList();
+}
+window.vsAddPhotos = vsAddPhotos;
+
+function vsRenderPhotoList() {
+  const el = document.getElementById('vs-photo-list');
+  if (!el) return;
+  el.innerHTML = '';
+  VS.photoFiles.forEach((p, i) => {
+    const div = document.createElement('div');
+    div.className = 'vs-photo-thumb';
+    div.draggable = true;
+    div.dataset.idx = i;
+    div.ondragstart = e => { vsDragPhIdx = i; };
+    div.ondragover  = e => e.preventDefault();
+    div.ondrop      = e => { e.preventDefault(); vsDropPhoto(i); };
+    div.innerHTML   = `<img src="${p.url}" alt="${p.name}">
+      <button class="vs-ph-del" onclick="vsDelPhoto(${i})">✕</button>
+      <div class="vs-ph-num">${i+1}</div>`;
+    el.appendChild(div);
+  });
+  if (VS.photoFiles.length) {
+    const info = document.createElement('div');
+    info.style.cssText = 'width:100%;font:400 10px var(--fm);color:var(--tm);margin-top:4px';
+    info.textContent = `${VS.photoFiles.length} photo(s) — drag to reorder`;
+    el.appendChild(info);
+  }
+}
+window.vsRenderPhotoList = vsRenderPhotoList;
+
+let vsDragPhIdx = -1;
+function vsDropPhoto(i) {
+  if (vsDragPhIdx < 0 || vsDragPhIdx === i) { vsDragPhIdx = -1; vsRenderPhotoList(); return; }
+  const moved = VS.photoFiles.splice(vsDragPhIdx, 1)[0];
+  VS.photoFiles.splice(i, 0, moved);
+  vsDragPhIdx = -1; vsRenderPhotoList();
+}
+window.vsDropPhoto = vsDropPhoto;
+function vsDelPhoto(i) { URL.revokeObjectURL(VS.photoFiles[i].url); VS.photoFiles.splice(i,1); vsRenderPhotoList(); }
+window.vsDelPhoto = vsDelPhoto;
+
+async function vsPhotosToVideo() {
+  if (!VS.photoFiles.length) { toast('Add at least 1 photo!', 'er'); return; }
+  const logId = 'vs-photos-log', resId = 'vs-photos-result';
+  document.getElementById(logId).innerHTML = '';
+  document.getElementById(resId).innerHTML = '';
+
+  const perSec   = parseFloat(document.getElementById('ph-dur').value) || 3;
+  const resVal   = document.getElementById('ph-res').value;
+  const [VW, VH] = resVal.split('x').map(Number);
+  const fps      = parseInt(document.getElementById('ph-fps').value) || 30;
+  const effect   = document.getElementById('ph-effect').value;
+  const zoomDir  = document.getElementById('ph-zoom-dir').value;
+  const wmark    = document.getElementById('ph-wmark').value === 'on';
+  const vol      = parseInt(document.getElementById('ph-vol').value) / 100;
+  const syncMus  = document.getElementById('ph-sync-music').checked;
+  const totalDur = VS.photoFiles.length * perSec;
+
+  vsLog(logId, `🖼 ${VS.photoFiles.length} photos × ${perSec}s = ${fmtDur(totalDur)}`, 'info');
+
+  // Canvas + Audio
+  const canvas   = document.createElement('canvas');
+  canvas.width   = VW; canvas.height = VH;
+  const ctx      = canvas.getContext('2d');
+
+  const actx      = vsActx();
+  if (actx.state === 'suspended') await actx.resume();
+  const audioDest = actx.createMediaStreamDestination();
+  const masterGain = actx.createGain();
+  masterGain.connect(audioDest);
+
+  let bgmBuf = await vsGetMusicBuffer('ph', totalDur);
+  let recDur = totalDur;
+
+  if (bgmBuf) {
+    const bgmSrc  = actx.createBufferSource();
+    bgmSrc.buffer = bgmBuf;
+    bgmSrc.loop   = bgmBuf.duration < totalDur;
+    const bgmGain = actx.createGain();
+    bgmGain.gain.value = vol;
+    bgmSrc.connect(bgmGain); bgmGain.connect(masterGain);
+    bgmSrc.start();
+    vsLog(logId, `🎵 Music active (${fmtDur(bgmBuf.duration)})`, 'info');
+    if (syncMus) recDur = bgmBuf.duration;
+  }
+
+  const mime  = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+  const vidSt = canvas.captureStream(fps);
+  const comb  = new MediaStream([...vidSt.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
+  const mr    = new MediaRecorder(comb, {mimeType: mime, videoBitsPerSecond: 6_000_000});
+  const chunks = [];
+  mr.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+  mr.start(100);
+
+  const TRANS_FRAMES = Math.round(fps * 0.5); // 0.5s transition
+
+  // Preload images
+  await Promise.all(VS.photoFiles.map(p => new Promise(r => {
+    if (p.img.complete) r(); else { p.img.onload = r; p.img.onerror = r; }
+  })));
+
+  let globalTime = 0;
+
+  for (let pi = 0; pi < VS.photoFiles.length; pi++) {
+    if (globalTime >= recDur) break;
+    const photo = VS.photoFiles[pi];
+    vsLog(logId, `🖼 Rendering photo ${pi+1}/${VS.photoFiles.length}: ${photo.name}`, 'info');
+
+    const img  = photo.img;
+    const remaining = recDur - globalTime;
+    const dur  = Math.min(perSec, remaining);
+    const frames = Math.ceil(dur * fps);
+
+    // Ken Burns: random start/end scale+position
+    const directions = ['tl','tr','bl','br','c'];
+    const kbDir = directions[pi % directions.length];
+    const useZoomIn = zoomDir === 'in' ? true : zoomDir === 'out' ? false : (pi % 2 === 0);
+
+    for (let f = 0; f < frames; f++) {
+      const progress = f / frames; // 0→1
+      ctx.clearRect(0, 0, VW, VH);
+
+      // Draw photo with Ken Burns or other effect
+      if (effect === 'kenburns' || effect === 'zoom') {
+        const scale   = useZoomIn ? (1 + progress * 0.12) : (1.12 - progress * 0.12);
+        const sw      = VW * scale, sh = VH * scale;
+        let dx = (VW - sw) / 2, dy = (VH - sh) / 2;
+        if (kbDir === 'tl') { dx = 0; dy = 0; }
+        else if (kbDir === 'tr') { dx = VW - sw; dy = 0; }
+        else if (kbDir === 'bl') { dx = 0; dy = VH - sh; }
+        else if (kbDir === 'br') { dx = VW - sw; dy = VH - sh; }
+        drawImageCover(ctx, img, dx, dy, sw, sh, VW, VH);
+      } else if (effect === 'slide' && pi > 0) {
+        const offX = VW * (1 - progress);
+        const prev = VS.photoFiles[pi - 1].img;
+        drawImageCover(ctx, prev, -offX, 0, VW, VH, VW, VH);
+        drawImageCover(ctx, img, VW - offX, 0, VW, VH, VW, VH);
+      } else {
+        drawImageCover(ctx, img, 0, 0, VW, VH, VW, VH);
+      }
+
+      // Fade transition (start and end of each photo)
+      if (effect === 'fade') {
+        let alpha = 0;
+        if (f < TRANS_FRAMES) alpha = 1 - f / TRANS_FRAMES;
+        else if (f > frames - TRANS_FRAMES) alpha = (f - (frames - TRANS_FRAMES)) / TRANS_FRAMES;
+        if (alpha > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1,alpha)})`; ctx.fillRect(0,0,VW,VH); }
+      }
+
+      // Photo counter
+      ctx.save();
+      ctx.font = 'bold 12px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.5)';
+      ctx.fillRect(10, 10, 100, 22); ctx.fillStyle = '#fff';
+      ctx.fillText(`${pi+1} / ${VS.photoFiles.length}`, 15, 26);
+      ctx.restore();
+
+      if (wmark) vsDrawWatermark(ctx, VW, VH);
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    globalTime += dur;
+  }
+
+  mr.stop();
+  await new Promise(r => { mr.onstop = r; });
+  const blob  = new Blob(chunks, {type: mime});
+  const fname = 'KSpider_Slideshow_' + Date.now() + '.webm';
+  vsResult(resId, blob, fname);
+  vsLog(logId, `✅ Slideshow ready! ${fmtSzVS(blob.size)}`, 'ok');
+}
+window.vsPhotosToVideo = vsPhotosToVideo;
+
+// Draw image with cover-fit (object-fit: cover equivalent)
+function drawImageCover(ctx, img, dx, dy, dw, dh, clipW, clipH) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, 0, clipW, clipH);
+  ctx.clip();
+  const ir = img.naturalWidth / img.naturalHeight;
+  const cr = dw / dh;
+  let sx,sy,sw,sh;
+  if (ir > cr) { sh = img.naturalHeight; sw = sh * cr; sx = (img.naturalWidth - sw) / 2; sy = 0; }
+  else         { sw = img.naturalWidth; sh = sw / cr; sx = 0; sy = (img.naturalHeight - sh) / 2; }
+  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+  ctx.restore();
+}
+
+// ══════════════════════════════════════════════════════════
+// 3. ADD MUSIC TO VIDEO
+// ══════════════════════════════════════════════════════════
+function vsHandleMixVideoDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('vs-drag');
+  vsLoadMixVideo({files: e.dataTransfer.files});
+}
+window.vsHandleMixVideoDrop = vsHandleMixVideoDrop;
+
+function vsLoadMixVideo(input) {
+  const f = input.files[0];
+  if (!f || !f.type.startsWith('video/')) return;
+  VS.mixVideoFile = f;
+  VS.mixVideoEl = document.createElement('video');
+  VS.mixVideoEl.src = URL.createObjectURL(f);
+  VS.mixVideoEl.muted = true;
+  VS.mixVideoEl.onloadedmetadata = () => {
+    const info = document.getElementById('mix-video-info');
+    if (info) info.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+      <i class="fa-solid fa-check-circle" style="color:#34d399"></i>
+      <span style="font:500 11px var(--fb);color:var(--t1)">${f.name}</span>
+      <span style="font:400 10px var(--fm);color:var(--tm)">${fmtDur(VS.mixVideoEl.duration)} · ${fmtSzVS(f.size)}</span>
+    </div>`;
+  };
+}
+window.vsLoadMixVideo = vsLoadMixVideo;
+
+let _mixTrackIdx = 0;
+function vsMixAddTrack() {
+  const id = ++_mixTrackIdx;
+  VS.mixTracks.push({ id, file: null, url: null, name: '', buffer: null });
+  const list = document.getElementById('mix-tracks-list');
+  const row  = document.createElement('div');
+  row.className = 'vs-track-row';
+  row.id = `mix-track-${id}`;
+  row.innerHTML = `
+    <div style="font:600 10px var(--fm);color:var(--c1);width:20px;flex-shrink:0">#${id}</div>
+    <select id="mtt-type-${id}" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:4px 7px;outline:none" onchange="vsMixTrackTypeChange(${id})">
+      <option value="device">📁 From Device</option>
+      <option value="upbeat">🎵 Upbeat</option>
+      <option value="calm">🧘 Calm Ambient</option>
+      <option value="cinematic">🎬 Cinematic</option>
+      <option value="romantic">💕 Romantic</option>
+    </select>
+    <input type="file" id="mtt-file-${id}" accept="audio/*" style="display:none" onchange="vsMixTrackFile(${id},this)">
+    <button class="pvb" id="mtt-btn-${id}" onclick="document.getElementById('mtt-file-${id}').click()"><i class="fa-solid fa-upload"></i> Choose</button>
+    <span id="mtt-info-${id}" style="font:400 10px var(--fm);color:var(--tm);flex:1"></span>
+    <input type="range" id="mtt-vol-${id}" min="0" max="100" value="50" style="width:70px;accent-color:var(--c1)" title="Volume" oninput="document.getElementById('mtt-vl-${id}').textContent=this.value+'%'">
+    <span id="mtt-vl-${id}" style="font:600 10px var(--fm);color:var(--c1);width:30px;flex-shrink:0">50%</span>
+    <button class="vs-track-del" onclick="vsMixDelTrack(${id})">✕ Remove</button>`;
+  list.appendChild(row);
+}
+window.vsMixAddTrack = vsMixAddTrack;
+
+function vsMixTrackTypeChange(id) {
+  const sel = document.getElementById(`mtt-type-${id}`);
+  const btn = document.getElementById(`mtt-btn-${id}`);
+  if (btn) btn.style.display = (sel.value === 'device') ? 'inline-flex' : 'none';
+}
+window.vsMixTrackTypeChange = vsMixTrackTypeChange;
+
+function vsMixTrackFile(id, input) {
+  const f = input.files[0];
+  if (!f) return;
+  const track = VS.mixTracks.find(t => t.id === id);
+  if (track) { track.file = f; track.name = f.name; }
+  const info = document.getElementById(`mtt-info-${id}`);
+  const a = document.createElement('audio');
+  a.src = URL.createObjectURL(f);
+  a.onloadedmetadata = () => { if (info) info.textContent = `${f.name} (${fmtDur(a.duration)})`; };
+  vsFileToBuffer(f).then(buf => { if (track) track.buffer = buf; }).catch(() => {});
+}
+window.vsMixTrackFile = vsMixTrackFile;
+
+function vsMixDelTrack(id) {
+  VS.mixTracks = VS.mixTracks.filter(t => t.id !== id);
+  const row = document.getElementById(`mix-track-${id}`);
+  if (row) row.remove();
+}
+window.vsMixDelTrack = vsMixDelTrack;
+
+async function vsMixAudio() {
+  if (!VS.mixVideoFile) { toast('Upload a video first!', 'er'); return; }
+  if (!VS.mixTracks.length) { toast('Add at least one music track!', 'er'); return; }
+
+  const logId = 'vs-mix-log', resId = 'vs-mix-result';
+  document.getElementById(logId).innerHTML = '';
+  document.getElementById(resId).innerHTML = '';
+
+  const keepOrig = document.getElementById('mix-keep-audio').checked;
+  const fadeOpt  = document.getElementById('mix-fade').checked;
+  const loopOpt  = document.getElementById('mix-loop-music').checked;
+  const musicVol = parseInt(document.getElementById('mix-vol').value) / 100;
+  const origVol  = parseInt(document.getElementById('mix-orig-vol').value) / 100;
+  const wmark    = document.getElementById('mix-wmark').value === 'on';
+
+  vsLog(logId, '🎬 Loading video...', 'info');
+
+  const vidEl = VS.mixVideoEl;
+  if (!vidEl) { toast('Video not loaded', 'er'); return; }
+  await new Promise(r => { vidEl.oncanplay = r; vidEl.load(); });
+  const vidDur = vidEl.duration;
+
+  // Canvas
+  const VW = vidEl.videoWidth  || 1280;
+  const VH = vidEl.videoHeight || 720;
+  const fps = 30;
+  const canvas = document.createElement('canvas');
+  canvas.width = VW; canvas.height = VH;
+  const ctx    = canvas.getContext('2d');
+
+  // AudioContext
+  const actx      = vsActx();
+  if (actx.state === 'suspended') await actx.resume();
+  const audioDest = actx.createMediaStreamDestination();
+  const masterGain = actx.createGain();
+  masterGain.connect(audioDest);
+
+  // Original video audio via MediaElementSource
+  if (keepOrig) {
+    try {
+      const src   = actx.createMediaElementSource(vidEl);
+      const gain  = actx.createGain();
+      gain.gain.value = origVol;
+      src.connect(gain); gain.connect(masterGain);
+      vsLog(logId, `🔊 Original audio: ${Math.round(origVol*100)}%`, 'info');
+    } catch(e) { vsLog(logId, '⚠ Could not attach original audio: ' + e.message, 'info'); }
+  }
+
+  // Mix each music track
+  for (const track of VS.mixTracks) {
+    const type = document.getElementById(`mtt-type-${track.id}`)?.value;
+    const vol  = parseInt(document.getElementById(`mtt-vol-${track.id}`)?.value || 50) / 100;
+    let buf    = track.buffer;
+    if (!buf && type !== 'device') buf = await vsGenBGM(type, vidDur + 2);
+    if (!buf) continue;
+
+    const src  = actx.createBufferSource();
+    src.buffer = buf;
+    src.loop   = loopOpt && (buf.duration < vidDur);
+    const gain = actx.createGain();
+    gain.gain.value = vol * musicVol;
+
+    if (fadeOpt) {
+      const fadeDur = Math.min(2, vidDur * 0.1);
+      gain.gain.setValueAtTime(0, actx.currentTime);
+      gain.gain.linearRampToValueAtTime(vol * musicVol, actx.currentTime + fadeDur);
+      gain.gain.setValueAtTime(vol * musicVol, actx.currentTime + vidDur - fadeDur);
+      gain.gain.linearRampToValueAtTime(0, actx.currentTime + vidDur);
+    }
+
+    src.connect(gain); gain.connect(masterGain);
+    src.start();
+    vsLog(logId, `🎵 Track #${track.id} active (${type}, vol ${Math.round(vol*musicVol*100)}%)`, 'info');
+  }
+
+  // Record
+  vidEl.muted = !keepOrig; // if keepOrig handled via WebAudio
+  const vidStream = canvas.captureStream(fps);
+  const combined  = new MediaStream([...vidStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
+  const mime      = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
+  const mr        = new MediaRecorder(combined, {mimeType: mime, videoBitsPerSecond: 6_000_000});
+  const chunks    = [];
+  mr.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+  mr.start(100);
+
+  vidEl.currentTime = 0;
+  vidEl.play();
+
+  const frameMs = 1000 / fps;
+  vsLog(logId, `⏺ Recording ${fmtDur(vidDur)}...`, 'info');
+
+  await new Promise(resolve => {
+    let lastTime = performance.now();
+    let elapsed  = 0;
+    function tick(now) {
+      const dt = now - lastTime; lastTime = now;
+      elapsed += dt / 1000;
+      if (elapsed >= vidDur) { resolve(); return; }
+      ctx.clearRect(0, 0, VW, VH);
+      ctx.drawImage(vidEl, 0, 0, VW, VH);
+      if (wmark) vsDrawWatermark(ctx, VW, VH);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+
+  vidEl.pause();
+  mr.stop();
+  await new Promise(r => { mr.onstop = r; });
+
+  const blob  = new Blob(chunks, {type: mime});
+  const fname = 'KSpider_Music_Mix_' + Date.now() + '.webm';
+  vsResult(resId, blob, fname);
+  vsLog(logId, `✅ Done! ${fmtSzVS(blob.size)}`, 'ok');
+}
+window.vsMixAudio = vsMixAudio;
+
+})(); // end Video Studio IIFE
 </script>
 
 </body>
