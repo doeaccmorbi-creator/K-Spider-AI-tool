@@ -1,7 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="/tool-guard.js"></script>
   <script src="../ks-guard.js"></script>
 <!-- ═══════════════════════════════════════════════════════
      K SPIDER AI — Resume Builder Pro v2.0
@@ -2342,16 +2341,21 @@ function buildWATitles(cid, type) {
 function buildWAMsgPreview(pvId, type) { const c=g(pvId); if(c) c.textContent=buildWAMessage(type); }
 function shareViaWA(type) {
   const msg = buildWAMessage(type);
-  // wa.me/?text= works for unsaved numbers — no phone number needed
-  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  const encoded = encodeURIComponent(msg);
   g('wa-modal').classList.remove('open');
   g('wa-rec-modal').classList.remove('open');
-  // Use anchor click — safest method for mobile (no popup block)
-  const a = document.createElement('a');
-  a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.display = 'none';
-  document.body.appendChild(a); a.click();
-  setTimeout(() => document.body.removeChild(a), 500);
-  showToast('📲 Opening WhatsApp...', 's', 2000);
+  // Use wa.me/?text= — works for any contact without saving
+  const waUrl = 'https://wa.me/?text=' + encoded;
+  // Primary: window.open (works on desktop + most mobile browsers)
+  const opened = window.open(waUrl, '_blank', 'noopener,noreferrer');
+  // Fallback: anchor click if popup was blocked
+  if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+    const a = document.createElement('a');
+    a.href = waUrl; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { document.body.removeChild(a); } catch(e){} }, 500);
+  }
+  showToast('📲 Opening WhatsApp with full data...', 's', 2500);
 }
 function copyWAMsg(pvId) {
   const c = g(pvId||'wa-preview-resume'); if (!c) return;
@@ -2377,14 +2381,19 @@ function shareToNumber(type) {
   if (!/^\d{7,15}$/.test(num)) { showToast('❌ Invalid number. Use digits only with country code (e.g. 919876543210)', 'e', 4000); input.focus(); return; }
   const msg = buildWAMessage(type);
   // wa.me/{number}?text= opens chat with specific number without saving
-  const url = 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
+  const waUrl = 'https://wa.me/' + num + '?text=' + encodeURIComponent(msg);
   g('wa-modal').classList.remove('open');
   g('wa-rec-modal').classList.remove('open');
-  const a = document.createElement('a');
-  a.href = url; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.display = 'none';
-  document.body.appendChild(a); a.click();
-  setTimeout(() => document.body.removeChild(a), 500);
-  showToast('📲 Opening WhatsApp for +' + num + '...', 's', 3000);
+  // Primary: window.open
+  const opened = window.open(waUrl, '_blank', 'noopener,noreferrer');
+  // Fallback: anchor click if popup was blocked
+  if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+    const a = document.createElement('a');
+    a.href = waUrl; a.target = '_blank'; a.rel = 'noopener noreferrer'; a.style.display = 'none';
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { document.body.removeChild(a); } catch(e){} }, 500);
+  }
+  showToast('📲 Opening WhatsApp for +' + num + ' with full data...', 's', 3000);
 }
 
 // Legacy aliases
