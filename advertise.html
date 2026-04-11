@@ -55,6 +55,11 @@
     .footer{text-align:center;padding:18px;color:var(--t4);font-size:.7rem;border-top:1px solid rgba(255,255,255,.05)}
     .footer a{color:var(--gold2);text-decoration:none}
     .sec-divider{font-size:.7rem;font-weight:700;color:var(--orange);text-transform:uppercase;letter-spacing:.08em;padding:10px 0 6px;border-top:1px solid rgba(255,255,255,.05);margin-top:6px;margin-bottom:8px}
+    /* AI Prompt chips */
+    .u-style-chip{display:inline-block;padding:5px 11px;border-radius:20px;font-size:.7rem;font-weight:700;background:rgba(40,36,30,.8);border:1px solid rgba(255,255,255,.09);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
+    input[name="u-ai-style"]:checked+.u-style-chip{background:rgba(124,58,237,.2);border-color:rgba(168,85,247,.5);color:#c084fc}
+    .u-size-chip{display:inline-block;padding:5px 10px;border-radius:20px;font-size:.66rem;font-weight:700;background:rgba(40,36,30,.8);border:1px solid rgba(255,255,255,.09);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
+    input[name="u-ai-size"]:checked+.u-size-chip{background:rgba(59,130,246,.18);border-color:rgba(59,130,246,.5);color:#93c5fd}
     /* AD PREVIEW */
     .prev-wrap{background:var(--bg3);border:1px solid rgba(255,255,255,.1);border-radius:10px;overflow:hidden;margin-bottom:12px}
     .prev-tabs{display:flex;border-bottom:1px solid rgba(255,255,255,.07)}
@@ -270,6 +275,76 @@
           </div>
         </div>
 
+        <!-- ══ AI IMAGE PROMPT GENERATOR (User Side) ══ -->
+        <div id="user-ai-section" style="display:none;margin-bottom:14px">
+          <div class="sec-divider">🤖 AI Image Prompt Generator <span style="font-size:.62rem;background:rgba(124,58,237,.25);color:#c4b5fd;padding:2px 8px;border-radius:10px;font-weight:700;text-transform:none;letter-spacing:0">Optional - Image Ad ke liye</span></div>
+          <div style="background:linear-gradient(135deg,rgba(124,58,237,.08),rgba(59,130,246,.05));border:1px solid rgba(124,58,237,.25);border-radius:10px;padding:14px;font-size:.8rem;color:var(--t3);line-height:1.7;margin-bottom:10px">
+            💡 <strong style="color:var(--t2)">Apna banner image AI se banao!</strong> Neeche details bhar ke prompt generate karo, phir ChatGPT / Gemini / Canva AI se apna banner image banao aur uska URL upar paste karo.
+          </div>
+
+          <!-- Style -->
+          <div style="margin-bottom:10px">
+            <label class="fl">Banner Style</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <label style="cursor:pointer"><input type="radio" name="u-ai-style" value="modern-bold" checked style="display:none"><span class="u-style-chip">⚡ Modern Bold</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-style" value="luxury-premium" style="display:none"><span class="u-style-chip">💎 Luxury</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-style" value="vibrant-festive" style="display:none"><span class="u-style-chip">🎉 Festive</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-style" value="minimal-clean" style="display:none"><span class="u-style-chip">🎯 Minimal</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-style" value="corporate-professional" style="display:none"><span class="u-style-chip">👔 Corporate</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-style" value="dark-neon" style="display:none"><span class="u-style-chip">🌙 Dark Neon</span></label>
+            </div>
+          </div>
+
+          <!-- People -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            <div>
+              <label class="fl">Males in Banner</label>
+              <select class="fi" id="u-ai-males">
+                <option value="0">No male</option>
+                <option value="1" selected>1 male</option>
+                <option value="2">2 males</option>
+              </select>
+            </div>
+            <div>
+              <label class="fl">Females in Banner</label>
+              <select class="fi" id="u-ai-females">
+                <option value="0">No female</option>
+                <option value="1" selected>1 female</option>
+                <option value="2">2 females</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Banner Size -->
+          <div style="margin-bottom:10px">
+            <label class="fl">Banner Size</label>
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <label style="cursor:pointer"><input type="radio" name="u-ai-size" value="1200x628" checked style="display:none"><span class="u-size-chip">1200×628 (Social)</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-size" value="728x90" style="display:none"><span class="u-size-chip">728×90 (Top Banner)</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-size" value="300x250" style="display:none"><span class="u-size-chip">300×250 (Rectangle)</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-size" value="320x50" style="display:none"><span class="u-size-chip">320×50 (Mobile)</span></label>
+              <label style="cursor:pointer"><input type="radio" name="u-ai-size" value="970x250" style="display:none"><span class="u-size-chip">970×250 (Billboard)</span></label>
+            </div>
+          </div>
+
+          <button type="button" class="btn btn-main" onclick="generateUserPrompt()" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);margin-bottom:10px">✨ Generate AI Prompt</button>
+
+          <div id="u-prompt-output" style="display:none">
+            <label class="fl">Your Generated Prompt</label>
+            <textarea class="fi" id="u-ai-prompt" rows="4" readonly style="font-size:.78rem;line-height:1.6;background:rgba(124,58,237,.05);border-color:rgba(124,58,237,.3);resize:vertical"></textarea>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+              <button type="button" onclick="copyUserPrompt()" style="background:rgba(16,163,127,.15);border:1px solid rgba(16,163,127,.35);color:#34d399;padding:8px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">📋 Copy Prompt</button>
+              <button type="button" onclick="openUserAI('chatgpt')" style="background:rgba(16,163,127,.1);border:1px solid rgba(16,163,127,.25);color:#6ee7b7;padding:8px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">🤖 ChatGPT</button>
+              <button type="button" onclick="openUserAI('gemini')" style="background:rgba(59,130,246,.1);border:1px solid rgba(59,130,246,.25);color:#93c5fd;padding:8px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">✨ Gemini</button>
+              <button type="button" onclick="openUserAI('canva')" style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:#fbbf24;padding:8px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">🎯 Canva AI</button>
+              <button type="button" onclick="openUserAI('ideogram')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.25);color:#f87171;padding:8px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">🖼️ Ideogram</button>
+              <button type="button" onclick="openUserAI('adobefirefly')" style="background:rgba(184,121,42,.1);border:1px solid rgba(184,121,42,.25);color:#d4922e;padding:8px;border-radius:8px;font-size:.72rem;font-weight:700;cursor:pointer;font-family:inherit">🔥 Adobe Firefly</button>
+            </div>
+            <div style="font-size:.63rem;color:var(--t4);margin-top:6px;text-align:center">💡 Prompt copy hoga → AI tool open hoga → Ctrl+V karke paste karo → image download karo → URL upar paste karo</div>
+          </div>
+        </div>
+        <!-- ══ END AI PROMPT GENERATOR ══ -->
+
         <div class="fg">
           <label class="fl">Preferred Ad Slots <span style="color:var(--t4);font-weight:400">(tap to select)</span></label>
           <div class="slots">
@@ -348,7 +423,7 @@
     <div class="card">
       <div class="card-h"><div class="card-t">📞 Direct Contact</div></div>
       <div class="card-b" style="font-size:.83rem;line-height:2.1">
-        <div>📧 <a href="mailto:kspider4kreation@gmail.com" style="color:var(--gold2)">kspider4kreation@gmail.com</a></div>
+        <div>📧 <a href="/cdn-cgi/l/email-protection#513a222138353423653a23343025383e3f11363c30383d7f323e3c" style="color:var(--gold2)"><span class="__cf_email__" data-cfemail="94ffe7e4fdf0f1e6a0ffe6f1f5e0fdfbfad4f3f9f5fdf8baf7fbf9">[email&#160;protected]</span></a></div>
         <div>📱 <a href="https://wa.me/919099928877?text=Hi%2C%20I%20want%20to%20advertise%20on%20K%20Spider%20AI" target="_blank" style="color:#25d366">WhatsApp: +91 90999 28877</a></div>
         <div style="font-size:.68rem;color:var(--t4);margin-top:5px">Mon–Sat · 10 AM – 7 PM IST</div>
       </div>
@@ -360,7 +435,7 @@
 <footer class="footer">© 2025 K Spider for Kreation · <a href="index.html">kspiderai.in</a> · Made with ❤️ in Gujarat, India</footer>
 <div class="toast" id="adv-toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js"></script>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script src="https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js"></script>
 <script>
 var _db = null;
@@ -532,8 +607,86 @@ function submitRequest(){
 }
 
 function showSuccess(){
-  document.getElementById('form-card').style.display = 'none';
-  document.getElementById('success-box').classList.add('show');
+  var fc = document.getElementById('form-card');
+  var sb = document.getElementById('success-box');
+  if(fc) fc.style.display = 'none';
+  if(sb) sb.classList.add('show');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+// ── Show/hide AI section based on ad type ──
+var _origShowAdPreview = showAdPreview;
+showAdPreview = function(){
+  _origShowAdPreview();
+  var type = (document.getElementById('f-adtype')||{}).value || '';
+  var aiSec = document.getElementById('user-ai-section');
+  if(aiSec) aiSec.style.display = (type === 'image' || type === 'both') ? 'block' : 'none';
+};
+
+// ── USER SIDE AI PROMPT GENERATOR ──
+var _uStyleDesc = {
+  'modern-bold':'bold modern design with sharp typography, high contrast colors, dynamic energy',
+  'luxury-premium':'luxury premium look, gold accents, elegant fonts, dark rich background, high-end style',
+  'vibrant-festive':'vibrant festive colors, celebration mood, bright oranges and yellows, energetic atmosphere',
+  'minimal-clean':'clean minimal design, lots of white space, simple typography, subtle refined colors',
+  'corporate-professional':'professional corporate style, clean layout, trustworthy blue/grey colors, formal business feel',
+  'dark-neon':'dark background with neon glowing accents, futuristic vibe, electric cyan and purple'
+};
+
+function generateUserPrompt(){
+  var company = (document.getElementById('f-company')||{}).value || '';
+  var offer   = '';
+  var style   = (document.querySelector('input[name="u-ai-style"]:checked')||{}).value || 'modern-bold';
+  var size    = (document.querySelector('input[name="u-ai-size"]:checked')||{}).value || '1200x628';
+  var males   = parseInt((document.getElementById('u-ai-males')||{}).value || '1');
+  var females = parseInt((document.getElementById('u-ai-females')||{}).value || '1');
+  var styleDesc = _uStyleDesc[style] || 'modern professional style';
+
+  var sizeHints = {
+    '1200x628':'horizontal banner (1200x628px, aspect ratio 1.91:1)',
+    '728x90':'leaderboard banner (728x90px, very wide and short)',
+    '300x250':'medium rectangle (300x250px)',
+    '320x50':'mobile banner (320x50px, very wide narrow)',
+    '970x250':'billboard (970x250px, wide horizontal)'
+  };
+  var sizeHint = sizeHints[size] || 'banner advertisement';
+
+  var people = '';
+  if(males > 0 && females > 0) people = ', featuring '+males+' Indian male'+(males>1?'s':'')+' and '+females+' Indian female'+(females>1?'s':'')+' looking confident and professional';
+  else if(males > 0) people = ', featuring '+males+' confident Indian male'+(males>1?'s':'');
+  else if(females > 0) people = ', featuring '+females+' professional Indian female'+(females>1?'s':'');
+
+  var prompt = 'Create a professional advertising banner';
+  if(company) prompt += ' for "' + company + '"';
+  prompt += people + '. Style: ' + styleDesc + '. ';
+  prompt += 'Format: ' + sizeHint + '. ';
+  prompt += 'High resolution, professional advertising quality, suitable for digital marketing in India. No text overlays. Clean, compelling composition.';
+
+  var out = document.getElementById('u-ai-prompt');
+  var wrap = document.getElementById('u-prompt-output');
+  if(out) out.value = prompt;
+  if(wrap) wrap.style.display = 'block';
+}
+
+function copyUserPrompt(){
+  var p = (document.getElementById('u-ai-prompt')||{}).value || '';
+  if(!p){ advToast('⚠️ Pehle Generate karo'); return; }
+  if(navigator.clipboard){ navigator.clipboard.writeText(p).then(function(){ advToast('📋 Prompt copied!'); }); }
+  else { document.getElementById('u-ai-prompt').select(); document.execCommand('copy'); advToast('📋 Copied!'); }
+}
+
+function openUserAI(tool){
+  var p = (document.getElementById('u-ai-prompt')||{}).value || '';
+  if(!p){ advToast('⚠️ Pehle prompt generate karo'); return; }
+  if(navigator.clipboard) navigator.clipboard.writeText(p);
+  var urls = {
+    'chatgpt':'https://chat.openai.com/',
+    'gemini':'https://gemini.google.com/app',
+    'canva':'https://www.canva.com/ai-image-generator/',
+    'ideogram':'https://ideogram.ai/',
+    'adobefirefly':'https://firefly.adobe.com/generate/images'
+  };
+  if(urls[tool]){ window.open(urls[tool],'_blank'); advToast('🚀 Tool open hua! Ctrl+V karke prompt paste karo'); }
 }
 </script>
 </body>

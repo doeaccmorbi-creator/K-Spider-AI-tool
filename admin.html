@@ -148,6 +148,13 @@ tr:hover td{background:rgba(255,255,255,.015)}
   .sg{grid-template-columns:1fr}
 }
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+/* ── AI PROMPT GENERATOR CHIPS ── */
+.style-chip{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.68rem;font-weight:700;background:var(--bg4);border:1px solid var(--br2);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
+input[name="ai-style"]:checked+.style-chip{background:rgba(124,58,237,.2);border-color:rgba(168,85,247,.6);color:#c084fc}
+.size-chip{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:700;background:var(--bg4);border:1px solid var(--br2);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
+input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.6);color:#93c5fd}
+.ai-title-chip{display:inline-block;padding:4px 11px;border-radius:20px;font-size:.68rem;font-weight:600;background:rgba(184,121,42,.1);border:1px solid rgba(184,121,42,.3);color:var(--gold2);cursor:pointer;transition:all .15s;user-select:none}
+.ai-title-chip:hover{background:rgba(184,121,42,.2);border-color:rgba(184,121,42,.5)}
 </style>
 </head>
 <body>
@@ -635,6 +642,114 @@ tr:hover td{background:rgba(255,255,255,.015)}
               </div>
             </div>
 
+            <!-- ══ AI IMAGE PROMPT GENERATOR ══ -->
+            <div id="ad-ai-prompt-section" style="display:none;margin-bottom:10px">
+              <div style="background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(59,130,246,.08));border:1px solid rgba(124,58,237,.3);border-radius:12px;padding:14px;margin-bottom:4px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+                  <div style="font-size:.78rem;font-weight:800;color:#a78bfa;display:flex;align-items:center;gap:6px">
+                    🤖 AI Image Prompt Generator
+                    <span style="font-size:.6rem;background:rgba(124,58,237,.3);padding:2px 7px;border-radius:10px;color:#c4b5fd">NEW</span>
+                  </div>
+                  <button type="button" class="btn btn-pu btn-sm" onclick="generateAIPrompt()" style="font-size:.7rem">✨ Auto Generate Prompt</button>
+                </div>
+                
+                <!-- Style Options -->
+                <div style="margin-bottom:8px">
+                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🎨 Banner Style</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:5px" id="style-options">
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="modern-bold" checked style="display:none"><span class="style-chip">⚡ Modern Bold</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="luxury-premium" style="display:none"><span class="style-chip">💎 Luxury</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="minimal-clean" style="display:none"><span class="style-chip">🎯 Minimal</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="vibrant-festive" style="display:none"><span class="style-chip">🎉 Festive</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="corporate-professional" style="display:none"><span class="style-chip">👔 Corporate</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="playful-colorful" style="display:none"><span class="style-chip">🌈 Playful</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="dark-neon" style="display:none"><span class="style-chip">🌙 Dark Neon</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="photo-realistic" style="display:none"><span class="style-chip">📸 Realistic</span></label>
+                  </div>
+                </div>
+
+                <!-- People in Ad -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+                  <div>
+                    <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">👨 Males in Ad</div>
+                    <select class="fi" id="ai-males" style="padding:6px 10px;font-size:.78rem;margin-bottom:0">
+                      <option value="0">No male</option>
+                      <option value="1" selected>1 male</option>
+                      <option value="2">2 males</option>
+                      <option value="3">3 males</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">👩 Females in Ad</div>
+                    <select class="fi" id="ai-females" style="padding:6px 10px;font-size:.78rem;margin-bottom:0">
+                      <option value="0">No female</option>
+                      <option value="1" selected>1 female</option>
+                      <option value="2">2 females</option>
+                      <option value="3">3 females</option>
+                    </select>
+                  </div>
+                </div>
+
+                <!-- Banner Size for Prompt -->
+                <div style="margin-bottom:8px">
+                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">📐 Target Banner Size</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:5px" id="prompt-size-options">
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="1200x628" checked style="display:none"><span class="size-chip on">1200×628 (Facebook/Social)</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="728x90" style="display:none"><span class="size-chip">728×90 (Leaderboard)</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="300x250" style="display:none"><span class="size-chip">300×250 (Rectangle)</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="320x50" style="display:none"><span class="size-chip">320×50 (Mobile)</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="970x250" style="display:none"><span class="size-chip">970×250 (Billboard)</span></label>
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="300x600" style="display:none"><span class="size-chip">300×600 (Half Page)</span></label>
+                  </div>
+                </div>
+
+                <!-- Auto-Generated Titles -->
+                <div style="margin-bottom:10px" id="ai-title-suggestions-wrap" style="display:none">
+                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">💡 Suggested Ad Titles <span style="font-size:.6rem;color:var(--t4);text-transform:none;letter-spacing:0">(click to use)</span></div>
+                  <div id="ai-title-suggestions" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+                </div>
+
+                <!-- Generated Prompt Output -->
+                <div style="margin-bottom:8px">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+                    <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">📋 Generated Prompt</div>
+                    <div style="display:flex;gap:5px">
+                      <button type="button" class="btn btn-gh btn-sm" onclick="regeneratePrompt()" style="font-size:.65rem;padding:3px 8px">🔄 Regenerate</button>
+                      <button type="button" class="btn btn-bl btn-sm" onclick="copyPrompt()" style="font-size:.65rem;padding:3px 8px">📋 Copy</button>
+                    </div>
+                  </div>
+                  <textarea id="ai-generated-prompt" class="fi" rows="4" placeholder="✨ Click 'Auto Generate Prompt' to create an AI prompt based on your ad details..." style="font-size:.78rem;line-height:1.6;resize:vertical;border-color:rgba(124,58,237,.3);background:rgba(124,58,237,.05)"></textarea>
+                </div>
+
+                <!-- Direct AI Tool Links -->
+                <div>
+                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🚀 Open Prompt in AI Tool</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
+                    <button type="button" onclick="openInAI('chatgpt')" style="background:rgba(16,163,127,.12);border:1px solid rgba(16,163,127,.3);color:#34d399;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(16,163,127,.2)'" onmouseout="this.style.background='rgba(16,163,127,.12)'">
+                      <span style="font-size:.9rem">🤖</span> ChatGPT
+                    </button>
+                    <button type="button" onclick="openInAI('gemini')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#60a5fa;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.12)'">
+                      <span style="font-size:.9rem">✨</span> Gemini
+                    </button>
+                    <button type="button" onclick="openInAI('ideogram')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">
+                      <span style="font-size:.9rem">🖼️</span> Ideogram
+                    </button>
+                    <button type="button" onclick="openInAI('midjourney')" style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);color:#c084fc;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(168,85,247,.2)'" onmouseout="this.style.background='rgba(168,85,247,.12)'">
+                      <span style="font-size:.9rem">🎨</span> Midjourney
+                    </button>
+                    <button type="button" onclick="openInAI('canva')" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fbbf24;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(245,158,11,.2)'" onmouseout="this.style.background='rgba(245,158,11,.12)'">
+                      <span style="font-size:.9rem">🎯</span> Canva AI
+                    </button>
+                    <button type="button" onclick="openInAI('adobefirefly')" style="background:rgba(184,121,42,.12);border:1px solid rgba(184,121,42,.3);color:var(--gold2);padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(184,121,42,.2)'" onmouseout="this.style.background='rgba(184,121,42,.12)'">
+                      <span style="font-size:.9rem">🔥</span> Adobe Firefly
+                    </button>
+                  </div>
+                  <div style="font-size:.63rem;color:var(--t4);margin-top:5px;text-align:center">💡 Prompt clipboard mein copy hoga aur AI tool new tab mein khuleg</div>
+                </div>
+              </div>
+            </div>
+            <!-- ══ END AI IMAGE PROMPT GENERATOR ══ -->
+
             <!-- HTML -->
             <div id="ad-html-fields" style="display:none">
               <label class="fl">Custom HTML Code *</label>
@@ -644,12 +759,30 @@ tr:hover td{background:rgba(255,255,255,.015)}
             <label class="fl">Click URL <span style="color:var(--t4);font-weight:400">(optional for text ads)</span></label>
             <input class="fi" id="ad-click-url" type="url" placeholder="https://advertiser-site.com">
 
-            <label class="fl">Ad Size</label>
+            <label class="fl">Ad Size <span style="font-size:.62rem;color:var(--t4);font-weight:400">(Google AdSense Standard Sizes)</span></label>
             <select class="fi" id="ad-size">
               <option value="auto">📱 Auto Responsive (Recommended)</option>
-              <option value="728x90">📏 Banner 728×90</option>
-              <option value="300x250">📐 Rectangle 300×250</option>
-              <option value="320x50">📱 Mobile 320×50</option>
+              <optgroup label="── Leaderboard / Banner ──">
+                <option value="728x90">📏 Leaderboard 728×90 (Top/Bottom)</option>
+                <option value="970x90">📏 Super Leaderboard 970×90</option>
+                <option value="970x250">📏 Billboard 970×250</option>
+              </optgroup>
+              <optgroup label="── Rectangle / Square ──">
+                <option value="300x250">📐 Medium Rectangle 300×250 ⭐ Best</option>
+                <option value="336x280">📐 Large Rectangle 336×280</option>
+                <option value="250x250">⬛ Square 250×250</option>
+                <option value="200x200">⬛ Small Square 200×200</option>
+              </optgroup>
+              <optgroup label="── Skyscraper / Half Page ──">
+                <option value="160x600">📱 Wide Skyscraper 160×600</option>
+                <option value="120x600">📱 Skyscraper 120×600</option>
+                <option value="300x600">📱 Half Page 300×600</option>
+                <option value="300x1050">📱 Portrait 300×1050</option>
+              </optgroup>
+              <optgroup label="── Mobile ──">
+                <option value="320x50">📱 Mobile Banner 320×50</option>
+                <option value="320x100">📱 Large Mobile 320×100</option>
+              </optgroup>
             </select>
 
             <label class="fl">Show in Slots</label>
@@ -3047,6 +3180,9 @@ function adTypeChange(){
   if(imgF)  imgF.style.display  = t==='image' ? 'block' : 'none';
   if(txtF)  txtF.style.display  = t==='text'  ? 'block' : 'none';
   if(htmF)  htmF.style.display  = t==='html'  ? 'block' : 'none';
+  // Show AI prompt generator only for text ads
+  var aiSec = $id('ad-ai-prompt-section');
+  if(aiSec) aiSec.style.display = t==='text' ? 'block' : 'none';
   // URL optional for text ads
   if(clickF){
     var lbl = clickF.previousElementSibling;
@@ -3421,6 +3557,189 @@ function editAd(id){
   }).catch(function(e){ toast('Error: '+e.message); });
 }
 
+// ═══════════════════════════════════════════════
+// 🤖 AI IMAGE PROMPT GENERATOR
+// ═══════════════════════════════════════════════
+
+function getAdContext(){
+  var headline = ($id('ad-text-headline')||{}).value||'';
+  var desc     = ($id('ad-text-desc')||{}).value||'';
+  var offer    = ($id('ad-show-offer')&&$id('ad-show-offer').checked&&$id('ad-offer-text')) ? ($id('ad-offer-text').value||'') : '';
+  var company  = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name')) ? ($id('ad-company-name').value||'') : '';
+  var title    = ($id('ad-title')||{}).value||'';
+  var location = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location')) ? ($id('ad-contact-location').value||'') : '';
+  return { headline:headline, desc:desc, offer:offer, company:company, title:title, location:location };
+}
+
+function getSelectedStyle(){
+  var el = document.querySelector('input[name="ai-style"]:checked');
+  return el ? el.value : 'modern-bold';
+}
+
+function getSelectedBannerSize(){
+  var el = document.querySelector('input[name="ai-banner-size"]:checked');
+  return el ? el.value : '1200x628';
+}
+
+var _styleDescriptions = {
+  'modern-bold':           'bold modern design with sharp typography, high contrast colors, dynamic energy, contemporary feel',
+  'luxury-premium':        'luxury premium look, gold accents, elegant serif fonts, dark rich background, high-end sophisticated style',
+  'minimal-clean':         'clean minimal design, lots of white space, simple typography, subtle colors, refined and understated',
+  'vibrant-festive':       'vibrant festive colors, celebration mood, bright oranges and yellows, confetti elements, energetic joyful atmosphere',
+  'corporate-professional':'professional corporate style, clean layout, trustworthy colors (blue/grey), formal business feel',
+  'playful-colorful':      'playful colorful design, fun illustrated elements, bright rainbow palette, cheerful and friendly tone',
+  'dark-neon':             'dark background with neon glowing accents, futuristic cyberpunk vibe, electric colors (cyan, purple, pink)',
+  'photo-realistic':       'photorealistic high-quality photography, natural lighting, real-world scene, cinematic quality'
+};
+
+var _promptVariants = [
+  'Create a professional advertising banner',
+  'Design an eye-catching digital advertisement',
+  'Generate a high-quality marketing banner',
+  'Create a visually stunning promotional image'
+];
+
+var _currentVariantIdx = 0;
+
+function generateAIPrompt(){
+  var ctx = getAdContext();
+  var style = getSelectedStyle();
+  var size = getSelectedBannerSize();
+  var males = parseInt(($id('ai-males')||{}).value||'0');
+  var females = parseInt(($id('ai-females')||{}).value||'0');
+  var styleDesc = _styleDescriptions[style] || 'modern professional style';
+  var variant = _promptVariants[_currentVariantIdx % _promptVariants.length];
+  _currentVariantIdx++;
+
+  // Build context text
+  var contextParts = [];
+  if(ctx.company) contextParts.push('for "' + ctx.company + '"');
+  if(ctx.headline) contextParts.push('with headline "' + ctx.headline + '"');
+  if(ctx.offer) contextParts.push('promoting "' + ctx.offer + '"');
+  if(ctx.desc) contextParts.push('description: "' + ctx.desc + '"');
+  if(ctx.location) contextParts.push('located in ' + ctx.location);
+
+  // People description
+  var peopleDesc = '';
+  if(males > 0 && females > 0){
+    peopleDesc = ', featuring ' + males + ' confident Indian male'+(males>1?'s':'')+' and ' + females + ' professional Indian female'+(females>1?'s':'')+' in the scene';
+  } else if(males > 0){
+    peopleDesc = ', featuring ' + males + ' confident Indian male'+(males>1?'s':'');
+  } else if(females > 0){
+    peopleDesc = ', featuring ' + females + ' professional Indian female'+(females>1?'s':'');
+  }
+
+  // Size aspect ratio hint
+  var sizeHints = {
+    '1200x628': 'horizontal banner, aspect ratio 1.91:1',
+    '728x90': 'ultra-wide leaderboard banner, very wide and short, aspect ratio 8:1',
+    '300x250': 'medium rectangle, aspect ratio 1.2:1',
+    '320x50': 'mobile banner, very wide and narrow',
+    '970x250': 'billboard banner, wide horizontal',
+    '300x600': 'half-page vertical banner, aspect ratio 1:2'
+  };
+  var sizeHint = sizeHints[size] || 'banner advertisement';
+
+  var prompt = variant;
+  if(contextParts.length > 0) prompt += ' ' + contextParts.join(', ');
+  prompt += peopleDesc + '. ';
+  prompt += 'Style: ' + styleDesc + '. ';
+  prompt += 'Format: ' + sizeHint + ' (' + size + ' pixels). ';
+  prompt += 'High resolution, professional advertising quality, no text overlays in the image unless specified, clean composition, suitable for digital marketing. ';
+  prompt += 'Make the advertisement visually compelling and attention-grabbing for Indian audience.';
+
+  if($id('ai-generated-prompt')) $id('ai-generated-prompt').value = prompt;
+
+  // Also generate title suggestions
+  generateTitleSuggestions(ctx);
+
+  toast('✨ Prompt generated! Copy karo aur AI tool mein paste karo');
+}
+
+function regeneratePrompt(){
+  generateAIPrompt();
+}
+
+function generateTitleSuggestions(ctx){
+  var company = ctx.company || ctx.title.split('—')[0].trim() || 'Business';
+  var offer   = ctx.offer || ctx.headline || '';
+  
+  var templates = [
+    company + ' — ' + (offer || 'Special Offer'),
+    '🔥 ' + (offer || 'Limited Offer') + ' | ' + company,
+    company + ' | ' + (ctx.desc ? ctx.desc.split(' ').slice(0,4).join(' ')+'...' : 'Best Deals'),
+    '⚡ ' + company + ' Ad — ' + new Date().getFullYear(),
+    company + ' | Click to Learn More'
+  ];
+  
+  if(offer){
+    templates.unshift(company + ' — ' + offer + ' 🎉');
+  }
+
+  var wrap = $id('ai-title-suggestions-wrap');
+  var container = $id('ai-title-suggestions');
+  if(wrap) wrap.style.display = 'block';
+  if(container){
+    container.innerHTML = templates.slice(0,5).map(function(t){
+      return '<span class="ai-title-chip" onclick="useTitle(this.textContent)" title="Click to use as Ad Title">'+x(t)+'</span>';
+    }).join('');
+  }
+}
+
+function useTitle(title){
+  if($id('ad-title')) $id('ad-title').value = title;
+  toast('✅ Title applied: ' + title);
+}
+
+function copyPrompt(){
+  var prompt = ($id('ai-generated-prompt')||{}).value||'';
+  if(!prompt){ toast('⚠️ Pehle prompt generate karo'); return; }
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(prompt).then(function(){ toast('📋 Prompt copied to clipboard!'); });
+  } else {
+    $id('ai-generated-prompt').select();
+    document.execCommand('copy');
+    toast('📋 Prompt copied!');
+  }
+}
+
+function openInAI(tool){
+  var prompt = ($id('ai-generated-prompt')||{}).value||'';
+  if(!prompt){ toast('⚠️ Pehle prompt generate karo'); return; }
+  
+  // Copy prompt first
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(prompt);
+  }
+
+  var urls = {
+    'chatgpt':     'https://chat.openai.com/?q=' + encodeURIComponent(prompt),
+    'gemini':      'https://gemini.google.com/app',
+    'ideogram':    'https://ideogram.ai/',
+    'midjourney':  'https://www.midjourney.com/',
+    'canva':       'https://www.canva.com/ai-image-generator/',
+    'adobefirefly':'https://firefly.adobe.com/generate/images'
+  };
+
+  var toolNames = {
+    'chatgpt':'ChatGPT','gemini':'Gemini','ideogram':'Ideogram',
+    'midjourney':'Midjourney','canva':'Canva AI','adobefirefly':'Adobe Firefly'
+  };
+
+  var url = urls[tool];
+  if(url){
+    window.open(url, '_blank');
+    toast('🚀 ' + toolNames[tool] + ' open hua! Prompt clipboard mein hai — paste karo (Ctrl+V)');
+  }
+}
+
+// Show/hide AI Prompt section based on ad type
+function _checkAIPromptVisibility(){
+  var type = ($id('ad-type')||{}).value || 'image';
+  var sec = $id('ad-ai-prompt-section');
+  if(sec) sec.style.display = (type === 'text') ? 'block' : 'none';
+}
+
 // ── ADVERTISER REQUESTS ──
 function loadAdRequests(){
   var el=$id('ad-requests-list');
@@ -3529,3 +3848,5 @@ function copyAdFormLink(){
 }
 
 </script>
+</body>
+</html>
