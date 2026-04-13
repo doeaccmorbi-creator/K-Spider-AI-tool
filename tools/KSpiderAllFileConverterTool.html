@@ -640,6 +640,24 @@ footer{position:relative;z-index:1;border-top:1px solid var(--bd);background:rgb
 .vs-result-box{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:14px;margin-top:8px}
 .vs-track-row{display:flex;align-items:center;gap:8px;background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:8px 10px;margin-bottom:8px;flex-wrap:wrap}
 .vs-track-del{background:rgba(239,68,68,0.15);border:none;color:#f87171;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px}
+/* VS Pro extras */
+.vs-section-label{font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px}
+.vs-card{background:rgba(0,245,255,0.04);border:1px solid rgba(0,245,255,0.12);border-radius:10px;padding:12px}
+.vs-sel{background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none}
+.vs-chk{display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer;white-space:nowrap}
+.vs-lbl{font:600 10px var(--fm);color:var(--c1);width:36px;text-align:right;flex-shrink:0}
+.vs-label-txt{font:500 11px var(--fb);color:var(--t2);white-space:nowrap}
+.vs-slider-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px}
+.vs-info-txt{font:400 10px var(--fm);color:var(--tm);margin-top:5px}
+.vs-log{margin-top:6px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto}
+.vs-num-in{width:60px;background:var(--card2);border:1px solid var(--bd);border-radius:5px;color:var(--t1);font:600 12px var(--fm);padding:4px 8px;text-align:center;outline:none}
+.vs-txt-in{background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 9px;outline:none}
+.vs-prog-bar{height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden}
+.vs-prog-fill{height:100%;background:linear-gradient(90deg,var(--c1),#8b5cf6);border-radius:4px;width:0%;transition:width .3s ease}
+.vs-prog-txt{font:600 10px var(--fm);color:var(--tm);text-align:center;margin-top:3px}
+.vs-seg-row{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--bd);border-radius:7px;padding:6px 8px;margin-bottom:5px;flex-wrap:wrap}
+.vs-banner-row{background:var(--card2);border:1px solid var(--bd);border-radius:8px;padding:10px;margin-bottom:8px}
+.vs-banner-preview{height:32px;border-radius:5px;overflow:hidden;margin-top:6px;display:flex;align-items:center;justify-content:center;font:bold 14px Arial}
 </style>
 <script>
 // Online/Offline status
@@ -1272,184 +1290,384 @@ window.addEventListener('load',    _updateStatus);
 
 </div></div></div>
 
-<!-- ╔══════════════════════════════════════════════════════╗ -->
-<!-- ║         VIDEO STUDIO — K Spider AI                  ║ -->
-<!-- ╚══════════════════════════════════════════════════════╝ -->
+<!-- ╔══════════════════════════════════════════════════════════╗ -->
+<!-- ║   VIDEO STUDIO PRO — K Spider AI  (Expert Edition)      ║ -->
+<!-- ╚══════════════════════════════════════════════════════════╝ -->
 <div id="vstudio-panel" class="pbox" style="display:none">
   <div class="phead">
-    <span class="nbdg">✨ NEW</span>
-    <h3>Video Studio — Join, Create &amp; Mix</h3>
+    <span class="nbdg">✨ PRO</span>
+    <h3>Video Studio Pro — Expert Video Editor</h3>
   </div>
 
-  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-    <button class="vstab on" data-vs="join-video" onclick="vsSwitch(this,'join-video')">🎬 Join Videos</button>
-    <button class="vstab" data-vs="photos-video" onclick="vsSwitch(this,'photos-video')">🖼️ Photos→Video</button>
-    <button class="vstab" data-vs="music-mix" onclick="vsSwitch(this,'music-mix')">🎵 Add Music</button>
+  <!-- Tab bar -->
+  <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--bd);padding-bottom:12px">
+    <button class="vstab on" data-vs="join-video"    onclick="vsSwitch(this,'join-video')">🎬 Join &amp; Merge</button>
+    <button class="vstab"    data-vs="photos-video"  onclick="vsSwitch(this,'photos-video')">🖼️ Photos→Video</button>
+    <button class="vstab"    data-vs="music-mix"     onclick="vsSwitch(this,'music-mix')">🎵 Add Music</button>
+    <button class="vstab"    data-vs="video-trim"    onclick="vsSwitch(this,'video-trim')">✂️ Trim / Cut</button>
+    <button class="vstab"    data-vs="text-banner"   onclick="vsSwitch(this,'text-banner')">🔤 Text Banners</button>
+    <button class="vstab"    data-vs="effects"       onclick="vsSwitch(this,'effects')">✨ Effects</button>
+    <button class="vstab"    data-vs="convert-mp4"   onclick="vsSwitch(this,'convert-mp4')">🔄 Convert to MP4</button>
   </div>
 
-  <!-- JOIN VIDEOS -->
+  <!-- ══════════ 1. JOIN & MERGE ══════════ -->
   <div id="vs-join-video" class="vs-pane">
-    <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:10px">📂 Add Multiple Video Clips (MP4, MOV, WEBM, AVI, MKV)</div>
+    <div class="vs-section-label">📂 Add Video Clips (MP4, MOV, WEBM, AVI, MKV) — Drag to Reorder</div>
     <div class="vs-drop" onclick="document.getElementById('vsVideoInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsHandleVideoDrop(event)">
       <i class="fa-solid fa-film" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
-      <b>Drop Video Clips Here</b><br>
-      <small style="color:var(--tm)">or click to browse — add multiple clips, drag to reorder</small>
+      <b>Drop Video Clips Here</b><br><small style="color:var(--tm)">Multiple files supported · click to browse</small>
     </div>
     <input type="file" id="vsVideoInput" multiple accept="video/*" style="display:none" onchange="vsAddVideos(this.files)">
     <div id="vs-video-list" style="margin-top:10px"></div>
-    <div style="background:rgba(0,245,255,0.05);border:1px solid rgba(0,245,255,0.15);border-radius:10px;padding:12px;margin-top:12px">
-      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎵 Background Music (Optional)</div>
+
+    <!-- Per-clip trim & text controls rendered inside vsRenderVideoList -->
+
+    <!-- Music -->
+    <div class="vs-card" style="margin-top:12px">
+      <div class="vs-section-label">🎵 Background Music</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="vj-bgm-type" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none" onchange="vsToggleMusicUpload('vj')">
-          <option value="none">No Music</option>
+        <select id="vj-bgm-type" class="vs-sel" onchange="vsToggleMusicUpload('vj')">
+          <option value="none">No Music (keep original audio)</option>
           <option value="device">📁 Import from Device</option>
-          <option value="upbeat">🎵 Upbeat (Generated)</option>
-          <option value="calm">🧘 Calm Ambient</option>
-          <option value="cinematic">🎬 Cinematic</option>
+          <option value="upbeat">🎵 Upbeat</option><option value="calm">🧘 Calm Ambient</option>
+          <option value="cinematic">🎬 Cinematic</option><option value="dramatic">🎭 Dramatic</option>
         </select>
         <input type="file" id="vj-music-file" accept="audio/*" style="display:none" onchange="vsLoadMusic('vj',this)">
-        <button id="vj-music-btn" class="pvb" style="display:none" onclick="document.getElementById('vj-music-file').click()"><i class="fa-solid fa-upload"></i> Choose Music File</button>
-        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
-          <input type="checkbox" id="vj-sync-dur" style="accent-color:var(--c1)"> 🔗 Sync Duration to Music
-        </label>
+        <button id="vj-music-btn" class="pvb" style="display:none" onclick="document.getElementById('vj-music-file').click()"><i class="fa-solid fa-upload"></i> Choose</button>
+        <label class="vs-chk"><input type="checkbox" id="vj-sync-dur" style="accent-color:var(--c1)"> 🔗 Sync to Music Length</label>
+        <label class="vs-chk"><input type="checkbox" id="vj-keep-orig" checked style="accent-color:var(--c1)"> 🔊 Keep Original Audio</label>
       </div>
-      <div id="vj-music-info" style="margin-top:6px;font:400 10px var(--fm);color:var(--tm)"></div>
-      <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
-        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Music Volume</label>
+      <div id="vj-music-info" class="vs-info-txt"></div>
+      <div class="vs-slider-row">
+        <span>🎵 BGM Vol</span>
         <input type="range" id="vj-vol" min="0" max="100" value="40" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('vj-vol-lbl').textContent=this.value+'%'">
-        <span id="vj-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">40%</span>
+        <span id="vj-vol-lbl" class="vs-lbl">40%</span>
+        <span style="margin-left:10px">🔊 Orig Vol</span>
+        <input type="range" id="vj-orig-vol" min="0" max="100" value="100" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('vj-orig-vol-lbl').textContent=this.value+'%'">
+        <span id="vj-orig-vol-lbl" class="vs-lbl">100%</span>
       </div>
     </div>
-    <div class="vopts" style="margin-top:12px">
-      <div class="og"><label>Output Resolution</label><select id="vj-res"><option value="1920x1080" selected>1080p HD</option><option value="1280x720">720p</option><option value="854x480">480p</option></select></div>
-      <div class="og"><label>Frame Rate</label><select id="vj-fps"><option value="30" selected>30 fps</option><option value="24">24 fps</option><option value="60">60 fps</option></select></div>
-      <div class="og"><label>Transition</label><select id="vj-trans"><option value="none">Cut (Direct)</option><option value="fade" selected>Fade Black</option><option value="wipe">Wipe Left</option></select></div>
+
+    <!-- Output settings -->
+    <div class="vopts" style="margin-top:10px">
+      <div class="og"><label>Resolution</label><select id="vj-res"><option value="1920x1080" selected>1080p HD</option><option value="1280x720">720p</option><option value="854x480">480p</option><option value="3840x2160">4K</option></select></div>
+      <div class="og"><label>Frame Rate</label><select id="vj-fps"><option value="24">24 fps</option><option value="30" selected>30 fps</option><option value="60">60 fps</option></select></div>
+      <div class="og"><label>Transition</label><select id="vj-trans"><option value="none">Hard Cut</option><option value="fade" selected>Fade Black</option><option value="white">Fade White</option><option value="wipe">Wipe Left</option><option value="wiper">Wipe Right</option><option value="zoom">Zoom Out</option><option value="blur">Motion Blur</option></select></div>
+      <div class="og"><label>Trans Duration</label><select id="vj-trans-dur"><option value="0.3">0.3s Quick</option><option value="0.5" selected>0.5s Normal</option><option value="1.0">1.0s Slow</option><option value="1.5">1.5s Very Slow</option></select></div>
       <div class="og"><label>Watermark</label><select id="vj-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None (Pro)</option></select></div>
     </div>
     <button id="vs-join-btn" class="cvbtn" onclick="vsJoinVideos()" style="margin-top:14px;background:linear-gradient(135deg,#ec4899,#8b5cf6);width:100%">
-      <i class="fa-solid fa-film"></i> Join Videos &amp; Download
+      <i class="fa-solid fa-film"></i> Join &amp; Export Video
     </button>
-    <div id="vs-join-log" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto"></div>
+    <div id="vs-join-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-join-prog-fill" class="vs-prog-fill"></div></div><div id="vs-join-prog-txt" class="vs-prog-txt">0%</div></div>
+    <div id="vs-join-log" class="vs-log"></div>
     <div id="vs-join-result" style="margin-top:10px"></div>
   </div>
 
-  <!-- PHOTOS TO VIDEO -->
+  <!-- ══════════ 2. PHOTOS → VIDEO ══════════ -->
   <div id="vs-photos-video" class="vs-pane" style="display:none">
-    <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:10px">🖼️ Add Multiple Photos (JPG, PNG, WEBP)</div>
+    <div class="vs-section-label">🖼️ Add Photos (JPG, PNG, WEBP, GIF) — Drag to Reorder</div>
     <div class="vs-drop" onclick="document.getElementById('vsPhotoInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsHandlePhotoDrop(event)">
       <i class="fa-solid fa-images" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
-      <b>Drop Photos Here</b><br>
-      <small style="color:var(--tm)">Drag thumbnails below to reorder</small>
+      <b>Drop Photos Here</b><br><small style="color:var(--tm)">Drag thumbnails to reorder</small>
     </div>
     <input type="file" id="vsPhotoInput" multiple accept="image/*" style="display:none" onchange="vsAddPhotos(this.files)">
     <div id="vs-photo-list" style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px"></div>
-    <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-top:12px">
-      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">⏱ Duration Settings</div>
+
+    <div class="vs-card" style="margin-top:12px">
+      <div class="vs-section-label">⏱ Duration</div>
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-        <label style="font:500 11px var(--fb);color:var(--t2)">Seconds per photo:</label>
-        <input type="number" id="ph-dur" value="3" min="1" max="30" style="width:60px;background:var(--card2);border:1px solid var(--bd);border-radius:5px;color:var(--t1);font:600 12px var(--fm);padding:4px 8px;text-align:center;outline:none">
-        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
-          <input type="checkbox" id="ph-sync-music" style="accent-color:var(--c1)" onchange="vsTogglePhotoSync(this)"> 🔗 Set Duration from Music Length
-        </label>
+        <span class="vs-label-txt">Seconds per photo:</span>
+        <input type="number" id="ph-dur" value="3" min="1" max="60" class="vs-num-in">
+        <label class="vs-chk"><input type="checkbox" id="ph-sync-music" style="accent-color:var(--c1)" onchange="vsTogglePhotoSync(this)"> 🔗 Set from Music Length</label>
       </div>
     </div>
-    <div style="background:rgba(0,245,255,0.05);border:1px solid rgba(0,245,255,0.15);border-radius:10px;padding:12px;margin-top:10px">
-      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎬 Slideshow Effect</div>
+
+    <div class="vs-card" style="margin-top:8px">
+      <div class="vs-section-label">🎬 Animation Effect</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <select id="ph-effect" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none">
+        <select id="ph-effect" class="vs-sel">
           <option value="kenburns" selected>Ken Burns (Zoom+Pan)</option>
-          <option value="fade">Crossfade</option>
-          <option value="slide">Slide Left</option>
-          <option value="zoom">Zoom In</option>
-          <option value="none">No Transition</option>
+          <option value="fade">Crossfade</option><option value="slide">Slide Left</option>
+          <option value="slideR">Slide Right</option><option value="slideU">Slide Up</option>
+          <option value="zoom">Zoom In</option><option value="zoomOut">Zoom Out</option>
+          <option value="rotate">Rotate Fade</option><option value="none">Hard Cut</option>
         </select>
-        <select id="ph-zoom-dir" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none">
-          <option value="auto">Auto Direction</option>
-          <option value="in">Zoom In Only</option>
-          <option value="out">Zoom Out Only</option>
+        <select id="ph-zoom-dir" class="vs-sel">
+          <option value="auto">Auto Direction</option><option value="in">Zoom In</option><option value="out">Zoom Out</option>
+        </select>
+        <select id="ph-color-grade" class="vs-sel">
+          <option value="none">No Color Grade</option><option value="warm">🌅 Warm</option>
+          <option value="cool">❄️ Cool</option><option value="vintage">📷 Vintage</option>
+          <option value="bw">⬛ Black &amp; White</option><option value="vivid">✨ Vivid</option>
         </select>
       </div>
     </div>
-    <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:12px;margin-top:10px">
-      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎵 Background Music</div>
+
+    <div class="vs-card" style="margin-top:8px">
+      <div class="vs-section-label">🎵 Background Music</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-        <select id="ph-bgm-type" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:5px 8px;outline:none" onchange="vsToggleMusicUpload('ph')">
-          <option value="none">No Music</option>
-          <option value="device">📁 Import from Device</option>
-          <option value="upbeat">🎵 Upbeat (Generated)</option>
-          <option value="calm">🧘 Calm Ambient</option>
-          <option value="cinematic">🎬 Cinematic</option>
-          <option value="romantic">💕 Romantic</option>
+        <select id="ph-bgm-type" class="vs-sel" onchange="vsToggleMusicUpload('ph')">
+          <option value="none">No Music</option><option value="device">📁 Import from Device</option>
+          <option value="upbeat">🎵 Upbeat</option><option value="calm">🧘 Calm</option>
+          <option value="cinematic">🎬 Cinematic</option><option value="romantic">💕 Romantic</option>
+          <option value="dramatic">🎭 Dramatic</option>
         </select>
         <input type="file" id="ph-music-file" accept="audio/*" style="display:none" onchange="vsLoadMusic('ph',this)">
-        <button id="ph-music-btn" class="pvb" style="display:none" onclick="document.getElementById('ph-music-file').click()"><i class="fa-solid fa-upload"></i> Choose Music File</button>
+        <button id="ph-music-btn" class="pvb" style="display:none" onclick="document.getElementById('ph-music-file').click()"><i class="fa-solid fa-upload"></i> Choose</button>
       </div>
-      <div id="ph-music-info" style="margin-top:6px;font:400 10px var(--fm);color:var(--tm)"></div>
-      <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
-        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Volume</label>
+      <div id="ph-music-info" class="vs-info-txt"></div>
+      <div class="vs-slider-row">
+        <span>🔊 Vol</span>
         <input type="range" id="ph-vol" min="0" max="100" value="60" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('ph-vol-lbl').textContent=this.value+'%'">
-        <span id="ph-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">60%</span>
+        <span id="ph-vol-lbl" class="vs-lbl">60%</span>
       </div>
     </div>
-    <div class="vopts" style="margin-top:12px">
-      <div class="og"><label>Output Resolution</label><select id="ph-res"><option value="1920x1080" selected>1080p HD</option><option value="1280x720">720p</option><option value="854x480">480p</option></select></div>
-      <div class="og"><label>Frame Rate</label><select id="ph-fps"><option value="30" selected>30 fps</option><option value="24">24 fps</option></select></div>
-      <div class="og"><label>Watermark</label><select id="ph-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None (Pro)</option></select></div>
+
+    <div class="vopts" style="margin-top:8px">
+      <div class="og"><label>Resolution</label><select id="ph-res"><option value="1920x1080" selected>1080p</option><option value="1280x720">720p</option><option value="854x480">480p</option></select></div>
+      <div class="og"><label>FPS</label><select id="ph-fps"><option value="24">24</option><option value="30" selected>30</option></select></div>
+      <div class="og"><label>Watermark</label><select id="ph-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None</option></select></div>
     </div>
     <button class="cvbtn" onclick="vsPhotosToVideo()" style="margin-top:14px;background:linear-gradient(135deg,#fbbf24,#ec4899);width:100%">
       <i class="fa-solid fa-images"></i> Create Slideshow Video
     </button>
-    <div id="vs-photos-log" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto"></div>
+    <div id="vs-photos-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-photos-prog-fill" class="vs-prog-fill"></div></div><div id="vs-photos-prog-txt" class="vs-prog-txt">0%</div></div>
+    <div id="vs-photos-log" class="vs-log"></div>
     <div id="vs-photos-result" style="margin-top:10px"></div>
   </div>
 
-  <!-- ADD MUSIC TO VIDEO -->
+  <!-- ══════════ 3. ADD MUSIC ══════════ -->
   <div id="vs-music-mix" class="vs-pane" style="display:none">
-    <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:10px">🎬 Choose Video File</div>
+    <div class="vs-section-label">🎬 Upload Video</div>
     <div class="vs-drop" onclick="document.getElementById('vsMixVideoInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsHandleMixVideoDrop(event)">
-      <i class="fa-solid fa-video" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
-      <b>Drop Video File Here</b><br>
-      <small style="color:var(--tm)">MP4, WEBM, MOV</small>
+      <i class="fa-solid fa-video" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br><b>Drop Video Here</b>
     </div>
     <input type="file" id="vsMixVideoInput" accept="video/*" style="display:none" onchange="vsLoadMixVideo(this)">
-    <div id="mix-video-info" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm)"></div>
-    <div style="background:rgba(251,191,36,0.05);border:1px solid rgba(251,191,36,0.2);border-radius:10px;padding:12px;margin-top:12px">
-      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">🎵 Music Tracks (Add Multiple)</div>
-      <button class="pvb" onclick="vsMixAddTrack()" style="margin-bottom:10px"><i class="fa-solid fa-plus"></i> Add Music Track</button>
+    <div id="mix-video-info" class="vs-info-txt"></div>
+
+    <div class="vs-card" style="margin-top:10px">
+      <div class="vs-section-label">🎵 Music Tracks (Multiple Supported)</div>
+      <button class="pvb" onclick="vsMixAddTrack()" style="margin-bottom:8px"><i class="fa-solid fa-plus"></i> Add Track</button>
       <div id="mix-tracks-list"></div>
     </div>
-    <div style="background:rgba(139,92,246,0.06);border:1px solid rgba(139,92,246,0.2);border-radius:10px;padding:12px;margin-top:10px">
-      <div style="font:600 9px var(--fm);letter-spacing:.08em;color:var(--tm);text-transform:uppercase;margin-bottom:8px">⚙ Mix Options</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center">
-        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
-          <input type="checkbox" id="mix-keep-audio" checked style="accent-color:var(--c1)"> Keep Original Audio
-        </label>
-        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
-          <input type="checkbox" id="mix-fade" checked style="accent-color:var(--c1)"> Fade In/Out Music
-        </label>
-        <label style="display:flex;align-items:center;gap:5px;font:500 11px var(--fb);color:var(--t2);cursor:pointer">
-          <input type="checkbox" id="mix-loop-music" style="accent-color:var(--c1)"> Loop Music if Shorter
-        </label>
+
+    <div class="vs-card" style="margin-top:8px">
+      <div class="vs-section-label">⚙ Mix Options</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <label class="vs-chk"><input type="checkbox" id="mix-keep-audio" checked style="accent-color:var(--c1)"> Keep Original Audio</label>
+        <label class="vs-chk"><input type="checkbox" id="mix-fade" checked style="accent-color:var(--c1)"> Fade In/Out Music</label>
+        <label class="vs-chk"><input type="checkbox" id="mix-loop-music" checked style="accent-color:var(--c1)"> Loop Music if Short</label>
       </div>
-      <div style="display:flex;gap:10px;margin-top:8px;align-items:center">
-        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Music Vol</label>
+      <div class="vs-slider-row" style="margin-top:8px">
+        <span>🎵 Music</span>
         <input type="range" id="mix-vol" min="0" max="100" value="50" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('mix-vol-lbl').textContent=this.value+'%'">
-        <span id="mix-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">50%</span>
-      </div>
-      <div style="display:flex;gap:10px;margin-top:6px;align-items:center">
-        <label style="font:500 10px var(--fm);color:var(--t2)">🔊 Orig Audio</label>
-        <input type="range" id="mix-orig-vol" min="0" max="100" value="70" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('mix-orig-vol-lbl').textContent=this.value+'%'">
-        <span id="mix-orig-vol-lbl" style="font:600 10px var(--fm);color:var(--c1);width:32px">70%</span>
+        <span id="mix-vol-lbl" class="vs-lbl">50%</span>
+        <span style="margin-left:10px">🔊 Orig</span>
+        <input type="range" id="mix-orig-vol" min="0" max="100" value="80" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('mix-orig-vol-lbl').textContent=this.value+'%'">
+        <span id="mix-orig-vol-lbl" class="vs-lbl">80%</span>
       </div>
     </div>
-    <div class="vopts" style="margin-top:12px">
-      <div class="og"><label>Watermark</label><select id="mix-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None (Pro)</option></select></div>
+    <div class="vopts" style="margin-top:8px">
+      <div class="og"><label>Watermark</label><select id="mix-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None</option></select></div>
     </div>
     <button class="cvbtn" onclick="vsMixAudio()" style="margin-top:14px;background:linear-gradient(135deg,#fbbf24,#10b981);width:100%">
-      <i class="fa-solid fa-music"></i> Mix Audio Into Video
+      <i class="fa-solid fa-music"></i> Mix Audio &amp; Export
     </button>
-    <div id="vs-mix-log" style="margin-top:8px;font:400 11px var(--fm);color:var(--tm);max-height:80px;overflow-y:auto"></div>
+    <div id="vs-mix-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-mix-prog-fill" class="vs-prog-fill"></div></div><div id="vs-mix-prog-txt" class="vs-prog-txt">0%</div></div>
+    <div id="vs-mix-log" class="vs-log"></div>
     <div id="vs-mix-result" style="margin-top:10px"></div>
+  </div>
+
+  <!-- ══════════ 4. TRIM / CUT ══════════ -->
+  <div id="vs-video-trim" class="vs-pane" style="display:none">
+    <div class="vs-section-label">✂️ Upload Video to Trim / Cut</div>
+    <div class="vs-drop" onclick="document.getElementById('vsTrimInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsTrimDrop(event)">
+      <i class="fa-solid fa-scissors" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br><b>Drop Video Here</b>
+    </div>
+    <input type="file" id="vsTrimInput" accept="video/*" style="display:none" onchange="vsTrimLoad(this)">
+    <div id="trim-video-wrap" style="display:none;margin-top:12px">
+      <video id="trim-preview" controls style="width:100%;border-radius:10px;max-height:220px;background:#000"></video>
+      <div id="trim-info" class="vs-info-txt" style="margin-top:6px"></div>
+
+      <div class="vs-card" style="margin-top:10px">
+        <div class="vs-section-label">✂️ Trim Range</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+          <span class="vs-label-txt">Start (sec):</span>
+          <input type="number" id="trim-start" value="0" min="0" step="0.1" class="vs-num-in" oninput="vsUpdateTrimBar()">
+          <span class="vs-label-txt">End (sec):</span>
+          <input type="number" id="trim-end" value="10" min="0" step="0.1" class="vs-num-in" oninput="vsUpdateTrimBar()">
+          <button class="pvb" onclick="vsSetTrimFromCurrent('start')"><i class="fa-solid fa-bracket-left"></i> Set Start</button>
+          <button class="pvb" onclick="vsSetTrimFromCurrent('end')"><i class="fa-solid fa-bracket-right"></i> Set End</button>
+        </div>
+        <!-- Timeline bar -->
+        <div id="trim-timeline" style="position:relative;height:28px;background:var(--card2);border-radius:8px;border:1px solid var(--bd);margin-bottom:8px;cursor:pointer" onclick="vsTrimTimelineClick(event)">
+          <div id="trim-range-bar" style="position:absolute;top:0;height:100%;background:rgba(0,245,255,0.25);border-radius:8px;pointer-events:none"></div>
+          <div id="trim-playhead" style="position:absolute;top:0;width:2px;height:100%;background:var(--c1);pointer-events:none"></div>
+          <div id="trim-start-marker" style="position:absolute;top:0;width:4px;height:100%;background:#ec4899;border-radius:2px;cursor:ew-resize"></div>
+          <div id="trim-end-marker"   style="position:absolute;top:0;width:4px;height:100%;background:#10b981;border-radius:2px;cursor:ew-resize"></div>
+        </div>
+
+        <!-- Cut segments list -->
+        <div style="margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <span class="vs-section-label" style="margin:0">📋 Cut Segments (keep these ranges)</span>
+            <button class="pvb" onclick="vsAddCutSegment()"><i class="fa-solid fa-plus"></i> Add Segment</button>
+          </div>
+          <div id="trim-segments"></div>
+          <div style="font:400 10px var(--fm);color:var(--tm);margin-top:4px">Leave empty to do a simple trim (start→end)</div>
+        </div>
+      </div>
+
+      <div class="vopts" style="margin-top:10px">
+        <div class="og"><label>Watermark</label><select id="trim-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None</option></select></div>
+      </div>
+      <button class="cvbtn" onclick="vsTrimExport()" style="margin-top:12px;background:linear-gradient(135deg,#f59e0b,#ec4899);width:100%">
+        <i class="fa-solid fa-scissors"></i> Export Trimmed / Cut Video
+      </button>
+      <div id="vs-trim-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-trim-prog-fill" class="vs-prog-fill"></div></div><div id="vs-trim-prog-txt" class="vs-prog-txt">0%</div></div>
+      <div id="vs-trim-log" class="vs-log"></div>
+      <div id="vs-trim-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ 5. TEXT BANNERS ══════════ -->
+  <div id="vs-text-banner" class="vs-pane" style="display:none">
+    <div class="vs-section-label">🎬 Upload Video to Add Text Banners</div>
+    <div class="vs-drop" onclick="document.getElementById('vsBannerInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsBannerDrop(event)">
+      <i class="fa-solid fa-closed-captioning" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br><b>Drop Video Here</b>
+    </div>
+    <input type="file" id="vsBannerInput" accept="video/*" style="display:none" onchange="vsBannerLoad(this)">
+    <div id="banner-video-wrap" style="display:none;margin-top:12px">
+      <video id="banner-preview" controls style="width:100%;border-radius:10px;max-height:200px;background:#000"></video>
+      <div id="banner-video-info" class="vs-info-txt"></div>
+
+      <div class="vs-card" style="margin-top:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div class="vs-section-label" style="margin:0">🔤 Text Banners / Overlays</div>
+          <button class="pvb" onclick="vsAddBanner()"><i class="fa-solid fa-plus"></i> Add Banner</button>
+        </div>
+        <div id="banner-list"></div>
+      </div>
+
+      <div class="vs-card" style="margin-top:8px">
+        <div class="vs-section-label">📌 Intro / Outro Cards</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <label class="vs-chk"><input type="checkbox" id="ban-intro" style="accent-color:var(--c1)"> Add Intro Card</label>
+          <input type="text" id="ban-intro-txt" placeholder="Intro text..." class="vs-txt-in" style="flex:1;min-width:150px">
+          <input type="number" id="ban-intro-dur" value="2" min="1" max="10" class="vs-num-in" title="Intro duration (sec)">
+          <span class="vs-label-txt">sec</span>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px">
+          <label class="vs-chk"><input type="checkbox" id="ban-outro" style="accent-color:var(--c1)"> Add Outro Card</label>
+          <input type="text" id="ban-outro-txt" placeholder="Outro / subscribe text..." class="vs-txt-in" style="flex:1;min-width:150px">
+          <input type="number" id="ban-outro-dur" value="3" min="1" max="10" class="vs-num-in" title="Outro duration (sec)">
+          <span class="vs-label-txt">sec</span>
+        </div>
+      </div>
+
+      <div class="vopts" style="margin-top:8px">
+        <div class="og"><label>Watermark</label><select id="banner-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None</option></select></div>
+      </div>
+      <button class="cvbtn" onclick="vsBannerExport()" style="margin-top:12px;background:linear-gradient(135deg,#8b5cf6,#06b6d4);width:100%">
+        <i class="fa-solid fa-font"></i> Render Banners &amp; Export
+      </button>
+      <div id="vs-banner-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-banner-prog-fill" class="vs-prog-fill"></div></div><div id="vs-banner-prog-txt" class="vs-prog-txt">0%</div></div>
+      <div id="vs-banner-log" class="vs-log"></div>
+      <div id="vs-banner-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ 6. EFFECTS ══════════ -->
+  <div id="vs-effects" class="vs-pane" style="display:none">
+    <div class="vs-section-label">🎬 Upload Video to Apply Effects</div>
+    <div class="vs-drop" onclick="document.getElementById('vsEffectInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsEffectDrop(event)">
+      <i class="fa-solid fa-wand-magic-sparkles" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br><b>Drop Video Here</b>
+    </div>
+    <input type="file" id="vsEffectInput" accept="video/*" style="display:none" onchange="vsEffectLoad(this)">
+    <div id="effect-video-wrap" style="display:none;margin-top:12px">
+      <video id="effect-preview" controls style="width:100%;border-radius:10px;max-height:200px;background:#000"></video>
+
+      <div class="vs-card" style="margin-top:10px">
+        <div class="vs-section-label">🎨 Color Grade / LUT</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <select id="eff-grade" class="vs-sel">
+            <option value="none">None</option><option value="warm">🌅 Warm (golden)</option>
+            <option value="cool">❄️ Cool (blue tones)</option><option value="vintage">📷 Vintage / Faded</option>
+            <option value="bw">⬛ Black &amp; White</option><option value="vivid">✨ Vivid / Punchy</option>
+            <option value="sepia">🟤 Sepia</option><option value="hdr">🌈 HDR Look</option>
+            <option value="night">🌙 Night / Low-key</option><option value="teal_orange">🎬 Teal &amp; Orange (Cinema)</option>
+          </select>
+        </div>
+        <div class="vs-slider-row" style="margin-top:8px">
+          <span>Brightness</span><input type="range" id="eff-bright" min="-50" max="50" value="0" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('eff-bright-lbl').textContent=this.value"><span id="eff-bright-lbl" class="vs-lbl">0</span>
+          <span style="margin-left:10px">Contrast</span><input type="range" id="eff-contrast" min="-50" max="50" value="0" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('eff-contrast-lbl').textContent=this.value"><span id="eff-contrast-lbl" class="vs-lbl">0</span>
+        </div>
+        <div class="vs-slider-row">
+          <span>Saturation</span><input type="range" id="eff-sat" min="-100" max="100" value="0" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('eff-sat-lbl').textContent=this.value"><span id="eff-sat-lbl" class="vs-lbl">0</span>
+          <span style="margin-left:10px">Sharpness</span><input type="range" id="eff-sharp" min="0" max="5" value="0" step="0.5" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('eff-sharp-lbl').textContent=this.value"><span id="eff-sharp-lbl" class="vs-lbl">0</span>
+        </div>
+      </div>
+
+      <div class="vs-card" style="margin-top:8px">
+        <div class="vs-section-label">🎞 Visual Effects</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <label class="vs-chk"><input type="checkbox" id="eff-vignette" style="accent-color:var(--c1)"> 🔲 Vignette</label>
+          <label class="vs-chk"><input type="checkbox" id="eff-grain" style="accent-color:var(--c1)"> 📺 Film Grain</label>
+          <label class="vs-chk"><input type="checkbox" id="eff-flicker" style="accent-color:var(--c1)"> 💡 Flicker</label>
+          <label class="vs-chk"><input type="checkbox" id="eff-glow" style="accent-color:var(--c1)"> ✨ Glow / Bloom</label>
+          <label class="vs-chk"><input type="checkbox" id="eff-mirror" style="accent-color:var(--c1)"> 🪞 Mirror Flip</label>
+          <label class="vs-chk"><input type="checkbox" id="eff-speedup" style="accent-color:var(--c1)"> ⚡ Speed Up 2×</label>
+          <label class="vs-chk"><input type="checkbox" id="eff-reverse" style="accent-color:var(--c1)"> ⏪ Reverse</label>
+        </div>
+        <div class="vs-slider-row" style="margin-top:8px">
+          <span>Vignette Strength</span>
+          <input type="range" id="eff-vig-str" min="0" max="100" value="40" style="flex:1;accent-color:var(--c1)" oninput="document.getElementById('eff-vig-lbl').textContent=this.value+'%'">
+          <span id="eff-vig-lbl" class="vs-lbl">40%</span>
+        </div>
+      </div>
+
+      <div class="vopts" style="margin-top:8px">
+        <div class="og"><label>Resolution</label><select id="eff-res"><option value="original" selected>Original</option><option value="1920x1080">1080p</option><option value="1280x720">720p</option></select></div>
+        <div class="og"><label>Watermark</label><select id="eff-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None</option></select></div>
+      </div>
+      <button class="cvbtn" onclick="vsEffectExport()" style="margin-top:12px;background:linear-gradient(135deg,#10b981,#6366f1);width:100%">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Apply Effects &amp; Export
+      </button>
+      <div id="vs-effect-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-effect-prog-fill" class="vs-prog-fill"></div></div><div id="vs-effect-prog-txt" class="vs-prog-txt">0%</div></div>
+      <div id="vs-effect-log" class="vs-log"></div>
+      <div id="vs-effect-result" style="margin-top:10px"></div>
+    </div>
+  </div>
+
+  <!-- ══════════ 7. CONVERT TO MP4 ══════════ -->
+  <div id="vs-convert-mp4" class="vs-pane" style="display:none">
+    <div class="vs-section-label">🔄 Upload Video to Convert to MP4 / Other Formats</div>
+    <div class="vs-drop" onclick="document.getElementById('vsConvInput').click()" ondragover="event.preventDefault();this.classList.add('vs-drag')" ondragleave="this.classList.remove('vs-drag')" ondrop="vsConvDrop(event)">
+      <i class="fa-solid fa-arrows-rotate" style="font-size:2em;color:var(--c1);margin-bottom:6px"></i><br>
+      <b>Drop Any Video Here</b><br><small style="color:var(--tm)">WEBM, MOV, AVI, MKV, MP4, 3GP, FLV…</small>
+    </div>
+    <input type="file" id="vsConvInput" accept="video/*" style="display:none" onchange="vsConvLoad(this)">
+    <div id="conv-info" class="vs-info-txt"></div>
+    <div id="conv-wrap" style="display:none;margin-top:10px">
+      <div class="vs-card">
+        <div class="vs-section-label">⚙ Output Settings</div>
+        <div class="vopts">
+          <div class="og"><label>Resolution</label><select id="conv-res"><option value="original" selected>Keep Original</option><option value="1920x1080">1080p</option><option value="1280x720">720p</option><option value="854x480">480p</option><option value="3840x2160">4K</option></select></div>
+          <div class="og"><label>Frame Rate</label><select id="conv-fps"><option value="original" selected>Keep Original</option><option value="24">24 fps</option><option value="30">30 fps</option><option value="60">60 fps</option></select></div>
+          <div class="og"><label>Video Bitrate</label><select id="conv-vbr"><option value="2000000">2 Mbps</option><option value="4000000" selected>4 Mbps</option><option value="8000000">8 Mbps</option><option value="16000000">16 Mbps</option></select></div>
+          <div class="og"><label>Audio Bitrate</label><select id="conv-abr"><option value="96000">96 kbps</option><option value="128000" selected>128 kbps</option><option value="192000">192 kbps</option></select></div>
+          <div class="og"><label>Mute Audio</label><select id="conv-mute"><option value="no" selected>Keep Audio</option><option value="yes">Mute</option></select></div>
+          <div class="og"><label>Watermark</label><select id="conv-wmark"><option value="on" selected>K Spider AI ✔</option><option value="off">None</option></select></div>
+        </div>
+      </div>
+      <button class="cvbtn" onclick="vsConvExport()" style="margin-top:12px;background:linear-gradient(135deg,#06b6d4,#8b5cf6);width:100%">
+        <i class="fa-solid fa-arrows-rotate"></i> Convert &amp; Download as WEBM/MP4
+      </button>
+      <div id="vs-conv-prog" style="display:none;margin-top:8px"><div class="vs-prog-bar"><div id="vs-conv-prog-fill" class="vs-prog-fill"></div></div><div id="vs-conv-prog-txt" class="vs-prog-txt">0%</div></div>
+      <div id="vs-conv-log" class="vs-log"></div>
+      <div id="vs-conv-result" style="margin-top:10px"></div>
+    </div>
   </div>
 
 </div><!-- end vstudio-panel -->
@@ -4317,43 +4535,49 @@ self.addEventListener('fetch', e => {
 })();
 
 // ╔══════════════════════════════════════════════════════════╗
-// ║   VIDEO STUDIO — K Spider AI  (Join · Slideshow · Mix)  ║
-// ║   By Gaurang Raval & Khush Raval — kspiderai.in         ║
+// ║   VIDEO STUDIO PRO — K Spider AI  (Expert Edition)       ║
+// ║   By Gaurang Raval & Khush Raval — kspiderai.in          ║
 // ╚══════════════════════════════════════════════════════════╝
 (function(){
 'use strict';
 
 // ── State ──────────────────────────────────────────────────
 const VS = {
-  videoClips    : [],   // {file, url, name, duration}
-  photoFiles    : [],   // {file, url, name, img}
-  mixVideoFile  : null,
-  mixVideoEl    : null,
-  mixTracks     : [],   // {id, file, url, name, duration, buffer}
-  musicBuffers  : {},   // prefix → AudioBuffer
-  trackCounter  : 0
+  videoClips   : [],   // {file,url,name,duration,trimStart,trimEnd}
+  photoFiles   : [],   // {file,url,name,img}
+  mixVideoFile : null, mixVideoEl : null,
+  mixTracks    : [],
+  musicBuffers : {},
+  trimFile     : null, trimEl : null, trimDur : 0,
+  trimSegs     : [],
+  bannerFile   : null, bannerEl : null, bannerDur : 0,
+  banners      : [],
+  effFile      : null, effEl : null,
+  convFile     : null, convEl : null,
+  trackCounter : 0,
+  bannerCounter: 0,
+  _phMusicDur  : 0
 };
 
-// ── Patch swC to handle vstudio tab ─────────────────────────
+// ── Patch swC ─────────────────────────────────────────────
 const _origSwC = window.swC;
 window.swC = function(btn, cat) {
-  const isVS = (cat === 'vstudio');
-  const vsp  = document.getElementById('vstudio-panel');
-  if (vsp) vsp.style.display = isVS ? 'block' : 'none';
-  if (isVS) {
+  const vsp = document.getElementById('vstudio-panel');
+  if (cat === 'vstudio') {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
     btn.classList.add('on');
-    // hide normal converter UI
+    if (vsp) vsp.style.display = 'block';
     ['pbox','frow','advbtnel'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) el.style.display = 'none';
+      if (el) { if (id==='pbox') el.classList.remove('on'); else el.style.display='none'; }
     });
     return;
   }
+  if (vsp) vsp.style.display = 'none';
   if (_origSwC) _origSwC(btn, cat);
 };
 
-// ── Video Studio sub-tab switch ─────────────────────────────
+// ── Sub-tab switch ─────────────────────────────────────────
 function vsSwitch(btn, pane) {
   document.querySelectorAll('.vstab').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
@@ -4363,783 +4587,1173 @@ function vsSwitch(btn, pane) {
 }
 window.vsSwitch = vsSwitch;
 
-// ── Watermark draw helper ───────────────────────────────────
+// ── Progress ───────────────────────────────────────────────
+function vsProgress(prefix, pct, msg) {
+  const prog = document.getElementById(`vs-${prefix}-prog`);
+  const fill = document.getElementById(`vs-${prefix}-prog-fill`);
+  const txt  = document.getElementById(`vs-${prefix}-prog-txt`);
+  if (prog) prog.style.display = pct > 0 ? 'block' : 'none';
+  if (fill) fill.style.width = pct + '%';
+  if (txt)  txt.textContent = msg || Math.round(pct) + '%';
+}
+
+// ── Watermark ──────────────────────────────────────────────
 function vsDrawWatermark(ctx, W, H) {
   ctx.save();
-  const pad = 10, h = 22;
-  const txt = '🕷 K Spider AI • kspiderai.in';
-  ctx.font = `bold ${Math.max(11, H * 0.017)}px Arial`;
-  const tw = ctx.measureText(txt).width;
-  const x  = W - tw - pad - 10;
-  const y  = H - pad - h;
-  ctx.fillStyle = 'rgba(0,0,0,0.52)';
+  const txt  = '🕷 K Spider AI • kspiderai.in';
+  const fs   = Math.max(11, H * 0.018);
+  ctx.font   = `bold ${fs}px Arial`;
+  const tw   = ctx.measureText(txt).width;
+  const pad  = 10, bh = fs + 10;
+  const bx   = W - tw - pad - 10, by = H - bh - pad;
+  ctx.fillStyle = 'rgba(0,0,0,0.55)';
   ctx.beginPath();
-  ctx.roundRect ? ctx.roundRect(x - 6, y, tw + 12, h, 5) : ctx.rect(x - 6, y, tw + 12, h);
+  if (ctx.roundRect) ctx.roundRect(bx-6, by, tw+14, bh, 5); else ctx.rect(bx-6, by, tw+14, bh);
   ctx.fill();
   ctx.fillStyle = '#00f5ff';
-  ctx.fillText(txt, x, y + h - 6);
+  ctx.fillText(txt, bx, by + bh - 5);
   ctx.restore();
 }
 
-// ── Utility ─────────────────────────────────────────────────
-function fmtDur(s) {
-  if (!s || isNaN(s)) return '?';
-  const m = Math.floor(s / 60), sec = Math.floor(s % 60);
-  return `${m}:${sec.toString().padStart(2,'0')}`;
-}
-function fmtSzVS(b) {
-  if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-  return (b/1048576).toFixed(2) + ' MB';
-}
+// ── Utility ────────────────────────────────────────────────
+function fmtDur(s) { if (!s||isNaN(s)) return '?'; const m=Math.floor(s/60),sc=Math.floor(s%60); return `${m}:${sc.toString().padStart(2,'0')}`; }
+function fmtSzVS(b) { if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(2)+' MB'; }
 function vsLog(id, msg, type) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const c = type === 'err' ? '#f87171' : type === 'ok' ? '#34d399' : '#a3a3a3';
-  el.innerHTML += `<div style="color:${c}">${msg}</div>`;
-  el.scrollTop = el.scrollHeight;
+  const el=document.getElementById(id); if(!el) return;
+  const c=type==='err'?'#f87171':type==='ok'?'#34d399':'#a3a3a3';
+  el.innerHTML+=`<div style="color:${c}">${msg}</div>`; el.scrollTop=el.scrollHeight;
 }
 function vsResult(id, blob, fname) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  const url = URL.createObjectURL(blob);
-  el.innerHTML = `<div class="vs-result-box">
+  const el=document.getElementById(id); if(!el) return;
+  const url=URL.createObjectURL(blob);
+  el.innerHTML=`<div class="vs-result-box">
     <div style="font:600 12px var(--fm);color:#34d399;margin-bottom:8px">✅ Done! ${fmtSzVS(blob.size)}</div>
     <video src="${url}" controls style="width:100%;border-radius:8px;max-height:220px;background:#000"></video>
-    <a href="${url}" download="${fname}" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:8px 16px;background:linear-gradient(135deg,#10b981,#06b6d4);border-radius:8px;color:#fff;font:600 12px var(--fm);text-decoration:none">
+    <a href="${url}" download="${fname}" style="display:inline-flex;align-items:center;gap:6px;margin-top:8px;padding:9px 18px;background:linear-gradient(135deg,#10b981,#06b6d4);border-radius:8px;color:#fff;font:600 12px var(--fm);text-decoration:none">
       <i class="fa-solid fa-download"></i> Download ${fname}
     </a>
   </div>`;
 }
 
-// ── AudioContext helpers ─────────────────────────────────────
-let _vsActx = null;
+// ── AudioContext ───────────────────────────────────────────
+let _vsActx=null;
 function vsActx() {
-  if (!_vsActx || _vsActx.state === 'closed') _vsActx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!_vsActx||_vsActx.state==='closed') _vsActx=new (window.AudioContext||window.webkitAudioContext)();
   return _vsActx;
 }
 
-// Generate a simple loopable BGM buffer (same approach as existing PPT tool)
+// ── BGM generation ─────────────────────────────────────────
 async function vsGenBGM(type, dur) {
-  const actx = vsActx();
-  if (actx.state === 'suspended') await actx.resume();
-  const sr = actx.sampleRate, len = Math.ceil(dur * sr);
-  const buf = actx.createBuffer(2, len, sr);
-  for (let ch = 0; ch < 2; ch++) {
-    const d = buf.getChannelData(ch);
-    for (let i = 0; i < len; i++) {
-      const t = i / sr;
-      let v = 0;
-      if (type === 'upbeat') {
-        v = 0.18 * Math.sin(2 * Math.PI * 392 * t)
-          + 0.12 * Math.sin(2 * Math.PI * 523 * t)
-          + 0.08 * Math.sin(2 * Math.PI * 659 * t)
-          + 0.04 * (Math.random() * 2 - 1);
-      } else if (type === 'calm') {
-        v = 0.14 * Math.sin(2 * Math.PI * 220 * t)
-          + 0.10 * Math.sin(2 * Math.PI * 330 * t)
-          + 0.06 * Math.sin(2 * Math.PI * 440 * t * 0.5);
-      } else if (type === 'cinematic') {
-        v = 0.20 * Math.sin(2 * Math.PI * 130 * t)
-          + 0.10 * Math.sin(2 * Math.PI * 260 * t)
-          + 0.06 * Math.sin(2 * Math.PI * 196 * t + 0.5);
-      } else if (type === 'romantic') {
-        v = 0.15 * Math.sin(2 * Math.PI * 330 * t)
-          + 0.10 * Math.sin(2 * Math.PI * 440 * t)
-          + 0.07 * Math.sin(2 * Math.PI * 523 * t);
-      }
-      // Fade in/out
-      const fi = Math.min(1, i / (sr * 1.5));
-      const fo = Math.min(1, (len - i) / (sr * 1.5));
-      d[i] = v * fi * fo;
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const sr=actx.sampleRate, len=Math.ceil(dur*sr), buf=actx.createBuffer(2,len,sr);
+  const profiles={
+    upbeat:    [[392,.18],[523,.12],[659,.08]],
+    calm:      [[220,.14],[330,.10],[440,.06]],
+    cinematic: [[130,.20],[260,.10],[196,.06]],
+    romantic:  [[330,.15],[440,.10],[523,.07]],
+    dramatic:  [[100,.22],[150,.14],[200,.08]]
+  };
+  const tones = profiles[type] || profiles.calm;
+  for(let ch=0;ch<2;ch++){
+    const d=buf.getChannelData(ch);
+    for(let i=0;i<len;i++){
+      const t=i/sr; let v=0;
+      tones.forEach(([f,a])=>{ v+=a*Math.sin(2*Math.PI*f*t*(ch===1?1.005:1)); });
+      const fi=Math.min(1,i/(sr*1.5)), fo=Math.min(1,(len-i)/(sr*1.5));
+      d[i]=v*fi*fo*0.85;
     }
   }
   return buf;
 }
 
-// Load AudioBuffer from File
 async function vsFileToBuffer(file) {
-  const actx = vsActx();
-  if (actx.state === 'suspended') await actx.resume();
-  const ab = await file.arrayBuffer();
-  return await actx.decodeAudioData(ab);
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  return actx.decodeAudioData(await file.arrayBuffer());
 }
 
-// Render AudioBuffer to WAV Blob
-function vsBufferToWavBlob(buf) {
-  const numCh = buf.numberOfChannels, sr = buf.sampleRate, len = buf.length;
-  const wav = new ArrayBuffer(44 + len * numCh * 2);
-  const view = new DataView(wav);
-  function ws(o,s){for(let i=0;i<s.length;i++)view.setUint8(o+i,s.charCodeAt(i))}
-  function wu16(o,v){view.setUint16(o,v,true)}
-  function wu32(o,v){view.setUint32(o,v,true)}
-  ws(0,'RIFF'); wu32(4,36+len*numCh*2); ws(8,'WAVE');
-  ws(12,'fmt '); wu32(16,16); wu16(20,1); wu16(22,numCh);
-  wu32(24,sr); wu32(28,sr*numCh*2); wu16(32,numCh*2); wu16(34,16);
-  ws(36,'data'); wu32(40,len*numCh*2);
-  let off = 44;
-  for (let i = 0; i < len; i++) {
-    for (let c = 0; c < numCh; c++) {
-      const s = Math.max(-1, Math.min(1, buf.getChannelData(c)[i]));
-      view.setInt16(off, s * 0x7FFF, true); off += 2;
+// ── Core recorder factory ──────────────────────────────────
+function vsMakeRecorder(canvas, audioDest, fps, vbr) {
+  const mime=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t=>MediaRecorder.isTypeSupported(t))||'video/webm';
+  const tracks=[...canvas.captureStream(fps).getVideoTracks()];
+  if(audioDest) tracks.push(...audioDest.stream.getAudioTracks());
+  const mr=new MediaRecorder(new MediaStream(tracks),{mimeType:mime,videoBitsPerSecond:vbr||6000000});
+  const chunks=[]; mr.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data);};
+  return {mr, chunks, mime};
+}
+
+// ── Music load / toggle ────────────────────────────────────
+function vsToggleMusicUpload(prefix) {
+  const sel=document.getElementById(prefix+'-bgm-type');
+  const btn=document.getElementById(prefix+'-music-btn');
+  if(btn) btn.style.display=(sel&&sel.value==='device')?'inline-flex':'none';
+}
+window.vsToggleMusicUpload=vsToggleMusicUpload;
+
+function vsLoadMusic(prefix, input) {
+  const f=input.files[0]; if(!f) return;
+  VS.musicBuffers[prefix]=null;
+  const infoEl=document.getElementById(prefix+'-music-info');
+  const a=document.createElement('audio'); a.src=URL.createObjectURL(f);
+  a.onloadedmetadata=()=>{
+    if(infoEl) infoEl.textContent=`✅ ${f.name} (${fmtDur(a.duration)})`;
+    if(prefix==='ph'){
+      VS._phMusicDur=a.duration;
+      const sc=document.getElementById('ph-sync-music');
+      if(sc&&sc.checked&&VS.photoFiles.length>0)
+        document.getElementById('ph-dur').value=Math.max(1,Math.floor(a.duration/VS.photoFiles.length));
     }
+  };
+  vsFileToBuffer(f).then(buf=>{VS.musicBuffers[prefix]=buf;}).catch(()=>{});
+}
+window.vsLoadMusic=vsLoadMusic;
+
+function vsTogglePhotoSync(chk) {
+  if(!chk.checked) return;
+  const n=VS.photoFiles.length, d=VS._phMusicDur;
+  if(n>0&&d>0){document.getElementById('ph-dur').value=Math.max(1,Math.floor(d/n));toast('⏱ Duration set from music!','ok');}
+  else{toast('Add music & photos first','er');chk.checked=false;}
+}
+window.vsTogglePhotoSync=vsTogglePhotoSync;
+
+async function vsGetMusicBuffer(prefix, totalDur) {
+  if(VS.musicBuffers[prefix]) return VS.musicBuffers[prefix];
+  const sel=document.getElementById(prefix+'-bgm-type');
+  const type=sel?sel.value:'none';
+  if(type==='none'||type==='device') return null;
+  return vsGenBGM(type, totalDur+2);
+}
+
+// ── Color grade helper ─────────────────────────────────────
+function vsApplyColorGrade(ctx, W, H, grade) {
+  if(!grade||grade==='none') return;
+  const img=ctx.getImageData(0,0,W,H), d=img.data;
+  for(let i=0;i<d.length;i+=4){
+    let r=d[i],g=d[i+1],b=d[i+2];
+    if(grade==='warm')   {r=Math.min(255,r*1.1+10);b=Math.max(0,b*0.85);}
+    else if(grade==='cool')    {b=Math.min(255,b*1.15+10);r=Math.max(0,r*0.9);}
+    else if(grade==='vintage') {r=Math.min(255,r*0.9+20);g=Math.min(255,g*0.9+10);b=Math.max(0,b*0.7);}
+    else if(grade==='bw')      {const l=0.299*r+0.587*g+0.114*b;r=g=b=l;}
+    else if(grade==='vivid')   {const avg=(r+g+b)/3;r=Math.min(255,avg+(r-avg)*1.4);g=Math.min(255,avg+(g-avg)*1.4);b=Math.min(255,avg+(b-avg)*1.4);}
+    else if(grade==='sepia')   {const l=0.299*r+0.587*g+0.114*b;r=Math.min(255,l*1.07+48);g=Math.min(255,l*0.95+18);b=Math.max(0,l*0.82);}
+    else if(grade==='hdr')     {const l=(r+g+b)/3;r=Math.min(255,r*(l>128?1.15:0.9)+5);g=Math.min(255,g*(l>128?1.1:0.9));b=Math.min(255,b*(l>128?1.2:0.85));}
+    else if(grade==='night')   {r=Math.max(0,r*0.75);g=Math.max(0,g*0.8);b=Math.max(0,b*0.7);}
+    else if(grade==='teal_orange'){const l=0.299*r+0.587*g+0.114*b;if(l>128){r=Math.min(255,r*1.2+20);g=Math.min(255,g*0.9);b=Math.max(0,b*0.75);}else{r=Math.max(0,r*0.8);g=Math.min(255,g*1.05);b=Math.min(255,b*1.3);}}
+    d[i]=r;d[i+1]=g;d[i+2]=b;
   }
-  return new Blob([wav], {type:'audio/wav'});
+  ctx.putImageData(img,0,0);
+}
+
+// ── Vignette ───────────────────────────────────────────────
+function vsDrawVignette(ctx, W, H, strength) {
+  const s=strength/100, grd=ctx.createRadialGradient(W/2,H/2,Math.min(W,H)*0.3,W/2,H/2,Math.max(W,H)*0.75);
+  grd.addColorStop(0,'rgba(0,0,0,0)');
+  grd.addColorStop(1,`rgba(0,0,0,${s*0.85})`);
+  ctx.fillStyle=grd; ctx.fillRect(0,0,W,H);
+}
+
+// ── Film grain ─────────────────────────────────────────────
+function vsDrawGrain(ctx, W, H, amount) {
+  const img=ctx.getImageData(0,0,W,H), d=img.data;
+  for(let i=0;i<d.length;i+=4){const n=(Math.random()-0.5)*(amount||25);d[i]+=n;d[i+1]+=n;d[i+2]+=n;}
+  ctx.putImageData(img,0,0);
+}
+
+// ── Glow/bloom ─────────────────────────────────────────────
+function vsDrawGlow(ctx, W, H) {
+  ctx.save();
+  ctx.globalCompositeOperation='screen';
+  ctx.filter='blur(14px)';
+  ctx.globalAlpha=0.18;
+  ctx.drawImage(ctx.canvas,0,0,W,H);
+  ctx.restore();
+}
+
+// ── Transition draw ────────────────────────────────────────
+function vsDrawTransition(ctx, W, H, type, progress) {
+  // progress 0→1 (fade-in of new clip) or 1→0 (fade-out of old)
+  if(type==='fade'){ctx.fillStyle=`rgba(0,0,0,${1-progress})`;ctx.fillRect(0,0,W,H);}
+  else if(type==='white'){ctx.fillStyle=`rgba(255,255,255,${1-progress})`;ctx.fillRect(0,0,W,H);}
+  else if(type==='blur'){ctx.save();ctx.filter=`blur(${(1-progress)*12}px)`;ctx.globalAlpha=0.7;ctx.drawImage(ctx.canvas,0,0,W,H);ctx.restore();}
+  // wipe/zoom done by clipping in caller
+}
+
+// ── drawImageCover ─────────────────────────────────────────
+function drawImageCover(ctx, img, dx, dy, dw, dh, clipW, clipH) {
+  ctx.save();ctx.beginPath();ctx.rect(0,0,clipW||dw,clipH||dh);ctx.clip();
+  const ir=img.naturalWidth/img.naturalHeight, cr=dw/dh;
+  let sx,sy,sw,sh;
+  if(ir>cr){sh=img.naturalHeight;sw=sh*cr;sx=(img.naturalWidth-sw)/2;sy=0;}
+  else{sw=img.naturalWidth;sh=sw/cr;sx=0;sy=(img.naturalHeight-sh)/2;}
+  ctx.drawImage(img,sx,sy,sw,sh,dx,dy,dw,dh);ctx.restore();
 }
 
 // ══════════════════════════════════════════════════════════
-// 1. JOIN VIDEOS
+// 1. JOIN & MERGE (with full original audio support)
 // ══════════════════════════════════════════════════════════
-function vsHandleVideoDrop(e) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('vs-drag');
-  vsAddVideos(e.dataTransfer.files);
-}
-window.vsHandleVideoDrop = vsHandleVideoDrop;
+function vsHandleVideoDrop(e) { e.preventDefault(); e.currentTarget.classList.remove('vs-drag'); vsAddVideos(e.dataTransfer.files); }
+window.vsHandleVideoDrop=vsHandleVideoDrop;
 
 function vsAddVideos(files) {
-  Array.from(files).forEach(f => {
-    if (!f.type.startsWith('video/')) return;
-    const url = URL.createObjectURL(f);
-    VS.videoClips.push({ file: f, url, name: f.name, duration: 0 });
-    // Get duration
-    const v = document.createElement('video');
-    v.src = url;
-    v.onloadedmetadata = () => {
-      const clip = VS.videoClips.find(c => c.url === url);
-      if (clip) { clip.duration = v.duration; vsRenderVideoList(); }
-    };
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('video/')) return;
+    const url=URL.createObjectURL(f);
+    const entry={file:f,url,name:f.name,duration:0,trimStart:0,trimEnd:null};
+    VS.videoClips.push(entry);
+    const v=document.createElement('video'); v.src=url;
+    v.onloadedmetadata=()=>{entry.duration=v.duration;entry.trimEnd=v.duration;vsRenderVideoList();};
   });
   vsRenderVideoList();
 }
-window.vsAddVideos = vsAddVideos;
+window.vsAddVideos=vsAddVideos;
 
 function vsRenderVideoList() {
-  const el = document.getElementById('vs-video-list');
-  if (!el) return;
-  if (!VS.videoClips.length) { el.innerHTML = ''; return; }
-  let html = `<div style="font:600 9px var(--fm);color:var(--tm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
-    ${VS.videoClips.length} clip(s) — drag to reorder</div>`;
-  VS.videoClips.forEach((c, i) => {
-    html += `<div class="vs-clip-item" draggable="true" data-idx="${i}"
-      ondragstart="vsDragStart(event,${i})" ondragover="vsDragOver(event,${i})" ondrop="vsDropClip(event,${i})">
+  const el=document.getElementById('vs-video-list'); if(!el) return;
+  if(!VS.videoClips.length){el.innerHTML='';return;}
+  let html=`<div class="vs-section-label">${VS.videoClips.length} clip(s) — drag to reorder</div>`;
+  VS.videoClips.forEach((c,i)=>{
+    const ts=c.trimStart||0, te=c.trimEnd||c.duration;
+    html+=`<div class="vs-clip-item" draggable="true" data-idx="${i}"
+      ondragstart="vsDragStart(event,${i})" ondragover="vsDragOver(event)" ondrop="vsDropClip(event,${i})">
       <div class="vs-clip-num">${i+1}</div>
       <div class="vs-clip-info">
         <div class="vs-clip-name">${c.name}</div>
-        <div class="vs-clip-meta">${fmtDur(c.duration)} · ${fmtSzVS(c.file.size)}</div>
+        <div class="vs-clip-meta">Total: ${fmtDur(c.duration)} | Trim: ${fmtDur(ts)}→${fmtDur(te)}</div>
+        <div style="display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap">
+          <span style="font:500 10px var(--fm);color:var(--tm)">Start:</span>
+          <input type="number" value="${ts.toFixed(1)}" min="0" max="${c.duration}" step="0.1" style="width:56px;background:var(--bg);border:1px solid var(--bd);border-radius:4px;color:var(--t1);font:500 10px var(--fm);padding:2px 5px;outline:none"
+            onchange="vsClipTrim(${i},'s',this.value)">
+          <span style="font:500 10px var(--fm);color:var(--tm)">End:</span>
+          <input type="number" value="${te.toFixed(1)}" min="0" max="${c.duration}" step="0.1" style="width:56px;background:var(--bg);border:1px solid var(--bd);border-radius:4px;color:var(--t1);font:500 10px var(--fm);padding:2px 5px;outline:none"
+            onchange="vsClipTrim(${i},'e',this.value)">
+          <span style="font:500 10px var(--fm);color:var(--c1)">${fmtDur(te-ts)} used</span>
+        </div>
       </div>
       <button class="vs-clip-del" onclick="vsDelClip(${i})" title="Remove">✕</button>
     </div>`;
   });
-  const total = VS.videoClips.reduce((a,c) => a + (c.duration||0), 0);
-  html += `<div style="font:500 10px var(--fm);color:var(--tm);margin-top:4px">Total: ${fmtDur(total)}</div>`;
-  el.innerHTML = html;
+  const total=VS.videoClips.reduce((a,c)=>a+((c.trimEnd||c.duration)-(c.trimStart||0)),0);
+  html+=`<div style="font:500 10px var(--fm);color:var(--c1);margin-top:4px">Total output: ${fmtDur(total)}</div>`;
+  el.innerHTML=html;
 }
-window.vsRenderVideoList = vsRenderVideoList;
+window.vsRenderVideoList=vsRenderVideoList;
 
-let vsDragIdx = -1;
-function vsDragStart(e, i) { vsDragIdx = i; e.currentTarget.classList.add('dragging'); }
-window.vsDragStart = vsDragStart;
-function vsDragOver(e, i) { e.preventDefault(); }
-window.vsDragOver = vsDragOver;
-function vsDropClip(e, i) {
-  e.preventDefault();
-  if (vsDragIdx < 0 || vsDragIdx === i) { vsDragIdx = -1; vsRenderVideoList(); return; }
-  const moved = VS.videoClips.splice(vsDragIdx, 1)[0];
-  VS.videoClips.splice(i, 0, moved);
-  vsDragIdx = -1; vsRenderVideoList();
+function vsClipTrim(i, which, val) {
+  const c=VS.videoClips[i]; if(!c) return;
+  const v=parseFloat(val)||0;
+  if(which==='s') c.trimStart=Math.max(0,Math.min(v,c.duration-0.1));
+  else c.trimEnd=Math.max((c.trimStart||0)+0.1,Math.min(v,c.duration));
+  vsRenderVideoList();
 }
-window.vsDropClip = vsDropClip;
-function vsDelClip(i) { URL.revokeObjectURL(VS.videoClips[i].url); VS.videoClips.splice(i,1); vsRenderVideoList(); }
-window.vsDelClip = vsDelClip;
+window.vsClipTrim=vsClipTrim;
 
-function vsToggleMusicUpload(prefix) {
-  const sel = document.getElementById(prefix + '-bgm-type');
-  const btn = document.getElementById(prefix + '-music-btn');
-  if (!sel || !btn) return;
-  btn.style.display = (sel.value === 'device') ? 'inline-flex' : 'none';
-}
-window.vsToggleMusicUpload = vsToggleMusicUpload;
-
-function vsLoadMusic(prefix, input) {
-  const f = input.files[0];
-  if (!f) return;
-  VS.musicBuffers[prefix] = null; // reset
-  const infoEl = document.getElementById(prefix + '-music-info');
-  const url = URL.createObjectURL(f);
-  const a = document.createElement('audio');
-  a.src = url;
-  a.onloadedmetadata = () => {
-    if (infoEl) infoEl.textContent = `✅ ${f.name} (${fmtDur(a.duration)})`;
-    // Store for sync
-    if (prefix === 'ph') {
-      VS._phMusicDur = a.duration;
-      const syncChk = document.getElementById('ph-sync-music');
-      if (syncChk && syncChk.checked) {
-        const photos = VS.photoFiles.length;
-        if (photos > 0) document.getElementById('ph-dur').value = Math.max(1, Math.floor(a.duration / photos));
-      }
-    }
-  };
-  vsFileToBuffer(f).then(buf => { VS.musicBuffers[prefix] = buf; }).catch(() => {});
-}
-window.vsLoadMusic = vsLoadMusic;
-
-function vsTogglePhotoSync(chk) {
-  if (!chk.checked) return;
-  const durIn = document.getElementById('ph-dur');
-  const photos = VS.photoFiles.length;
-  const musicDur = VS._phMusicDur || 0;
-  if (photos > 0 && musicDur > 0) {
-    durIn.value = Math.max(1, Math.floor(musicDur / photos));
-    toast('⏱ Duration set from music length!', 'ok');
-  } else {
-    toast('Add music & photos first', 'er');
-    chk.checked = false;
-  }
-}
-window.vsTogglePhotoSync = vsTogglePhotoSync;
-
-async function vsGetMusicBuffer(prefix, totalDur) {
-  // If device file loaded
-  if (VS.musicBuffers[prefix]) return VS.musicBuffers[prefix];
-  const sel = document.getElementById(prefix + '-bgm-type');
-  const type = sel ? sel.value : 'none';
-  if (type === 'none' || type === 'device') return null;
-  return await vsGenBGM(type, totalDur + 2);
-}
+let vsDragIdx=-1;
+function vsDragStart(e,i){vsDragIdx=i;e.currentTarget.classList.add('dragging');}
+window.vsDragStart=vsDragStart;
+function vsDragOver(e){e.preventDefault();}
+window.vsDragOver=vsDragOver;
+function vsDropClip(e,i){e.preventDefault();if(vsDragIdx<0||vsDragIdx===i){vsDragIdx=-1;vsRenderVideoList();return;}const m=VS.videoClips.splice(vsDragIdx,1)[0];VS.videoClips.splice(i,0,m);vsDragIdx=-1;vsRenderVideoList();}
+window.vsDropClip=vsDropClip;
+function vsDelClip(i){URL.revokeObjectURL(VS.videoClips[i].url);VS.videoClips.splice(i,1);vsRenderVideoList();}
+window.vsDelClip=vsDelClip;
 
 async function vsJoinVideos() {
-  if (VS.videoClips.length < 2) { toast('Add at least 2 video clips!', 'er'); return; }
-  const logId = 'vs-join-log', resId = 'vs-join-result';
-  document.getElementById(logId).innerHTML = '';
-  document.getElementById(resId).innerHTML = '';
-  document.getElementById('vs-join-btn').disabled = true;
+  if(VS.videoClips.length<1){toast('Add at least 1 video clip!','er');return;}
+  const logId='vs-join-log', resId='vs-join-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+  document.getElementById('vs-join-btn').disabled=true;
+  vsProgress('join',2,'Preparing...');
 
-  const resVal = document.getElementById('vj-res').value;
-  const [VW, VH] = resVal.split('x').map(Number);
-  const fps     = parseInt(document.getElementById('vj-fps').value) || 30;
-  const trans   = document.getElementById('vj-trans').value;
-  const wmark   = document.getElementById('vj-wmark').value === 'on';
-  const vol     = parseInt(document.getElementById('vj-vol').value) / 100;
-  const syncDur = document.getElementById('vj-sync-dur').checked;
+  const resVal=document.getElementById('vj-res').value;
+  const [VW,VH]=resVal.split('x').map(Number);
+  const fps=parseInt(document.getElementById('vj-fps').value)||30;
+  const trans=document.getElementById('vj-trans').value;
+  const transDur=parseFloat(document.getElementById('vj-trans-dur').value)||0.5;
+  const wmark=document.getElementById('vj-wmark').value==='on';
+  const bgmVol=parseInt(document.getElementById('vj-vol').value)/100;
+  const origVol=parseInt(document.getElementById('vj-orig-vol').value)/100;
+  const keepOrig=document.getElementById('vj-keep-orig').checked;
+  const syncDur=document.getElementById('vj-sync-dur').checked;
 
-  vsLog(logId, '🎬 Preparing canvas recorder...', 'info');
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
 
-  // Setup canvas + capture
-  const canvas  = document.createElement('canvas');
-  canvas.width  = VW; canvas.height = VH;
-  const ctx     = canvas.getContext('2d');
-
-  // Audio setup
-  const actx     = vsActx();
-  if (actx.state === 'suspended') await actx.resume();
-  const audioDest = actx.createMediaStreamDestination();
-  const masterGain = actx.createGain();
-  masterGain.connect(audioDest);
-
-  const totalDur = VS.videoClips.reduce((a,c) => a + (c.duration||5), 0);
-
-  // BGM
-  let bgmBuf = await vsGetMusicBuffer('vj', totalDur);
-  if (bgmBuf) {
-    const bgmSrc  = actx.createBufferSource();
-    bgmSrc.buffer = bgmBuf;
-    bgmSrc.loop   = bgmBuf.duration < totalDur;
-    const bgmGain = actx.createGain();
-    bgmGain.gain.value = vol;
-    bgmSrc.connect(bgmGain); bgmGain.connect(masterGain);
-    bgmSrc.start();
-    vsLog(logId, `🎵 Background music active (vol: ${Math.round(vol*100)}%)`, 'info');
+  const totalUsed=VS.videoClips.reduce((a,c)=>a+((c.trimEnd||c.duration)-(c.trimStart||0)),0);
+  let bgmBuf=await vsGetMusicBuffer('vj', totalUsed);
+  if(bgmBuf){
+    const bgmSrc=actx.createBufferSource(); bgmSrc.buffer=bgmBuf;
+    bgmSrc.loop=bgmBuf.duration<totalUsed;
+    const bgmGain=actx.createGain(); bgmGain.gain.value=bgmVol;
+    bgmSrc.connect(bgmGain); bgmGain.connect(masterGain); bgmSrc.start();
+    vsLog(logId,`🎵 BGM: ${Math.round(bgmVol*100)}%`,'info');
   }
 
-  // If sync duration to music, truncate/loop clips accordingly
-  // (Just cap total recording to music duration)
-  const recDur = (syncDur && bgmBuf) ? Math.min(totalDur, bgmBuf.duration) : totalDur;
-
-  // MediaRecorder
-  const vidStream = canvas.captureStream(fps);
-  const combined  = new MediaStream([...vidStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
-  const mime      = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-  const mr        = new MediaRecorder(combined, {mimeType: mime, videoBitsPerSecond: 6_000_000});
-  const chunks    = [];
-  mr.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+  const recDur=(syncDur&&bgmBuf)?Math.min(totalUsed,bgmBuf.duration):totalUsed;
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100);
 
-  const FADE_FRAMES = Math.round(fps * 0.4); // 0.4s fade
-  let   timeAcc = 0;
+  const TFRAMS=Math.round(fps*transDur);
+  let timeAcc=0;
 
-  for (let ci = 0; ci < VS.videoClips.length; ci++) {
-    const clip = VS.videoClips[ci];
-    if (syncDur && timeAcc >= recDur) break;
+  for(let ci=0;ci<VS.videoClips.length;ci++){
+    if(timeAcc>=recDur) break;
+    const clip=VS.videoClips[ci];
+    const ts=clip.trimStart||0, te=clip.trimEnd||clip.duration;
+    const clipUsed=te-ts;
+    vsLog(logId,`🎞 Clip ${ci+1}/${VS.videoClips.length}: ${clip.name} [${fmtDur(ts)}→${fmtDur(te)}]`,'info');
+    vsProgress('join', 5+Math.round(ci/VS.videoClips.length*85), `Clip ${ci+1}/${VS.videoClips.length}`);
 
-    vsLog(logId, `🎞 Playing clip ${ci+1}/${VS.videoClips.length}: ${clip.name}`, 'info');
-    const vidEl = document.createElement('video');
-    vidEl.src   = clip.url;
-    vidEl.muted = !!bgmBuf; // mute original if BGM active
+    // Create video element with audio source (for original audio)
+    const vidEl=document.createElement('video');
+    vidEl.src=clip.url;
+    vidEl.crossOrigin='anonymous';
+    vidEl.muted=false; // NEVER mute — we handle volume via WebAudio
+    await new Promise(r=>{vidEl.oncanplay=r;vidEl.load();});
 
-    await new Promise(res => { vidEl.oncanplay = res; vidEl.load(); });
+    // Route original audio through WebAudio for volume control
+    if(keepOrig&&origVol>0){
+      try{
+        const src=actx.createMediaElementSource(vidEl);
+        const gn=actx.createGain(); gn.gain.value=origVol;
+        src.connect(gn); gn.connect(masterGain);
+      }catch(e){/* already connected or browser limitation */}
+    } else {
+      vidEl.muted=true;
+    }
+
+    vidEl.currentTime=ts;
+    await new Promise(r=>{vidEl.onseeked=r;});
     vidEl.play();
 
-    const clipDur  = clip.duration || 5;
-    const clipEnd  = timeAcc + clipDur;
-    const frameMs  = 1000 / fps;
-    let   frameIdx = 0;
+    let frameIdx=0;
+    const maxFrames=Math.ceil(Math.min(clipUsed, recDur-timeAcc)*fps);
 
-    await new Promise(resolve => {
-      let done = false;
-      function drawFrame() {
-        if (done) return;
-        const elapsed = timeAcc + (frameIdx * frameMs / 1000);
-        if (elapsed >= Math.min(clipEnd, recDur)) {
-          vidEl.pause(); done = true; resolve(); return;
+    await new Promise(resolve=>{
+      let done=false;
+      function draw(){
+        if(done) return;
+        if(frameIdx>=maxFrames||(timeAcc+frameIdx/fps)>=recDur){vidEl.pause();done=true;resolve();return;}
+        ctx.clearRect(0,0,VW,VH);
+        ctx.drawImage(vidEl,0,0,VW,VH);
+
+        // Transitions
+        if(frameIdx<TFRAMS&&ci>0){
+          const p=frameIdx/TFRAMS;
+          if(trans==='fade'||trans==='white') vsDrawTransition(ctx,VW,VH,trans,p);
+          else if(trans==='wipe'){ const x=VW*p; ctx.fillStyle='#000'; ctx.fillRect(0,0,VW-x,VH); }
+          else if(trans==='wiper'){ const x=VW*p; ctx.fillStyle='#000'; ctx.fillRect(x,0,VW,VH); }
+          else if(trans==='zoom'){ ctx.save();const s=1+(1-p)*0.3;ctx.globalAlpha=p;const ox=(VW*(s-1))/2,oy=(VH*(s-1))/2;ctx.drawImage(vidEl,-ox,-oy,VW*s,VH*s);ctx.restore();}
+          else if(trans==='blur'){ctx.save();ctx.filter=`blur(${(1-p)*8}px)`;ctx.drawImage(vidEl,0,0,VW,VH);ctx.restore();}
         }
-        ctx.clearRect(0, 0, VW, VH);
-        ctx.drawImage(vidEl, 0, 0, VW, VH);
-
-        // Transition overlay
-        if (trans === 'fade') {
-          const alpha = frameIdx < FADE_FRAMES ? (1 - frameIdx/FADE_FRAMES) : 0;
-          if (alpha > 0) { ctx.fillStyle = `rgba(0,0,0,${alpha})`; ctx.fillRect(0,0,VW,VH); }
-        } else if (trans === 'wipe' && frameIdx < FADE_FRAMES) {
-          const x = VW * (frameIdx / FADE_FRAMES);
-          ctx.fillStyle = '#000'; ctx.fillRect(0, 0, VW - x, VH);
-        }
-
-        // Clip counter HUD
-        ctx.save();
-        ctx.font = 'bold 13px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(10, 10, 90, 22); ctx.fillStyle = '#00f5ff';
-        ctx.fillText(`Clip ${ci+1} / ${VS.videoClips.length}`, 15, 26);
-        ctx.restore();
-
-        if (wmark) vsDrawWatermark(ctx, VW, VH);
-
+        // Clip counter
+        ctx.save();ctx.font=`bold ${Math.round(VH*0.02)}px Arial`;ctx.fillStyle='rgba(0,0,0,0.5)';const lbl=`${ci+1}/${VS.videoClips.length}`;const tw=ctx.measureText(lbl).width;ctx.fillRect(10,10,tw+12,22);ctx.fillStyle='#00f5ff';ctx.fillText(lbl,16,26);ctx.restore();
+        if(wmark) vsDrawWatermark(ctx,VW,VH);
         frameIdx++;
-        requestAnimationFrame(drawFrame);
+        requestAnimationFrame(draw);
       }
-      drawFrame();
+      draw();
     });
-
     vidEl.pause();
-    timeAcc += clipDur;
+    timeAcc+=clipUsed;
   }
 
   mr.stop();
-  await new Promise(r => { mr.onstop = r; });
-
-  const blob  = new Blob(chunks, {type: mime});
-  const fname = 'KSpider_Joined_' + Date.now() + '.webm';
-  vsResult(resId, blob, fname);
-  vsLog(logId, `✅ Joined! ${fmtSzVS(blob.size)}`, 'ok');
-  document.getElementById('vs-join-btn').disabled = false;
+  await new Promise(r=>{mr.onstop=r;});
+  vsProgress('join',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  const fname='KSpider_Joined_'+Date.now()+'.webm';
+  vsResult(resId,blob,fname);
+  vsLog(logId,`✅ Joined ${VS.videoClips.length} clips! ${fmtSzVS(blob.size)}`,'ok');
+  document.getElementById('vs-join-btn').disabled=false;
 }
-window.vsJoinVideos = vsJoinVideos;
+window.vsJoinVideos=vsJoinVideos;
 
 // ══════════════════════════════════════════════════════════
-// 2. PHOTOS → VIDEO (SLIDESHOW)
+// 2. PHOTOS → VIDEO
 // ══════════════════════════════════════════════════════════
-function vsHandlePhotoDrop(e) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('vs-drag');
-  vsAddPhotos(e.dataTransfer.files);
-}
-window.vsHandlePhotoDrop = vsHandlePhotoDrop;
+function vsHandlePhotoDrop(e){e.preventDefault();e.currentTarget.classList.remove('vs-drag');vsAddPhotos(e.dataTransfer.files);}
+window.vsHandlePhotoDrop=vsHandlePhotoDrop;
 
-function vsAddPhotos(files) {
-  Array.from(files).forEach(f => {
-    if (!f.type.startsWith('image/')) return;
-    const url = URL.createObjectURL(f);
-    const img = new Image();
-    img.src = url;
-    VS.photoFiles.push({ file: f, url, name: f.name, img });
+function vsAddPhotos(files){
+  Array.from(files).forEach(f=>{
+    if(!f.type.startsWith('image/')) return;
+    const url=URL.createObjectURL(f);
+    const img=new Image(); img.src=url;
+    VS.photoFiles.push({file:f,url,name:f.name,img});
   });
   vsRenderPhotoList();
 }
-window.vsAddPhotos = vsAddPhotos;
+window.vsAddPhotos=vsAddPhotos;
 
-function vsRenderPhotoList() {
-  const el = document.getElementById('vs-photo-list');
-  if (!el) return;
-  el.innerHTML = '';
-  VS.photoFiles.forEach((p, i) => {
-    const div = document.createElement('div');
-    div.className = 'vs-photo-thumb';
-    div.draggable = true;
-    div.dataset.idx = i;
-    div.ondragstart = e => { vsDragPhIdx = i; };
-    div.ondragover  = e => e.preventDefault();
-    div.ondrop      = e => { e.preventDefault(); vsDropPhoto(i); };
-    div.innerHTML   = `<img src="${p.url}" alt="${p.name}">
-      <button class="vs-ph-del" onclick="vsDelPhoto(${i})">✕</button>
-      <div class="vs-ph-num">${i+1}</div>`;
+function vsRenderPhotoList(){
+  const el=document.getElementById('vs-photo-list'); if(!el) return; el.innerHTML='';
+  VS.photoFiles.forEach((p,i)=>{
+    const div=document.createElement('div'); div.className='vs-photo-thumb'; div.draggable=true; div.dataset.idx=i;
+    div.ondragstart=()=>{vsDragPhIdx=i;}; div.ondragover=e=>e.preventDefault(); div.ondrop=e=>{e.preventDefault();vsDropPhoto(i);};
+    div.innerHTML=`<img src="${p.url}" alt="${p.name}"><button class="vs-ph-del" onclick="vsDelPhoto(${i})">✕</button><div class="vs-ph-num">${i+1}</div>`;
     el.appendChild(div);
   });
-  if (VS.photoFiles.length) {
-    const info = document.createElement('div');
-    info.style.cssText = 'width:100%;font:400 10px var(--fm);color:var(--tm);margin-top:4px';
-    info.textContent = `${VS.photoFiles.length} photo(s) — drag to reorder`;
-    el.appendChild(info);
-  }
+  if(VS.photoFiles.length){const info=document.createElement('div');info.style.cssText='width:100%;font:400 10px var(--fm);color:var(--tm);margin-top:4px';info.textContent=`${VS.photoFiles.length} photo(s)`;el.appendChild(info);}
 }
-window.vsRenderPhotoList = vsRenderPhotoList;
+window.vsRenderPhotoList=vsRenderPhotoList;
+let vsDragPhIdx=-1;
+function vsDropPhoto(i){if(vsDragPhIdx<0||vsDragPhIdx===i){vsDragPhIdx=-1;vsRenderPhotoList();return;}const m=VS.photoFiles.splice(vsDragPhIdx,1)[0];VS.photoFiles.splice(i,0,m);vsDragPhIdx=-1;vsRenderPhotoList();}
+window.vsDropPhoto=vsDropPhoto;
+function vsDelPhoto(i){URL.revokeObjectURL(VS.photoFiles[i].url);VS.photoFiles.splice(i,1);vsRenderPhotoList();}
+window.vsDelPhoto=vsDelPhoto;
 
-let vsDragPhIdx = -1;
-function vsDropPhoto(i) {
-  if (vsDragPhIdx < 0 || vsDragPhIdx === i) { vsDragPhIdx = -1; vsRenderPhotoList(); return; }
-  const moved = VS.photoFiles.splice(vsDragPhIdx, 1)[0];
-  VS.photoFiles.splice(i, 0, moved);
-  vsDragPhIdx = -1; vsRenderPhotoList();
-}
-window.vsDropPhoto = vsDropPhoto;
-function vsDelPhoto(i) { URL.revokeObjectURL(VS.photoFiles[i].url); VS.photoFiles.splice(i,1); vsRenderPhotoList(); }
-window.vsDelPhoto = vsDelPhoto;
+async function vsPhotosToVideo(){
+  if(!VS.photoFiles.length){toast('Add photos first!','er');return;}
+  const logId='vs-photos-log',resId='vs-photos-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+  vsProgress('photos',2,'Starting...');
 
-async function vsPhotosToVideo() {
-  if (!VS.photoFiles.length) { toast('Add at least 1 photo!', 'er'); return; }
-  const logId = 'vs-photos-log', resId = 'vs-photos-result';
-  document.getElementById(logId).innerHTML = '';
-  document.getElementById(resId).innerHTML = '';
+  const perSec=parseFloat(document.getElementById('ph-dur').value)||3;
+  const [VW,VH]=(document.getElementById('ph-res').value).split('x').map(Number);
+  const fps=parseInt(document.getElementById('ph-fps').value)||30;
+  const effect=document.getElementById('ph-effect').value;
+  const zoomDir=document.getElementById('ph-zoom-dir').value;
+  const colorGrade=document.getElementById('ph-color-grade').value;
+  const wmark=document.getElementById('ph-wmark').value==='on';
+  const vol=parseInt(document.getElementById('ph-vol').value)/100;
+  const syncMus=document.getElementById('ph-sync-music').checked;
 
-  const perSec   = parseFloat(document.getElementById('ph-dur').value) || 3;
-  const resVal   = document.getElementById('ph-res').value;
-  const [VW, VH] = resVal.split('x').map(Number);
-  const fps      = parseInt(document.getElementById('ph-fps').value) || 30;
-  const effect   = document.getElementById('ph-effect').value;
-  const zoomDir  = document.getElementById('ph-zoom-dir').value;
-  const wmark    = document.getElementById('ph-wmark').value === 'on';
-  const vol      = parseInt(document.getElementById('ph-vol').value) / 100;
-  const syncMus  = document.getElementById('ph-sync-music').checked;
-  const totalDur = VS.photoFiles.length * perSec;
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
 
-  vsLog(logId, `🖼 ${VS.photoFiles.length} photos × ${perSec}s = ${fmtDur(totalDur)}`, 'info');
-
-  // Canvas + Audio
-  const canvas   = document.createElement('canvas');
-  canvas.width   = VW; canvas.height = VH;
-  const ctx      = canvas.getContext('2d');
-
-  const actx      = vsActx();
-  if (actx.state === 'suspended') await actx.resume();
-  const audioDest = actx.createMediaStreamDestination();
-  const masterGain = actx.createGain();
-  masterGain.connect(audioDest);
-
-  let bgmBuf = await vsGetMusicBuffer('ph', totalDur);
-  let recDur = totalDur;
-
-  if (bgmBuf) {
-    const bgmSrc  = actx.createBufferSource();
-    bgmSrc.buffer = bgmBuf;
-    bgmSrc.loop   = bgmBuf.duration < totalDur;
-    const bgmGain = actx.createGain();
-    bgmGain.gain.value = vol;
-    bgmSrc.connect(bgmGain); bgmGain.connect(masterGain);
-    bgmSrc.start();
-    vsLog(logId, `🎵 Music active (${fmtDur(bgmBuf.duration)})`, 'info');
-    if (syncMus) recDur = bgmBuf.duration;
+  let totalDur=VS.photoFiles.length*perSec;
+  let bgmBuf=await vsGetMusicBuffer('ph',totalDur);
+  let recDur=totalDur;
+  if(bgmBuf){
+    const bgmSrc=actx.createBufferSource(); bgmSrc.buffer=bgmBuf; bgmSrc.loop=bgmBuf.duration<totalDur;
+    const bgmGain=actx.createGain(); bgmGain.gain.value=vol;
+    bgmSrc.connect(bgmGain); bgmGain.connect(masterGain); bgmSrc.start();
+    vsLog(logId,`🎵 Music active`,'info');
+    if(syncMus) recDur=bgmBuf.duration;
   }
 
-  const mime  = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-  const vidSt = canvas.captureStream(fps);
-  const comb  = new MediaStream([...vidSt.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
-  const mr    = new MediaRecorder(comb, {mimeType: mime, videoBitsPerSecond: 6_000_000});
-  const chunks = [];
-  mr.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100);
+  const TFRAMS=Math.round(fps*0.5);
 
-  const TRANS_FRAMES = Math.round(fps * 0.5); // 0.5s transition
+  await Promise.all(VS.photoFiles.map(p=>new Promise(r=>{if(p.img.complete)r();else{p.img.onload=r;p.img.onerror=r;}})));
 
-  // Preload images
-  await Promise.all(VS.photoFiles.map(p => new Promise(r => {
-    if (p.img.complete) r(); else { p.img.onload = r; p.img.onerror = r; }
-  })));
+  let globalTime=0;
+  const dirs=['tl','tr','bl','br','c'];
 
-  let globalTime = 0;
+  for(let pi=0;pi<VS.photoFiles.length;pi++){
+    if(globalTime>=recDur) break;
+    vsProgress('photos', 5+Math.round(pi/VS.photoFiles.length*90), `Photo ${pi+1}/${VS.photoFiles.length}`);
+    const photo=VS.photoFiles[pi], img=photo.img;
+    const dur=Math.min(perSec,recDur-globalTime);
+    const frames=Math.ceil(dur*fps);
+    const useZoomIn=zoomDir==='in'?true:zoomDir==='out'?false:(pi%2===0);
+    const kbDir=dirs[pi%dirs.length];
+    vsLog(logId,`🖼 ${pi+1}/${VS.photoFiles.length}: ${photo.name}`,'info');
 
-  for (let pi = 0; pi < VS.photoFiles.length; pi++) {
-    if (globalTime >= recDur) break;
-    const photo = VS.photoFiles[pi];
-    vsLog(logId, `🖼 Rendering photo ${pi+1}/${VS.photoFiles.length}: ${photo.name}`, 'info');
+    for(let f=0;f<frames;f++){
+      const progress=f/frames;
+      ctx.clearRect(0,0,VW,VH);
 
-    const img  = photo.img;
-    const remaining = recDur - globalTime;
-    const dur  = Math.min(perSec, remaining);
-    const frames = Math.ceil(dur * fps);
-
-    // Ken Burns: random start/end scale+position
-    const directions = ['tl','tr','bl','br','c'];
-    const kbDir = directions[pi % directions.length];
-    const useZoomIn = zoomDir === 'in' ? true : zoomDir === 'out' ? false : (pi % 2 === 0);
-
-    for (let f = 0; f < frames; f++) {
-      const progress = f / frames; // 0→1
-      ctx.clearRect(0, 0, VW, VH);
-
-      // Draw photo with Ken Burns or other effect
-      if (effect === 'kenburns' || effect === 'zoom') {
-        const scale   = useZoomIn ? (1 + progress * 0.12) : (1.12 - progress * 0.12);
-        const sw      = VW * scale, sh = VH * scale;
-        let dx = (VW - sw) / 2, dy = (VH - sh) / 2;
-        if (kbDir === 'tl') { dx = 0; dy = 0; }
-        else if (kbDir === 'tr') { dx = VW - sw; dy = 0; }
-        else if (kbDir === 'bl') { dx = 0; dy = VH - sh; }
-        else if (kbDir === 'br') { dx = VW - sw; dy = VH - sh; }
-        drawImageCover(ctx, img, dx, dy, sw, sh, VW, VH);
-      } else if (effect === 'slide' && pi > 0) {
-        const offX = VW * (1 - progress);
-        const prev = VS.photoFiles[pi - 1].img;
-        drawImageCover(ctx, prev, -offX, 0, VW, VH, VW, VH);
-        drawImageCover(ctx, img, VW - offX, 0, VW, VH, VW, VH);
+      if(effect==='kenburns'){
+        const scale=useZoomIn?(1+progress*0.15):(1.15-progress*0.15);
+        const sw=VW*scale,sh=VH*scale;
+        let dx=(VW-sw)/2,dy=(VH-sh)/2;
+        if(kbDir==='tl'){dx=0;dy=0;}else if(kbDir==='tr'){dx=VW-sw;dy=0;}
+        else if(kbDir==='bl'){dx=0;dy=VH-sh;}else if(kbDir==='br'){dx=VW-sw;dy=VH-sh;}
+        drawImageCover(ctx,img,dx,dy,sw,sh,VW,VH);
+      } else if(effect==='zoom'||effect==='zoomOut'){
+        const scale=effect==='zoom'?(1+progress*0.15):(1.15-progress*0.15);
+        drawImageCover(ctx,img,(VW-(VW*scale))/2,(VH-(VH*scale))/2,VW*scale,VH*scale,VW,VH);
+      } else if(effect==='slide'||effect==='slideR'||effect==='slideU'){
+        const dir=(effect==='slideR'?-1:1);
+        if(pi>0&&f<TFRAMS){const p2=f/TFRAMS; drawImageCover(ctx,VS.photoFiles[pi-1].img,-VW*p2*dir,0,VW,VH,VW,VH); drawImageCover(ctx,img,VW*(1-p2)*dir,0,VW,VH,VW,VH);}
+        else if(effect==='slideU'&&pi>0&&f<TFRAMS){const p2=f/TFRAMS;drawImageCover(ctx,VS.photoFiles[pi-1].img,0,-VH*p2,VW,VH,VW,VH);drawImageCover(ctx,img,0,VH*(1-p2),VW,VH,VW,VH);}
+        else drawImageCover(ctx,img,0,0,VW,VH,VW,VH);
+      } else if(effect==='rotate'&&pi>0&&f<TFRAMS){
+        const p2=f/TFRAMS; ctx.save(); ctx.translate(VW/2,VH/2); ctx.rotate((1-p2)*Math.PI/4); ctx.globalAlpha=p2;
+        drawImageCover(ctx,img,-VW/2,-VH/2,VW,VH,VW,VH); ctx.restore();
       } else {
-        drawImageCover(ctx, img, 0, 0, VW, VH, VW, VH);
+        drawImageCover(ctx,img,0,0,VW,VH,VW,VH);
       }
 
-      // Fade transition (start and end of each photo)
-      if (effect === 'fade') {
-        let alpha = 0;
-        if (f < TRANS_FRAMES) alpha = 1 - f / TRANS_FRAMES;
-        else if (f > frames - TRANS_FRAMES) alpha = (f - (frames - TRANS_FRAMES)) / TRANS_FRAMES;
-        if (alpha > 0) { ctx.fillStyle = `rgba(0,0,0,${Math.min(1,alpha)})`; ctx.fillRect(0,0,VW,VH); }
+      // Color grade
+      if(colorGrade&&colorGrade!=='none') vsApplyColorGrade(ctx,VW,VH,colorGrade);
+
+      // Fade
+      if(effect==='fade'){
+        const alpha=f<TFRAMS?(1-f/TFRAMS):f>frames-TFRAMS?(f-(frames-TFRAMS))/TFRAMS:0;
+        if(alpha>0){ctx.fillStyle=`rgba(0,0,0,${Math.min(1,alpha)})`;ctx.fillRect(0,0,VW,VH);}
       }
 
-      // Photo counter
-      ctx.save();
-      ctx.font = 'bold 12px Arial'; ctx.fillStyle = 'rgba(0,0,0,0.5)';
-      ctx.fillRect(10, 10, 100, 22); ctx.fillStyle = '#fff';
-      ctx.fillText(`${pi+1} / ${VS.photoFiles.length}`, 15, 26);
-      ctx.restore();
-
-      if (wmark) vsDrawWatermark(ctx, VW, VH);
-      await new Promise(r => requestAnimationFrame(r));
+      // HUD
+      ctx.save();ctx.font=`bold ${Math.round(VH*0.02)}px Arial`;ctx.fillStyle='rgba(0,0,0,0.5)';const lbl=`${pi+1}/${VS.photoFiles.length}`;const tw=ctx.measureText(lbl).width;ctx.fillRect(10,10,tw+12,22);ctx.fillStyle='#fff';ctx.fillText(lbl,16,26);ctx.restore();
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
+      await new Promise(r=>requestAnimationFrame(r));
     }
-    globalTime += dur;
+    globalTime+=dur;
   }
 
-  mr.stop();
-  await new Promise(r => { mr.onstop = r; });
-  const blob  = new Blob(chunks, {type: mime});
-  const fname = 'KSpider_Slideshow_' + Date.now() + '.webm';
-  vsResult(resId, blob, fname);
-  vsLog(logId, `✅ Slideshow ready! ${fmtSzVS(blob.size)}`, 'ok');
+  mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vsProgress('photos',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  vsResult(resId,blob,'KSpider_Slideshow_'+Date.now()+'.webm');
+  vsLog(logId,`✅ Slideshow ready! ${fmtSzVS(blob.size)}`,'ok');
 }
-window.vsPhotosToVideo = vsPhotosToVideo;
-
-// Draw image with cover-fit (object-fit: cover equivalent)
-function drawImageCover(ctx, img, dx, dy, dw, dh, clipW, clipH) {
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(0, 0, clipW, clipH);
-  ctx.clip();
-  const ir = img.naturalWidth / img.naturalHeight;
-  const cr = dw / dh;
-  let sx,sy,sw,sh;
-  if (ir > cr) { sh = img.naturalHeight; sw = sh * cr; sx = (img.naturalWidth - sw) / 2; sy = 0; }
-  else         { sw = img.naturalWidth; sh = sw / cr; sx = 0; sy = (img.naturalHeight - sh) / 2; }
-  ctx.drawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
-  ctx.restore();
-}
+window.vsPhotosToVideo=vsPhotosToVideo;
 
 // ══════════════════════════════════════════════════════════
-// 3. ADD MUSIC TO VIDEO
+// 3. ADD MUSIC TO VIDEO (fixed original audio routing)
 // ══════════════════════════════════════════════════════════
-function vsHandleMixVideoDrop(e) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('vs-drag');
-  vsLoadMixVideo({files: e.dataTransfer.files});
-}
-window.vsHandleMixVideoDrop = vsHandleMixVideoDrop;
+function vsHandleMixVideoDrop(e){e.preventDefault();e.currentTarget.classList.remove('vs-drag');vsLoadMixVideo({files:e.dataTransfer.files});}
+window.vsHandleMixVideoDrop=vsHandleMixVideoDrop;
 
-function vsLoadMixVideo(input) {
-  const f = input.files[0];
-  if (!f || !f.type.startsWith('video/')) return;
-  VS.mixVideoFile = f;
-  VS.mixVideoEl = document.createElement('video');
-  VS.mixVideoEl.src = URL.createObjectURL(f);
-  VS.mixVideoEl.muted = true;
-  VS.mixVideoEl.onloadedmetadata = () => {
-    const info = document.getElementById('mix-video-info');
-    if (info) info.innerHTML = `<div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-      <i class="fa-solid fa-check-circle" style="color:#34d399"></i>
-      <span style="font:500 11px var(--fb);color:var(--t1)">${f.name}</span>
-      <span style="font:400 10px var(--fm);color:var(--tm)">${fmtDur(VS.mixVideoEl.duration)} · ${fmtSzVS(f.size)}</span>
-    </div>`;
+function vsLoadMixVideo(input){
+  const f=input.files[0]; if(!f||!f.type.startsWith('video/')) return;
+  VS.mixVideoFile=f;
+  VS.mixVideoEl=document.createElement('video');
+  VS.mixVideoEl.src=URL.createObjectURL(f);
+  VS.mixVideoEl.crossOrigin='anonymous';
+  VS.mixVideoEl.onloadedmetadata=()=>{
+    const info=document.getElementById('mix-video-info');
+    if(info) info.innerHTML=`<span style="color:#34d399">✅ ${f.name} — ${fmtDur(VS.mixVideoEl.duration)} · ${fmtSzVS(f.size)}</span>`;
   };
 }
-window.vsLoadMixVideo = vsLoadMixVideo;
+window.vsLoadMixVideo=vsLoadMixVideo;
 
-let _mixTrackIdx = 0;
-function vsMixAddTrack() {
-  const id = ++_mixTrackIdx;
-  VS.mixTracks.push({ id, file: null, url: null, name: '', buffer: null });
-  const list = document.getElementById('mix-tracks-list');
-  const row  = document.createElement('div');
-  row.className = 'vs-track-row';
-  row.id = `mix-track-${id}`;
-  row.innerHTML = `
-    <div style="font:600 10px var(--fm);color:var(--c1);width:20px;flex-shrink:0">#${id}</div>
-    <select id="mtt-type-${id}" style="background:var(--card2);border:1px solid var(--bd);border-radius:6px;color:var(--t1);font:500 11px var(--fb);padding:4px 7px;outline:none" onchange="vsMixTrackTypeChange(${id})">
-      <option value="device">📁 From Device</option>
-      <option value="upbeat">🎵 Upbeat</option>
-      <option value="calm">🧘 Calm Ambient</option>
-      <option value="cinematic">🎬 Cinematic</option>
-      <option value="romantic">💕 Romantic</option>
+let _mixTrackIdx=0;
+function vsMixAddTrack(){
+  const id=++_mixTrackIdx;
+  VS.mixTracks.push({id,file:null,buffer:null,name:''});
+  const list=document.getElementById('mix-tracks-list');
+  const row=document.createElement('div'); row.className='vs-track-row'; row.id=`mix-track-${id}`;
+  row.innerHTML=`<span style="font:600 10px var(--fm);color:var(--c1);width:18px">#${id}</span>
+    <select id="mtt-type-${id}" class="vs-sel" onchange="vsMixTrackTypeChange(${id})">
+      <option value="device">📁 From Device</option><option value="upbeat">🎵 Upbeat</option>
+      <option value="calm">🧘 Calm</option><option value="cinematic">🎬 Cinematic</option><option value="romantic">💕 Romantic</option><option value="dramatic">🎭 Dramatic</option>
     </select>
     <input type="file" id="mtt-file-${id}" accept="audio/*" style="display:none" onchange="vsMixTrackFile(${id},this)">
-    <button class="pvb" id="mtt-btn-${id}" onclick="document.getElementById('mtt-file-${id}').click()"><i class="fa-solid fa-upload"></i> Choose</button>
-    <span id="mtt-info-${id}" style="font:400 10px var(--fm);color:var(--tm);flex:1"></span>
-    <input type="range" id="mtt-vol-${id}" min="0" max="100" value="50" style="width:70px;accent-color:var(--c1)" title="Volume" oninput="document.getElementById('mtt-vl-${id}').textContent=this.value+'%'">
-    <span id="mtt-vl-${id}" style="font:600 10px var(--fm);color:var(--c1);width:30px;flex-shrink:0">50%</span>
-    <button class="vs-track-del" onclick="vsMixDelTrack(${id})">✕ Remove</button>`;
+    <button class="pvb" id="mtt-btn-${id}" onclick="document.getElementById('mtt-file-${id}').click()"><i class="fa-solid fa-upload"></i> File</button>
+    <span id="mtt-info-${id}" style="font:400 10px var(--fm);color:var(--tm);flex:1;min-width:60px"></span>
+    <input type="range" id="mtt-vol-${id}" min="0" max="100" value="50" style="width:70px;accent-color:var(--c1)" oninput="document.getElementById('mtt-vl-${id}').textContent=this.value+'%'" title="Volume">
+    <span id="mtt-vl-${id}" class="vs-lbl">50%</span>
+    <button class="vs-track-del" onclick="vsMixDelTrack(${id})">✕</button>`;
   list.appendChild(row);
 }
-window.vsMixAddTrack = vsMixAddTrack;
+window.vsMixAddTrack=vsMixAddTrack;
+function vsMixTrackTypeChange(id){const sel=document.getElementById(`mtt-type-${id}`);const btn=document.getElementById(`mtt-btn-${id}`);if(btn)btn.style.display=(sel.value==='device')?'inline-flex':'none';}
+window.vsMixTrackTypeChange=vsMixTrackTypeChange;
+function vsMixTrackFile(id,input){const f=input.files[0];if(!f)return;const t=VS.mixTracks.find(x=>x.id===id);if(t){t.file=f;t.name=f.name;}const info=document.getElementById(`mtt-info-${id}`);const a=document.createElement('audio');a.src=URL.createObjectURL(f);a.onloadedmetadata=()=>{if(info)info.textContent=`${f.name} (${fmtDur(a.duration)})`;};vsFileToBuffer(f).then(buf=>{if(t)t.buffer=buf;}).catch(()=>{});}
+window.vsMixTrackFile=vsMixTrackFile;
+function vsMixDelTrack(id){VS.mixTracks=VS.mixTracks.filter(t=>t.id!==id);const r=document.getElementById(`mix-track-${id}`);if(r)r.remove();}
+window.vsMixDelTrack=vsMixDelTrack;
 
-function vsMixTrackTypeChange(id) {
-  const sel = document.getElementById(`mtt-type-${id}`);
-  const btn = document.getElementById(`mtt-btn-${id}`);
-  if (btn) btn.style.display = (sel.value === 'device') ? 'inline-flex' : 'none';
-}
-window.vsMixTrackTypeChange = vsMixTrackTypeChange;
+async function vsMixAudio(){
+  if(!VS.mixVideoFile){toast('Upload a video first!','er');return;}
+  if(!VS.mixTracks.length){toast('Add at least one music track!','er');return;}
+  const logId='vs-mix-log',resId='vs-mix-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+  vsProgress('mix',2,'Loading video...');
 
-function vsMixTrackFile(id, input) {
-  const f = input.files[0];
-  if (!f) return;
-  const track = VS.mixTracks.find(t => t.id === id);
-  if (track) { track.file = f; track.name = f.name; }
-  const info = document.getElementById(`mtt-info-${id}`);
-  const a = document.createElement('audio');
-  a.src = URL.createObjectURL(f);
-  a.onloadedmetadata = () => { if (info) info.textContent = `${f.name} (${fmtDur(a.duration)})`; };
-  vsFileToBuffer(f).then(buf => { if (track) track.buffer = buf; }).catch(() => {});
-}
-window.vsMixTrackFile = vsMixTrackFile;
+  const keepOrig=document.getElementById('mix-keep-audio').checked;
+  const fadeOpt=document.getElementById('mix-fade').checked;
+  const loopOpt=document.getElementById('mix-loop-music').checked;
+  const musicVol=parseInt(document.getElementById('mix-vol').value)/100;
+  const origVol=parseInt(document.getElementById('mix-orig-vol').value)/100;
+  const wmark=document.getElementById('mix-wmark').value==='on';
 
-function vsMixDelTrack(id) {
-  VS.mixTracks = VS.mixTracks.filter(t => t.id !== id);
-  const row = document.getElementById(`mix-track-${id}`);
-  if (row) row.remove();
-}
-window.vsMixDelTrack = vsMixDelTrack;
+  const vidEl=VS.mixVideoEl; if(!vidEl){toast('Video not loaded','er');return;}
+  await new Promise(r=>{vidEl.oncanplay=r;vidEl.load();});
+  const vidDur=vidEl.duration;
+  const VW=vidEl.videoWidth||1280, VH=vidEl.videoHeight||720;
 
-async function vsMixAudio() {
-  if (!VS.mixVideoFile) { toast('Upload a video first!', 'er'); return; }
-  if (!VS.mixTracks.length) { toast('Add at least one music track!', 'er'); return; }
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
 
-  const logId = 'vs-mix-log', resId = 'vs-mix-result';
-  document.getElementById(logId).innerHTML = '';
-  document.getElementById(resId).innerHTML = '';
+  // Original audio routing
+  if(keepOrig){
+    try{
+      const src=actx.createMediaElementSource(vidEl);
+      const gn=actx.createGain(); gn.gain.value=origVol;
+      src.connect(gn); gn.connect(masterGain);
+      vidEl.muted=false;
+      vsLog(logId,`🔊 Original audio: ${Math.round(origVol*100)}%`,'info');
+    }catch(e){vidEl.muted=true;vsLog(logId,'⚠ Direct audio routing; original audio may not mix','info');}
+  } else {vidEl.muted=true;}
 
-  const keepOrig = document.getElementById('mix-keep-audio').checked;
-  const fadeOpt  = document.getElementById('mix-fade').checked;
-  const loopOpt  = document.getElementById('mix-loop-music').checked;
-  const musicVol = parseInt(document.getElementById('mix-vol').value) / 100;
-  const origVol  = parseInt(document.getElementById('mix-orig-vol').value) / 100;
-  const wmark    = document.getElementById('mix-wmark').value === 'on';
-
-  vsLog(logId, '🎬 Loading video...', 'info');
-
-  const vidEl = VS.mixVideoEl;
-  if (!vidEl) { toast('Video not loaded', 'er'); return; }
-  await new Promise(r => { vidEl.oncanplay = r; vidEl.load(); });
-  const vidDur = vidEl.duration;
-
-  // Canvas
-  const VW = vidEl.videoWidth  || 1280;
-  const VH = vidEl.videoHeight || 720;
-  const fps = 30;
-  const canvas = document.createElement('canvas');
-  canvas.width = VW; canvas.height = VH;
-  const ctx    = canvas.getContext('2d');
-
-  // AudioContext
-  const actx      = vsActx();
-  if (actx.state === 'suspended') await actx.resume();
-  const audioDest = actx.createMediaStreamDestination();
-  const masterGain = actx.createGain();
-  masterGain.connect(audioDest);
-
-  // Original video audio via MediaElementSource
-  if (keepOrig) {
-    try {
-      const src   = actx.createMediaElementSource(vidEl);
-      const gain  = actx.createGain();
-      gain.gain.value = origVol;
-      src.connect(gain); gain.connect(masterGain);
-      vsLog(logId, `🔊 Original audio: ${Math.round(origVol*100)}%`, 'info');
-    } catch(e) { vsLog(logId, '⚠ Could not attach original audio: ' + e.message, 'info'); }
+  // Music tracks
+  for(const track of VS.mixTracks){
+    const type=document.getElementById(`mtt-type-${track.id}`)?.value;
+    const vol=parseInt(document.getElementById(`mtt-vol-${track.id}`)?.value||50)/100;
+    let buf=track.buffer;
+    if(!buf&&type!=='device') buf=await vsGenBGM(type,vidDur+2);
+    if(!buf) continue;
+    const src=actx.createBufferSource(); src.buffer=buf; src.loop=loopOpt&&buf.duration<vidDur;
+    const gn=actx.createGain(); gn.gain.value=vol*musicVol;
+    if(fadeOpt){const fd=Math.min(2,vidDur*0.08);gn.gain.setValueAtTime(0,actx.currentTime);gn.gain.linearRampToValueAtTime(vol*musicVol,actx.currentTime+fd);gn.gain.setValueAtTime(vol*musicVol,actx.currentTime+vidDur-fd);gn.gain.linearRampToValueAtTime(0,actx.currentTime+vidDur);}
+    src.connect(gn); gn.connect(masterGain); src.start();
+    vsLog(logId,`🎵 Track #${track.id} (${type}) vol:${Math.round(vol*musicVol*100)}%`,'info');
   }
 
-  // Mix each music track
-  for (const track of VS.mixTracks) {
-    const type = document.getElementById(`mtt-type-${track.id}`)?.value;
-    const vol  = parseInt(document.getElementById(`mtt-vol-${track.id}`)?.value || 50) / 100;
-    let buf    = track.buffer;
-    if (!buf && type !== 'device') buf = await vsGenBGM(type, vidDur + 2);
-    if (!buf) continue;
-
-    const src  = actx.createBufferSource();
-    src.buffer = buf;
-    src.loop   = loopOpt && (buf.duration < vidDur);
-    const gain = actx.createGain();
-    gain.gain.value = vol * musicVol;
-
-    if (fadeOpt) {
-      const fadeDur = Math.min(2, vidDur * 0.1);
-      gain.gain.setValueAtTime(0, actx.currentTime);
-      gain.gain.linearRampToValueAtTime(vol * musicVol, actx.currentTime + fadeDur);
-      gain.gain.setValueAtTime(vol * musicVol, actx.currentTime + vidDur - fadeDur);
-      gain.gain.linearRampToValueAtTime(0, actx.currentTime + vidDur);
-    }
-
-    src.connect(gain); gain.connect(masterGain);
-    src.start();
-    vsLog(logId, `🎵 Track #${track.id} active (${type}, vol ${Math.round(vol*musicVol*100)}%)`, 'info');
-  }
-
-  // Record
-  vidEl.muted = !keepOrig; // if keepOrig handled via WebAudio
-  const vidStream = canvas.captureStream(fps);
-  const combined  = new MediaStream([...vidStream.getVideoTracks(), ...audioDest.stream.getAudioTracks()]);
-  const mime      = ['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'].find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
-  const mr        = new MediaRecorder(combined, {mimeType: mime, videoBitsPerSecond: 6_000_000});
-  const chunks    = [];
-  mr.ondataavailable = e => { if (e.data?.size) chunks.push(e.data); };
+  const fps=30;
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100);
+  vidEl.currentTime=0; vidEl.play();
+  vsLog(logId,`⏺ Recording ${fmtDur(vidDur)}...`,'info');
 
-  vidEl.currentTime = 0;
-  vidEl.play();
-
-  const frameMs = 1000 / fps;
-  vsLog(logId, `⏺ Recording ${fmtDur(vidDur)}...`, 'info');
-
-  await new Promise(resolve => {
-    let lastTime = performance.now();
-    let elapsed  = 0;
-    function tick(now) {
-      const dt = now - lastTime; lastTime = now;
-      elapsed += dt / 1000;
-      if (elapsed >= vidDur) { resolve(); return; }
-      ctx.clearRect(0, 0, VW, VH);
-      ctx.drawImage(vidEl, 0, 0, VW, VH);
-      if (wmark) vsDrawWatermark(ctx, VW, VH);
+  let lastT=performance.now(), elapsed=0;
+  await new Promise(resolve=>{
+    function tick(now){
+      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+      vsProgress('mix', Math.min(98,Math.round(elapsed/vidDur*100)), `${fmtDur(elapsed)} / ${fmtDur(vidDur)}`);
+      if(elapsed>=vidDur){resolve();return;}
+      ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
       requestAnimationFrame(tick);
     }
     requestAnimationFrame(tick);
   });
 
-  vidEl.pause();
-  mr.stop();
-  await new Promise(r => { mr.onstop = r; });
-
-  const blob  = new Blob(chunks, {type: mime});
-  const fname = 'KSpider_Music_Mix_' + Date.now() + '.webm';
-  vsResult(resId, blob, fname);
-  vsLog(logId, `✅ Done! ${fmtSzVS(blob.size)}`, 'ok');
+  vidEl.pause(); mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vsProgress('mix',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  vsResult(resId,blob,'KSpider_Music_Mix_'+Date.now()+'.webm');
+  vsLog(logId,`✅ Done! ${fmtSzVS(blob.size)}`,'ok');
 }
-window.vsMixAudio = vsMixAudio;
+window.vsMixAudio=vsMixAudio;
 
-})(); // end Video Studio IIFE
+// ══════════════════════════════════════════════════════════
+// 4. TRIM / CUT
+// ══════════════════════════════════════════════════════════
+function vsTrimDrop(e){e.preventDefault();e.currentTarget.classList.remove('vs-drag');vsTrimLoad({files:e.dataTransfer.files});}
+window.vsTrimDrop=vsTrimDrop;
+function vsTrimLoad(input){
+  const f=input.files[0]; if(!f||!f.type.startsWith('video/')) return;
+  VS.trimFile=f; VS.trimSegs=[];
+  const wrap=document.getElementById('trim-video-wrap'); if(wrap) wrap.style.display='block';
+  const prev=document.getElementById('trim-preview');
+  prev.src=URL.createObjectURL(f);
+  prev.onloadedmetadata=()=>{
+    VS.trimDur=prev.duration;
+    VS.trimEl=prev;
+    document.getElementById('trim-start').value='0';
+    document.getElementById('trim-end').value=prev.duration.toFixed(1);
+    document.getElementById('trim-info').textContent=`${f.name} — ${fmtDur(prev.duration)} · ${fmtSzVS(f.size)}`;
+    vsUpdateTrimBar();
+    vsTrimRenderSegs();
+    prev.addEventListener('timeupdate',vsUpdatePlayhead);
+  };
+}
+window.vsTrimLoad=vsTrimLoad;
+function vsUpdateTrimBar(){
+  const dur=VS.trimDur; if(!dur) return;
+  const s=parseFloat(document.getElementById('trim-start').value)||0;
+  const e=parseFloat(document.getElementById('trim-end').value)||dur;
+  const sl=document.getElementById('trim-start-marker');
+  const el=document.getElementById('trim-end-marker');
+  const rb=document.getElementById('trim-range-bar');
+  if(sl) sl.style.left=(s/dur*100)+'%';
+  if(el) el.style.left=(e/dur*100)+'%';
+  if(rb){rb.style.left=(s/dur*100)+'%';rb.style.width=((e-s)/dur*100)+'%';}
+}
+window.vsUpdateTrimBar=vsUpdateTrimBar;
+function vsUpdatePlayhead(){
+  const dur=VS.trimDur; if(!dur||!VS.trimEl) return;
+  const ph=document.getElementById('trim-playhead');
+  if(ph) ph.style.left=(VS.trimEl.currentTime/dur*100)+'%';
+}
+function vsTrimTimelineClick(e){
+  const tl=document.getElementById('trim-timeline'); if(!tl||!VS.trimDur) return;
+  const pct=e.offsetX/tl.offsetWidth;
+  if(VS.trimEl){VS.trimEl.currentTime=pct*VS.trimDur;vsUpdatePlayhead();}
+}
+window.vsTrimTimelineClick=vsTrimTimelineClick;
+function vsSetTrimFromCurrent(which){
+  if(!VS.trimEl) return;
+  const t=VS.trimEl.currentTime;
+  document.getElementById(`trim-${which}`).value=t.toFixed(1);
+  vsUpdateTrimBar();
+}
+window.vsSetTrimFromCurrent=vsSetTrimFromCurrent;
+
+let _segIdx=0;
+function vsAddCutSegment(){
+  const id=++_segIdx; VS.trimSegs.push({id,start:0,end:VS.trimDur||10});
+  vsTrimRenderSegs();
+}
+window.vsAddCutSegment=vsAddCutSegment;
+function vsDelSeg(id){VS.trimSegs=VS.trimSegs.filter(s=>s.id!==id);vsTrimRenderSegs();}
+window.vsDelSeg=vsDelSeg;
+function vsSegUpdate(id,which,val){const s=VS.trimSegs.find(x=>x.id===id);if(s)s[which]=parseFloat(val)||0;}
+window.vsSegUpdate=vsSegUpdate;
+function vsTrimRenderSegs(){
+  const el=document.getElementById('trim-segments'); if(!el) return;
+  if(!VS.trimSegs.length){el.innerHTML='<div style="font:400 10px var(--fm);color:var(--tm)">(No segments — simple trim only)</div>';return;}
+  let html='';
+  VS.trimSegs.forEach((s,i)=>{
+    html+=`<div class="vs-seg-row">
+      <span class="vs-label-txt">Seg ${i+1}</span>
+      <span class="vs-label-txt">Start:</span><input type="number" value="${s.start}" step="0.1" class="vs-num-in" oninput="vsSegUpdate(${s.id},'start',this.value)">
+      <span class="vs-label-txt">End:</span><input type="number" value="${s.end}" step="0.1" class="vs-num-in" oninput="vsSegUpdate(${s.id},'end',this.value)">
+      <span style="font:400 10px var(--fm);color:var(--c1)">${fmtDur(s.end-s.start)}</span>
+      <button class="vs-track-del" onclick="vsDelSeg(${s.id})">✕</button>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+window.vsTrimRenderSegs=vsTrimRenderSegs;
+
+async function vsTrimExport(){
+  if(!VS.trimFile){toast('Upload a video first!','er');return;}
+  const logId='vs-trim-log',resId='vs-trim-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+  const wmark=document.getElementById('trim-wmark').value==='on';
+
+  // Build segments list
+  let segs=[];
+  if(VS.trimSegs.length>0){
+    segs=VS.trimSegs.map(s=>({start:Math.max(0,s.start),end:Math.min(VS.trimDur,s.end)})).filter(s=>s.end>s.start).sort((a,b)=>a.start-b.start);
+  } else {
+    const s=parseFloat(document.getElementById('trim-start').value)||0;
+    const e=parseFloat(document.getElementById('trim-end').value)||VS.trimDur;
+    segs=[{start:s,end:e}];
+  }
+
+  const totalOut=segs.reduce((a,s)=>a+(s.end-s.start),0);
+  vsLog(logId,`✂️ Exporting ${segs.length} segment(s) → ${fmtDur(totalOut)}`,'info');
+  vsProgress('trim',2,'Preparing...');
+
+  const vidEl=document.getElementById('trim-preview');
+  const VW=vidEl.videoWidth||1280, VH=vidEl.videoHeight||720;
+  const fps=30;
+
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
+
+  try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+  catch(e){vidEl.muted=true;}
+
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
+  mr.start(100);
+  let done=0;
+  for(const seg of segs){
+    vsLog(logId,`▶ Segment ${fmtDur(seg.start)}→${fmtDur(seg.end)}`,'info');
+    vidEl.currentTime=seg.start;
+    await new Promise(r=>{vidEl.onseeked=r;});
+    vidEl.play();
+    const segDur=seg.end-seg.start;
+    let elapsed2=0, lastT2=performance.now();
+    await new Promise(resolve=>{
+      function tick(now){
+        const dt=now-lastT2; lastT2=now; elapsed2+=dt/1000;
+        vsProgress('trim',2+Math.round((done+elapsed2)/totalOut*94),`${fmtDur(done+elapsed2)} / ${fmtDur(totalOut)}`);
+        if(elapsed2>=segDur||vidEl.currentTime>=seg.end){resolve();return;}
+        ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+        if(wmark) vsDrawWatermark(ctx,VW,VH);
+        requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    });
+    vidEl.pause(); done+=segDur;
+  }
+
+  mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vsProgress('trim',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  vsResult(resId,blob,'KSpider_Trimmed_'+Date.now()+'.webm');
+  vsLog(logId,`✅ Trimmed! ${fmtSzVS(blob.size)}`,'ok');
+}
+window.vsTrimExport=vsTrimExport;
+
+// ══════════════════════════════════════════════════════════
+// 5. TEXT BANNERS
+// ══════════════════════════════════════════════════════════
+function vsBannerDrop(e){e.preventDefault();e.currentTarget.classList.remove('vs-drag');vsBannerLoad({files:e.dataTransfer.files});}
+window.vsBannerDrop=vsBannerDrop;
+function vsBannerLoad(input){
+  const f=input.files[0]; if(!f||!f.type.startsWith('video/')) return;
+  VS.bannerFile=f; VS.banners=[];
+  const wrap=document.getElementById('banner-video-wrap'); if(wrap) wrap.style.display='block';
+  const prev=document.getElementById('banner-preview'); prev.src=URL.createObjectURL(f);
+  prev.onloadedmetadata=()=>{VS.bannerDur=prev.duration;VS.bannerEl=prev;document.getElementById('banner-video-info').textContent=`${f.name} — ${fmtDur(prev.duration)} · ${fmtSzVS(f.size)}`;};
+}
+window.vsBannerLoad=vsBannerLoad;
+
+function vsAddBanner(){
+  const id=++VS.bannerCounter;
+  VS.banners.push({id,text:'Your Text Here',start:0,end:5,x:50,y:90,size:36,color:'#ffffff',bg:'rgba(0,0,0,0.6)',bold:true,align:'center',style:'pill',anim:'fade'});
+  vsBannerRender();
+}
+window.vsAddBanner=vsAddBanner;
+function vsDelBanner(id){VS.banners=VS.banners.filter(b=>b.id!==id);vsBannerRender();}
+window.vsDelBanner=vsDelBanner;
+function vsBannerUpdate(id,key,val){const b=VS.banners.find(x=>x.id===id);if(b)b[key]=(key==='size'||key==='x'||key==='y'||key==='start'||key==='end')?parseFloat(val):val;vsBannerRender();}
+window.vsBannerUpdate=vsBannerUpdate;
+function vsBannerRender(){
+  const el=document.getElementById('banner-list'); if(!el) return;
+  if(!VS.banners.length){el.innerHTML='<div style="font:400 10px var(--fm);color:var(--tm)">No banners yet — click Add Banner</div>';return;}
+  let html='';
+  VS.banners.forEach((b,i)=>{
+    const previewBg=b.bg==='transparent'?'transparent':'rgba(0,0,0,0.6)';
+    html+=`<div class="vs-banner-row">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span class="vs-section-label" style="margin:0">Banner ${i+1}</span>
+        <button class="vs-track-del" onclick="vsDelBanner(${b.id})">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px">
+        <input type="text" value="${b.text}" class="vs-txt-in" style="flex:1;min-width:140px" oninput="vsBannerUpdate(${b.id},'text',this.value)" placeholder="Banner text...">
+        <select class="vs-sel" onchange="vsBannerUpdate(${b.id},'style',this.value)">
+          <option value="pill" ${b.style==='pill'?'selected':''}>💊 Pill</option>
+          <option value="box" ${b.style==='box'?'selected':''}>📦 Box</option>
+          <option value="lower" ${b.style==='lower'?'selected':''}>📺 Lower Third</option>
+          <option value="plain" ${b.style==='plain'?'selected':''}>Plain Text</option>
+          <option value="neon" ${b.style==='neon'?'selected':''}>💡 Neon Glow</option>
+        </select>
+        <select class="vs-sel" onchange="vsBannerUpdate(${b.id},'anim',this.value)">
+          <option value="fade">Fade</option><option value="slide_up">Slide Up</option>
+          <option value="slide_dn">Slide Down</option><option value="typewriter">Typewriter</option><option value="none">Static</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+        <span class="vs-label-txt">Start:</span><input type="number" value="${b.start}" step="0.1" class="vs-num-in" oninput="vsBannerUpdate(${b.id},'start',this.value)">
+        <span class="vs-label-txt">End:</span><input type="number" value="${b.end}" step="0.1" class="vs-num-in" oninput="vsBannerUpdate(${b.id},'end',this.value)">
+        <span class="vs-label-txt">X%:</span><input type="number" value="${b.x}" min="0" max="100" class="vs-num-in" oninput="vsBannerUpdate(${b.id},'x',this.value)">
+        <span class="vs-label-txt">Y%:</span><input type="number" value="${b.y}" min="0" max="100" class="vs-num-in" oninput="vsBannerUpdate(${b.id},'y',this.value)">
+        <span class="vs-label-txt">Size:</span><input type="number" value="${b.size}" min="12" max="120" class="vs-num-in" oninput="vsBannerUpdate(${b.id},'size',this.value)">
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span class="vs-label-txt">Text:</span><input type="color" value="${b.color}" style="width:32px;height:24px;border:none;background:none;cursor:pointer" oninput="vsBannerUpdate(${b.id},'color',this.value)">
+        <span class="vs-label-txt">Bold:</span><input type="checkbox" ${b.bold?'checked':''} style="accent-color:var(--c1)" onchange="vsBannerUpdate(${b.id},'bold',this.checked)">
+        <select class="vs-sel" onchange="vsBannerUpdate(${b.id},'align',this.value)">
+          <option value="center" ${b.align==='center'?'selected':''}>Center</option>
+          <option value="left" ${b.align==='left'?'selected':''}>Left</option>
+          <option value="right" ${b.align==='right'?'selected':''}>Right</option>
+        </select>
+      </div>
+      <div class="vs-banner-preview" style="background:${previewBg};color:${b.color};font-size:${Math.min(18,b.size*0.4)}px;font-weight:${b.bold?'bold':'normal'}">${b.text}</div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+window.vsBannerRender=vsBannerRender;
+
+function vsDrawBanner(ctx,b,W,H,videoTime){
+  const active=videoTime>=b.start&&videoTime<=b.end; if(!active) return;
+  const dur=b.end-b.start, elapsed=videoTime-b.start, progress=Math.min(1,elapsed/Math.max(0.001,dur));
+  const fadeDur=Math.min(0.4,dur*0.2);
+  const alpha=elapsed<fadeDur?(elapsed/fadeDur):progress>0.85?((1-progress)/0.15):1;
+
+  ctx.save(); ctx.globalAlpha=alpha;
+  const fs=b.size||32, font=`${b.bold?'bold ':''} ${fs}px Arial`;
+  ctx.font=font;
+  // Typewriter: show chars progressively
+  const txt=b.anim==='typewriter'?b.text.slice(0,Math.ceil(b.text.length*progress)):b.text;
+  const tw=ctx.measureText(txt).width;
+  const bx=b.x/100*W, by=b.y/100*H;
+  let drawX=bx, drawY=by;
+  if(b.align==='center') drawX=bx-tw/2;
+  else if(b.align==='right') drawX=bx-tw;
+
+  // Slide animation offset
+  let offsetY=0;
+  if(b.anim==='slide_up'&&elapsed<fadeDur) offsetY=(1-elapsed/fadeDur)*20;
+  else if(b.anim==='slide_dn'&&elapsed<fadeDur) offsetY=-(1-elapsed/fadeDur)*20;
+  drawY+=offsetY;
+
+  const pad=10, bh=fs+pad*2;
+  if(b.style==='pill'||b.style==='box'){
+    ctx.fillStyle=b.bg||'rgba(0,0,0,0.6)';
+    if(b.style==='pill'){ctx.beginPath();ctx.roundRect(drawX-pad,drawY-fs-pad/2,tw+pad*2,bh,bh/2);ctx.fill();}
+    else{ctx.fillRect(drawX-pad,drawY-fs-pad/2,tw+pad*2,bh);}
+  } else if(b.style==='lower'){
+    ctx.fillStyle='rgba(0,0,0,0.72)'; ctx.fillRect(0,drawY-fs-pad/2-2,W,bh+4);
+    // accent line
+    ctx.fillStyle=b.color; ctx.fillRect(0,drawY-fs-pad/2-2,4,bh+4);
+  } else if(b.style==='neon'){
+    ctx.shadowColor=b.color; ctx.shadowBlur=18;
+  }
+
+  ctx.fillStyle=b.color;
+  ctx.textBaseline='alphabetic';
+  ctx.fillText(txt, drawX, drawY);
+  ctx.restore();
+}
+
+async function vsBannerExport(){
+  if(!VS.bannerFile){toast('Upload a video first!','er');return;}
+  const logId='vs-banner-log',resId='vs-banner-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+  const wmark=document.getElementById('banner-wmark').value==='on';
+  const addIntro=document.getElementById('ban-intro').checked;
+  const introTxt=document.getElementById('ban-intro-txt').value||'';
+  const introDur=parseFloat(document.getElementById('ban-intro-dur').value)||2;
+  const addOutro=document.getElementById('ban-outro').checked;
+  const outroTxt=document.getElementById('ban-outro-txt').value||'';
+  const outroDur=parseFloat(document.getElementById('ban-outro-dur').value)||3;
+
+  const vidEl=VS.bannerEl; if(!vidEl){toast('Video not loaded','er');return;}
+  const VW=vidEl.videoWidth||1280,VH=vidEl.videoHeight||720,fps=30;
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
+  try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+  catch(e){vidEl.muted=true;}
+
+  const totalDur=(addIntro?introDur:0)+VS.bannerDur+(addOutro?outroDur:0);
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
+  mr.start(100); vsProgress('banner',2,'Starting...');
+
+  // Intro card
+  if(addIntro&&introTxt){
+    vsLog(logId,'🎬 Rendering intro...','info');
+    const frames=Math.ceil(introDur*fps);
+    for(let f=0;f<frames;f++){
+      ctx.fillStyle='#07090f'; ctx.fillRect(0,0,VW,VH);
+      const alpha=Math.min(1,f/(fps*0.4));
+      ctx.save(); ctx.globalAlpha=alpha;
+      ctx.font=`bold ${Math.round(VH*0.07)}px Arial`; ctx.fillStyle='#00f5ff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+      ctx.fillText(introTxt,VW/2,VH/2);
+      ctx.restore();
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+  }
+
+  // Main video with banners
+  await new Promise(r=>{vidEl.oncanplay=r;vidEl.load();});
+  vidEl.currentTime=0; vidEl.play();
+  vsLog(logId,'▶ Rendering main video + banners...','info');
+  let elapsed=0, lastT=performance.now();
+  await new Promise(resolve=>{
+    function tick(now){
+      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+      vsProgress('banner',5+Math.round(elapsed/totalDur*85),`${fmtDur(elapsed)} / ${fmtDur(totalDur)}`);
+      if(elapsed>=VS.bannerDur){resolve();return;}
+      ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+      // Draw all banners
+      VS.banners.forEach(b=>vsDrawBanner(ctx,b,VW,VH,elapsed));
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+  vidEl.pause();
+
+  // Outro card
+  if(addOutro&&outroTxt){
+    vsLog(logId,'🎬 Rendering outro...','info');
+    const frames=Math.ceil(outroDur*fps);
+    for(let f=0;f<frames;f++){
+      const fade=Math.min(1,f/(fps*0.5));
+      ctx.fillStyle=`rgba(7,9,15,${fade})`; ctx.fillRect(0,0,VW,VH);
+      if(fade>0.3){
+        ctx.save(); ctx.globalAlpha=(fade-0.3)/0.7;
+        ctx.font=`bold ${Math.round(VH*0.07)}px Arial`; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(outroTxt,VW/2,VH/2-20);
+        ctx.font=`${Math.round(VH*0.03)}px Arial`; ctx.fillStyle='#00f5ff';
+        ctx.fillText('🕷 K Spider AI — kspiderai.in',VW/2,VH/2+40);
+        ctx.restore();
+      }
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
+      await new Promise(r=>requestAnimationFrame(r));
+    }
+  }
+
+  mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vsProgress('banner',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  vsResult(resId,blob,'KSpider_Banners_'+Date.now()+'.webm');
+  vsLog(logId,`✅ Done! ${fmtSzVS(blob.size)}`,'ok');
+}
+window.vsBannerExport=vsBannerExport;
+
+// ══════════════════════════════════════════════════════════
+// 6. EFFECTS
+// ══════════════════════════════════════════════════════════
+function vsEffectDrop(e){e.preventDefault();e.currentTarget.classList.remove('vs-drag');vsEffectLoad({files:e.dataTransfer.files});}
+window.vsEffectDrop=vsEffectDrop;
+function vsEffectLoad(input){
+  const f=input.files[0]; if(!f||!f.type.startsWith('video/')) return;
+  VS.effFile=f;
+  const wrap=document.getElementById('effect-video-wrap'); if(wrap) wrap.style.display='block';
+  const prev=document.getElementById('effect-preview'); prev.src=URL.createObjectURL(f);
+  prev.onloadedmetadata=()=>{VS.effEl=prev;};
+}
+window.vsEffectLoad=vsEffectLoad;
+
+async function vsEffectExport(){
+  if(!VS.effFile){toast('Upload a video first!','er');return;}
+  const logId='vs-effect-log',resId='vs-effect-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+
+  const grade=document.getElementById('eff-grade').value;
+  const brightness=parseInt(document.getElementById('eff-bright').value)||0;
+  const contrast=parseInt(document.getElementById('eff-contrast').value)||0;
+  const saturation=parseInt(document.getElementById('eff-sat').value)||0;
+  const sharpness=parseFloat(document.getElementById('eff-sharp').value)||0;
+  const vignette=document.getElementById('eff-vignette').checked;
+  const vigStr=parseInt(document.getElementById('eff-vig-str').value)||40;
+  const grain=document.getElementById('eff-grain').checked;
+  const glow=document.getElementById('eff-glow').checked;
+  const mirror=document.getElementById('eff-mirror').checked;
+  const speedUp=document.getElementById('eff-speedup').checked;
+  const wmark=document.getElementById('eff-wmark').value==='on';
+  const resVal=document.getElementById('eff-res').value;
+
+  const vidEl=VS.effEl; if(!vidEl){toast('Video not loaded','er');return;}
+  const VW=resVal==='original'?vidEl.videoWidth:parseInt(resVal)||vidEl.videoWidth;
+  const VH=resVal==='original'?vidEl.videoHeight:parseInt(resVal.split('x')[1])||vidEl.videoHeight;
+  const fps=30; const vidDur=vidEl.duration;
+
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
+  try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+  catch(e){vidEl.muted=true;}
+
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,8000000);
+  mr.start(100); vsProgress('effect',2,'Applying effects...');
+
+  vidEl.playbackRate=speedUp?2:1;
+  vidEl.currentTime=0; await new Promise(r=>{vidEl.onseeked=r;}); vidEl.play();
+
+  let elapsed=0, lastT=performance.now(); const recDur=speedUp?vidDur/2:vidDur;
+
+  await new Promise(resolve=>{
+    function tick(now){
+      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+      vsProgress('effect',2+Math.round(elapsed/recDur*95),`${fmtDur(elapsed)} / ${fmtDur(recDur)}`);
+      if(elapsed>=recDur){resolve();return;}
+      ctx.clearRect(0,0,VW,VH);
+      if(mirror){ctx.save();ctx.translate(VW,0);ctx.scale(-1,1);}
+      ctx.drawImage(vidEl,0,0,VW,VH);
+      if(mirror) ctx.restore();
+
+      // CSS-like filter via imagedata
+      if(grade!=='none') vsApplyColorGrade(ctx,VW,VH,grade);
+      if(brightness!==0||contrast!==0||saturation!==0){
+        const img=ctx.getImageData(0,0,VW,VH), d=img.data;
+        for(let i=0;i<d.length;i+=4){
+          let r=d[i],g=d[i+1],b=d[i+2];
+          // brightness
+          r=Math.max(0,Math.min(255,r+brightness*2.5));g=Math.max(0,Math.min(255,g+brightness*2.5));b=Math.max(0,Math.min(255,b+brightness*2.5));
+          // contrast
+          const f2=(259*(contrast+255))/(255*(259-contrast));
+          r=Math.max(0,Math.min(255,f2*(r-128)+128));g=Math.max(0,Math.min(255,f2*(g-128)+128));b=Math.max(0,Math.min(255,f2*(b-128)+128));
+          // saturation
+          const l=0.299*r+0.587*g+0.114*b,s2=saturation/100;
+          r=Math.max(0,Math.min(255,l+(r-l)*(1+s2)));g=Math.max(0,Math.min(255,l+(g-l)*(1+s2)));b=Math.max(0,Math.min(255,l+(b-l)*(1+s2)));
+          d[i]=r;d[i+1]=g;d[i+2]=b;
+        }
+        ctx.putImageData(img,0,0);
+      }
+      if(sharpness>0){ctx.save();ctx.filter=`blur(${sharpness}px)`;ctx.globalCompositeOperation='difference';ctx.globalAlpha=0.3;ctx.drawImage(canvas,0,0);ctx.restore();}
+      if(grain) vsDrawGrain(ctx,VW,VH,18);
+      if(glow) vsDrawGlow(ctx,VW,VH);
+      if(vignette) vsDrawVignette(ctx,VW,VH,vigStr);
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+
+  vidEl.pause(); vidEl.playbackRate=1;
+  mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vsProgress('effect',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  vsResult(resId,blob,'KSpider_Effects_'+Date.now()+'.webm');
+  vsLog(logId,`✅ Effects applied! ${fmtSzVS(blob.size)}`,'ok');
+}
+window.vsEffectExport=vsEffectExport;
+
+// ══════════════════════════════════════════════════════════
+// 7. CONVERT TO MP4 / WEBM
+// ══════════════════════════════════════════════════════════
+function vsConvDrop(e){e.preventDefault();e.currentTarget.classList.remove('vs-drag');vsConvLoad({files:e.dataTransfer.files});}
+window.vsConvDrop=vsConvDrop;
+function vsConvLoad(input){
+  const f=input.files[0]; if(!f||!f.type.startsWith('video/')) return;
+  VS.convFile=f;
+  document.getElementById('conv-info').innerHTML=`<span style="color:#34d399">✅ ${f.name} · ${fmtSzVS(f.size)}</span>`;
+  const wrap=document.getElementById('conv-wrap'); if(wrap) wrap.style.display='block';
+  const v=document.createElement('video'); v.src=URL.createObjectURL(f);
+  v.onloadedmetadata=()=>{VS.convEl=v;document.getElementById('conv-info').innerHTML+=` · ${fmtDur(v.duration)}`;};
+}
+window.vsConvLoad=vsConvLoad;
+
+async function vsConvExport(){
+  if(!VS.convFile){toast('Upload a video first!','er');return;}
+  const logId='vs-conv-log',resId='vs-conv-result';
+  document.getElementById(logId).innerHTML=''; document.getElementById(resId).innerHTML='';
+
+  const vidEl=VS.convEl; if(!vidEl){toast('Video not loaded','er');return;}
+  const resVal=document.getElementById('conv-res').value;
+  const VW=resVal==='original'?vidEl.videoWidth:parseInt(resVal)||vidEl.videoWidth;
+  const VH=resVal==='original'?vidEl.videoHeight:parseInt(resVal.split('x')[1])||vidEl.videoHeight;
+  const fps=parseInt(document.getElementById('conv-fps').value)||30;
+  const vbr=parseInt(document.getElementById('conv-vbr').value)||4000000;
+  const muteAudio=document.getElementById('conv-mute').value==='yes';
+  const wmark=document.getElementById('conv-wmark').value==='on';
+  const vidDur=vidEl.duration;
+
+  vsLog(logId,`🔄 Converting: ${VW}×${VH} @ ${fps}fps · ${(vbr/1000000).toFixed(1)}Mbps`,'info');
+  vsProgress('conv',2,'Preparing...');
+
+  const canvas=document.createElement('canvas'); canvas.width=VW; canvas.height=VH;
+  const ctx=canvas.getContext('2d');
+  const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
+  const audioDest=actx.createMediaStreamDestination();
+  const masterGain=actx.createGain(); masterGain.connect(audioDest);
+
+  if(!muteAudio){
+    try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+    catch(e){vidEl.muted=true;vsLog(logId,'⚠ Audio routing fallback','info');}
+  } else {vidEl.muted=true;}
+
+  const {mr,chunks,mime}=vsMakeRecorder(canvas,!muteAudio?audioDest:null,fps,vbr);
+  mr.start(100);
+  vidEl.currentTime=0; await new Promise(r=>{vidEl.onseeked=r;}); vidEl.play();
+
+  let elapsed=0, lastT=performance.now();
+  await new Promise(resolve=>{
+    function tick(now){
+      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+      vsProgress('conv',2+Math.round(elapsed/vidDur*95),`${fmtDur(elapsed)} / ${fmtDur(vidDur)}`);
+      if(elapsed>=vidDur){resolve();return;}
+      ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+      if(wmark) vsDrawWatermark(ctx,VW,VH);
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  });
+
+  vidEl.pause(); mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vsProgress('conv',100,'Done!');
+  const blob=new Blob(chunks,{type:mime});
+  const ext=mime.includes('webm')?'webm':'mp4';
+  const fname=VS.convFile.name.replace(/\.[^/.]+$/,'')+`_converted.${ext}`;
+  vsResult(resId,blob,fname);
+  vsLog(logId,`✅ Converted! ${fmtSzVS(blob.size)}`,'ok');
+}
+window.vsConvExport=vsConvExport;
+
+})(); // end Video Studio Pro IIFE
+
 </script>
 
 </body>
