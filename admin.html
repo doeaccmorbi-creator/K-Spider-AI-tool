@@ -153,8 +153,13 @@ tr:hover td{background:rgba(255,255,255,.015)}
 input[name="ai-style"]:checked+.style-chip{background:rgba(124,58,237,.2);border-color:rgba(168,85,247,.6);color:#c084fc}
 .size-chip{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:700;background:var(--bg4);border:1px solid var(--br2);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
 input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);border-color:rgba(59,130,246,.6);color:#93c5fd}
+.place-chip{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:700;background:var(--bg4);border:1px solid var(--br2);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
+input[name="ai-place"]:checked+.place-chip,input[name="ai-video-place"]:checked+.place-chip{background:rgba(5,150,105,.18);border-color:rgba(5,150,105,.5);color:#34d399}
+.vstyle-chip{display:inline-block;padding:4px 10px;border-radius:20px;font-size:.65rem;font-weight:700;background:var(--bg4);border:1px solid var(--br2);color:var(--t3);cursor:pointer;transition:all .15s;user-select:none}
+input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-prompt"]:checked+.vstyle-chip{background:rgba(239,68,68,.18);border-color:rgba(239,68,68,.5);color:#f87171}
 .ai-title-chip{display:inline-block;padding:4px 11px;border-radius:20px;font-size:.68rem;font-weight:600;background:rgba(184,121,42,.1);border:1px solid rgba(184,121,42,.3);color:var(--gold2);cursor:pointer;transition:all .15s;user-select:none}
 .ai-title-chip:hover{background:rgba(184,121,42,.2);border-color:rgba(184,121,42,.5)}
+.ai-tool-btn{padding:6px 4px;border-radius:8px;font-size:.69rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:3px}
 </style>
 </head>
 <body>
@@ -598,6 +603,7 @@ input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);b
             <label class="fl">Ad Type *</label>
             <select class="fi" id="ad-type" onchange="adTypeChange()">
               <option value="image">🖼️ Image Ad</option>
+              <option value="video">🎬 Video Ad</option>
               <option value="text">📝 Text Ad</option>
               <option value="html">💻 Custom HTML</option>
             </select>
@@ -608,6 +614,32 @@ input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);b
               <input class="fi" id="ad-img-url" type="url" placeholder="https://example.com/banner.jpg" oninput="updatePreview()">
               <label class="fl">Alt Text</label>
               <input class="fi" id="ad-img-alt" type="text" placeholder="Ad description">
+            </div>
+
+            <!-- Video -->
+            <div id="ad-video-fields" style="display:none">
+              <label class="fl">Video URL * <span style="font-size:.62rem;color:var(--t4);font-weight:400">(Direct MP4 link / YouTube / Vimeo / Google Drive)</span></label>
+              <input class="fi" id="ad-video-url" type="url" placeholder="https://example.com/ad-video.mp4  OR  YouTube/Vimeo URL" oninput="updatePreview()">
+              <label class="fl">Video Alt Text / Title</label>
+              <input class="fi" id="ad-video-alt" type="text" placeholder="Video ad description">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+                <div>
+                  <label class="fl">Autoplay Sound</label>
+                  <select class="fi" id="ad-video-sound" style="margin-bottom:0">
+                    <option value="muted">🔇 Muted (Autoplay)</option>
+                    <option value="sound">🔊 With Sound (Click to play)</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="fl">Playback Mode</label>
+                  <select class="fi" id="ad-video-play" style="margin-bottom:0">
+                    <option value="autoplay">▶️ Autoplay (inline)</option>
+                    <option value="click">👆 Click to Play</option>
+                  </select>
+                </div>
+              </div>
+              <label class="fl">Poster / Thumbnail Image URL <span style="font-size:.62rem;color:var(--t4);font-weight:400">(optional)</span></label>
+              <input class="fi" id="ad-video-poster" type="url" placeholder="https://example.com/thumb.jpg" oninput="updatePreview()">
             </div>
 
             <!-- Text -->
@@ -630,6 +662,7 @@ input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);b
                   <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer"><input type="checkbox" id="ad-show-email" onchange="updatePreview()"> Email ID</label>
                   <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer"><input type="checkbox" id="ad-show-url" onchange="updatePreview()"> Website URL</label>
                   <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer"><input type="checkbox" id="ad-show-location" onchange="updatePreview()"> Location/City</label>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer"><input type="checkbox" id="ad-show-address" onchange="updatePreview()"> Full Address</label>
                 </div>
                 <div id="ad-info-fields">
                   <div id="ad-company-row" style="display:none;margin-bottom:6px"><label class="fl" style="margin-bottom:2px">Company Name</label><input class="fi" id="ad-company-name" type="text" placeholder="ABC Academy" style="margin-bottom:0" oninput="updatePreview()"></div>
@@ -637,41 +670,116 @@ input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);b
                   <div id="ad-phone-row" style="display:none;margin-bottom:6px"><label class="fl" style="margin-bottom:2px">Phone / WhatsApp No.</label><input class="fi" id="ad-contact-phone" type="text" placeholder="9099928877" style="margin-bottom:0" oninput="updatePreview()"></div>
                   <div id="ad-email-row" style="display:none;margin-bottom:6px"><label class="fl" style="margin-bottom:2px">Email ID</label><input class="fi" id="ad-contact-email" type="email" placeholder="contact@company.com" style="margin-bottom:0" oninput="updatePreview()"></div>
                   <div id="ad-url-row" style="display:none;margin-bottom:6px"><label class="fl" style="margin-bottom:2px">Website URL</label><input class="fi" id="ad-contact-url" type="url" placeholder="https://yoursite.com" style="margin-bottom:0" oninput="updatePreview()"></div>
-                  <div id="ad-location-row" style="display:none;margin-bottom:0"><label class="fl" style="margin-bottom:2px">Location / City</label><input class="fi" id="ad-contact-location" type="text" placeholder="Mumbai, Maharashtra" style="margin-bottom:0" oninput="updatePreview()"></div>
+                  <div id="ad-location-row" style="display:none;margin-bottom:6px"><label class="fl" style="margin-bottom:2px">Location / City</label><input class="fi" id="ad-contact-location" type="text" placeholder="Mumbai, Maharashtra" style="margin-bottom:0" oninput="updatePreview()"></div>
+                  <div id="ad-address-row" style="display:none;margin-bottom:0"><label class="fl" style="margin-bottom:2px">Full Business Address</label><input class="fi" id="ad-contact-address" type="text" placeholder="Shop No. 5, Main Market, Ahmedabad" style="margin-bottom:0" oninput="updatePreview()"></div>
                 </div>
               </div>
             </div>
 
-            <!-- ══ AI IMAGE PROMPT GENERATOR ══ -->
+            <!-- ══ AI IMAGE + VIDEO PROMPT GENERATOR ══ -->
             <div id="ad-ai-prompt-section" style="display:none;margin-bottom:10px">
               <div style="background:linear-gradient(135deg,rgba(124,58,237,.1),rgba(59,130,246,.08));border:1px solid rgba(124,58,237,.3);border-radius:12px;padding:14px;margin-bottom:4px">
+
+                <!-- Header -->
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:6px">
                   <div style="font-size:.78rem;font-weight:800;color:#a78bfa;display:flex;align-items:center;gap:6px">
-                    🤖 AI Image Prompt Generator
-                    <span style="font-size:.6rem;background:rgba(124,58,237,.3);padding:2px 7px;border-radius:10px;color:#c4b5fd">NEW</span>
+                    🤖 AI Image &amp; Video Prompt Generator
+                    <span style="font-size:.6rem;background:rgba(124,58,237,.3);padding:2px 7px;border-radius:10px;color:#c4b5fd">SMART</span>
                   </div>
-                  <button type="button" class="btn btn-pu btn-sm" onclick="generateAIPrompt()" style="font-size:.7rem">✨ Auto Generate Prompt</button>
-                </div>
-                
-                <!-- Style Options -->
-                <div style="margin-bottom:8px">
-                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🎨 Banner Style</div>
-                  <div style="display:flex;flex-wrap:wrap;gap:5px" id="style-options">
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="modern-bold" checked style="display:none"><span class="style-chip">⚡ Modern Bold</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="luxury-premium" style="display:none"><span class="style-chip">💎 Luxury</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="minimal-clean" style="display:none"><span class="style-chip">🎯 Minimal</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="vibrant-festive" style="display:none"><span class="style-chip">🎉 Festive</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="corporate-professional" style="display:none"><span class="style-chip">👔 Corporate</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="playful-colorful" style="display:none"><span class="style-chip">🌈 Playful</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="dark-neon" style="display:none"><span class="style-chip">🌙 Dark Neon</span></label>
-                    <label style="cursor:pointer"><input type="radio" name="ai-style" value="photo-realistic" style="display:none"><span class="style-chip">📸 Realistic</span></label>
+                  <div style="display:flex;gap:5px;flex-wrap:wrap">
+                    <button type="button" class="btn btn-pu btn-sm" onclick="generateAIPrompt('image')" style="font-size:.7rem">🖼️ Image Prompt</button>
+                    <button type="button" class="btn btn-sm" onclick="generateAIPrompt('video')" style="font-size:.7rem;background:rgba(239,68,68,.15);border:1px solid rgba(239,68,68,.4);color:#f87171">🎬 Video Prompt</button>
                   </div>
                 </div>
 
-                <!-- People in Ad -->
+                <!-- Prompt Type Tabs -->
+                <div style="display:flex;gap:4px;margin-bottom:10px;background:rgba(0,0,0,.2);border-radius:8px;padding:3px">
+                  <button type="button" id="ptab-image" onclick="switchPromptTab('image')" style="flex:1;padding:5px;border:none;border-radius:6px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;background:rgba(124,58,237,.4);color:#e0d7ff;transition:all .2s">🖼️ Image Ad</button>
+                  <button type="button" id="ptab-video" onclick="switchPromptTab('video')" style="flex:1;padding:5px;border:none;border-radius:6px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;background:transparent;color:var(--t3);transition:all .2s">🎬 Video Ad (8s)</button>
+                </div>
+
+                <!-- === IMAGE PROMPT OPTIONS === -->
+                <div id="prompt-image-opts">
+                  <!-- Style -->
+                  <div style="margin-bottom:8px">
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🎨 Banner Style</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px">
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="modern-bold" checked style="display:none"><span class="style-chip">⚡ Modern Bold</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="luxury-premium" style="display:none"><span class="style-chip">💎 Luxury</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="minimal-clean" style="display:none"><span class="style-chip">🎯 Minimal</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="vibrant-festive" style="display:none"><span class="style-chip">🎉 Festive</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="corporate-professional" style="display:none"><span class="style-chip">👔 Corporate</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="playful-colorful" style="display:none"><span class="style-chip">🌈 Playful</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="dark-neon" style="display:none"><span class="style-chip">🌙 Dark Neon</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="photo-realistic" style="display:none"><span class="style-chip">📸 Realistic</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="cinematic" style="display:none"><span class="style-chip">🎥 Cinematic</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-style" value="watercolor" style="display:none"><span class="style-chip">🎨 Watercolor</span></label>
+                    </div>
+                  </div>
+
+                  <!-- Place / Location Scene -->
+                  <div style="margin-bottom:8px">
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">📍 Scene / Place</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px" id="place-chips">
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="auto" checked style="display:none"><span class="place-chip on">🤖 Auto (Smart)</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="modern-office" style="display:none"><span class="place-chip">🏢 Modern Office</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="garden-park" style="display:none"><span class="place-chip">🌿 Garden/Park</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="luxury-interior" style="display:none"><span class="place-chip">🛋️ Luxury Interior</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="shopping-mall" style="display:none"><span class="place-chip">🏪 Shopping Mall</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="classroom" style="display:none"><span class="place-chip">📚 Classroom</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="hospital-clinic" style="display:none"><span class="place-chip">🏥 Clinic/Hospital</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="restaurant" style="display:none"><span class="place-chip">🍽️ Restaurant</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="gym-fitness" style="display:none"><span class="place-chip">💪 Gym/Fitness</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="city-street" style="display:none"><span class="place-chip">🏙️ City Street</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="rooftop" style="display:none"><span class="place-chip">🌆 Rooftop</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-place" value="abstract-studio" style="display:none"><span class="place-chip">🎭 Abstract Studio</span></label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- === VIDEO PROMPT OPTIONS === -->
+                <div id="prompt-video-opts" style="display:none">
+                  <!-- Video Style -->
+                  <div style="margin-bottom:8px">
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🎬 Video Style</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px">
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="cinematic-ad" checked style="display:none"><span class="vstyle-chip">🎥 Cinematic Ad</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="product-showcase" style="display:none"><span class="vstyle-chip">📦 Product Showcase</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="testimonial" style="display:none"><span class="vstyle-chip">👤 Testimonial</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="lifestyle" style="display:none"><span class="vstyle-chip">🌟 Lifestyle</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="animated-motion" style="display:none"><span class="vstyle-chip">✨ Animated</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="explainer" style="display:none"><span class="vstyle-chip">📊 Explainer</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-style" value="emotional-story" style="display:none"><span class="vstyle-chip">❤️ Story</span></label>
+                    </div>
+                  </div>
+                  <!-- Video Place -->
+                  <div style="margin-bottom:8px">
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">📍 Video Scene</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:5px">
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-place" value="auto" checked style="display:none"><span class="place-chip">🤖 Auto</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-place" value="modern-office" style="display:none"><span class="place-chip">🏢 Office</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-place" value="outdoor-natural" style="display:none"><span class="place-chip">🌿 Outdoor</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-place" value="luxury-interior" style="display:none"><span class="place-chip">🛋️ Interior</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-place" value="urban-city" style="display:none"><span class="place-chip">🏙️ City</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-place" value="studio-white" style="display:none"><span class="place-chip">📸 Studio</span></label>
+                    </div>
+                  </div>
+                  <!-- Sound Option for prompt -->
+                  <div style="margin-bottom:8px">
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">🎵 Video Sound</div>
+                    <div style="display:flex;gap:6px">
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-sound-prompt" value="upbeat-background" checked style="display:none"><span class="vstyle-chip">🎵 Upbeat BGM</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-sound-prompt" value="voiceover" style="display:none"><span class="vstyle-chip">🎤 Voiceover</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-sound-prompt" value="no-sound" style="display:none"><span class="vstyle-chip">🔇 No Sound</span></label>
+                      <label style="cursor:pointer"><input type="radio" name="ai-video-sound-prompt" value="dramatic-music" style="display:none"><span class="vstyle-chip">🥁 Dramatic</span></label>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Common: People -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
                   <div>
-                    <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">👨 Males in Ad</div>
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">👨 Males</div>
                     <select class="fi" id="ai-males" style="padding:6px 10px;font-size:.78rem;margin-bottom:0">
                       <option value="0">No male</option>
                       <option value="1" selected>1 male</option>
@@ -680,7 +788,7 @@ input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);b
                     </select>
                   </div>
                   <div>
-                    <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">👩 Females in Ad</div>
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">👩 Females</div>
                     <select class="fi" id="ai-females" style="padding:6px 10px;font-size:.78rem;margin-bottom:0">
                       <option value="0">No female</option>
                       <option value="1" selected>1 female</option>
@@ -690,65 +798,59 @@ input[name="ai-banner-size"]:checked+.size-chip{background:rgba(59,130,246,.2);b
                   </div>
                 </div>
 
-                <!-- Banner Size for Prompt -->
-                <div style="margin-bottom:8px">
-                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">📐 Target Banner Size</div>
-                  <div style="display:flex;flex-wrap:wrap;gap:5px" id="prompt-size-options">
-                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="1200x628" checked style="display:none"><span class="size-chip on">1200×628 (Facebook/Social)</span></label>
+                <!-- Banner Size -->
+                <div style="margin-bottom:8px" id="banner-size-row">
+                  <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">📐 Output Size</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:5px">
+                    <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="1200x628" checked style="display:none"><span class="size-chip">1200×628 (Social)</span></label>
                     <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="728x90" style="display:none"><span class="size-chip">728×90 (Leaderboard)</span></label>
                     <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="300x250" style="display:none"><span class="size-chip">300×250 (Rectangle)</span></label>
                     <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="320x50" style="display:none"><span class="size-chip">320×50 (Mobile)</span></label>
                     <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="970x250" style="display:none"><span class="size-chip">970×250 (Billboard)</span></label>
                     <label style="cursor:pointer"><input type="radio" name="ai-banner-size" value="300x600" style="display:none"><span class="size-chip">300×600 (Half Page)</span></label>
+                    <label style="cursor:pointer" id="video-size-option" style="display:none"><input type="radio" name="ai-banner-size" value="1920x1080" style="display:none"><span class="size-chip">1920×1080 (Video HD)</span></label>
+                    <label style="cursor:pointer" id="video-size-option2" style="display:none"><input type="radio" name="ai-banner-size" value="1080x1920" style="display:none"><span class="size-chip">1080×1920 (Reel/Story)</span></label>
                   </div>
                 </div>
 
-                <!-- Auto-Generated Titles -->
-                <div style="margin-bottom:10px" id="ai-title-suggestions-wrap" style="display:none">
-                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">💡 Suggested Ad Titles <span style="font-size:.6rem;color:var(--t4);text-transform:none;letter-spacing:0">(click to use)</span></div>
+                <!-- Title Suggestions -->
+                <div id="ai-title-suggestions-wrap" style="margin-bottom:10px;display:none">
+                  <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">💡 Suggested Titles <span style="font-size:.6rem;color:var(--t4);text-transform:none;letter-spacing:0">(click to use)</span></div>
                   <div id="ai-title-suggestions" style="display:flex;flex-wrap:wrap;gap:5px"></div>
                 </div>
 
                 <!-- Generated Prompt Output -->
                 <div style="margin-bottom:8px">
                   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
-                    <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">📋 Generated Prompt</div>
+                    <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em">📋 Generated Prompt</div>
                     <div style="display:flex;gap:5px">
                       <button type="button" class="btn btn-gh btn-sm" onclick="regeneratePrompt()" style="font-size:.65rem;padding:3px 8px">🔄 Regenerate</button>
                       <button type="button" class="btn btn-bl btn-sm" onclick="copyPrompt()" style="font-size:.65rem;padding:3px 8px">📋 Copy</button>
                     </div>
                   </div>
-                  <textarea id="ai-generated-prompt" class="fi" rows="4" placeholder="✨ Click 'Auto Generate Prompt' to create an AI prompt based on your ad details..." style="font-size:.78rem;line-height:1.6;resize:vertical;border-color:rgba(124,58,237,.3);background:rgba(124,58,237,.05)"></textarea>
+                  <textarea id="ai-generated-prompt" class="fi" rows="5" placeholder="🖼️ Image Prompt ya 🎬 Video Prompt button click karo — AI-ready strong prompt generate hoga..." style="font-size:.77rem;line-height:1.65;resize:vertical;border-color:rgba(124,58,237,.3);background:rgba(124,58,237,.04);font-family:monospace"></textarea>
                 </div>
 
-                <!-- Direct AI Tool Links -->
+                <!-- AI Tools Grid -->
                 <div>
-                  <div style="font-size:.68rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🚀 Open Prompt in AI Tool</div>
-                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-                    <button type="button" onclick="openInAI('chatgpt')" style="background:rgba(16,163,127,.12);border:1px solid rgba(16,163,127,.3);color:#34d399;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(16,163,127,.2)'" onmouseout="this.style.background='rgba(16,163,127,.12)'">
-                      <span style="font-size:.9rem">🤖</span> ChatGPT
-                    </button>
-                    <button type="button" onclick="openInAI('gemini')" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#60a5fa;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(59,130,246,.2)'" onmouseout="this.style.background='rgba(59,130,246,.12)'">
-                      <span style="font-size:.9rem">✨</span> Gemini
-                    </button>
-                    <button type="button" onclick="openInAI('ideogram')" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(239,68,68,.2)'" onmouseout="this.style.background='rgba(239,68,68,.12)'">
-                      <span style="font-size:.9rem">🖼️</span> Ideogram
-                    </button>
-                    <button type="button" onclick="openInAI('midjourney')" style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);color:#c084fc;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(168,85,247,.2)'" onmouseout="this.style.background='rgba(168,85,247,.12)'">
-                      <span style="font-size:.9rem">🎨</span> Midjourney
-                    </button>
-                    <button type="button" onclick="openInAI('canva')" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fbbf24;padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(245,158,11,.2)'" onmouseout="this.style.background='rgba(245,158,11,.12)'">
-                      <span style="font-size:.9rem">🎯</span> Canva AI
-                    </button>
-                    <button type="button" onclick="openInAI('adobefirefly')" style="background:rgba(184,121,42,.12);border:1px solid rgba(184,121,42,.3);color:var(--gold2);padding:7px 6px;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(184,121,42,.2)'" onmouseout="this.style.background='rgba(184,121,42,.12)'">
-                      <span style="font-size:.9rem">🔥</span> Adobe Firefly
-                    </button>
+                  <div style="font-size:.67rem;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">🚀 Open in AI Tool <span style="font-size:.6rem;color:var(--t4);text-transform:none;letter-spacing:0">(prompt auto-copied)</span></div>
+                  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:5px">
+                    <button type="button" onclick="openInAI('chatgpt')" class="ai-tool-btn" style="background:rgba(16,163,127,.12);border:1px solid rgba(16,163,127,.3);color:#34d399">🤖 ChatGPT</button>
+                    <button type="button" onclick="openInAI('gemini')" class="ai-tool-btn" style="background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:#60a5fa">✨ Gemini</button>
+                    <button type="button" onclick="openInAI('ideogram')" class="ai-tool-btn" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171">🖼️ Ideogram</button>
+                    <button type="button" onclick="openInAI('midjourney')" class="ai-tool-btn" style="background:rgba(168,85,247,.12);border:1px solid rgba(168,85,247,.3);color:#c084fc">🎨 Midjourney</button>
+                    <button type="button" onclick="openInAI('canva')" class="ai-tool-btn" style="background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:#fbbf24">🎯 Canva AI</button>
+                    <button type="button" onclick="openInAI('adobefirefly')" class="ai-tool-btn" style="background:rgba(184,121,42,.12);border:1px solid rgba(184,121,42,.3);color:var(--gold2)">🔥 Firefly</button>
+                    <button type="button" onclick="openInAI('kling')" class="ai-tool-btn" style="background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:#f87171">🎬 Kling AI</button>
+                    <button type="button" onclick="openInAI('runway')" class="ai-tool-btn" style="background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.3);color:#a78bfa">🎥 RunwayML</button>
+                    <button type="button" onclick="openInAI('pika')" class="ai-tool-btn" style="background:rgba(16,163,127,.1);border:1px solid rgba(16,163,127,.25);color:#6ee7b7">⚡ Pika Labs</button>
                   </div>
-                  <div style="font-size:.63rem;color:var(--t4);margin-top:5px;text-align:center">💡 Prompt clipboard mein copy hoga aur AI tool new tab mein khuleg</div>
+                  <div style="font-size:.62rem;color:var(--t4);text-align:center">💡 Prompt clipboard mein copy hoga → AI tool open hoga → Ctrl+V paste karo → Generate → URL yahan paste karo</div>
                 </div>
+
               </div>
             </div>
-            <!-- ══ END AI IMAGE PROMPT GENERATOR ══ -->
+            <!-- ══ END AI PROMPT GENERATOR ══ -->
 
             <!-- HTML -->
             <div id="ad-html-fields" style="display:none">
@@ -1928,7 +2030,7 @@ function openSheetsConfig(){ openSheetLink(); }
 function openEditUser(uid) {
   var u=_users.find(function(x){return x.id===uid;})||_access.find(function(x){return x.id===uid;});
   if(!u) return;
-  $id('eu-id').value=uid;
+  if($id('eu-id')) $id('eu-id').value=uid;
   // Header
   var av=$id('eu-avatar'); if(av) av.textContent=(u.name||'U').charAt(0).toUpperCase();
   set('eu-name', x(u.name||'Unknown'));
@@ -1941,10 +2043,10 @@ function openEditUser(uid) {
     else sb.innerHTML='<span style="font-size:.7rem;padding:2px 8px;background:rgba(5,150,105,.15);color:#34d399;border-radius:20px;border:1px solid rgba(5,150,105,.3)">🟢 Active</span>';
   }
   // Details tab
-  $id('eu-plan').value=u.planType||'free';
-  $id('eu-exp').value=u.planExpiry?u.planExpiry.substring(0,10):'';
-  $id('eu-amt').value=u.paidAmount||0;
-  $id('eu-note').value=u.adminNote||'';
+  if($id('eu-plan')) $id('eu-plan').value=u.planType||'free';
+  if($id('eu-exp'))  $id('eu-exp').value=u.planExpiry?u.planExpiry.substring(0,10):'';
+  if($id('eu-amt'))  $id('eu-amt').value=u.paidAmount||0;
+  if($id('eu-note')) $id('eu-note').value=u.adminNote||'';
   // Actions tab pre-fill
   if($id('eu-susp-reason')) $id('eu-susp-reason').value='';
   if($id('eu-ban-reason')) $id('eu-ban-reason').value=u.banReason||'';
@@ -1954,19 +2056,24 @@ function openEditUser(uid) {
   openM('m-edit-user');
 }
 function euTab(tab){
-  $id('eu-pane-details').style.display=tab==='details'?'block':'none';
-  $id('eu-pane-actions').style.display=tab==='actions'?'block':'none';
-  $id('eu-tab-details').style.background=tab==='details'?'var(--bg2)':'transparent';
-  $id('eu-tab-details').style.color=tab==='details'?'var(--t1)':'var(--t3)';
-  $id('eu-tab-actions').style.background=tab==='actions'?'var(--bg2)':'transparent';
-  $id('eu-tab-actions').style.color=tab==='actions'?'var(--t1)':'var(--t3)';
+  var pd=$id('eu-pane-details'),pa=$id('eu-pane-actions');
+  var td=$id('eu-tab-details'),ta=$id('eu-tab-actions');
+  if(pd) pd.style.display=tab==='details'?'block':'none';
+  if(pa) pa.style.display=tab==='actions'?'block':'none';
+  if(td){ td.style.background=tab==='details'?'var(--bg2)':'transparent'; td.style.color=tab==='details'?'var(--t1)':'var(--t3)'; }
+  if(ta){ ta.style.background=tab==='actions'?'var(--bg2)':'transparent'; ta.style.color=tab==='actions'?'var(--t1)':'var(--t3)'; }
 }
 function saveUserEdit() {
-  var uid=$id('eu-id').value; if(!uid) return;
-  var upd={planType:$id('eu-plan').value,planExpiry:$id('eu-exp').value?new Date($id('eu-exp').value).toISOString():null,
-    paidAmount:parseInt($id('eu-amt').value)||0,adminNote:$id('eu-note').value,
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
+  var planEl=$id('eu-plan'); var expEl=$id('eu-exp'); var amtEl=$id('eu-amt'); var noteEl=$id('eu-note');
+  var upd={
+    planType:planEl?planEl.value:'free',
+    planExpiry:expEl&&expEl.value?new Date(expEl.value).toISOString():null,
+    paidAmount:amtEl?parseInt(amtEl.value)||0:0,
+    adminNote:noteEl?noteEl.value:'',
     lastModifiedBy:_user?_user.email:'admin',
-    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()};
+    lastModifiedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
   db.collection('users').doc(uid).update(upd).then(function(){
     closeM('m-edit-user'); toast('✅ User updated!'); loadUsers(); loadAccess();
   }).catch(function(e){toast('❌ '+e.message);});
@@ -1992,8 +2099,27 @@ function suspendUser(){
   }).catch(function(e){toast('❌ '+e.message);});
 }
 
+function suspendUser(){
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
+  var days=parseInt(($id('eu-susp-dur')||{value:'1'}).value)||1;
+  var reason=(($id('eu-susp-reason')||{value:''}).value||'').trim()||'Policy violation';
+  if(!confirm('User ko '+days+' din ke liye suspend karna chahte hain?\nReason: '+reason)) return;
+  var suspendUntil=new Date(Date.now()+days*864e5).toISOString();
+  db.collection('users').doc(uid).update({
+    suspended:true, suspendUntil:suspendUntil, suspendReason:reason,
+    planType:'free',
+    suspendedBy:_user?_user.email:'admin',
+    suspendedAt:firebase.firestore.FieldValue.serverTimestamp(),
+    lastModifiedBy:_user?_user.email:'admin'
+  }).then(function(){
+    closeM('m-edit-user');
+    toast('🟡 User '+days+'d ke liye suspended. Reason: '+reason);
+    loadUsers();
+  }).catch(function(e){toast('❌ '+e.message);});
+}
+
 function unsuspendUser(){
-  var uid=$id('eu-id').value; if(!uid) return;
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
   if(!confirm('User ko unsuspend karna chahte hain?')) return;
   db.collection('users').doc(uid).update({
     suspended:false, suspendUntil:null, suspendReason:null,
@@ -2005,8 +2131,8 @@ function unsuspendUser(){
 }
 
 function banUser(){
-  var uid=$id('eu-id').value; if(!uid) return;
-  var reason=($id('eu-ban-reason').value||'').trim()||'Permanent ban';
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
+  var reason=(($id('eu-ban-reason')||{value:''}).value||'').trim()||'Permanent ban';
   if(!confirm('User ko PERMANENTLY BAN karna chahte hain?\nReason: '+reason+'\n\nYe action serious hai — user kuch bhi access nahi kar sakega.')) return;
   db.collection('users').doc(uid).update({
     banned:true, banReason:reason, suspended:false,
@@ -2020,7 +2146,7 @@ function banUser(){
 }
 
 function unbanUser(){
-  var uid=$id('eu-id').value; if(!uid) return;
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
   if(!confirm('User ka ban hatana chahte hain?')) return;
   db.collection('users').doc(uid).update({
     banned:false, banReason:null,
@@ -2032,15 +2158,13 @@ function unbanUser(){
 }
 
 function permanentDeleteUser(){
-  var uid=$id('eu-id').value; if(!uid) return;
-  var confirm_text=($id('eu-del-confirm').value||'').trim();
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
+  var confirm_text=(($id('eu-del-confirm')||{value:''}).value||'').trim();
   if(confirm_text!=='DELETE'){ toast('❌ "DELETE" type karo confirm karne ke liye'); return; }
   var u=_users.find(function(x){return x.id===uid;});
   var email=u?u.email:'';
   if(!confirm('PERMANENTLY DELETE karna chahte hain?\n\nUser: '+email+'\n\nYe action REVERSIBLE NAHI HAI. Poora data delete ho jaayega.')) return;
-  // Delete from users collection
   db.collection('users').doc(uid).delete().then(function(){
-    // Also mark payments as deleted_user
     if(email){
       db.collection('payments').where('userEmail','==',email).get().then(function(snap){
         snap.forEach(function(d){
@@ -2055,8 +2179,9 @@ function permanentDeleteUser(){
 }
 
 function disableUser() {
-  var uid=$id('eu-id').value;
+  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:'';
   if(!confirm('User disable karna chahte hain?')) return;
+  if(!uid) return;
   db.collection('users').doc(uid).update({suspended:true,suspendReason:'Disabled by admin',planType:'free',
     suspendedBy:_user?_user.email:'admin'}).then(function(){
     closeM('m-edit-user'); toast('User disabled'); loadUsers();
@@ -2079,7 +2204,7 @@ function grantAccess() {
     lastGrantedAt:firebase.firestore.FieldValue.serverTimestamp()
   },{merge:true}).then(function(){
     toast('✅ Access granted! '+plan+' — '+days+' days');
-    $id('ac-em').value='';$id('ac-amt').value='';
+    if($id('ac-em')) $id('ac-em').value=''; if($id('ac-amt')) $id('ac-amt').value='';
     loadUsers();loadAccess();
   }).catch(function(e){toast('❌ '+e.message);});
 }
@@ -2166,7 +2291,7 @@ var _curPay=null;
 function openApprove(pid){
   _curPay=_pendingPays.find(function(p){return p.id===pid;});
   if(!_curPay) return;
-  $id('ap-pid').value=pid;
+  if($id('ap-pid')) $id('ap-pid').value=pid;
   set('ap-name',x(_curPay.userName||'—'));
   set('ap-email',x(_curPay.userEmail||'—'));
 
@@ -2336,7 +2461,7 @@ function renderFranchiseInquiries(docs) {
   var fb=$id('fi-badge'); if(fb){fb.style.display=newC?'':'none';fb.textContent=newC;}
 }
 function convertFranchise(email){
-  $id('ac-em').value=email; $id('ac-plan').value='franchise';
+  if($id('ac-em')) $id('ac-em').value=email; if($id('ac-plan')) $id('ac-plan').value='franchise';
   show('access',document.getElementById('n-access'));
   toast('✅ Email pre-filled — set duration aur Grant karo');
 }
@@ -2378,8 +2503,9 @@ function loadTools(){
 }
 function renderTools(){
   var list=Object.values(_tools);
+  var grid=$id('tools-grid'); if(!grid) return;
   var sMap={live:'<span style="color:var(--neon);font-size:.7rem">🟢 LIVE</span>',off:'<span style="color:var(--red);font-size:.7rem">🔴 OFF</span>',coming_soon:'<span style="color:#fbbf24;font-size:.7rem">🟡 SOON</span>'};
-  $id('tools-grid').innerHTML=list.map(function(t){
+  grid.innerHTML=list.map(function(t){
     return '<div class="tc">'+
       '<div class="tc-icon">'+t.icon+'</div>'+
       '<div class="tc-info"><div class="tc-name">'+x(t.name)+'</div>'+
@@ -2423,15 +2549,17 @@ function updateUnsaved(){
 }
 function openEditTool(id){
   var t=_tools[id];if(!t)return;
-  $id('et-id').value=id;$id('et-name').value=t.name||'';
-  $id('et-status').value=t.status||'live';$id('et-plan').value=t.plan||'free';
+  if($id('et-id')) $id('et-id').value=id;
+  if($id('et-name')) $id('et-name').value=t.name||'';
+  if($id('et-status')) $id('et-status').value=t.status||'live';
+  if($id('et-plan')) $id('et-plan').value=t.plan||'free';
   openM('m-edit-tool');
 }
 function saveToolEdit(){
-  var id=$id('et-id').value;if(!id||!_tools[id])return;
-  _tools[id].name=$id('et-name').value.trim()||_tools[id].name;
-  _tools[id].status=$id('et-status').value;
-  _tools[id].plan=$id('et-plan').value;
+  var idEl=$id('et-id'); var id=idEl?idEl.value:''; if(!id||!_tools[id])return;
+  if($id('et-name')) _tools[id].name=$id('et-name').value.trim()||_tools[id].name;
+  if($id('et-status')) _tools[id].status=$id('et-status').value;
+  if($id('et-plan')) _tools[id].plan=$id('et-plan').value;
   _unsaved++;updateUnsaved();closeM('m-edit-tool');renderTools();updateToolStats();
   toast('✅ Tool updated — Save Changes karo to apply');
 }
@@ -2985,10 +3113,11 @@ function loadChartJS(cb){
 
 // ── BLOG / ANNOUNCEMENTS ──
 function postBlog(){
-  var title=($id('bl-title').value||'').trim();
-  var body=($id('bl-body').value||'').trim();
-  var type=$id('bl-type').value;
-  var active=$id('bl-active').value==='yes';
+  var titleEl=$id('bl-title'); var bodyEl=$id('bl-body');
+  var title=(titleEl?titleEl.value:'').trim();
+  var body=(bodyEl?bodyEl.value:'').trim();
+  var type=$id('bl-type')?$id('bl-type').value:'notice';
+  var active=$id('bl-active')?$id('bl-active').value==='yes':true;
   if(!title||!body){toast('Title aur message dono required hain');return;}
   if(!_user){toast('Login required');return;}
   var doc={
@@ -2999,7 +3128,7 @@ function postBlog(){
   };
   db.collection('announcements').add(doc).then(function(){
     toast('Announcement published!');
-    $id('bl-title').value=''; $id('bl-body').value='';
+    if($id('bl-title')) $id('bl-title').value=''; if($id('bl-body')) $id('bl-body').value='';
     loadBlog();
   }).catch(function(e){toast('Error: '+e.message);});
 }
@@ -3174,15 +3303,20 @@ function drawRevenueChart(){
 function adTypeChange(){
   var t = $id('ad-type') ? $id('ad-type').value : 'image';
   var imgF  = $id('ad-img-fields');
+  var vidF  = $id('ad-video-fields');
   var txtF  = $id('ad-text-fields');
   var htmF  = $id('ad-html-fields');
   var clickF = $id('ad-click-url');
   if(imgF)  imgF.style.display  = t==='image' ? 'block' : 'none';
+  if(vidF)  vidF.style.display  = t==='video' ? 'block' : 'none';
   if(txtF)  txtF.style.display  = t==='text'  ? 'block' : 'none';
   if(htmF)  htmF.style.display  = t==='html'  ? 'block' : 'none';
-  // Show AI prompt generator only for text ads
+  // Show AI prompt generator for image, video and text ads
   var aiSec = $id('ad-ai-prompt-section');
-  if(aiSec) aiSec.style.display = t==='text' ? 'block' : 'none';
+  if(aiSec) aiSec.style.display = (t==='image'||t==='video'||t==='text') ? 'block' : 'none';
+  // Auto-switch prompt tab to match ad type
+  if(t==='video') switchPromptTab('video');
+  else switchPromptTab('image');
   // URL optional for text ads
   if(clickF){
     var lbl = clickF.previousElementSibling;
@@ -3191,7 +3325,7 @@ function adTypeChange(){
       : 'Click URL *';
   }
   // Wire up info field checkboxes
-  ['company','offer','phone','email','url','location'].forEach(function(k){
+  ['company','offer','phone','email','url','location','address'].forEach(function(k){
     var cb = $id('ad-show-'+k);
     var row = $id('ad-'+k+'-row');
     if(cb && row){
@@ -3231,6 +3365,50 @@ function updatePreview(){
         '</div>';
     }
 
+  } else if(type==='video'){
+    var vurl    = ($id('ad-video-url')||{}).value||'';
+    var vposter = ($id('ad-video-poster')||{}).value||'';
+    var vsound  = ($id('ad-video-sound')||{value:'muted'}).value;
+    var vplay   = ($id('ad-video-play')||{value:'autoplay'}).value;
+    var valt    = ($id('ad-video-alt')||{}).value||'Video Ad';
+    var clickUrl3 = ($id('ad-click-url')||{}).value||'';
+    if(vurl){
+      // Detect if YouTube/Vimeo
+      var isYT = /youtube\.com|youtu\.be/i.test(vurl);
+      var isVimeo = /vimeo\.com/i.test(vurl);
+      var isMP4 = /\.mp4|\.webm|\.ogg/i.test(vurl);
+      var embedHtml = '';
+      if(isYT){
+        var ytId = vurl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if(ytId) embedHtml = '<iframe width="100%" height="140" src="https://www.youtube.com/embed/'+ytId[1]+'?autoplay=0&mute=1" frameborder="0" allowfullscreen style="border-radius:6px;display:block"></iframe>';
+      } else if(isVimeo){
+        var vmId = vurl.match(/vimeo\.com\/(\d+)/);
+        if(vmId) embedHtml = '<iframe width="100%" height="140" src="https://player.vimeo.com/video/'+vmId[1]+'?autoplay=0&muted=1" frameborder="0" allowfullscreen style="border-radius:6px;display:block"></iframe>';
+      } else {
+        var autoattr = (vplay==='autoplay') ? 'autoplay loop playsinline' : '';
+        var muteattr = (vsound==='muted') ? 'muted' : '';
+        var ctrlattr = 'controls';
+        embedHtml = '<video '+autoattr+' '+muteattr+' '+ctrlattr+' style="width:100%;max-height:160px;display:block;border-radius:6px;background:#000"'+(vposter?' poster="'+x(vposter)+'"':'')+' onclick="this.paused?this.play():this.pause()"><source src="'+x(vurl)+'" type="video/mp4"><source src="'+x(vurl)+'">Video not supported</video>';
+      }
+      box.innerHTML =
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;overflow:hidden">'+
+          (clickUrl3 ? '<a href="'+x(clickUrl3)+'" target="_blank" style="display:block">' : '') +
+          embedHtml +
+          (clickUrl3 ? '</a>' : '') +
+          '<div style="padding:5px 8px;font-size:.62rem;color:var(--t4);display:flex;justify-content:space-between;align-items:center">'+
+            '<span>🎬 Video Ad Preview</span>'+
+            '<span style="font-size:.6rem">'+(vsound==='muted'?'🔇 Muted':'🔊 Sound')+' · '+(vplay==='autoplay'?'▶ Autoplay':'👆 Click-play')+'</span>'+
+          '</div>'+
+        '</div>';
+    } else {
+      box.innerHTML =
+        '<div style="width:100%;background:#0a0a0a;border-radius:8px;border:2px dashed rgba(239,68,68,.2);padding:24px;text-align:center">'+
+          '<div style="font-size:1.8rem;margin-bottom:6px">🎬</div>'+
+          '<div style="font-size:.75rem;color:var(--t4)">Video URL daalo to preview dikhega</div>'+
+          '<div style="font-size:.65rem;color:var(--t4);margin-top:4px">Supported: MP4 · WebM · YouTube · Vimeo</div>'+
+        '</div>';
+    }
+
   } else if(type==='text'){
     var hl       = ($id('ad-text-headline')||{}).value || 'Aapka Ad Headline Yahan';
     var dsc      = ($id('ad-text-desc')||{}).value     || '';
@@ -3239,22 +3417,19 @@ function updatePreview(){
     var clickUrl2 = ($id('ad-click-url')||{}).value    || '';
     var isPlaceholder = !($id('ad-text-headline')||{}).value;
 
-    // Compute contrasting text color
-    var r=parseInt(bg.slice(1,3),16)||232,
-        g=parseInt(bg.slice(3,5),16)||82,
-        b2=parseInt(bg.slice(5,7),16)||10;
+    var r=parseInt(bg.slice(1,3),16)||232, g=parseInt(bg.slice(3,5),16)||82, b2=parseInt(bg.slice(5,7),16)||10;
     var bright = (r*299+g*587+b2*114)/1000;
     var tc    = bright > 128 ? '#222222' : '#ffffff';
     var btnBg = bright > 128 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.25)';
 
-    // Gather optional info fields
     var infoHtml = '';
-    var companyName = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name'))  ? ($id('ad-company-name').value||'').trim()     : '';
-    var offerText   = ($id('ad-show-offer')  &&$id('ad-show-offer').checked  &&$id('ad-offer-text'))    ? ($id('ad-offer-text').value||'').trim()       : '';
-    var phone       = ($id('ad-show-phone')  &&$id('ad-show-phone').checked  &&$id('ad-contact-phone')) ? ($id('ad-contact-phone').value||'').trim()    : '';
-    var email2      = ($id('ad-show-email')  &&$id('ad-show-email').checked  &&$id('ad-contact-email')) ? ($id('ad-contact-email').value||'').trim()    : '';
-    var url2        = ($id('ad-show-url')    &&$id('ad-show-url').checked    &&$id('ad-contact-url'))   ? ($id('ad-contact-url').value||'').trim()      : '';
-    var location2   = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location'))? ($id('ad-contact-location').value||'').trim():  '';
+    var companyName = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name'))  ? ($id('ad-company-name').value||'').trim()  : '';
+    var offerText   = ($id('ad-show-offer')  &&$id('ad-show-offer').checked  &&$id('ad-offer-text'))    ? ($id('ad-offer-text').value||'').trim()    : '';
+    var phone       = ($id('ad-show-phone')  &&$id('ad-show-phone').checked  &&$id('ad-contact-phone')) ? ($id('ad-contact-phone').value||'').trim() : '';
+    var email2      = ($id('ad-show-email')  &&$id('ad-show-email').checked  &&$id('ad-contact-email')) ? ($id('ad-contact-email').value||'').trim() : '';
+    var url2        = ($id('ad-show-url')    &&$id('ad-show-url').checked    &&$id('ad-contact-url'))   ? ($id('ad-contact-url').value||'').trim()   : '';
+    var location2   = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location'))? ($id('ad-contact-location').value||'').trim() : '';
+    var address2    = ($id('ad-show-address')&&$id('ad-show-address').checked&&$id('ad-contact-address'))  ? ($id('ad-contact-address').value||'').trim()  : '';
 
     if(companyName) infoHtml += '<div style="font-size:.73rem;font-weight:800;color:'+tc+';letter-spacing:.03em;margin-bottom:3px">🏢 '+x(companyName)+'</div>';
     if(offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;color:'+tc+';background:rgba(255,255,255,.2);display:inline-block;padding:2px 12px;border-radius:20px;margin-bottom:5px">🎉 '+x(offerText)+'</div>';
@@ -3263,7 +3438,8 @@ function updatePreview(){
     if(email2) contactLine += '<a href="mailto:'+x(email2)+'" style="color:'+tc+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">✉️ '+x(email2)+'</a>';
     if(url2)   contactLine += '<a href="'+x(url2)+'" target="_blank" style="color:'+tc+';text-decoration:underline;font-size:.7rem" onclick="event.stopPropagation()">🌐 '+x(url2.replace(/^https?:\/\//,''))+'</a>';
     if(contactLine) infoHtml += '<div style="margin-bottom:5px;line-height:1.9">'+contactLine+'</div>';
-    if(location2)   infoHtml += '<div style="font-size:.68rem;color:'+tc+';opacity:.82;margin-bottom:4px">📍 '+x(location2)+'</div>';
+    if(location2) infoHtml += '<div style="font-size:.68rem;color:'+tc+';opacity:.82;margin-bottom:3px">📍 '+x(location2)+'</div>';
+    if(address2)  infoHtml += '<div style="font-size:.66rem;color:'+tc+';opacity:.75;margin-bottom:4px">🏠 '+x(address2)+'</div>';
 
     box.innerHTML =
       '<div style="width:100%">'+
@@ -3357,10 +3533,20 @@ function saveAd(){
       phone:       ($id('ad-contact-phone')    &&$id('ad-show-phone')  &&$id('ad-show-phone').checked)     ? ($id('ad-contact-phone').value||'').trim()    : '',
       email:       ($id('ad-contact-email')    &&$id('ad-show-email')  &&$id('ad-show-email').checked)     ? ($id('ad-contact-email').value||'').trim()    : '',
       url:         ($id('ad-contact-url')      &&$id('ad-show-url')    &&$id('ad-show-url').checked)       ? ($id('ad-contact-url').value||'').trim()      : '',
-      location:    ($id('ad-contact-location') &&$id('ad-show-location')&&$id('ad-show-location').checked) ? ($id('ad-contact-location').value||'').trim() : ''
+      location:    ($id('ad-contact-location') &&$id('ad-show-location')&&$id('ad-show-location').checked) ? ($id('ad-contact-location').value||'').trim() : '',
+      address:     ($id('ad-contact-address')  &&$id('ad-show-address')&&$id('ad-show-address').checked)   ? ($id('ad-contact-address').value||'').trim()  : ''
     };
+    adData.showFields.address = ($id('ad-show-address')&&$id('ad-show-address').checked)||false;
     // Text ads don't require URL
     if(!clickUrl) adData.clickUrl = '';
+  } else if(type==='video'){
+    var videoUrl = ($id('ad-video-url')||{value:''}).value.trim();
+    if(!videoUrl){ toast('Video URL required'); return; }
+    adData.videoUrl    = videoUrl;
+    adData.videoAlt    = ($id('ad-video-alt')||{value:title}).value.trim()||title;
+    adData.videoPoster = ($id('ad-video-poster')||{value:''}).value.trim()||'';
+    adData.videoSound  = ($id('ad-video-sound')||{value:'muted'}).value;
+    adData.videoPlay   = ($id('ad-video-play')||{value:'autoplay'}).value;
   } else if(type==='html'){
     var htmlCode = ($id('ad-html-code').value||'').trim();
     if(!htmlCode){ toast('HTML code required'); return; }
@@ -3394,7 +3580,8 @@ function saveAd(){
 function clearAdForm(){
   var fields = ['ad-title','ad-img-url','ad-img-alt','ad-text-headline',
     'ad-text-desc','ad-text-btn','ad-click-url','ad-advertiser','ad-html-code',
-    'ad-company-name','ad-offer-text','ad-contact-phone','ad-contact-email','ad-contact-url','ad-contact-location'];
+    'ad-company-name','ad-offer-text','ad-contact-phone','ad-contact-email','ad-contact-url','ad-contact-location','ad-contact-address',
+    'ad-video-url','ad-video-alt','ad-video-poster'];
   fields.forEach(function(id){ var el=$id(id); if(el) el.value=''; });
   if($id('ad-edit-id')) $id('ad-edit-id').value='';
   if($id('ad-type')) $id('ad-type').value='image';
@@ -3403,8 +3590,8 @@ function clearAdForm(){
   if($id('ad-expiry')) $id('ad-expiry').value='';
   if($id('ad-size')) $id('ad-size').value='auto';
   if($id('ad-text-bg')) $id('ad-text-bg').value='#e8520a';
-  // Clear info field checkboxes
-  ['company','offer','phone','email','url','location'].forEach(function(k){
+  // Clear info field checkboxes (including address)
+  ['company','offer','phone','email','url','location','address'].forEach(function(k){
     var cb = $id('ad-show-'+k); if(cb) cb.checked=false;
     var row = $id('ad-'+k+'-row'); if(row) row.style.display='none';
   });
@@ -3451,6 +3638,7 @@ function loadAds(){
         }).join(' ');
         var preview='';
         if(d.type==='image'&&d.imgUrl) preview='<img src="'+x(d.imgUrl)+'" style="height:26px;width:44px;object-fit:cover;border-radius:4px;border:1px solid rgba(255,255,255,.1)" onerror="this.style.display=\'none\'">';
+        else if(d.type==='video') preview='<span style="font-size:.7rem;background:rgba(239,68,68,.2);color:#f87171;padding:2px 6px;border-radius:4px;font-weight:700">🎬</span>';
         else if(d.type==='text') preview='<span style="font-size:.7rem;color:var(--gold2);font-weight:600">T</span>';
         else preview='<span style="font-size:.7rem;color:#7c3aed;font-weight:600">H</span>';
         var isActive=d.status==='active'&&!expired;
@@ -3523,19 +3711,25 @@ function editAd(id){
     if(d.type==='image'){
       if($id('ad-img-url')) $id('ad-img-url').value=d.imgUrl||'';
       if($id('ad-img-alt')) $id('ad-img-alt').value=d.imgAlt||'';
+    } else if(d.type==='video'){
+      if($id('ad-video-url'))    $id('ad-video-url').value=d.videoUrl||'';
+      if($id('ad-video-alt'))    $id('ad-video-alt').value=d.videoAlt||'';
+      if($id('ad-video-poster')) $id('ad-video-poster').value=d.videoPoster||'';
+      if($id('ad-video-sound'))  $id('ad-video-sound').value=d.videoSound||'muted';
+      if($id('ad-video-play'))   $id('ad-video-play').value=d.videoPlay||'autoplay';
     } else if(d.type==='text'){
       if($id('ad-text-headline')) $id('ad-text-headline').value=d.headline||'';
       if($id('ad-text-desc'))     $id('ad-text-desc').value=d.description||'';
       if($id('ad-text-btn'))      $id('ad-text-btn').value=d.btnText||'Learn More';
       if($id('ad-text-bg'))       $id('ad-text-bg').value=d.bgColor||'#e8520a';
-      // Restore info display fields
+      // Restore info display fields (including address)
       var sf = d.showFields||{};
       var inf = d.infoFields||{};
-      ['company','offer','phone','email','url','location'].forEach(function(k){
-        var cb = $id('ad-show-'+k);
+      ['company','offer','phone','email','url','location','address'].forEach(function(k){
+        var cb  = $id('ad-show-'+k);
         var row = $id('ad-'+k+'-row');
-        if(cb){ cb.checked = sf[k]||false; }
-        if(row){ row.style.display = (sf[k]?'block':'none'); }
+        if(cb)  cb.checked = sf[k]||false;
+        if(row) row.style.display = (sf[k]?'block':'none');
       });
       if($id('ad-company-name')     && inf.companyName) $id('ad-company-name').value=inf.companyName;
       if($id('ad-offer-text')       && inf.offerText)   $id('ad-offer-text').value=inf.offerText;
@@ -3543,6 +3737,7 @@ function editAd(id){
       if($id('ad-contact-email')    && inf.email)       $id('ad-contact-email').value=inf.email;
       if($id('ad-contact-url')      && inf.url)         $id('ad-contact-url').value=inf.url;
       if($id('ad-contact-location') && inf.location)    $id('ad-contact-location').value=inf.location;
+      if($id('ad-contact-address')  && inf.address)     $id('ad-contact-address').value=inf.address;
     } else if(d.type==='html'){
       if($id('ad-html-code')) $id('ad-html-code').value=d.htmlCode||'';
     }
@@ -3558,147 +3753,340 @@ function editAd(id){
 }
 
 // ═══════════════════════════════════════════════
-// 🤖 AI IMAGE PROMPT GENERATOR
+// 🤖 AI IMAGE + VIDEO PROMPT GENERATOR
 // ═══════════════════════════════════════════════
+
+var _currentPromptTab = 'image';
+var _currentVariantIdx = 0;
+
+function switchPromptTab(tab){
+  _currentPromptTab = tab;
+  var imgOpts = $id('prompt-image-opts');
+  var vidOpts = $id('prompt-video-opts');
+  var tabImg  = $id('ptab-image');
+  var tabVid  = $id('ptab-video');
+  if(imgOpts) imgOpts.style.display = tab==='image' ? 'block' : 'none';
+  if(vidOpts) vidOpts.style.display = tab==='video' ? 'block' : 'none';
+  if(tabImg){ tabImg.style.background = tab==='image' ? 'rgba(124,58,237,.4)' : 'transparent'; tabImg.style.color = tab==='image' ? '#e0d7ff' : 'var(--t3)'; }
+  if(tabVid){ tabVid.style.background = tab==='video' ? 'rgba(239,68,68,.3)' : 'transparent';  tabVid.style.color = tab==='video' ? '#fca5a5' : 'var(--t3)'; }
+  // Show/hide video size options
+  var vs1 = $id('video-size-option'); var vs2 = $id('video-size-option2');
+  if(vs1) vs1.style.display = tab==='video' ? 'inline-block' : 'none';
+  if(vs2) vs2.style.display = tab==='video' ? 'inline-block' : 'none';
+}
 
 function getAdContext(){
   var headline = ($id('ad-text-headline')||{}).value||'';
   var desc     = ($id('ad-text-desc')||{}).value||'';
-  var offer    = ($id('ad-show-offer')&&$id('ad-show-offer').checked&&$id('ad-offer-text')) ? ($id('ad-offer-text').value||'') : '';
-  var company  = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name')) ? ($id('ad-company-name').value||'') : '';
+  var offer    = ($id('ad-show-offer')&&$id('ad-show-offer').checked&&$id('ad-offer-text'))    ? ($id('ad-offer-text').value||'')    : '';
+  var company  = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name'))? ($id('ad-company-name').value||'') : ($id('ad-company-name')?$id('ad-company-name').value||'':'');
+  var phone    = ($id('ad-show-phone')&&$id('ad-show-phone').checked&&$id('ad-contact-phone'))  ? ($id('ad-contact-phone').value||'')  : '';
+  var website  = ($id('ad-show-url')&&$id('ad-show-url').checked&&$id('ad-contact-url'))        ? ($id('ad-contact-url').value||'')    : '';
+  var email    = ($id('ad-show-email')&&$id('ad-show-email').checked&&$id('ad-contact-email'))  ? ($id('ad-contact-email').value||'')  : '';
+  var location = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location'))? ($id('ad-contact-location').value||'') : '';
+  var address  = ($id('ad-show-address')&&$id('ad-show-address').checked&&$id('ad-contact-address'))  ? ($id('ad-contact-address').value||'')  : '';
   var title    = ($id('ad-title')||{}).value||'';
-  var location = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location')) ? ($id('ad-contact-location').value||'') : '';
-  return { headline:headline, desc:desc, offer:offer, company:company, title:title, location:location };
+  var advertiser = ($id('ad-advertiser')||{}).value||'';
+  // fallback company from advertiser name or title
+  if(!company) company = advertiser || (title.split('—')[0].trim()) || '';
+  return { headline, desc, offer, company, phone, website, email, location, address, title, advertiser };
 }
 
 function getSelectedStyle(){
   var el = document.querySelector('input[name="ai-style"]:checked');
   return el ? el.value : 'modern-bold';
 }
-
 function getSelectedBannerSize(){
   var el = document.querySelector('input[name="ai-banner-size"]:checked');
   return el ? el.value : '1200x628';
 }
+function getSelectedPlace(){
+  var el = document.querySelector('input[name="ai-place"]:checked');
+  return el ? el.value : 'auto';
+}
+function getSelectedVideoStyle(){
+  var el = document.querySelector('input[name="ai-video-style"]:checked');
+  return el ? el.value : 'cinematic-ad';
+}
+function getSelectedVideoPlace(){
+  var el = document.querySelector('input[name="ai-video-place"]:checked');
+  return el ? el.value : 'auto';
+}
+function getSelectedVideoSound(){
+  var el = document.querySelector('input[name="ai-video-sound-prompt"]:checked');
+  return el ? el.value : 'upbeat-background';
+}
 
 var _styleDescriptions = {
-  'modern-bold':           'bold modern design with sharp typography, high contrast colors, dynamic energy, contemporary feel',
-  'luxury-premium':        'luxury premium look, gold accents, elegant serif fonts, dark rich background, high-end sophisticated style',
-  'minimal-clean':         'clean minimal design, lots of white space, simple typography, subtle colors, refined and understated',
-  'vibrant-festive':       'vibrant festive colors, celebration mood, bright oranges and yellows, confetti elements, energetic joyful atmosphere',
-  'corporate-professional':'professional corporate style, clean layout, trustworthy colors (blue/grey), formal business feel',
-  'playful-colorful':      'playful colorful design, fun illustrated elements, bright rainbow palette, cheerful and friendly tone',
-  'dark-neon':             'dark background with neon glowing accents, futuristic cyberpunk vibe, electric colors (cyan, purple, pink)',
-  'photo-realistic':       'photorealistic high-quality photography, natural lighting, real-world scene, cinematic quality'
+  'modern-bold':           'bold modern design, sharp sans-serif typography, high contrast color blocks, dynamic diagonal composition, vibrant energy',
+  'luxury-premium':        'ultra-luxury premium aesthetics, 24K gold metallic accents, deep navy/black background, elegant serif fonts (Bodoni/Playfair), refined minimalist spacing, exclusive high-end feel',
+  'minimal-clean':         'ultra-clean minimalist design, generous white/neutral space, single accent color, precise typographic hierarchy, no clutter, Scandinavian-inspired restraint',
+  'vibrant-festive':       'vibrant festival celebration, confetti, bright warm colors (saffron, electric yellow, coral), bold decorative typography, Indian festive motifs, high energy and joy',
+  'corporate-professional':'professional corporate design, clean grid layout, trust-building blue/grey palette, authoritative bold headlines, data visualization elements, executive feel',
+  'playful-colorful':      'playful colorful design, rounded bubbly shapes, rainbow gradient palette, kawaii-inspired illustrated characters, fun and approachable tone',
+  'dark-neon':             'futuristic dark background (#0a0a0f), neon glow effects (cyan #00fff5, electric purple #bf5fff, hot pink #ff2d78), glassmorphism panels, cyberpunk grid lines, sci-fi typography',
+  'photo-realistic':       'photorealistic ultra-HD photography style, golden hour lighting, shallow depth of field (f/1.8 bokeh), professional DSLR color grading, natural skin tones, editorial quality',
+  'cinematic':             'cinematic widescreen composition, dramatic chiaroscuro lighting, film-grade color grading (teal-orange palette), anamorphic lens flare, movie poster hierarchy',
+  'watercolor':            'delicate watercolor art style, soft brushstroke textures, pastel color bleeding, hand-painted organic edges, artistic imperfection, warm paper texture background'
+};
+
+var _placeDescriptions = {
+  'auto':              '', // auto = determined by business type
+  'modern-office':     'sleek modern glass office interior, floor-to-ceiling windows, city skyline view, contemporary furniture, warm ambient lighting',
+  'garden-park':       'lush green garden with manicured lawns, flowering plants, natural sunlight filtering through trees, peaceful outdoor setting',
+  'luxury-interior':   'opulent luxury interior with marble floors, crystal chandelier, velvet furnishings, art on walls, warm golden lighting',
+  'shopping-mall':     'upscale shopping mall with high ceiling, glass elevators, branded store facades, modern architectural elements, busy atmosphere',
+  'classroom':         'modern bright classroom with whiteboard, rows of students with laptops, motivational posters, natural daylight, academic atmosphere',
+  'hospital-clinic':   'clean professional medical clinic, white sterile interior, stethoscopes and medical equipment, hygienic modern setting, trustworthy clinical environment',
+  'restaurant':        'elegant restaurant interior with fine dining setup, soft candlelight, pristine white tablecloths, sophisticated ambiance, warm intimate lighting',
+  'gym-fitness':       'high-energy modern gym with premium equipment, motivational wall graphics, industrial lighting, dynamic athletic environment',
+  'city-street':       'vibrant Indian city street, bustling with energy, colorful storefronts, modern signage, urban life, golden hour lighting',
+  'rooftop':           'stylish rooftop terrace with city skyline panorama, sunset gradient sky, modern outdoor furniture, aspirational metropolitan setting',
+  'abstract-studio':   'clean professional photography studio with abstract geometric background, gradient spotlight, minimal props, controlled elegant lighting'
+};
+
+var _videoStyleDescriptions = {
+  'cinematic-ad':      'cinematic commercial advertisement style (like Nike/Apple TV ads), dramatic camera movements (dolly push-in, aerial pull-back), color graded, emotionally compelling storytelling',
+  'product-showcase':  'professional product showcase video, 360° rotation, close-up detail shots, studio lighting with soft boxes, clean white/gradient background, emphasizing quality and craftsmanship',
+  'testimonial':       'authentic customer testimonial style, natural handheld camera feel, real-location background, direct-to-camera speaking, warm color temperature, trustworthy documentary feel',
+  'lifestyle':         'aspirational lifestyle video, beautiful people in their element, slow-motion moments, golden hour outdoor scenes, feel-good montage, brand-lifestyle alignment',
+  'animated-motion':   'smooth kinetic motion graphics animation, 2D/3D animated brand elements, dynamic text reveals, particle effects, modern transitions, after-effects style',
+  'explainer':         'clear explainer video style, animated infographics, numbered step reveals, icon animations, clean corporate motion graphics, professional voiceover pacing',
+  'emotional-story':   'emotional storytelling ad (Dove/Google style), real human moments, soft music build, character journey arc, touching narrative, tears-to-smiles emotion'
+};
+
+var _placeAutoByBiz = {
+  'educational': 'modern bright classroom or university campus',
+  'healthcare':  'clean professional medical clinic or hospital lobby',
+  'restaurant':  'elegant restaurant interior or inviting food preparation kitchen',
+  'gym':         'high-energy premium gym with motivated athletes',
+  'retail':      'modern boutique retail store with attractive product displays',
+  'tech':        'sleek modern tech office with multiple screens and innovation atmosphere',
+  'finance':     'authoritative banking or financial institution interior',
+  'default':     'clean professional environment that matches the brand identity'
 };
 
 var _promptVariants = [
-  'Create a professional advertising banner',
-  'Design an eye-catching digital advertisement',
-  'Generate a high-quality marketing banner',
-  'Create a visually stunning promotional image'
+  'Create a hyper-realistic, high-impact advertising banner',
+  'Design an award-winning, visually stunning digital advertisement',
+  'Generate a professionally crafted, attention-commanding marketing banner',
+  'Produce a conversion-optimized, visually compelling promotional banner'
 ];
 
-var _currentVariantIdx = 0;
+var _videoPromptVariants = [
+  'Create a cinematic 8-second advertising video',
+  'Generate a high-impact 8-second commercial video advertisement',
+  'Produce a professional 8-second brand promotional video',
+  'Design a compelling 8-second motion advertisement video'
+];
 
-function generateAIPrompt(){
+function generateAIPrompt(forcedType){
+  var mode = forcedType || _currentPromptTab || 'image';
+  if(mode==='video') generateVideoPrompt();
+  else generateImagePrompt();
+}
+
+function generateImagePrompt(){
   var ctx = getAdContext();
   var style = getSelectedStyle();
   var size = getSelectedBannerSize();
-  var males = parseInt(($id('ai-males')||{}).value||'0');
-  var females = parseInt(($id('ai-females')||{}).value||'0');
+  var place = getSelectedPlace();
+  var males = parseInt(($id('ai-males')||{}).value||'1');
+  var females = parseInt(($id('ai-females')||{}).value||'1');
   var styleDesc = _styleDescriptions[style] || 'modern professional style';
   var variant = _promptVariants[_currentVariantIdx % _promptVariants.length];
   _currentVariantIdx++;
 
-  // Build context text
-  var contextParts = [];
-  if(ctx.company) contextParts.push('for "' + ctx.company + '"');
-  if(ctx.headline) contextParts.push('with headline "' + ctx.headline + '"');
-  if(ctx.offer) contextParts.push('promoting "' + ctx.offer + '"');
-  if(ctx.desc) contextParts.push('description: "' + ctx.desc + '"');
-  if(ctx.location) contextParts.push('located in ' + ctx.location);
+  var sizeHints = {
+    '1200x628':'horizontal social media banner (1200×628 pixels, aspect ratio 1.91:1, landscape orientation)',
+    '728x90':  'leaderboard banner (728×90 pixels, ultra-wide horizontal strip, aspect ratio 8.09:1)',
+    '300x250': 'medium rectangle banner (300×250 pixels, near-square format, aspect ratio 1.2:1)',
+    '320x50':  'mobile banner (320×50 pixels, narrow horizontal strip for mobile screens)',
+    '970x250': 'billboard banner (970×250 pixels, ultra-wide panoramic format, aspect ratio 3.88:1)',
+    '300x600': 'half-page banner (300×600 pixels, tall vertical format, aspect ratio 1:2)'
+  };
+  var sizeHint = sizeHints[size] || 'professional banner advertisement';
 
-  // People description
-  var peopleDesc = '';
-  if(males > 0 && females > 0){
-    peopleDesc = ', featuring ' + males + ' confident Indian male'+(males>1?'s':'')+' and ' + females + ' professional Indian female'+(females>1?'s':'')+' in the scene';
-  } else if(males > 0){
-    peopleDesc = ', featuring ' + males + ' confident Indian male'+(males>1?'s':'');
-  } else if(females > 0){
-    peopleDesc = ', featuring ' + females + ' professional Indian female'+(females>1?'s':'');
+  // Build place description
+  var placeDesc = '';
+  if(place !== 'auto'){
+    placeDesc = _placeDescriptions[place] || '';
+  } else {
+    // Auto-detect from business type/headline
+    var headline = ctx.headline.toLowerCase();
+    if(headline.match(/school|class|course|tuition|educat|study/)) placeDesc = _placeAutoByBiz['educational'];
+    else if(headline.match(/health|doctor|clinic|pharma|medic/)) placeDesc = _placeAutoByBiz['healthcare'];
+    else if(headline.match(/food|restaurant|cafe|dish|tiffin/)) placeDesc = _placeAutoByBiz['restaurant'];
+    else if(headline.match(/gym|fit|yoga|sport/)) placeDesc = _placeAutoByBiz['gym'];
+    else if(headline.match(/bank|finance|invest|loan/)) placeDesc = _placeAutoByBiz['finance'];
+    else placeDesc = _placeAutoByBiz['default'];
   }
 
-  // Size aspect ratio hint
-  var sizeHints = {
-    '1200x628': 'horizontal banner, aspect ratio 1.91:1',
-    '728x90': 'ultra-wide leaderboard banner, very wide and short, aspect ratio 8:1',
-    '300x250': 'medium rectangle, aspect ratio 1.2:1',
-    '320x50': 'mobile banner, very wide and narrow',
-    '970x250': 'billboard banner, wide horizontal',
-    '300x600': 'half-page vertical banner, aspect ratio 1:2'
-  };
-  var sizeHint = sizeHints[size] || 'banner advertisement';
+  // People
+  var peopleDesc = '';
+  if(males > 0 && females > 0){
+    peopleDesc = males+' confident, well-dressed Indian male'+(males>1?'s':'')+' and '+females+' professional, stylish Indian female'+(females>1?'s':'')+' — diverse, relatable, aspirational';
+  } else if(males > 0){
+    peopleDesc = males+' confident, well-dressed Indian professional male'+(males>1?'s':'')+' — trustworthy, successful appearance';
+  } else if(females > 0){
+    peopleDesc = females+' professional, stylish Indian female'+(females>1?'s':'')+' — confident, modern, aspirational';
+  }
 
-  var prompt = variant;
-  if(contextParts.length > 0) prompt += ' ' + contextParts.join(', ');
-  prompt += peopleDesc + '. ';
-  prompt += 'Style: ' + styleDesc + '. ';
-  prompt += 'Format: ' + sizeHint + ' (' + size + ' pixels). ';
-  prompt += 'High resolution, professional advertising quality, no text overlays in the image unless specified, clean composition, suitable for digital marketing. ';
-  prompt += 'Make the advertisement visually compelling and attention-grabbing for Indian audience.';
+  // Build strong prompt
+  var p = variant;
+  p += '\n\n';
+  p += '━━━ BRAND & CONTENT ━━━\n';
+  if(ctx.company)  p += '• Brand/Company: "' + ctx.company + '"\n';
+  if(ctx.headline) p += '• Main Headline: "' + ctx.headline + '" — display prominently in bold typography\n';
+  if(ctx.offer)    p += '• Offer/Deal: "' + ctx.offer + '" — make this the visual hero element, eye-catching call-to-action\n';
+  if(ctx.desc)     p += '• Supporting Text: "' + ctx.desc + '"\n';
+  if(ctx.phone)    p += '• Contact (WhatsApp): ' + ctx.phone + ' — include as subtle but readable footer element\n';
+  if(ctx.website)  p += '• Website: ' + ctx.website + ' — include as small URL at bottom\n';
+  if(ctx.email)    p += '• Email: ' + ctx.email + '\n';
+  if(ctx.location) p += '• Location: ' + ctx.location + ' — add as small geographic indicator\n';
+  if(ctx.address)  p += '• Address: ' + ctx.address + '\n';
+  p += '\n';
+  p += '━━━ VISUAL DESIGN ━━━\n';
+  p += '• Style: ' + styleDesc + '\n';
+  if(placeDesc) p += '• Scene/Background: ' + placeDesc + '\n';
+  if(peopleDesc) p += '• People: ' + peopleDesc + '\n';
+  p += '\n';
+  p += '━━━ TECHNICAL SPECIFICATIONS ━━━\n';
+  p += '• Exact Size: ' + size + ' pixels — ' + sizeHint + '\n';
+  p += '• Resolution: 300 DPI minimum, print-ready quality\n';
+  p += '• Color Mode: RGB, sRGB color space for digital display\n';
+  p += '\n';
+  p += '━━━ STRICT REQUIREMENTS ━━━\n';
+  p += '• MUST follow the exact pixel dimensions: ' + size + '\n';
+  p += '• ALL text elements specified above MUST be legible and properly placed\n';
+  p += '• Brand name "' + (ctx.company||'the brand') + '" must be clearly visible\n';
+  p += '• No watermarks, no stock photo watermarks, no placeholder text\n';
+  p += '• Professional advertising agency quality — suitable for digital marketing\n';
+  p += '• Indian audience: culturally appropriate, warm and relatable visual tone\n';
+  p += '• High visual contrast for readability on digital screens\n';
+  if(ctx.offer) p += '• The offer "' + ctx.offer + '" should be the MOST prominent visual element\n';
 
-  if($id('ai-generated-prompt')) $id('ai-generated-prompt').value = prompt;
-
-  // Also generate title suggestions
+  if($id('ai-generated-prompt')) $id('ai-generated-prompt').value = p.trim();
   generateTitleSuggestions(ctx);
+  switchPromptTab('image');
+  toast('🖼️ Strong image prompt generated!');
+}
 
-  toast('✨ Prompt generated! Copy karo aur AI tool mein paste karo');
+function generateVideoPrompt(){
+  var ctx = getAdContext();
+  var vStyle = getSelectedVideoStyle();
+  var vPlace = getSelectedVideoPlace();
+  var vSound = getSelectedVideoSound();
+  var size = getSelectedBannerSize();
+  var males = parseInt(($id('ai-males')||{}).value||'1');
+  var females = parseInt(($id('ai-females')||{}).value||'1');
+  var vStyleDesc = _videoStyleDescriptions[vStyle] || 'cinematic commercial advertisement';
+  var variant = _videoPromptVariants[_currentVariantIdx % _videoPromptVariants.length];
+  _currentVariantIdx++;
+
+  var vPlaceDesc = '';
+  if(vPlace !== 'auto') vPlaceDesc = _placeDescriptions[vPlace] || '';
+  else {
+    var hl = ctx.headline.toLowerCase();
+    if(hl.match(/school|class|course|tuition/)) vPlaceDesc = 'modern university campus and bright classroom';
+    else if(hl.match(/health|doctor|clinic/))   vPlaceDesc = 'clean professional medical facility';
+    else if(hl.match(/food|restaurant/))        vPlaceDesc = 'inviting restaurant with beautifully plated food';
+    else vPlaceDesc = 'aspirational modern environment matching the brand identity';
+  }
+
+  var soundDesc = {
+    'upbeat-background': 'upbeat energetic background music (BPM 120-130), no lyrics, builds to climax at end',
+    'voiceover':         'professional male/female voiceover reading the key message clearly, subtle background music underneath',
+    'no-sound':          'silent video — text and visuals communicate the full message without audio',
+    'dramatic-music':    'dramatic orchestral build-up, emotional musical arc, impactful crescendo at brand reveal'
+  }[vSound] || 'upbeat background music';
+
+  var peopleDesc = '';
+  if(males > 0 && females > 0) peopleDesc = males+' Indian male'+(males>1?'s':'')+' and '+females+' Indian female'+(females>1?'s':'')+' — professional, confident, relatable';
+  else if(males > 0) peopleDesc = males+' confident Indian professional male'+(males>1?'s':'');
+  else if(females > 0) peopleDesc = females+' professional Indian female'+(females>1?'s':'');
+
+  var videoSize = size==='1080x1920'?'1080×1920 (vertical Reels/Story)':'1920×1080 (horizontal HD)';
+
+  var p = variant + ' for advertising\n\n';
+  p += '━━━ BRAND & MESSAGE ━━━\n';
+  if(ctx.company)  p += '• Brand: "' + ctx.company + '" — show logo/brand name prominently\n';
+  if(ctx.headline) p += '• Key Message: "' + ctx.headline + '" — display as main title card\n';
+  if(ctx.offer)    p += '• Offer/CTA: "' + ctx.offer + '" — highlight in final 2 seconds as strong call-to-action\n';
+  if(ctx.desc)     p += '• Supporting Info: "' + ctx.desc + '"\n';
+  if(ctx.phone)    p += '• Contact: WhatsApp ' + ctx.phone + ' — show in last 3 seconds\n';
+  if(ctx.website)  p += '• Website: ' + ctx.website + ' — show at end card\n';
+  if(ctx.location) p += '• Location: ' + ctx.location + '\n';
+  if(ctx.address)  p += '• Address: ' + ctx.address + '\n';
+  p += '\n';
+  p += '━━━ VIDEO SPECIFICATIONS ━━━\n';
+  p += '• Duration: EXACTLY 8 seconds (no more, no less)\n';
+  p += '• Format: ' + videoSize + '\n';
+  p += '• Frame Rate: 24fps cinematic or 30fps smooth\n';
+  p += '• Style: ' + vStyleDesc + '\n';
+  p += '• Scene/Setting: ' + vPlaceDesc + '\n';
+  if(peopleDesc) p += '• Cast: ' + peopleDesc + '\n';
+  p += '• Audio: ' + soundDesc + '\n';
+  p += '\n';
+  p += '━━━ SHOT SEQUENCE (8 seconds) ━━━\n';
+  p += '• 0-2s: Opening hook — attention-grabbing establishing shot, brand/product reveal\n';
+  p += '• 2-5s: Core message — demonstrate value/offer "' + (ctx.offer||ctx.headline||'key benefit') + '", show people benefiting\n';
+  p += '• 5-7s: Emotional peak — aspirational moment, problem solved, happy outcome\n';
+  p += '• 7-8s: End card — brand logo, "' + (ctx.offer||'Call to Action') + '", contact info ' + (ctx.phone||'') + '\n';
+  p += '\n';
+  p += '━━━ STRICT REQUIREMENTS ━━━\n';
+  p += '• Duration MUST be exactly 8 seconds\n';
+  p += '• ALL brand text ("' + (ctx.company||'brand') + '", "' + (ctx.headline||'headline') + '") must appear on screen\n';
+  if(ctx.offer) p += '• Offer "' + ctx.offer + '" must be shown as bold overlay text in final 3 seconds\n';
+  p += '• No stock footage watermarks\n';
+  p += '• Professional color grading — not flat or washed out\n';
+  p += '• Smooth transitions — no jarring cuts\n';
+  p += '• Indian audience: culturally relevant visuals, diverse and relatable cast\n';
+
+  if($id('ai-generated-prompt')) $id('ai-generated-prompt').value = p.trim();
+  generateTitleSuggestions(ctx);
+  switchPromptTab('video');
+  toast('🎬 Strong 8s video prompt generated!');
 }
 
 function regeneratePrompt(){
-  generateAIPrompt();
+  generateAIPrompt(_currentPromptTab);
 }
 
 function generateTitleSuggestions(ctx){
   var company = ctx.company || ctx.title.split('—')[0].trim() || 'Business';
   var offer   = ctx.offer || ctx.headline || '';
-  
+  var yr = new Date().getFullYear();
   var templates = [
     company + ' — ' + (offer || 'Special Offer'),
     '🔥 ' + (offer || 'Limited Offer') + ' | ' + company,
-    company + ' | ' + (ctx.desc ? ctx.desc.split(' ').slice(0,4).join(' ')+'...' : 'Best Deals'),
-    '⚡ ' + company + ' Ad — ' + new Date().getFullYear(),
-    company + ' | Click to Learn More'
+    company + ' | ' + (ctx.desc ? ctx.desc.split(' ').slice(0,4).join(' ')+'...' : 'Best Deals Today'),
+    '⚡ ' + company + ' — ' + yr + ' Campaign',
+    '🎯 ' + (offer||company) + ' — Click to Know More'
   ];
-  
-  if(offer){
-    templates.unshift(company + ' — ' + offer + ' 🎉');
-  }
-
+  if(offer) templates.unshift('🎉 ' + company + ' — ' + offer);
   var wrap = $id('ai-title-suggestions-wrap');
   var container = $id('ai-title-suggestions');
   if(wrap) wrap.style.display = 'block';
   if(container){
     container.innerHTML = templates.slice(0,5).map(function(t){
-      return '<span class="ai-title-chip" onclick="useTitle(this.textContent)" title="Click to use as Ad Title">'+x(t)+'</span>';
+      return '<span class="ai-title-chip" onclick="useTitle(this.textContent)" title="Click to use">'+x(t)+'</span>';
     }).join('');
   }
 }
 
 function useTitle(title){
   if($id('ad-title')) $id('ad-title').value = title;
-  toast('✅ Title applied: ' + title);
+  toast('✅ Title applied!');
 }
 
 function copyPrompt(){
   var prompt = ($id('ai-generated-prompt')||{}).value||'';
   if(!prompt){ toast('⚠️ Pehle prompt generate karo'); return; }
   if(navigator.clipboard){
-    navigator.clipboard.writeText(prompt).then(function(){ toast('📋 Prompt copied to clipboard!'); });
+    navigator.clipboard.writeText(prompt).then(function(){ toast('📋 Prompt copied!'); });
   } else {
-    $id('ai-generated-prompt').select();
-    document.execCommand('copy');
+    var el = $id('ai-generated-prompt'); if(el){ el.select(); document.execCommand('copy'); }
     toast('📋 Prompt copied!');
   }
 }
@@ -3706,38 +4094,30 @@ function copyPrompt(){
 function openInAI(tool){
   var prompt = ($id('ai-generated-prompt')||{}).value||'';
   if(!prompt){ toast('⚠️ Pehle prompt generate karo'); return; }
-  
-  // Copy prompt first
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(prompt);
-  }
-
+  if(navigator.clipboard) navigator.clipboard.writeText(prompt);
   var urls = {
-    'chatgpt':     'https://chat.openai.com/?q=' + encodeURIComponent(prompt),
+    'chatgpt':     'https://chat.openai.com/',
     'gemini':      'https://gemini.google.com/app',
     'ideogram':    'https://ideogram.ai/',
     'midjourney':  'https://www.midjourney.com/',
     'canva':       'https://www.canva.com/ai-image-generator/',
-    'adobefirefly':'https://firefly.adobe.com/generate/images'
+    'adobefirefly':'https://firefly.adobe.com/generate/images',
+    'kling':       'https://klingai.com/',
+    'runway':      'https://runwayml.com/',
+    'pika':        'https://pika.art/'
   };
-
-  var toolNames = {
-    'chatgpt':'ChatGPT','gemini':'Gemini','ideogram':'Ideogram',
-    'midjourney':'Midjourney','canva':'Canva AI','adobefirefly':'Adobe Firefly'
-  };
-
-  var url = urls[tool];
-  if(url){
-    window.open(url, '_blank');
-    toast('🚀 ' + toolNames[tool] + ' open hua! Prompt clipboard mein hai — paste karo (Ctrl+V)');
+  var names = {chatgpt:'ChatGPT',gemini:'Gemini',ideogram:'Ideogram',midjourney:'Midjourney',canva:'Canva AI',adobefirefly:'Adobe Firefly',kling:'Kling AI',runway:'RunwayML',pika:'Pika Labs'};
+  if(urls[tool]){
+    window.open(urls[tool],'_blank');
+    toast('🚀 '+names[tool]+' open hua! Ctrl+V se prompt paste karo');
   }
 }
 
-// Show/hide AI Prompt section based on ad type
+// Show/hide AI Prompt section — also handles video
 function _checkAIPromptVisibility(){
   var type = ($id('ad-type')||{}).value || 'image';
   var sec = $id('ad-ai-prompt-section');
-  if(sec) sec.style.display = (type === 'text') ? 'block' : 'none';
+  if(sec) sec.style.display = (type==='image'||type==='video'||type==='text') ? 'block' : 'none';
 }
 
 // ── ADVERTISER REQUESTS ──
