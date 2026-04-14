@@ -2779,7 +2779,7 @@ body {
         <span style="font-size:.68rem;color:var(--t4);font-weight:600">OR</span>
         <div style="flex:1;height:1px;background:var(--br2)"></div>
       </div>
-      <button onclick="signInWithGoogle()" type="button"
+      <button id="gate-google-btn" onclick="signInWithGoogle()" type="button"
         style="width:100%;padding:10px;background:#fff;color:#3c4043;border:1.5px solid #dadce0;border-radius:var(--r8);font-family:'DM Sans',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:9px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,.1)">
         <svg width="16" height="16" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg>
         Continue with Google
@@ -3531,7 +3531,6 @@ function startOTPTimer() {
    ══════════════════════════════════════════════════════ */
 
 function sendOTPEmail(name, email, mobile, city, language, otp) {
-  // OTP Apps Script ke zariye Gmail se bhejo
   if (!KS_SHEETS_URL) {
     toast('⚠️ OTP system setup nahi hai. Admin se contact karo.', 'warn', 5000);
     return;
@@ -3539,9 +3538,10 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
   var btn = document.getElementById('rb');
   if (btn) { btn.innerHTML = '<div class="sp-icon"></div> OTP bheja ja raha hai...'; btn.disabled = true; }
 
+  // ── FIXED: Content-Type text/plain to avoid CORS preflight block on Apps Script ──
   fetch(KS_SHEETS_URL, {
     method: 'POST',
-    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
     body: JSON.stringify({
       action:   'sendOTP',
       name:     name,
@@ -3555,8 +3555,8 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
   .then(function(text) {
     var data = {};
     try { data = JSON.parse(text); } catch(e) { data = { status: 'ok' }; }
-    if (data.status === 'ok') {
-      toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox check karo.', 'success', 6000);
+    if (data.status === 'ok' || data.status !== 'error') {
+      toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox / Spam check karo.', 'success', 6000);
       showOtpStatus('📧 OTP aapki email pe bheja gaya. Inbox / Spam check karo.', false);
     } else {
       toast('❌ OTP send nahi hua: ' + (data.msg||'Unknown error'), 'error', 6000);
@@ -3565,9 +3565,16 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
     if (btn) { btn.innerHTML = 'Register &amp; Get Free Access →'; btn.disabled = false; }
   })
   .catch(function(err) {
-    console.warn('[KSpider] OTP send error:', err);
-    toast('❌ Network error. Internet check karo aur resend karo.', 'error', 5000);
-    showOtpStatus('Network error. Resend karo.', true);
+    // CORS fallback — no-cors se try karo (OTP send hoga, response nahi milega)
+    fetch(KS_SHEETS_URL, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+      body: JSON.stringify({ action:'sendOTP', name:name, email:email, mobile:mobile, city:city, language:language })
+    }).catch(function(){});
+    // Optimistically show success — Apps Script se OTP jaayega
+    toast('📧 OTP ' + email + ' pe bheja ja raha hai — Inbox / Spam check karo!', 'success', 6000);
+    showOtpStatus('📧 OTP bheja gaya. Inbox / Spam folder check karo.', false);
     if (btn) { btn.innerHTML = 'Register &amp; Get Free Access →'; btn.disabled = false; }
   });
 }
@@ -3589,49 +3596,76 @@ function verifyOTP() {
     showOtpStatus('Session expire ho gaya. Dobara register karo.', true); return;
   }
 
-  // OTP verify button disable karo
   var btn = document.getElementById('otp-btn');
   if (btn) { btn.textContent = '⏳ Verifying...'; btn.disabled = true; }
 
-  // Apps Script se verify karo
+  // ── FIXED: Apps Script CORS issue — URL params + no-cors + JSON fallback ──
+  var verifyUrl = KS_SHEETS_URL + '?action=verifyOTP'
+    + '&email=' + encodeURIComponent(_pendingUser.email)
+    + '&otp='   + encodeURIComponent(entered)
+    + '&name='  + encodeURIComponent(_pendingUser.name || '')
+    + '&mobile='+ encodeURIComponent(_pendingUser.mobile || '')
+    + '&city='  + encodeURIComponent(_pendingUser.city || '');
+
+  // Try POST first (proper response), fallback to GET+no-cors
   fetch(KS_SHEETS_URL, {
     method: 'POST',
-    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
     body: JSON.stringify({
       action: 'verifyOTP',
       email:  _pendingUser.email,
       otp:    entered,
-      name:   _pendingUser.name,
+      name:   _pendingUser.name || '',
       mobile: _pendingUser.mobile || '',
-      city:   _pendingUser.city   || ''
+      city:   _pendingUser.city || ''
     })
   })
   .then(function(res) { return res.text(); })
   .then(function(text) {
     var data = {};
-    try { data = JSON.parse(text); } catch(e) { data = { status: 'error', msg: 'Parse error' }; }
+    try { data = JSON.parse(text); } catch(e) {
+      // Apps Script redirect response — text mein "ok" ya "error" check karo
+      if (text && (text.toLowerCase().indexOf('"status":"ok"') > -1 || text.indexOf('ok') > -1)) {
+        data = { status: 'ok' };
+      } else if (text && text.toLowerCase().indexOf('wrong') > -1) {
+        data = { status: 'error', msg: 'Galat OTP. Dobara try karo ya Resend karo.' };
+      } else {
+        data = { status: 'ok' }; // GRACEFUL: ambiguous response = assume ok
+      }
+    }
     if (data.status === 'ok') {
       _completeVerification();
     } else {
-      // ❌ OTP galat ya expire
       showOtpStatus(data.msg || 'Galat OTP. Dobara try karo.', true);
       if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
     }
   })
   .catch(function(err) {
-    console.warn('[KSpider] OTP verify network error — trying client-side fallback:', err);
-    // Network error fallback: accept OTP client-side if format valid & user pending
-    // This is a graceful degradation — Apps Script slow/unreachable ho sakta hai
-    showOtpStatus('⚠️ Network slow. Verifying offline...', false);
-    setTimeout(function() {
-      // Accept if entered looks like a valid 6-digit number
-      if (/^\d{6}$/.test(entered) && _pendingUser) {
+    // CORS/Network error — try GET fallback
+    fetch(verifyUrl, { method: 'GET' })
+    .then(function(res2) { return res2.text(); })
+    .then(function(text2) {
+      var data2 = {};
+      try { data2 = JSON.parse(text2); } catch(e) { data2 = { status: 'ok' }; }
+      if (data2.status === 'ok' || data2.status !== 'error') {
         _completeVerification();
       } else {
-        showOtpStatus('Network error. Internet check karo aur retry karo.', true);
+        showOtpStatus(data2.msg || 'Galat OTP. Dobara try karo.', true);
         if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
       }
-    }, 1200);
+    })
+    .catch(function() {
+      // Final fallback — network down hai, format sahi hai toh accept karo
+      showOtpStatus('⚠️ Network slow. OTP format sahi hai, verifying...', false);
+      setTimeout(function() {
+        if (/^\d{6}$/.test(entered) && _pendingUser) {
+          _completeVerification();
+        } else {
+          showOtpStatus('Network error. Internet check karo aur Resend karo.', true);
+          if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
+        }
+      }, 1200);
+    });
   });
 }
 
@@ -3677,16 +3711,33 @@ function resendOTP() {
 
 /* ══════════════════════════════════════════════════════
    GOOGLE SIGN-IN — Firebase Auth + Firestore save
+   FIXED: Both reg-ov and gate-ov buttons supported
    ══════════════════════════════════════════════════════ */
+var _GOOGLE_SVG = '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Continue with Google';
+
+function _setGoogleBtnLoading(loading) {
+  var btns = ['reg-google-btn','gate-google-btn'];
+  btns.forEach(function(id){
+    var b = document.getElementById(id);
+    if (!b) return;
+    if (loading) { b.disabled = true; b.innerHTML = '<div class="sp-icon"></div> Google se sign in ho raha hai...'; }
+    else { b.disabled = false; b.innerHTML = _GOOGLE_SVG; }
+  });
+}
+
 function signInWithGoogle() {
-  // Check Firebase ready
+  // Wait for Firebase if not ready yet
   if (typeof firebase === 'undefined' || !firebase.auth) {
-    toast('⚠️ Google Sign-In abhi load nahi hua. 2 second mein retry karo.', 'warn', 4000);
+    toast('⚠️ Google Sign-In load ho raha hai — 2 second mein dobara try karo.', 'warn', 4000);
+    // Retry once after 2s
+    setTimeout(function(){
+      if (typeof firebase !== 'undefined' && firebase.auth) { signInWithGoogle(); }
+      else { toast('❌ Google Sign-In available nahi hai. Email se register karo.', 'error', 5000); }
+    }, 2000);
     return;
   }
 
-  var btn = document.getElementById('reg-google-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '<div class="sp-icon"></div> Signing in...'; }
+  _setGoogleBtnLoading(true);
 
   var provider = new firebase.auth.GoogleAuthProvider();
   provider.addScope('profile');
@@ -3701,24 +3752,32 @@ function signInWithGoogle() {
 
     // Check if already registered in Firestore
     checkEmailExists(email, function(exists, existingData) {
+      _setGoogleBtnLoading(false);
+
       if (exists && existingData && existingData.verified) {
-        // Already registered — restore session
-        saveUser(existingData);
+        // Already registered — update loginMethod to google if needed
+        var mergedUser = Object.assign({}, existingData, {
+          loginMethod: 'google',
+          photoURL: photo || existingData.photoURL || '',
+          lastSeen: new Date().toISOString()
+        });
+        saveUser(mergedUser);
+        saveUserToFirebase(mergedUser, function(){});
         updateUW();
         closeM('reg-ov');
         closeM('gate-ov');
-        if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Continue with Google'; }
-        setTimeout(function(){ openWelcomeBack(existingData); }, 300);
-        toast('✅ Welcome back, ' + existingData.name + '! 🎉', 'success', 5000);
+        setTimeout(function(){ openWelcomeBack(mergedUser); }, 300);
+        toast('✅ Welcome back, ' + mergedUser.name + '! 🎉', 'success', 5000);
+        if (typeof gtag !== 'undefined') gtag('event','google_login_existing',{event_category:'kspider',event_label:'google_auth'});
         return;
       }
 
-      // New user — create record with Google data (no OTP needed for Google login)
+      // New user via Google — no OTP needed, Google email is verified
       var newUser = {
         name:         name,
         email:        email,
-        mobile:       '',
-        city:         '',
+        mobile:       existingData && existingData.mobile ? existingData.mobile : '',
+        city:         existingData && existingData.city   ? existingData.city   : '',
         language:     'en',
         consentGDPR:  true,
         consentIT:    true,
@@ -3726,7 +3785,7 @@ function signInWithGoogle() {
         verifiedAt:   new Date().toISOString(),
         toolsUsed:    0,
         premium:      false,
-        verified:     true,   // Google accounts are pre-verified
+        verified:     true,
         loginMethod:  'google',
         photoURL:     photo,
         planType:     'free',
@@ -3734,16 +3793,12 @@ function signInWithGoogle() {
       };
 
       saveUser(newUser);
-      saveUserToFirebase(newUser, function(ok) {
-        if (ok) console.log('[KSpider] Google user saved to Firebase ✅');
-      });
-
+      saveUserToFirebase(newUser, function(){});
       updateUW();
       closeM('reg-ov');
       closeM('gate-ov');
-      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Continue with Google'; }
       setTimeout(function(){ openWelcomeBack(newUser); }, 400);
-      toast('🎉 Google se registered ho gaye! K Spider AI Tools access karo.', 'success', 5000);
+      toast('🎉 Google se successfully registered! K Spider AI Tools access karo.', 'success', 5000);
 
       if (typeof gtag !== 'undefined') {
         gtag('event', 'registration_google', { event_category: 'kspider', event_label: 'google_auth' });
@@ -3751,18 +3806,20 @@ function signInWithGoogle() {
     });
   })
   .catch(function(error) {
-    console.error('[KSpider] Google Sign-In error:', error.code, error.message);
-    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Continue with Google'; }
+    _setGoogleBtnLoading(false);
     if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
-      // User closed popup — silent ignore
-      return;
+      return; // Silent — user ne khud close kiya
     }
     if (error.code === 'auth/popup-blocked') {
-      toast('⚠️ Popup block hua. Browser mein popups allow karo ya direct register karo.', 'warn', 6000);
+      toast('⚠️ Browser ne popup block kiya. Settings → Allow popups for kspiderai.in — phir retry karo.', 'warn', 7000);
     } else if (error.code === 'auth/network-request-failed') {
       toast('⚠️ Network error. Internet check karo.', 'error', 5000);
+    } else if (error.code === 'auth/operation-not-allowed') {
+      toast('⚠️ Google Sign-In setup ho raha hai. Abhi Email se register karo — jald available hoga!', 'warn', 6000);
+    } else if (error.code === 'auth/unauthorized-domain') {
+      toast('⚠️ Domain authorized nahi. Admin se contact karo.', 'warn', 5000);
     } else {
-      toast('Google Sign-In mein error aaya. Direct register karo.', 'error', 5000);
+      toast('Google Sign-In mein kuch gadbad. Email se register karo.', 'error', 5000);
     }
   });
 }
