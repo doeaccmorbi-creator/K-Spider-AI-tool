@@ -3625,12 +3625,13 @@ function verifyOTP() {
     var data = {};
     try { data = JSON.parse(text); } catch(e) {
       // Apps Script redirect response — text mein "ok" ya "error" check karo
-      if (text && (text.toLowerCase().indexOf('"status":"ok"') > -1 || text.indexOf('ok') > -1)) {
+      if (text && text.toLowerCase().indexOf('"status":"ok"') > -1) {
         data = { status: 'ok' };
-      } else if (text && text.toLowerCase().indexOf('wrong') > -1) {
+      } else if (text && (text.toLowerCase().indexOf('wrong') > -1 || text.toLowerCase().indexOf('error') > -1 || text.toLowerCase().indexOf('invalid') > -1)) {
         data = { status: 'error', msg: 'Galat OTP. Dobara try karo ya Resend karo.' };
       } else {
-        data = { status: 'ok' }; // GRACEFUL: ambiguous response = assume ok
+        // Ambiguous response — treat as error, ask user to retry
+        data = { status: 'error', msg: 'Verification response unclear. Resend OTP karo aur dobara try karo.' };
       }
     }
     if (data.status === 'ok') {
@@ -3646,8 +3647,8 @@ function verifyOTP() {
     .then(function(res2) { return res2.text(); })
     .then(function(text2) {
       var data2 = {};
-      try { data2 = JSON.parse(text2); } catch(e) { data2 = { status: 'ok' }; }
-      if (data2.status === 'ok' || data2.status !== 'error') {
+      try { data2 = JSON.parse(text2); } catch(e) { data2 = { status: 'error', msg: 'Verification nahi ho saka. Resend karo.' }; }
+      if (data2.status === 'ok') {
         _completeVerification();
       } else {
         showOtpStatus(data2.msg || 'Galat OTP. Dobara try karo.', true);
@@ -3655,16 +3656,9 @@ function verifyOTP() {
       }
     })
     .catch(function() {
-      // Final fallback — network down hai, format sahi hai toh accept karo
-      showOtpStatus('⚠️ Network slow. OTP format sahi hai, verifying...', false);
-      setTimeout(function() {
-        if (/^\d{6}$/.test(entered) && _pendingUser) {
-          _completeVerification();
-        } else {
-          showOtpStatus('Network error. Internet check karo aur Resend karo.', true);
-          if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
-        }
-      }, 1200);
+      // Network error — user ko retry karne kaho, blind verify mat karo
+      showOtpStatus('⚠️ Network error. Internet check karo aur dobara try karo ya Resend karo.', true);
+      if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
     });
   });
 }
