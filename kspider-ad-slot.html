@@ -1,0 +1,161 @@
+<!-- 
+  ╔══════════════════════════════════════════════════════════════╗
+  ║  K Spider AI — Ad Slot Code for index.html                   ║
+  ║  Paste this wherever you want ads to appear.                 ║
+  ║  Ads auto-load from Firebase, image/video auto-play,         ║
+  ║  clicking takes user to the connected link directly.         ║
+  ╚══════════════════════════════════════════════════════════════╝
+-->
+
+<!-- ① Include Firebase (if not already in your index.html) -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<!-- ② Ad Slot — change data-slot to: top-banner | below-title | in-content | after-result | bottom-banner -->
+<div class="kspider-ad-slot" data-slot="top-banner"></div>
+
+<!-- ③ Ad Loader Script — paste once per page, before </body> -->
+<script>
+(function(){
+  // ── Firebase Config — same as your main config ──
+  var firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // Init Firebase (skip if already initialized)
+  if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  var db = firebase.firestore();
+
+  // Size map → CSS dimensions matching Google AdSense standard sizes
+  var sizeMap = {
+    'auto':    {w:'100%',   h:'auto',  maxH:''},
+    '728x90':  {w:'728px',  h:'90px',  maxH:'90px'},
+    '970x90':  {w:'970px',  h:'90px',  maxH:'90px'},
+    '970x250': {w:'970px',  h:'250px', maxH:'250px'},
+    '300x250': {w:'300px',  h:'250px', maxH:'250px'},
+    '336x280': {w:'336px',  h:'280px', maxH:'280px'},
+    '250x250': {w:'250px',  h:'250px', maxH:'250px'},
+    '200x200': {w:'200px',  h:'200px', maxH:'200px'},
+    '160x600': {w:'160px',  h:'600px', maxH:'600px'},
+    '120x600': {w:'120px',  h:'600px', maxH:'600px'},
+    '300x600': {w:'300px',  h:'600px', maxH:'600px'},
+    '300x1050':{w:'300px',  h:'1050px',maxH:'1050px'},
+    '320x50':  {w:'320px',  h:'50px',  maxH:'50px'},
+    '320x100': {w:'320px',  h:'100px', maxH:'100px'}
+  };
+
+  // Track rotation state per slot
+  var slotRotation = {};
+
+  function renderAd(container, ad){
+    var sz = sizeMap[ad.size||'auto'] || sizeMap['auto'];
+    var clickUrl = ad.clickUrl || '';
+    var wrapStyle = 'display:block;width:'+sz.w+';'+(sz.h!=='auto'?'height:'+sz.h+';':'')+'overflow:hidden;border-radius:6px;position:relative;';
+
+    var inner = '';
+    if(ad.type === 'image'){
+      var imgStyle = 'width:100%;'+(sz.h!=='auto'?'height:100%;':'height:auto;')+'object-fit:cover;display:block;';
+      inner = '<img src="'+esc(ad.imgUrl)+'" alt="'+esc(ad.imgAlt||ad.title)+'" style="'+imgStyle+'" loading="lazy">';
+    } else if(ad.type === 'video'){
+      var autoAttr = ad.videoPlay === 'autoplay' ? 'autoplay loop playsinline' : 'controls';
+      var muteAttr = ad.videoSound === 'muted' ? 'muted' : '';
+      var posterAttr = ad.videoPoster ? ' poster="'+esc(ad.videoPoster)+'"' : '';
+      var vStyle = 'width:100%;'+(sz.h!=='auto'?'height:100%;':'height:auto;')+'display:block;object-fit:cover;background:#000;';
+      inner = '<video '+autoAttr+' '+muteAttr+posterAttr+' style="'+vStyle+'">'+
+                '<source src="'+esc(ad.videoUrl)+'" type="video/mp4">'+
+                '<source src="'+esc(ad.videoUrl)+'">'+
+              '</video>';
+    } else if(ad.type === 'text'){
+      var bg = ad.bgColor||'#e8520a';
+      inner = '<div style="width:100%;height:100%;background:'+bg+';display:flex;flex-direction:column;align-items:center;justify-content:center;padding:10px;text-align:center;box-sizing:border-box">'+
+                '<div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:4px">'+esc(ad.headline||ad.title)+'</div>'+
+                (ad.description?'<div style="font-size:.8rem;color:rgba(255,255,255,.88);margin-bottom:6px">'+esc(ad.description)+'</div>':'')+
+                '<span style="background:rgba(255,255,255,.25);color:#fff;padding:4px 14px;border-radius:20px;font-size:.75rem;font-weight:700">'+esc(ad.btnText||'Learn More')+'</span>'+
+              '</div>';
+    } else if(ad.type === 'html'){
+      inner = ad.htmlCode||'';
+    }
+
+    // Wrap with click link if clickUrl exists
+    var html;
+    if(clickUrl && ad.type !== 'html'){
+      html = '<a href="'+esc(clickUrl)+'" target="_blank" rel="noopener" style="'+wrapStyle+'text-decoration:none;cursor:pointer;" onclick="kspiderAdClick(''+esc(ad._id)+'')">'+inner+'</a>';
+    } else {
+      html = '<div style="'+wrapStyle+'">'+inner+'</div>';
+    }
+
+    container.innerHTML = html;
+    container.style.margin = '8px auto';
+    container.style.textAlign = 'center';
+  }
+
+  function esc(s){
+    if(!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  window.kspiderAdClick = function(id){
+    if(!id) return;
+    db.collection('ads').doc(id).update({clicks: firebase.firestore.FieldValue.increment(1)}).catch(function(){});
+  };
+
+  function loadSlot(container){
+    var slot = container.getAttribute('data-slot') || 'top-banner';
+    var now = new Date().toISOString().split('T')[0];
+
+    db.collection('ads')
+      .where('status','==','active')
+      .where('slots','array-contains', slot)
+      .limit(10)
+      .get()
+      .then(function(snap){
+        var ads = [];
+        snap.forEach(function(doc){
+          var d = doc.data();
+          // Filter expired
+          if(d.expiry && d.expiry < now) return;
+          d._id = doc.id;
+          ads.push(d);
+        });
+        if(!ads.length){ container.innerHTML=''; return; }
+
+        // Rotate ads
+        var key = slot + '_' + container.dataset.slotIdx;
+        var idx = (slotRotation[key]||0) % ads.length;
+        renderAd(container, ads[idx]);
+        // Track impression
+        db.collection('ads').doc(ads[idx]._id).update({impressions: firebase.firestore.FieldValue.increment(1)}).catch(function(){});
+
+        // Auto-rotation
+        var interval = parseInt(ads[idx].interval)||0;
+        if(ads.length > 1 && interval > 0){
+          setTimeout(function(){
+            slotRotation[key] = (idx + 1) % ads.length;
+            loadSlot(container);
+          }, interval * 1000);
+        }
+      })
+      .catch(function(e){ console.warn('[KSpider Ads]', e); });
+  }
+
+  // Init all slots on page
+  function initSlots(){
+    var slots = document.querySelectorAll('.kspider-ad-slot');
+    slots.forEach(function(el, i){
+      el.dataset.slotIdx = i;
+      loadSlot(el);
+    });
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', initSlots);
+  } else {
+    initSlots();
+  }
+})();
+</script>
