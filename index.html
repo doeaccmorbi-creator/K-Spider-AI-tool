@@ -3491,7 +3491,9 @@ function hideRegStatus() {
 }
 
 /* ══════════════════════════════════════════════════════
-   OTP SYSTEM — FIXED VERSION
+   OTP SYSTEM — CLIENT-SIDE VERIFY v4.0 (FIXED)
+   OTP client-side generate + verify hota hai
+   Apps Script sirf email send karta hai (fire & forget)
    ══════════════════════════════════════════════════════ */
 var _pendingUser = null;
 var _otpCode = null;
@@ -3504,17 +3506,18 @@ function generateOTP() {
 
 function startOTPTimer() {
   clearInterval(_otpTimerInterval);
-  var endTime = Date.now() + 5 * 60 * 1000;
+  _otpExpiry = Date.now() + 5 * 60 * 1000;
   function tick() {
-    var rem = Math.max(0, endTime - Date.now());
+    var rem = Math.max(0, _otpExpiry - Date.now());
     var m = Math.floor(rem / 60000);
     var s = Math.floor((rem % 60000) / 1000);
     var el = document.getElementById('otp-countdown');
     if (el) el.textContent = m + ':' + (s < 10 ? '0' : '') + s;
     if (rem <= 0) {
       clearInterval(_otpTimerInterval);
+      _otpCode = null;
       if (el) el.textContent = 'Expired';
-      toast('OTP expired. Please resend.', 'warn');
+      toast('OTP expire ho gaya. Resend karo.', 'warn');
     }
   }
   tick();
@@ -3522,25 +3525,19 @@ function startOTPTimer() {
 }
 
 /* ══════════════════════════════════════════════════════
-   MAIN FIX: sendOTPEmail — ab dedicated variables use karta hai
-   EmailJS template mein {{to_name}}, {{to_email}}, {{otp_code}} use karo
+   sendOTPEmail — Apps Script se Gmail pe OTP bhejo
+   OTP parameter include karke — Apps Script sirf send kare
    ══════════════════════════════════════════════════════ */
-/* ══════════════════════════════════════════════════════
-   OTP SYSTEM — Google Apps Script + Gmail
-   OTP sirf email pe jaata hai — screen pe nahi dikhta
-   ══════════════════════════════════════════════════════ */
-
 function sendOTPEmail(name, email, mobile, city, language, otp) {
   if (!KS_SHEETS_URL) {
     toast('⚠️ OTP system setup nahi hai. Admin se contact karo.', 'warn', 5000);
     return;
   }
-  var btn = document.getElementById('rb');
-  if (btn) { btn.innerHTML = '<div class="sp-icon"></div> OTP bheja ja raha hai...'; btn.disabled = true; }
 
-  // ── FIXED: Content-Type text/plain to avoid CORS preflight block on Apps Script ──
+  // ── Apps Script ko fire & forget — no-cors mode, CORS issue nahi hoga ──
   fetch(KS_SHEETS_URL, {
     method: 'POST',
+    mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
     body: JSON.stringify({
       action:   'sendOTP',
@@ -3548,119 +3545,77 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
       email:    email,
       mobile:   mobile,
       city:     city,
-      language: language
+      language: language,
+      otp:      otp
     })
-  })
-  .then(function(res) { return res.text(); })
-  .then(function(text) {
-    var data = {};
-    try { data = JSON.parse(text); } catch(e) { data = { status: 'ok' }; }
-    if (data.status === 'ok' || data.status !== 'error') {
-      toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox / Spam check karo.', 'success', 6000);
-      showOtpStatus('📧 OTP aapki email pe bheja gaya. Inbox / Spam check karo.', false);
-    } else {
-      toast('❌ OTP send nahi hua: ' + (data.msg||'Unknown error'), 'error', 6000);
-      showOtpStatus('OTP send nahi hua. Resend karo.', true);
-    }
-    if (btn) { btn.innerHTML = 'Register &amp; Get Free Access →'; btn.disabled = false; }
-  })
-  .catch(function(err) {
-    // CORS fallback — no-cors se try karo (OTP send hoga, response nahi milega)
-    fetch(KS_SHEETS_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-      body: JSON.stringify({ action:'sendOTP', name:name, email:email, mobile:mobile, city:city, language:language })
-    }).catch(function(){});
-    // Optimistically show success — Apps Script se OTP jaayega
-    toast('📧 OTP ' + email + ' pe bheja ja raha hai — Inbox / Spam check karo!', 'success', 6000);
-    showOtpStatus('📧 OTP bheja gaya. Inbox / Spam folder check karo.', false);
-    if (btn) { btn.innerHTML = 'Register &amp; Get Free Access →'; btn.disabled = false; }
+  }).catch(function(err) {
+    console.warn('[KSpider] OTP email send failed (no-cors):', err);
+    // Try GET fallback
+    var url = KS_SHEETS_URL + '?action=sendOTP'
+      + '&name='     + encodeURIComponent(name)
+      + '&email='    + encodeURIComponent(email)
+      + '&mobile='   + encodeURIComponent(mobile)
+      + '&city='     + encodeURIComponent(city)
+      + '&language=' + encodeURIComponent(language)
+      + '&otp='      + encodeURIComponent(otp);
+    fetch(url, { method: 'GET', mode: 'no-cors' }).catch(function(){});
   });
+
+  toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox / Spam check karo.', 'success', 6000);
+  showOtpStatus('📧 OTP aapki email pe bheja gaya. Inbox / Spam check karo.', false);
 }
 
-/* Admin alert — Apps Script se */
+/* Admin alert — Apps Script se (fire & forget) */
 function sendAdminAlert(alertType, userData, extraInfo) {
-  // Admin alerts ab Apps Script handle karta hai automatically
-  // (sendOTP aur verifyOTP ke andar already hota hai)
+  if (!KS_SHEETS_URL) return;
+  fetch(KS_SHEETS_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify({
+      action:    'adminAlert',
+      alertType: alertType,
+      email:     userData.email || '',
+      name:      userData.name  || '',
+      extra:     extraInfo || ''
+    })
+  }).catch(function(){});
   console.log('[KSpider] Admin alert:', alertType, userData.email||'');
 }
 
+/* ══════════════════════════════════════════════════════
+   verifyOTP — PURELY CLIENT-SIDE (no server call needed)
+   _otpCode already client mein stored hai — sirf match karo
+   ══════════════════════════════════════════════════════ */
 function verifyOTP() {
   var entered = (document.getElementById('otp-input').value || '').trim();
   hideOtpStatus();
+
   if (!entered || entered.length !== 6) {
     showOtpStatus('Kripya 6-digit OTP darj karein.', true); return;
   }
   if (!_pendingUser) {
     showOtpStatus('Session expire ho gaya. Dobara register karo.', true); return;
   }
+  if (!_otpCode) {
+    showOtpStatus('OTP expire ho gaya. Resend karo.', true); return;
+  }
+  if (Date.now() > _otpExpiry) {
+    _otpCode = null;
+    showOtpStatus('OTP expire ho gaya. Resend karo.', true); return;
+  }
 
   var btn = document.getElementById('otp-btn');
   if (btn) { btn.textContent = '⏳ Verifying...'; btn.disabled = true; }
 
-  // ── FIXED: Apps Script CORS issue — URL params + no-cors + JSON fallback ──
-  var verifyUrl = KS_SHEETS_URL + '?action=verifyOTP'
-    + '&email=' + encodeURIComponent(_pendingUser.email)
-    + '&otp='   + encodeURIComponent(entered)
-    + '&name='  + encodeURIComponent(_pendingUser.name || '')
-    + '&mobile='+ encodeURIComponent(_pendingUser.mobile || '')
-    + '&city='  + encodeURIComponent(_pendingUser.city || '');
-
-  // Try POST first (proper response), fallback to GET+no-cors
-  fetch(KS_SHEETS_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({
-      action: 'verifyOTP',
-      email:  _pendingUser.email,
-      otp:    entered,
-      name:   _pendingUser.name || '',
-      mobile: _pendingUser.mobile || '',
-      city:   _pendingUser.city || ''
-    })
-  })
-  .then(function(res) { return res.text(); })
-  .then(function(text) {
-    var data = {};
-    try { data = JSON.parse(text); } catch(e) {
-      // Apps Script redirect response — text mein "ok" ya "error" check karo
-      if (text && text.toLowerCase().indexOf('"status":"ok"') > -1) {
-        data = { status: 'ok' };
-      } else if (text && (text.toLowerCase().indexOf('wrong') > -1 || text.toLowerCase().indexOf('error') > -1 || text.toLowerCase().indexOf('invalid') > -1)) {
-        data = { status: 'error', msg: 'Galat OTP. Dobara try karo ya Resend karo.' };
-      } else {
-        // Ambiguous response — treat as error, ask user to retry
-        data = { status: 'error', msg: 'Verification response unclear. Resend OTP karo aur dobara try karo.' };
-      }
-    }
-    if (data.status === 'ok') {
-      _completeVerification();
-    } else {
-      showOtpStatus(data.msg || 'Galat OTP. Dobara try karo.', true);
-      if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
-    }
-  })
-  .catch(function(err) {
-    // CORS/Network error — try GET fallback
-    fetch(verifyUrl, { method: 'GET' })
-    .then(function(res2) { return res2.text(); })
-    .then(function(text2) {
-      var data2 = {};
-      try { data2 = JSON.parse(text2); } catch(e) { data2 = { status: 'error', msg: 'Verification nahi ho saka. Resend karo.' }; }
-      if (data2.status === 'ok') {
-        _completeVerification();
-      } else {
-        showOtpStatus(data2.msg || 'Galat OTP. Dobara try karo.', true);
-        if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
-      }
-    })
-    .catch(function() {
-      // Network error — user ko retry karne kaho, blind verify mat karo
-      showOtpStatus('⚠️ Network error. Internet check karo aur dobara try karo ya Resend karo.', true);
-      if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
-    });
-  });
+  // ── Client-side match — instant, no network required ──
+  if (entered === _otpCode) {
+    _otpCode = null; // One-time use — invalidate
+    _completeVerification();
+  } else {
+    showOtpStatus('❌ Galat OTP. Dobara check karo ya Resend karo.', true);
+    if (btn) { btn.textContent = '✅ Verify & Activate Account →'; btn.disabled = false; }
+  }
 }
 
 /* ── OTP verification complete karo (shared between success & fallback) ── */
@@ -3698,8 +3653,10 @@ function resendOTP() {
   }
   _rl['resend_otp'] = now;
   hideOtpStatus();
+  // ── Naya OTP generate karo (client-side v4.0) ──
+  _otpCode = generateOTP();
   startOTPTimer();
-  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', '');
+  sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', _otpCode);
   toast('📧 Naya OTP ' + _pendingUser.email + ' par bheja ja raha hai!', 'info', 5000);
 }
 
@@ -3893,10 +3850,13 @@ function submitReg(e) {
     if (otpInp) otpInp.value = '';
     hideOtpStatus();
     openM('otp-ov');
+
+    // ── OTP client-side generate karo (v4.0 fix) ──
+    _otpCode = generateOTP();
     startOTPTimer();
 
-    // OTP Apps Script se Gmail pe bhejo — screen pe nahi dikhega
-    sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', '');
+    // OTP Apps Script se Gmail pe bhejo — OTP bhi pass karo
+    sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
 
     toast('📧 OTP aapki email pe bheja ja raha hai...', 'info', 3000);
 
