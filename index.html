@@ -3649,7 +3649,9 @@ function verifyOTP() {
   if (enteredOtp === storedOtp) {
     _otpCode = null; // One-time use — invalidate
     _clearOtpBackup();
-    _completeVerification();
+    showOtpStatus('✅ OTP sahi hai! Account verify ho raha hai...', false);
+    if (btn) { btn.textContent = '✅ Verified! Processing...'; btn.disabled = true; }
+    setTimeout(function(){ _completeVerification(); }, 400);
   } else {
     showOtpStatus('❌ Galat OTP. Dobara check karo ya Resend karo.', true);
     if (btn) { btn.textContent = '✅ Verify & Activate Account →'; btn.disabled = false; }
@@ -3882,6 +3884,10 @@ function submitReg(e) {
     // Will be updated to verified:true after OTP
     saveUserToFirebase(_pendingUser, function(){});
 
+    // ── OTP client-side generate karo PEHLE — phir modal kholo (race condition fix v4.1) ──
+    _otpCode = generateOTP();
+    startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
+
     // OTP modal prepare karo
     closeM('reg-ov');
     var dispEl = document.getElementById('otp-email-display');
@@ -3890,10 +3896,6 @@ function submitReg(e) {
     if (otpInp) otpInp.value = '';
     hideOtpStatus();
     openM('otp-ov');
-
-    // ── OTP client-side generate karo (v4.0 fix) ──
-    _otpCode = generateOTP();
-    startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
 
     // OTP Apps Script se Gmail pe bhejo — OTP bhi pass karo
     sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
@@ -5404,8 +5406,18 @@ document.addEventListener('DOMContentLoaded', function() {
     otpInput.addEventListener('input', function() {
       this.value = this.value.replace(/[^0-9]/g, '');
       if (this.value.length === 6) {
-        // Small delay — ensures _otpCode is set before verify runs
-        setTimeout(verifyOTP, 100);
+        // Wait for _otpCode to be set (race condition fix v4.1)
+        // If _otpCode already set, verify immediately; else poll briefly
+        var attempts = 0;
+        function tryVerify() {
+          if (_otpCode || attempts >= 10) {
+            verifyOTP();
+          } else {
+            attempts++;
+            setTimeout(tryVerify, 100);
+          }
+        }
+        setTimeout(tryVerify, 100);
       }
     });
     otpInput.addEventListener('keydown', function(e) {
