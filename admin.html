@@ -7,6 +7,7 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <style>
 :root{--bg:#0f0e0c;--bg2:#1a1814;--bg3:#242019;--bg4:#2e2b24;--gold:#b8792a;--gold2:#d4922e;--gold3:#f5c259;--gs:rgba(184,121,42,.12);--gb:rgba(184,121,42,.3);--neon:#059669;--red:#dc2626;--blue:#3b82f6;--pur:#7c3aed;--t1:#f0ede8;--t2:#c8c3ba;--t3:#8a8479;--t4:#5a5650;--br:rgba(255,255,255,.07);--br2:rgba(255,255,255,.12);--r8:12px;--r12:18px;--r16:24px}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -610,36 +611,102 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
 
             <!-- Image -->
             <div id="ad-img-fields">
-              <label class="fl">Image URL *</label>
-              <input class="fi" id="ad-img-url" type="url" placeholder="https://example.com/banner.jpg" oninput="updatePreview()">
-              <label class="fl">Alt Text</label>
+              <div style="display:flex;gap:4px;margin-bottom:8px;background:var(--bg3);border-radius:8px;padding:3px">
+                <button type="button" id="img-tab-url" onclick="switchImgTab('url')" style="flex:1;padding:5px;border:none;border-radius:6px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;background:var(--bg2);color:var(--t1);transition:all .2s">🔗 Paste URL</button>
+                <button type="button" id="img-tab-file" onclick="switchImgTab('file')" style="flex:1;padding:5px;border:none;border-radius:6px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;background:transparent;color:var(--t3);transition:all .2s">📁 Upload File <span style="font-size:.58rem;background:rgba(5,150,105,.2);color:#34d399;padding:1px 5px;border-radius:8px;border:1px solid rgba(5,150,105,.3)">200KB max</span></button>
+              </div>
+              <div id="img-url-row">
+                <label class="fl">Image URL *</label>
+                <input class="fi" id="ad-img-url" type="url" placeholder="https://example.com/banner.jpg" oninput="updatePreview()">
+              </div>
+              <div id="img-file-row" style="display:none">
+                <label class="fl">Upload Image <span style="font-size:.62rem;color:var(--gold2);font-weight:400">Max 200 KB · JPG/PNG/WebP/GIF</span></label>
+                <div id="img-dropzone" style="border:2px dashed rgba(184,121,42,.35);border-radius:10px;padding:16px;text-align:center;background:var(--bg3);cursor:pointer;transition:border-color .2s" onclick="document.getElementById('img-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='var(--gold2)'" ondragleave="this.style.borderColor='rgba(184,121,42,.35)'" ondrop="handleImgDrop(event)">
+                  <input type="file" id="img-file-input" accept="image/jpeg,image/png,image/webp,image/gif" style="display:none" onchange="handleImgUpload(this.files[0])">
+                  <div id="img-upload-placeholder"><div style="font-size:1.8rem;margin-bottom:4px">🖼️</div><div style="font-size:.78rem;color:var(--t2);font-weight:600">Click ya drag & drop karo</div><div style="font-size:.65rem;color:var(--t4);margin-top:3px">Max 200 KB · JPG · PNG · WebP · GIF</div></div>
+                  <div id="img-upload-progress" style="display:none"><div style="font-size:.78rem;color:var(--gold2);font-weight:600">⏳ Uploading...</div><div style="background:rgba(255,255,255,.1);border-radius:20px;height:6px;margin-top:8px;overflow:hidden"><div id="img-prog-bar" style="background:var(--gold2);height:100%;width:0%;transition:width .3s;border-radius:20px"></div></div></div>
+                  <div id="img-upload-done" style="display:none;align-items:center;gap:10px;justify-content:center;flex-wrap:wrap"><img id="img-thumb" style="height:50px;border-radius:6px;border:1px solid rgba(255,255,255,.12)"><div><div style="font-size:.72rem;color:#34d399;font-weight:700">✅ Uploaded!</div><div id="img-size-info" style="font-size:.62rem;color:var(--t4)"></div><button type="button" class="btn btn-gh btn-sm" style="font-size:.62rem;margin-top:4px" onclick="event.stopPropagation();resetImgUpload()">🔄 Change</button></div></div>
+                </div>
+                <div id="img-size-error" style="display:none;font-size:.72rem;color:#f87171;padding:5px 0;margin-top:4px">❌ File too large! Maximum 200 KB allowed.</div>
+              </div>
+              <label class="fl" style="margin-top:8px">Alt Text</label>
               <input class="fi" id="ad-img-alt" type="text" placeholder="Ad description">
+              <!-- CONNECT (Image) -->
+              <div style="background:var(--bg3);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:12px;margin-bottom:10px">
+                <div style="font-size:.72rem;font-weight:700;color:#60a5fa;margin-bottom:8px">🔗 Connect — User Click Pe Kahan Jayega?</div>
+                <select class="fi" id="img-connect-type" onchange="connectTypeChange('img')" style="margin-bottom:8px">
+                  <option value="url">🌐 Website / Custom URL</option>
+                  <option value="whatsapp">💬 WhatsApp Direct</option>
+                  <option value="instagram">📸 Instagram</option>
+                  <option value="facebook">👥 Facebook Page</option>
+                  <option value="youtube">▶️ YouTube Channel</option>
+                  <option value="twitter">🐦 X / Twitter</option>
+                  <option value="telegram">✈️ Telegram</option>
+                  <option value="phone">📞 Phone Call</option>
+                  <option value="email">✉️ Email</option>
+                  <option value="none">🚫 No Link</option>
+                </select>
+                <div id="img-connect-wa" style="display:none"><label class="fl">WhatsApp No. (with country code)</label><input class="fi" id="img-wa-number" type="tel" placeholder="919099928877" oninput="buildConnectUrl('img')"><label class="fl">Pre-filled Message (optional)</label><input class="fi" id="img-wa-msg" type="text" placeholder="Hi, I saw your ad..." oninput="buildConnectUrl('img')"></div>
+                <div id="img-connect-social" style="display:none"><label class="fl">Profile / Page URL</label><input class="fi" id="img-social-url" type="url" placeholder="https://instagram.com/yourpage" oninput="buildConnectUrl('img')"></div>
+                <div id="img-connect-phone" style="display:none"><label class="fl">Phone Number</label><input class="fi" id="img-phone-num" type="tel" placeholder="9099928877" oninput="buildConnectUrl('img')"></div>
+                <div id="img-connect-email" style="display:none"><label class="fl">Email Address</label><input class="fi" id="img-email-addr" type="email" placeholder="contact@company.com" oninput="buildConnectUrl('img')"><label class="fl">Subject (optional)</label><input class="fi" id="img-email-subj" type="text" placeholder="Ad Inquiry" oninput="buildConnectUrl('img')"></div>
+                <div id="img-connect-url"><label class="fl">Website URL</label><input class="fi" id="img-custom-url" type="url" placeholder="https://yoursite.com" oninput="buildConnectUrl('img')"></div>
+                <div id="img-connect-none" style="display:none"><div style="font-size:.73rem;color:var(--t4);padding:4px 0">Image pe click karne pe kuch nahi hoga.</div></div>
+                <div id="img-connect-preview" style="font-size:.68rem;color:var(--gold2);padding:4px 2px;word-break:break-all;min-height:16px"></div>
+              </div>
             </div>
 
             <!-- Video -->
             <div id="ad-video-fields" style="display:none">
-              <label class="fl">Video URL * <span style="font-size:.62rem;color:var(--t4);font-weight:400">(Direct MP4 link / YouTube / Vimeo / Google Drive)</span></label>
-              <input class="fi" id="ad-video-url" type="url" placeholder="https://example.com/ad-video.mp4  OR  YouTube/Vimeo URL" oninput="updatePreview()">
-              <label class="fl">Video Alt Text / Title</label>
+              <div style="display:flex;gap:4px;margin-bottom:8px;background:var(--bg3);border-radius:8px;padding:3px">
+                <button type="button" id="vid-tab-url" onclick="switchVidTab('url')" style="flex:1;padding:5px;border:none;border-radius:6px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;background:var(--bg2);color:var(--t1);transition:all .2s">🔗 Paste URL</button>
+                <button type="button" id="vid-tab-file" onclick="switchVidTab('file')" style="flex:1;padding:5px;border:none;border-radius:6px;font-family:inherit;font-size:.72rem;font-weight:700;cursor:pointer;background:transparent;color:var(--t3);transition:all .2s">📁 Upload File <span style="font-size:.58rem;background:rgba(239,68,68,.2);color:#f87171;padding:1px 5px;border-radius:8px;border:1px solid rgba(239,68,68,.3)">2MB max</span></button>
+              </div>
+              <div id="vid-url-row">
+                <label class="fl">Video URL * <span style="font-size:.62rem;color:var(--t4);font-weight:400">(MP4 / YouTube / Vimeo)</span></label>
+                <input class="fi" id="ad-video-url" type="url" placeholder="https://example.com/ad-video.mp4  OR  YouTube/Vimeo URL" oninput="updatePreview()">
+              </div>
+              <div id="vid-file-row" style="display:none">
+                <label class="fl">Upload Video <span style="font-size:.62rem;color:var(--gold2);font-weight:400">Max 2 MB · MP4/WebM</span></label>
+                <div id="vid-dropzone" style="border:2px dashed rgba(239,68,68,.35);border-radius:10px;padding:16px;text-align:center;background:var(--bg3);cursor:pointer;transition:border-color .2s" onclick="document.getElementById('vid-file-input').click()" ondragover="event.preventDefault();this.style.borderColor='#f87171'" ondragleave="this.style.borderColor='rgba(239,68,68,.35)'">
+                  <input type="file" id="vid-file-input" accept="video/mp4,video/webm" style="display:none" onchange="handleVidUpload(this.files[0])">
+                  <div id="vid-upload-placeholder"><div style="font-size:1.8rem;margin-bottom:4px">🎬</div><div style="font-size:.78rem;color:var(--t2);font-weight:600">Click ya drag & drop karo</div><div style="font-size:.65rem;color:var(--t4);margin-top:3px">Max 2 MB · MP4 · WebM · Auto Playback</div></div>
+                  <div id="vid-upload-progress" style="display:none"><div id="vid-prog-text" style="font-size:.78rem;color:#f87171;font-weight:600">⏳ Uploading...</div><div style="background:rgba(255,255,255,.1);border-radius:20px;height:6px;margin-top:8px;overflow:hidden"><div id="vid-prog-bar" style="background:#f87171;height:100%;width:0%;transition:width .3s;border-radius:20px"></div></div></div>
+                  <div id="vid-upload-done" style="display:none"><div style="font-size:.72rem;color:#34d399;font-weight:700">✅ Video Uploaded!</div><div id="vid-filename" style="font-size:.65rem;color:var(--t3);margin-top:3px"></div><div id="vid-size-info" style="font-size:.62rem;color:var(--t4)"></div><button type="button" class="btn btn-gh btn-sm" style="font-size:.62rem;margin-top:6px" onclick="event.stopPropagation();resetVidUpload()">🔄 Change</button></div>
+                </div>
+                <div id="vid-size-error" style="display:none;font-size:.72rem;color:#f87171;padding:5px 0;margin-top:4px">❌ File too large! Maximum 2 MB allowed.</div>
+              </div>
+              <label class="fl" style="margin-top:8px">Video Alt Text / Title</label>
               <input class="fi" id="ad-video-alt" type="text" placeholder="Video ad description">
               <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
-                <div>
-                  <label class="fl">Autoplay Sound</label>
-                  <select class="fi" id="ad-video-sound" style="margin-bottom:0">
-                    <option value="muted">🔇 Muted (Autoplay)</option>
-                    <option value="sound">🔊 With Sound (Click to play)</option>
-                  </select>
-                </div>
-                <div>
-                  <label class="fl">Playback Mode</label>
-                  <select class="fi" id="ad-video-play" style="margin-bottom:0">
-                    <option value="autoplay">▶️ Autoplay (inline)</option>
-                    <option value="click">👆 Click to Play</option>
-                  </select>
-                </div>
+                <div><label class="fl">Autoplay Sound</label><select class="fi" id="ad-video-sound" style="margin-bottom:0"><option value="muted">🔇 Muted (Autoplay)</option><option value="sound">🔊 With Sound</option></select></div>
+                <div><label class="fl">Playback Mode</label><select class="fi" id="ad-video-play" style="margin-bottom:0"><option value="autoplay">▶️ Autoplay</option><option value="click">👆 Click to Play</option></select></div>
               </div>
-              <label class="fl">Poster / Thumbnail Image URL <span style="font-size:.62rem;color:var(--t4);font-weight:400">(optional)</span></label>
+              <label class="fl">Poster / Thumbnail URL <span style="font-size:.62rem;color:var(--t4);font-weight:400">(optional)</span></label>
               <input class="fi" id="ad-video-poster" type="url" placeholder="https://example.com/thumb.jpg" oninput="updatePreview()">
+              <!-- CONNECT (Video) -->
+              <div style="background:var(--bg3);border:1px solid rgba(59,130,246,.25);border-radius:10px;padding:12px;margin-bottom:10px;margin-top:8px">
+                <div style="font-size:.72rem;font-weight:700;color:#60a5fa;margin-bottom:8px">🔗 Connect — User Click Pe Kahan Jayega?</div>
+                <select class="fi" id="vid-connect-type" onchange="connectTypeChange('vid')" style="margin-bottom:8px">
+                  <option value="url">🌐 Website / Custom URL</option>
+                  <option value="whatsapp">💬 WhatsApp Direct</option>
+                  <option value="instagram">📸 Instagram</option>
+                  <option value="facebook">👥 Facebook Page</option>
+                  <option value="youtube">▶️ YouTube Channel</option>
+                  <option value="twitter">🐦 X / Twitter</option>
+                  <option value="telegram">✈️ Telegram</option>
+                  <option value="phone">📞 Phone Call</option>
+                  <option value="email">✉️ Email</option>
+                  <option value="none">🚫 No Link</option>
+                </select>
+                <div id="vid-connect-wa" style="display:none"><label class="fl">WhatsApp No.</label><input class="fi" id="vid-wa-number" type="tel" placeholder="919099928877" oninput="buildConnectUrl('vid')"><label class="fl">Pre-filled Message (optional)</label><input class="fi" id="vid-wa-msg" type="text" placeholder="Hi, I saw your ad..." oninput="buildConnectUrl('vid')"></div>
+                <div id="vid-connect-social" style="display:none"><label class="fl">Profile / Page URL</label><input class="fi" id="vid-social-url" type="url" placeholder="https://instagram.com/yourpage" oninput="buildConnectUrl('vid')"></div>
+                <div id="vid-connect-phone" style="display:none"><label class="fl">Phone Number</label><input class="fi" id="vid-phone-num" type="tel" placeholder="9099928877" oninput="buildConnectUrl('vid')"></div>
+                <div id="vid-connect-email" style="display:none"><label class="fl">Email Address</label><input class="fi" id="vid-email-addr" type="email" placeholder="contact@company.com" oninput="buildConnectUrl('vid')"><label class="fl">Subject (optional)</label><input class="fi" id="vid-email-subj" type="text" placeholder="Ad Inquiry" oninput="buildConnectUrl('vid')"></div>
+                <div id="vid-connect-url"><label class="fl">Website URL</label><input class="fi" id="vid-custom-url" type="url" placeholder="https://yoursite.com" oninput="buildConnectUrl('vid')"></div>
+                <div id="vid-connect-none" style="display:none"><div style="font-size:.73rem;color:var(--t4);padding:4px 0">Video pe click karne pe kuch nahi hoga.</div></div>
+                <div id="vid-connect-preview" style="font-size:.68rem;color:var(--gold2);padding:4px 2px;word-break:break-all;min-height:16px"></div>
+              </div>
             </div>
 
             <!-- Text -->
@@ -859,8 +926,9 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
               <textarea class="fi" id="ad-html-code" rows="4" placeholder="<div>Your ad HTML...</div>" style="font-family:monospace;font-size:.8rem;resize:vertical" oninput="updatePreview()"></textarea>
             </div>
 
-            <label class="fl">Click URL <span style="color:var(--t4);font-weight:400">(optional for text ads)</span></label>
+            <label class="fl" id="lbl-click-url">Click URL <span style="color:var(--t4);font-weight:400;font-size:.62rem">(for text/html ads — image/video use Connect above)</span></label>
             <input class="fi" id="ad-click-url" type="url" placeholder="https://advertiser-site.com">
+            <input type="hidden" id="ad-connect-type-final">
 
             <label class="fl">Ad Size <span style="font-size:.62rem;color:var(--t4);font-weight:400">(Google AdSense Standard Sizes)</span></label>
             <select class="fi" id="ad-size">
@@ -4247,6 +4315,298 @@ function copyAdFormLink(){
   if(navigator.clipboard){
     navigator.clipboard.writeText(link).then(function(){ toast('✅ Link copied: '+link); });
   } else { toast('Link: '+link); }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  📁 FILE UPLOAD — Image (200KB) + Video (2MB) + Connect Links
+// ══════════════════════════════════════════════════════════════
+
+/* ── IMAGE UPLOAD TAB ── */
+function switchImgTab(tab){
+  var urlRow  = document.getElementById('img-url-row');
+  var fileRow = document.getElementById('img-file-row');
+  var tabUrl  = document.getElementById('img-tab-url');
+  var tabFile = document.getElementById('img-tab-file');
+  if(tab==='url'){
+    urlRow.style.display='block'; fileRow.style.display='none';
+    tabUrl.style.background='var(--bg2)'; tabUrl.style.color='var(--t1)';
+    tabFile.style.background='transparent'; tabFile.style.color='var(--t3)';
+  } else {
+    urlRow.style.display='none'; fileRow.style.display='block';
+    tabFile.style.background='var(--bg2)'; tabFile.style.color='var(--t1)';
+    tabUrl.style.background='transparent'; tabUrl.style.color='var(--t3)';
+  }
+}
+
+function handleImgDrop(e){
+  e.preventDefault();
+  document.getElementById('img-dropzone').style.borderColor='rgba(184,121,42,.35)';
+  var file = e.dataTransfer.files[0];
+  if(file) handleImgUpload(file);
+}
+
+function handleImgUpload(file){
+  if(!file) return;
+  var maxBytes = 200*1024; // 200KB
+  var errEl  = document.getElementById('img-size-error');
+  var placeholder = document.getElementById('img-upload-placeholder');
+  var progress = document.getElementById('img-upload-progress');
+  var done = document.getElementById('img-upload-done');
+  errEl.style.display='none';
+  if(file.size > maxBytes){
+    errEl.style.display='block';
+    toast('❌ Image too large! Max 200 KB');
+    return;
+  }
+  // Try Firebase Storage first, fallback to FileReader base64
+  placeholder.style.display='none';
+  progress.style.display='block';
+  done.style.display='none';
+  if(typeof firebase !== 'undefined' && firebase.storage){
+    var storageRef = firebase.storage().ref('ads/images/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._]/g,'_'));
+    var task = storageRef.put(file);
+    task.on('state_changed', function(snap){
+      var pct = Math.round(snap.bytesTransferred/snap.totalBytes*100);
+      document.getElementById('img-prog-bar').style.width = pct+'%';
+    }, function(err){
+      toast('Upload error: '+err.message+' — Using local preview');
+      fallbackImgToBase64(file, placeholder, progress, done);
+    }, function(){
+      task.snapshot.ref.getDownloadURL().then(function(url){
+        document.getElementById('ad-img-url').value = url;
+        showImgDone(file, url, placeholder, progress, done);
+        updatePreview();
+      });
+    });
+  } else {
+    fallbackImgToBase64(file, placeholder, progress, done);
+  }
+}
+
+function fallbackImgToBase64(file, placeholder, progress, done){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    document.getElementById('ad-img-url').value = e.target.result;
+    showImgDone(file, e.target.result, placeholder, progress, done);
+    updatePreview();
+  };
+  reader.readAsDataURL(file);
+}
+
+function showImgDone(file, url, placeholder, progress, done){
+  progress.style.display='none';
+  done.style.display='flex';
+  var thumb = document.getElementById('img-thumb');
+  if(thumb){ thumb.src=url; }
+  var info = document.getElementById('img-size-info');
+  if(info) info.textContent = file.name + ' · ' + Math.round(file.size/1024) + ' KB';
+}
+
+function resetImgUpload(){
+  document.getElementById('img-upload-placeholder').style.display='block';
+  document.getElementById('img-upload-progress').style.display='none';
+  document.getElementById('img-upload-done').style.display='none';
+  document.getElementById('ad-img-url').value='';
+  document.getElementById('img-prog-bar').style.width='0%';
+  document.getElementById('img-file-input').value='';
+  updatePreview();
+}
+
+/* ── VIDEO UPLOAD TAB ── */
+function switchVidTab(tab){
+  var urlRow  = document.getElementById('vid-url-row');
+  var fileRow = document.getElementById('vid-file-row');
+  var tabUrl  = document.getElementById('vid-tab-url');
+  var tabFile = document.getElementById('vid-tab-file');
+  if(tab==='url'){
+    urlRow.style.display='block'; fileRow.style.display='none';
+    tabUrl.style.background='var(--bg2)'; tabUrl.style.color='var(--t1)';
+    tabFile.style.background='transparent'; tabFile.style.color='var(--t3)';
+  } else {
+    urlRow.style.display='none'; fileRow.style.display='block';
+    tabFile.style.background='var(--bg2)'; tabFile.style.color='var(--t1)';
+    tabUrl.style.background='transparent'; tabUrl.style.color='var(--t3)';
+  }
+}
+
+function handleVidUpload(file){
+  if(!file) return;
+  var maxBytes = 2*1024*1024; // 2MB
+  var errEl    = document.getElementById('vid-size-error');
+  var placeholder = document.getElementById('vid-upload-placeholder');
+  var progress = document.getElementById('vid-upload-progress');
+  var done     = document.getElementById('vid-upload-done');
+  errEl.style.display='none';
+  if(file.size > maxBytes){
+    errEl.style.display='block';
+    toast('❌ Video too large! Max 2 MB');
+    return;
+  }
+  placeholder.style.display='none';
+  progress.style.display='block';
+  done.style.display='none';
+  if(typeof firebase !== 'undefined' && firebase.storage){
+    var storageRef = firebase.storage().ref('ads/videos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._]/g,'_'));
+    var task = storageRef.put(file);
+    task.on('state_changed', function(snap){
+      var pct = Math.round(snap.bytesTransferred/snap.totalBytes*100);
+      document.getElementById('vid-prog-bar').style.width = pct+'%';
+      document.getElementById('vid-prog-text').textContent = '⏳ Uploading... '+pct+'%';
+    }, function(err){
+      toast('Upload error: '+err.message+' — Using local preview');
+      fallbackVidToBlob(file, placeholder, progress, done);
+    }, function(){
+      task.snapshot.ref.getDownloadURL().then(function(url){
+        document.getElementById('ad-video-url').value = url;
+        showVidDone(file, placeholder, progress, done);
+        updatePreview();
+      });
+    });
+  } else {
+    fallbackVidToBlob(file, placeholder, progress, done);
+  }
+}
+
+function fallbackVidToBlob(file, placeholder, progress, done){
+  var blobUrl = URL.createObjectURL(file);
+  document.getElementById('ad-video-url').value = blobUrl;
+  showVidDone(file, placeholder, progress, done);
+  updatePreview();
+}
+
+function showVidDone(file, placeholder, progress, done){
+  progress.style.display='none';
+  done.style.display='block';
+  var fname = document.getElementById('vid-filename');
+  if(fname) fname.textContent = file.name;
+  var info = document.getElementById('vid-size-info');
+  if(info) info.textContent = Math.round(file.size/1024) + ' KB / ' + Math.round(file.size/1024/1024*10)/10 + ' MB';
+}
+
+function resetVidUpload(){
+  document.getElementById('vid-upload-placeholder').style.display='block';
+  document.getElementById('vid-upload-progress').style.display='none';
+  document.getElementById('vid-upload-done').style.display='none';
+  document.getElementById('ad-video-url').value='';
+  document.getElementById('vid-prog-bar').style.width='0%';
+  document.getElementById('vid-file-input').value='';
+  updatePreview();
+}
+
+/* ── CONNECT TYPE BUILDER ── */
+function connectTypeChange(prefix){
+  var type = (document.getElementById(prefix+'-connect-type')||{}).value||'url';
+  var sections = ['wa','social','phone','email','url','none'];
+  sections.forEach(function(s){
+    var el = document.getElementById(prefix+'-connect-'+s);
+    if(el) el.style.display='none';
+  });
+  // Map type to section
+  var map = {
+    whatsapp:'wa', instagram:'social', facebook:'social', youtube:'social',
+    twitter:'social', telegram:'social', phone:'phone', email:'email',
+    url:'url', none:'none'
+  };
+  var sec = map[type]||'url';
+  var show = document.getElementById(prefix+'-connect-'+sec);
+  if(show) show.style.display='block';
+  // Update placeholder for social
+  var socialInput = document.getElementById(prefix+'-social-url');
+  if(socialInput){
+    var ph = {instagram:'https://instagram.com/yourpage',facebook:'https://facebook.com/yourpage',youtube:'https://youtube.com/@yourchannel',twitter:'https://x.com/yourhandle',telegram:'https://t.me/yourchannel'};
+    socialInput.placeholder = ph[type]||'https://';
+  }
+  buildConnectUrl(prefix);
+}
+
+function buildConnectUrl(prefix){
+  var type = (document.getElementById(prefix+'-connect-type')||{}).value||'url';
+  var url = '';
+  if(type==='whatsapp'){
+    var num = ((document.getElementById(prefix+'-wa-number')||{}).value||'').replace(/[^0-9]/g,'');
+    var msg = encodeURIComponent((document.getElementById(prefix+'-wa-msg')||{}).value||'');
+    if(num) url = 'https://wa.me/'+num+(msg?'?text='+msg:'');
+  } else if(['instagram','facebook','youtube','twitter','telegram'].indexOf(type)>-1){
+    url = (document.getElementById(prefix+'-social-url')||{}).value||'';
+  } else if(type==='phone'){
+    var ph = ((document.getElementById(prefix+'-phone-num')||{}).value||'').replace(/[^0-9+]/g,'');
+    if(ph) url = 'tel:'+ph;
+  } else if(type==='email'){
+    var em = (document.getElementById(prefix+'-email-addr')||{}).value||'';
+    var subj = encodeURIComponent((document.getElementById(prefix+'-email-subj')||{}).value||'');
+    if(em) url = 'mailto:'+em+(subj?'?subject='+subj:'');
+  } else if(type==='url'){
+    url = (document.getElementById(prefix+'-custom-url')||{}).value||'';
+  } else if(type==='none'){
+    url = '';
+  }
+  // Update the main click URL field for image/video
+  if(prefix==='img'||prefix==='vid'){
+    var mainClickUrl = document.getElementById('ad-click-url');
+    if(mainClickUrl && url) mainClickUrl.value = url;
+  }
+  // Show preview
+  var prev = document.getElementById(prefix+'-connect-preview');
+  if(prev) prev.textContent = url ? '→ ' + url : '';
+  updatePreview();
+}
+
+/* ── PATCH saveAd to save connectType ── */
+var _origSaveAd = saveAd;
+saveAd = function(){
+  // Sync connect URL from image/video connect blocks to ad-click-url
+  var type = (document.getElementById('ad-type')||{}).value||'image';
+  if(type==='image'){
+    buildConnectUrl('img');
+  } else if(type==='video'){
+    buildConnectUrl('vid');
+  }
+  _origSaveAd();
+};
+
+/* ── PATCH editAd to restore connect UI ── */
+var _origEditAd = editAd;
+editAd = function(id){
+  _origEditAd(id);
+  // After slight delay, restore connect UI from clickUrl
+  setTimeout(function(){
+    var d_type = (document.getElementById('ad-type')||{}).value||'image';
+    var clickUrl = (document.getElementById('ad-click-url')||{}).value||'';
+    if(d_type==='image') restoreConnectUi('img', clickUrl);
+    if(d_type==='video') restoreConnectUi('vid', clickUrl);
+  }, 300);
+};
+
+function restoreConnectUi(prefix, url){
+  if(!url) return;
+  var type = 'url';
+  if(/wa\.me/i.test(url)) type='whatsapp';
+  else if(/instagram\.com/i.test(url)) type='instagram';
+  else if(/facebook\.com/i.test(url)) type='facebook';
+  else if(/youtube\.com|youtu\.be/i.test(url)) type='youtube';
+  else if(/x\.com|twitter\.com/i.test(url)) type='twitter';
+  else if(/t\.me/i.test(url)) type='telegram';
+  else if(/^tel:/i.test(url)) type='phone';
+  else if(/^mailto:/i.test(url)) type='email';
+  var sel = document.getElementById(prefix+'-connect-type');
+  if(sel) sel.value=type;
+  connectTypeChange(prefix);
+  // Restore values
+  if(type==='url'){ var el=document.getElementById(prefix+'-custom-url'); if(el) el.value=url; }
+  else if(type==='whatsapp'){
+    var m=url.match(/wa\.me\/([0-9]+)/);
+    var el2=document.getElementById(prefix+'-wa-number'); if(el2&&m) el2.value=m[1];
+    var m2=url.match(/[?&]text=([^&]*)/);
+    var el3=document.getElementById(prefix+'-wa-msg'); if(el3&&m2) el3.value=decodeURIComponent(m2[1]);
+  } else if(['instagram','facebook','youtube','twitter','telegram'].indexOf(type)>-1){
+    var el4=document.getElementById(prefix+'-social-url'); if(el4) el4.value=url;
+  } else if(type==='phone'){
+    var el5=document.getElementById(prefix+'-phone-num'); if(el5) el5.value=url.replace('tel:','');
+  } else if(type==='email'){
+    var parts=url.replace('mailto:','').split('?');
+    var el6=document.getElementById(prefix+'-email-addr'); if(el6) el6.value=parts[0];
+    if(parts[1]){ var m3=parts[1].match(/subject=([^&]*)/); var el7=document.getElementById(prefix+'-email-subj'); if(el7&&m3) el7.value=decodeURIComponent(m3[1]); }
+  }
 }
 
 </script>
