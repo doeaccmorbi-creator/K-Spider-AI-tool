@@ -2745,11 +2745,6 @@ body {
       <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;text-align:left;">
         <p style="margin:0;font-size:.78rem;color:#795548;line-height:1.5;">📬 <strong>OTP nahi mila?</strong> Apna <strong>Spam / Junk</strong> folder check karo. Sender: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7b10080b121f1e0949494a494b4d3b1c161a121755181416">[email&#160;protected]</a></strong></p>
       </div>
-      <!-- OTP Status Box — required for error/success messages -->
-      <div class="otp-status-box" id="otp-status-box" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:8px;border:1px solid rgba(232,82,10,.3);background:rgba(232,82,10,.07);font-size:.82rem;color:var(--t2);align-items:center;gap:8px;">
-        <span id="otp-status-icon">❌</span>
-        <span id="otp-status-msg"></span>
-      </div>
       <div class="form-group" style="text-align:left">
         <label class="form-label">Enter OTP *</label>
         <input class="form-ctrl" id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:1.4rem;letter-spacing:.4em;text-align:center;font-weight:700" autocomplete="one-time-code">
@@ -3465,18 +3460,18 @@ function toast(msg, type, dur) {
    STATUS BOX helpers
    ══════════════════════════════════════════════════════ */
 function showOtpStatus(msg, isError) {
-  var box = document.getElementById('otp-status-box');
+  var box = document.getElementById('otp-status-box');  // ← FIX: box variable missing tha
   var msgEl = document.getElementById('otp-status-msg');
   var iconEl = document.getElementById('otp-status-icon');
   if (!box || !msgEl) return;
   msgEl.textContent = msg;
   if (iconEl) iconEl.textContent = isError ? '❌' : '✅';
-  box.style.display = 'flex';
-  if (isError) { box.classList.add('err'); } else { box.classList.remove('err'); }
+  box.classList.add('show');
+  if (isError) box.classList.add('err'); else box.classList.remove('err');
 }
 function hideOtpStatus() {
   var box = document.getElementById('otp-status-box');
-  if (box) { box.style.display = 'none'; box.classList.remove('err'); }
+  if (box) { box.classList.remove('show'); box.classList.remove('err'); }
 }
 
 /* Registration modal ka status box */
@@ -3505,6 +3500,25 @@ var _otpCode = null;
 var _otpExpiry = null;
 var _otpTimerInterval = null;
 
+// ── OTP ko sessionStorage mein bhi backup karo — page events se reset na ho ──
+function _saveOtpBackup(otp, expiry) {
+  try {
+    sessionStorage.setItem('_ks_otp', otp);
+    sessionStorage.setItem('_ks_otp_exp', expiry);
+  } catch(e) {}
+}
+function _getOtpBackup() {
+  try {
+    var o = sessionStorage.getItem('_ks_otp');
+    var e = parseInt(sessionStorage.getItem('_ks_otp_exp') || '0', 10);
+    if (o && e && Date.now() < e) return { otp: o, expiry: e };
+  } catch(e) {}
+  return null;
+}
+function _clearOtpBackup() {
+  try { sessionStorage.removeItem('_ks_otp'); sessionStorage.removeItem('_ks_otp_exp'); } catch(e) {}
+}
+
 function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
@@ -3512,6 +3526,8 @@ function generateOTP() {
 function startOTPTimer() {
   clearInterval(_otpTimerInterval);
   _otpExpiry = Date.now() + 5 * 60 * 1000;
+  // ── Backup save karo sessionStorage mein ──
+  if (_otpCode) _saveOtpBackup(_otpCode, _otpExpiry);
   function tick() {
     var rem = Math.max(0, _otpExpiry - Date.now());
     var m = Math.floor(rem / 60000);
@@ -3521,6 +3537,7 @@ function startOTPTimer() {
     if (rem <= 0) {
       clearInterval(_otpTimerInterval);
       _otpCode = null;
+      _clearOtpBackup();
       if (el) el.textContent = 'Expired';
       toast('OTP expire ho gaya. Resend karo.', 'warn');
     }
@@ -3602,20 +3619,36 @@ function verifyOTP() {
   if (!_pendingUser) {
     showOtpStatus('Session expire ho gaya. Dobara register karo.', true); return;
   }
+
+  // ── _otpCode null hai? sessionStorage backup se restore karo ──
+  if (!_otpCode) {
+    var backup = _getOtpBackup();
+    if (backup) {
+      _otpCode   = backup.otp;
+      _otpExpiry = backup.expiry;
+      console.log('[KSpider] OTP restored from backup ✅');
+    }
+  }
+
   if (!_otpCode) {
     showOtpStatus('OTP expire ho gaya. Resend karo.', true); return;
   }
   if (Date.now() > _otpExpiry) {
     _otpCode = null;
+    _clearOtpBackup();
     showOtpStatus('OTP expire ho gaya. Resend karo.', true); return;
   }
 
   var btn = document.getElementById('otp-btn');
   if (btn) { btn.textContent = '⏳ Verifying...'; btn.disabled = true; }
 
-  // ── Client-side match — instant, no network required ──
-  if (entered === _otpCode) {
+  // ── String comparison — both trim karo ──
+  var storedOtp  = (_otpCode || '').toString().trim();
+  var enteredOtp = entered.toString().trim();
+
+  if (enteredOtp === storedOtp) {
     _otpCode = null; // One-time use — invalidate
+    _clearOtpBackup();
     _completeVerification();
   } else {
     showOtpStatus('❌ Galat OTP. Dobara check karo ya Resend karo.', true);
@@ -3627,6 +3660,8 @@ function verifyOTP() {
 function _completeVerification() {
   var btn = document.getElementById('otp-btn');
   clearInterval(_otpTimerInterval);
+  _otpCode = null;
+  _clearOtpBackup();
   _pendingUser.verified  = true;
   _pendingUser.verifiedAt = new Date().toISOString();
 
@@ -3660,7 +3695,7 @@ function resendOTP() {
   hideOtpStatus();
   // ── Naya OTP generate karo (client-side v4.0) ──
   _otpCode = generateOTP();
-  startOTPTimer();
+  startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
   sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', _otpCode);
   toast('📧 Naya OTP ' + _pendingUser.email + ' par bheja ja raha hai!', 'info', 5000);
 }
@@ -3858,7 +3893,7 @@ function submitReg(e) {
 
     // ── OTP client-side generate karo (v4.0 fix) ──
     _otpCode = generateOTP();
-    startOTPTimer();
+    startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
 
     // OTP Apps Script se Gmail pe bhejo — OTP bhi pass karo
     sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
@@ -5368,7 +5403,10 @@ document.addEventListener('DOMContentLoaded', function() {
   if (otpInput) {
     otpInput.addEventListener('input', function() {
       this.value = this.value.replace(/[^0-9]/g, '');
-      if (this.value.length === 6) { verifyOTP(); }
+      if (this.value.length === 6) {
+        // Small delay — ensures _otpCode is set before verify runs
+        setTimeout(verifyOTP, 100);
+      }
     });
     otpInput.addEventListener('keydown', function(e) {
       if (e.key === 'Enter') { verifyOTP(); }
