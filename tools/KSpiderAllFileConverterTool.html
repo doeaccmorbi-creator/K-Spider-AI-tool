@@ -4856,6 +4856,37 @@ window.vsDropClip=vsDropClip;
 function vsDelClip(i){URL.revokeObjectURL(VS.videoClips[i].url);VS.videoClips.splice(i,1);vsRenderVideoList();}
 window.vsDelClip=vsDelClip;
 
+// Track MediaElementSources to avoid duplicate creation errors
+const _vsMediaSources = new WeakMap();
+function vsGetOrCreateMediaSource(actx, vidEl) {
+  if (_vsMediaSources.has(vidEl)) return _vsMediaSources.get(vidEl);
+  try {
+    const src = actx.createMediaElementSource(vidEl);
+    _vsMediaSources.set(vidEl, src);
+    return src;
+  } catch(e) { return null; }
+}
+
+// Reliable video ready helper
+async function vsWaitReady(vidEl, src, startTime) {
+  vidEl.src = src;
+  vidEl.load();
+  await new Promise(r => {
+    if (vidEl.readyState >= 3) { r(); return; }
+    const onReady = () => { vidEl.removeEventListener('canplaythrough', onReady); vidEl.removeEventListener('error', onReady); r(); };
+    vidEl.addEventListener('canplaythrough', onReady);
+    vidEl.addEventListener('error', onReady);
+    setTimeout(r, 5000); // timeout fallback
+  });
+  vidEl.currentTime = startTime;
+  await new Promise(r => {
+    if (Math.abs(vidEl.currentTime - startTime) < 0.1) { r(); return; }
+    const onSeeked = () => { vidEl.removeEventListener('seeked', onSeeked); r(); };
+    vidEl.addEventListener('seeked', onSeeked);
+    setTimeout(r, 3000);
+  });
+}
+
 async function vsJoinVideos() {
   if(VS.videoClips.length<1){toast('Add at least 1 video clip!','er');return;}
   const logId='vs-join-log', resId='vs-join-result';
@@ -4895,70 +4926,75 @@ async function vsJoinVideos() {
   mr.start(100);
 
   const TFRAMS=Math.round(fps*transDur);
+  const frameInterval=1000/fps;
   let timeAcc=0;
 
   for(let ci=0;ci<VS.videoClips.length;ci++){
     if(timeAcc>=recDur) break;
     const clip=VS.videoClips[ci];
     const ts=clip.trimStart||0, te=clip.trimEnd||clip.duration;
-    const clipUsed=te-ts;
+    const clipUsed=Math.min(te-ts, recDur-timeAcc);
     vsLog(logId,`🎞 Clip ${ci+1}/${VS.videoClips.length}: ${clip.name} [${fmtDur(ts)}→${fmtDur(te)}]`,'info');
     vsProgress('join', 5+Math.round(ci/VS.videoClips.length*85), `Clip ${ci+1}/${VS.videoClips.length}`);
 
-    // Create video element with audio source (for original audio)
+    // Create fresh video element per clip for clean audio routing
     const vidEl=document.createElement('video');
-    vidEl.src=clip.url;
     vidEl.crossOrigin='anonymous';
-    vidEl.muted=false; // NEVER mute — we handle volume via WebAudio
-    await new Promise(r=>{vidEl.oncanplay=r;vidEl.load();});
+    vidEl.playsInline=true;
+    vidEl.muted=true; // start muted; unmute after source routing
+
+    await vsWaitReady(vidEl, clip.url, ts);
 
     // Route original audio through WebAudio for volume control
     if(keepOrig&&origVol>0){
       try{
-        const src=actx.createMediaElementSource(vidEl);
-        const gn=actx.createGain(); gn.gain.value=origVol;
-        src.connect(gn); gn.connect(masterGain);
-      }catch(e){/* already connected or browser limitation */}
-    } else {
-      vidEl.muted=true;
+        const mediaSrc=vsGetOrCreateMediaSource(actx,vidEl);
+        if(mediaSrc){
+          const gn=actx.createGain(); gn.gain.value=origVol;
+          mediaSrc.connect(gn); gn.connect(masterGain);
+          vidEl.muted=false;
+        }
+      }catch(e){ vidEl.muted=true; }
     }
 
-    vidEl.currentTime=ts;
-    await new Promise(r=>{vidEl.onseeked=r;});
-    vidEl.play();
+    vidEl.play().catch(()=>{});
 
     let frameIdx=0;
-    const maxFrames=Math.ceil(Math.min(clipUsed, recDur-timeAcc)*fps);
+    const maxFrames=Math.ceil(clipUsed*fps);
 
     await new Promise(resolve=>{
       let done=false;
-      function draw(){
+      const iv=setInterval(()=>{
         if(done) return;
-        if(frameIdx>=maxFrames||(timeAcc+frameIdx/fps)>=recDur){vidEl.pause();done=true;resolve();return;}
+        if(frameIdx>=maxFrames){
+          clearInterval(iv); vidEl.pause(); done=true; resolve(); return;
+        }
         ctx.clearRect(0,0,VW,VH);
-        ctx.drawImage(vidEl,0,0,VW,VH);
+        // Draw black bg first
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,VW,VH);
+        try{ ctx.drawImage(vidEl,0,0,VW,VH); }catch(e){}
 
-        // Transitions
+        // Transitions: fade-in from black at clip start
         if(frameIdx<TFRAMS&&ci>0){
           const p=frameIdx/TFRAMS;
           if(trans==='fade'||trans==='white') vsDrawTransition(ctx,VW,VH,trans,p);
           else if(trans==='wipe'){ const x=VW*p; ctx.fillStyle='#000'; ctx.fillRect(0,0,VW-x,VH); }
           else if(trans==='wiper'){ const x=VW*p; ctx.fillStyle='#000'; ctx.fillRect(x,0,VW,VH); }
-          else if(trans==='zoom'){ ctx.save();const s=1+(1-p)*0.3;ctx.globalAlpha=p;const ox=(VW*(s-1))/2,oy=(VH*(s-1))/2;ctx.drawImage(vidEl,-ox,-oy,VW*s,VH*s);ctx.restore();}
-          else if(trans==='blur'){ctx.save();ctx.filter=`blur(${(1-p)*8}px)`;ctx.drawImage(vidEl,0,0,VW,VH);ctx.restore();}
+          else if(trans==='zoom'){ ctx.save();const s=1+(1-p)*0.3;ctx.globalAlpha=p;const ox=(VW*(s-1))/2,oy=(VH*(s-1))/2;try{ctx.drawImage(vidEl,-ox,-oy,VW*s,VH*s);}catch(e){}ctx.restore();}
+          else if(trans==='blur'){ctx.save();ctx.filter=`blur(${(1-p)*8}px)`;try{ctx.drawImage(vidEl,0,0,VW,VH);}catch(e){}ctx.restore();}
         }
         // Clip counter
         ctx.save();ctx.font=`bold ${Math.round(VH*0.02)}px Arial`;ctx.fillStyle='rgba(0,0,0,0.5)';const lbl=`${ci+1}/${VS.videoClips.length}`;const tw=ctx.measureText(lbl).width;ctx.fillRect(10,10,tw+12,22);ctx.fillStyle='#00f5ff';ctx.fillText(lbl,16,26);ctx.restore();
         if(wmark) vsDrawWatermark(ctx,VW,VH);
         frameIdx++;
-        requestAnimationFrame(draw);
-      }
-      draw();
+      }, frameInterval);
     });
     vidEl.pause();
     timeAcc+=clipUsed;
   }
 
+  // Draw one last frame then stop
+  await new Promise(r=>setTimeout(r,200));
   mr.stop();
   await new Promise(r=>{mr.onstop=r;});
   vsProgress('join',100,'Done!');
@@ -5040,8 +5076,18 @@ async function vsPhotosToVideo(){
   const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100);
   const TFRAMS=Math.round(fps*0.5);
+  const frameInterval=1000/fps;
 
-  await Promise.all(VS.photoFiles.map(p=>new Promise(r=>{if(p.img.complete)r();else{p.img.onload=r;p.img.onerror=r;}})));
+  // Wait for all images to load completely
+  await Promise.all(VS.photoFiles.map(p=>new Promise(r=>{
+    if(p.img.complete&&p.img.naturalWidth>0){r();}
+    else{
+      const onDone=()=>{p.img.removeEventListener('load',onDone);p.img.removeEventListener('error',onDone);r();};
+      p.img.addEventListener('load',onDone);
+      p.img.addEventListener('error',onDone);
+      setTimeout(r,5000);
+    }
+  })));
 
   let globalTime=0;
   const dirs=['tl','tr','bl','br','c'];
@@ -5056,46 +5102,52 @@ async function vsPhotosToVideo(){
     const kbDir=dirs[pi%dirs.length];
     vsLog(logId,`🖼 ${pi+1}/${VS.photoFiles.length}: ${photo.name}`,'info');
 
-    for(let f=0;f<frames;f++){
-      const progress=f/frames;
-      ctx.clearRect(0,0,VW,VH);
+    // Use setInterval for precise frame timing (critical for MediaRecorder sync)
+    await new Promise(resolve=>{
+      let f=0;
+      const iv=setInterval(()=>{
+        if(f>=frames){clearInterval(iv);resolve();return;}
+        const progress=f/frames;
+        ctx.clearRect(0,0,VW,VH);
+        ctx.fillStyle='#000'; ctx.fillRect(0,0,VW,VH);
 
-      if(effect==='kenburns'){
-        const scale=useZoomIn?(1+progress*0.15):(1.15-progress*0.15);
-        const sw=VW*scale,sh=VH*scale;
-        let dx=(VW-sw)/2,dy=(VH-sh)/2;
-        if(kbDir==='tl'){dx=0;dy=0;}else if(kbDir==='tr'){dx=VW-sw;dy=0;}
-        else if(kbDir==='bl'){dx=0;dy=VH-sh;}else if(kbDir==='br'){dx=VW-sw;dy=VH-sh;}
-        drawImageCover(ctx,img,dx,dy,sw,sh,VW,VH);
-      } else if(effect==='zoom'||effect==='zoomOut'){
-        const scale=effect==='zoom'?(1+progress*0.15):(1.15-progress*0.15);
-        drawImageCover(ctx,img,(VW-(VW*scale))/2,(VH-(VH*scale))/2,VW*scale,VH*scale,VW,VH);
-      } else if(effect==='slide'||effect==='slideR'||effect==='slideU'){
-        const dir=(effect==='slideR'?-1:1);
-        if(pi>0&&f<TFRAMS){const p2=f/TFRAMS; drawImageCover(ctx,VS.photoFiles[pi-1].img,-VW*p2*dir,0,VW,VH,VW,VH); drawImageCover(ctx,img,VW*(1-p2)*dir,0,VW,VH,VW,VH);}
-        else if(effect==='slideU'&&pi>0&&f<TFRAMS){const p2=f/TFRAMS;drawImageCover(ctx,VS.photoFiles[pi-1].img,0,-VH*p2,VW,VH,VW,VH);drawImageCover(ctx,img,0,VH*(1-p2),VW,VH,VW,VH);}
-        else drawImageCover(ctx,img,0,0,VW,VH,VW,VH);
-      } else if(effect==='rotate'&&pi>0&&f<TFRAMS){
-        const p2=f/TFRAMS; ctx.save(); ctx.translate(VW/2,VH/2); ctx.rotate((1-p2)*Math.PI/4); ctx.globalAlpha=p2;
-        drawImageCover(ctx,img,-VW/2,-VH/2,VW,VH,VW,VH); ctx.restore();
-      } else {
-        drawImageCover(ctx,img,0,0,VW,VH,VW,VH);
-      }
+        if(effect==='kenburns'){
+          const scale=useZoomIn?(1+progress*0.15):(1.15-progress*0.15);
+          const sw=VW*scale,sh=VH*scale;
+          let dx=(VW-sw)/2,dy=(VH-sh)/2;
+          if(kbDir==='tl'){dx=0;dy=0;}else if(kbDir==='tr'){dx=VW-sw;dy=0;}
+          else if(kbDir==='bl'){dx=0;dy=VH-sh;}else if(kbDir==='br'){dx=VW-sw;dy=VH-sh;}
+          drawImageCover(ctx,img,dx,dy,sw,sh,VW,VH);
+        } else if(effect==='zoom'||effect==='zoomOut'){
+          const scale=effect==='zoom'?(1+progress*0.15):(1.15-progress*0.15);
+          drawImageCover(ctx,img,(VW-(VW*scale))/2,(VH-(VH*scale))/2,VW*scale,VH*scale,VW,VH);
+        } else if(effect==='slide'||effect==='slideR'||effect==='slideU'){
+          const dir=(effect==='slideR'?-1:1);
+          if(pi>0&&f<TFRAMS){const p2=f/TFRAMS; drawImageCover(ctx,VS.photoFiles[pi-1].img,-VW*p2*dir,0,VW,VH,VW,VH); drawImageCover(ctx,img,VW*(1-p2)*dir,0,VW,VH,VW,VH);}
+          else if(effect==='slideU'&&pi>0&&f<TFRAMS){const p2=f/TFRAMS;drawImageCover(ctx,VS.photoFiles[pi-1].img,0,-VH*p2,VW,VH,VW,VH);drawImageCover(ctx,img,0,VH*(1-p2),VW,VH,VW,VH);}
+          else drawImageCover(ctx,img,0,0,VW,VH,VW,VH);
+        } else if(effect==='rotate'&&pi>0&&f<TFRAMS){
+          const p2=f/TFRAMS; ctx.save(); ctx.translate(VW/2,VH/2); ctx.rotate((1-p2)*Math.PI/4); ctx.globalAlpha=p2;
+          drawImageCover(ctx,img,-VW/2,-VH/2,VW,VH,VW,VH); ctx.restore();
+        } else {
+          drawImageCover(ctx,img,0,0,VW,VH,VW,VH);
+        }
 
-      // Color grade
-      if(colorGrade&&colorGrade!=='none') vsApplyColorGrade(ctx,VW,VH,colorGrade);
+        // Color grade
+        if(colorGrade&&colorGrade!=='none') vsApplyColorGrade(ctx,VW,VH,colorGrade);
 
-      // Fade
-      if(effect==='fade'){
-        const alpha=f<TFRAMS?(1-f/TFRAMS):f>frames-TFRAMS?(f-(frames-TFRAMS))/TFRAMS:0;
-        if(alpha>0){ctx.fillStyle=`rgba(0,0,0,${Math.min(1,alpha)})`;ctx.fillRect(0,0,VW,VH);}
-      }
+        // Fade
+        if(effect==='fade'){
+          const alpha=f<TFRAMS?(1-f/TFRAMS):f>frames-TFRAMS?(f-(frames-TFRAMS))/TFRAMS:0;
+          if(alpha>0){ctx.fillStyle=`rgba(0,0,0,${Math.min(1,alpha)})`;ctx.fillRect(0,0,VW,VH);}
+        }
 
-      // HUD
-      ctx.save();ctx.font=`bold ${Math.round(VH*0.02)}px Arial`;ctx.fillStyle='rgba(0,0,0,0.5)';const lbl=`${pi+1}/${VS.photoFiles.length}`;const tw=ctx.measureText(lbl).width;ctx.fillRect(10,10,tw+12,22);ctx.fillStyle='#fff';ctx.fillText(lbl,16,26);ctx.restore();
-      if(wmark) vsDrawWatermark(ctx,VW,VH);
-      await new Promise(r=>requestAnimationFrame(r));
-    }
+        // HUD
+        ctx.save();ctx.font=`bold ${Math.round(VH*0.02)}px Arial`;ctx.fillStyle='rgba(0,0,0,0.5)';const lbl=`${pi+1}/${VS.photoFiles.length}`;const tw=ctx.measureText(lbl).width;ctx.fillRect(10,10,tw+12,22);ctx.fillStyle='#fff';ctx.fillText(lbl,16,26);ctx.restore();
+        if(wmark) vsDrawWatermark(ctx,VW,VH);
+        f++;
+      }, frameInterval);
+    });
     globalTime+=dur;
   }
 
@@ -5168,7 +5220,15 @@ async function vsMixAudio(){
   const wmark=document.getElementById('mix-wmark').value==='on';
 
   const vidEl=VS.mixVideoEl; if(!vidEl){toast('Video not loaded','er');return;}
-  await new Promise(r=>{vidEl.oncanplay=r;vidEl.load();});
+  // Reliable load with fallback
+  await new Promise(r=>{
+    if(vidEl.readyState>=3){r();return;}
+    const done=()=>{vidEl.removeEventListener('canplaythrough',done);vidEl.removeEventListener('error',done);r();};
+    vidEl.addEventListener('canplaythrough',done);
+    vidEl.addEventListener('error',done);
+    vidEl.load();
+    setTimeout(r,5000);
+  });
   const vidDur=vidEl.duration;
   const VW=vidEl.videoWidth||1280, VH=vidEl.videoHeight||720;
 
@@ -5178,14 +5238,16 @@ async function vsMixAudio(){
   const audioDest=actx.createMediaStreamDestination();
   const masterGain=actx.createGain(); masterGain.connect(audioDest);
 
-  // Original audio routing
+  // Original audio routing (reuse existing MediaElementSource if already created)
   if(keepOrig){
     try{
-      const src=actx.createMediaElementSource(vidEl);
-      const gn=actx.createGain(); gn.gain.value=origVol;
-      src.connect(gn); gn.connect(masterGain);
-      vidEl.muted=false;
-      vsLog(logId,`🔊 Original audio: ${Math.round(origVol*100)}%`,'info');
+      const mediaSrc=vsGetOrCreateMediaSource(actx,vidEl);
+      if(mediaSrc){
+        const gn=actx.createGain(); gn.gain.value=origVol;
+        mediaSrc.connect(gn); gn.connect(masterGain);
+        vidEl.muted=false;
+        vsLog(logId,`🔊 Original audio: ${Math.round(origVol*100)}%`,'info');
+      } else { vidEl.muted=true; }
     }catch(e){vidEl.muted=true;vsLog(logId,'⚠ Direct audio routing; original audio may not mix','info');}
   } else {vidEl.muted=true;}
 
@@ -5206,20 +5268,22 @@ async function vsMixAudio(){
   const fps=30;
   const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100);
-  vidEl.currentTime=0; vidEl.play();
+  vidEl.currentTime=0;
+  await new Promise(r=>{vidEl.onseeked=r; vidEl.currentTime=0; setTimeout(r,1000);});
+  vidEl.play().catch(()=>{});
   vsLog(logId,`⏺ Recording ${fmtDur(vidDur)}...`,'info');
 
-  let lastT=performance.now(), elapsed=0;
+  const frameInterval=1000/fps;
+  let elapsed=0;
   await new Promise(resolve=>{
-    function tick(now){
-      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+    const iv=setInterval(()=>{
+      elapsed+=frameInterval/1000;
       vsProgress('mix', Math.min(98,Math.round(elapsed/vidDur*100)), `${fmtDur(elapsed)} / ${fmtDur(vidDur)}`);
-      if(elapsed>=vidDur){resolve();return;}
-      ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+      if(elapsed>=vidDur){clearInterval(iv);resolve();return;}
+      ctx.clearRect(0,0,VW,VH);
+      try{ctx.drawImage(vidEl,0,0,VW,VH);}catch(e){}
       if(wmark) vsDrawWatermark(ctx,VW,VH);
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
+    }, frameInterval);
   });
 
   vidEl.pause(); mr.stop(); await new Promise(r=>{mr.onstop=r;});
@@ -5341,29 +5405,36 @@ async function vsTrimExport(){
   const audioDest=actx.createMediaStreamDestination();
   const masterGain=actx.createGain(); masterGain.connect(audioDest);
 
-  try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
-  catch(e){vidEl.muted=true;}
+  try{
+    const mediaSrc=vsGetOrCreateMediaSource(actx,vidEl);
+    if(mediaSrc){const gn=actx.createGain();gn.gain.value=1;mediaSrc.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+    else{vidEl.muted=true;}
+  }catch(e){vidEl.muted=true;}
 
   const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100);
+  const frameInterval=1000/fps;
   let done=0;
   for(const seg of segs){
     vsLog(logId,`▶ Segment ${fmtDur(seg.start)}→${fmtDur(seg.end)}`,'info');
     vidEl.currentTime=seg.start;
-    await new Promise(r=>{vidEl.onseeked=r;});
-    vidEl.play();
+    await new Promise(r=>{
+      const onSeeked=()=>{vidEl.removeEventListener('seeked',onSeeked);r();};
+      vidEl.addEventListener('seeked',onSeeked);
+      setTimeout(r,3000);
+    });
+    vidEl.play().catch(()=>{});
     const segDur=seg.end-seg.start;
-    let elapsed2=0, lastT2=performance.now();
+    let elapsed2=0;
     await new Promise(resolve=>{
-      function tick(now){
-        const dt=now-lastT2; lastT2=now; elapsed2+=dt/1000;
+      const iv=setInterval(()=>{
+        elapsed2+=frameInterval/1000;
         vsProgress('trim',2+Math.round((done+elapsed2)/totalOut*94),`${fmtDur(done+elapsed2)} / ${fmtDur(totalOut)}`);
-        if(elapsed2>=segDur||vidEl.currentTime>=seg.end){resolve();return;}
-        ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+        if(elapsed2>=segDur||vidEl.currentTime>=seg.end){clearInterval(iv);resolve();return;}
+        ctx.clearRect(0,0,VW,VH);
+        try{ctx.drawImage(vidEl,0,0,VW,VH);}catch(e){}
         if(wmark) vsDrawWatermark(ctx,VW,VH);
-        requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
+      }, frameInterval);
     });
     vidEl.pause(); done+=segDur;
   }
@@ -5509,46 +5580,60 @@ async function vsBannerExport(){
   const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
   const audioDest=actx.createMediaStreamDestination();
   const masterGain=actx.createGain(); masterGain.connect(audioDest);
-  try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
-  catch(e){vidEl.muted=true;}
+  try{
+    const mediaSrc=vsGetOrCreateMediaSource(actx,vidEl);
+    if(mediaSrc){const gn=actx.createGain();gn.gain.value=1;mediaSrc.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+    else{vidEl.muted=true;}
+  }catch(e){vidEl.muted=true;}
 
   const totalDur=(addIntro?introDur:0)+VS.bannerDur+(addOutro?outroDur:0);
   const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,6000000);
   mr.start(100); vsProgress('banner',2,'Starting...');
+  const frameInterval=1000/fps;
 
   // Intro card
   if(addIntro&&introTxt){
     vsLog(logId,'🎬 Rendering intro...','info');
     const frames=Math.ceil(introDur*fps);
-    for(let f=0;f<frames;f++){
-      ctx.fillStyle='#07090f'; ctx.fillRect(0,0,VW,VH);
-      const alpha=Math.min(1,f/(fps*0.4));
-      ctx.save(); ctx.globalAlpha=alpha;
-      ctx.font=`bold ${Math.round(VH*0.07)}px Arial`; ctx.fillStyle='#00f5ff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(introTxt,VW/2,VH/2);
-      ctx.restore();
-      if(wmark) vsDrawWatermark(ctx,VW,VH);
-      await new Promise(r=>requestAnimationFrame(r));
-    }
+    await new Promise(resolve=>{
+      let f=0;
+      const iv=setInterval(()=>{
+        if(f>=frames){clearInterval(iv);resolve();return;}
+        ctx.fillStyle='#07090f'; ctx.fillRect(0,0,VW,VH);
+        const alpha=Math.min(1,f/(fps*0.4));
+        ctx.save(); ctx.globalAlpha=alpha;
+        ctx.font=`bold ${Math.round(VH*0.07)}px Arial`; ctx.fillStyle='#00f5ff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(introTxt,VW/2,VH/2);
+        ctx.restore();
+        if(wmark) vsDrawWatermark(ctx,VW,VH);
+        f++;
+      }, frameInterval);
+    });
   }
 
   // Main video with banners
-  await new Promise(r=>{vidEl.oncanplay=r;vidEl.load();});
-  vidEl.currentTime=0; vidEl.play();
+  await new Promise(r=>{
+    if(vidEl.readyState>=3){r();return;}
+    const done=()=>{vidEl.removeEventListener('canplaythrough',done);vidEl.removeEventListener('error',done);r();};
+    vidEl.addEventListener('canplaythrough',done);
+    vidEl.addEventListener('error',done);
+    vidEl.load(); setTimeout(r,5000);
+  });
+  vidEl.currentTime=0;
+  await new Promise(r=>{const os=()=>{vidEl.removeEventListener('seeked',os);r();};vidEl.addEventListener('seeked',os);setTimeout(r,2000);});
+  vidEl.play().catch(()=>{});
   vsLog(logId,'▶ Rendering main video + banners...','info');
-  let elapsed=0, lastT=performance.now();
+  let elapsed=0;
   await new Promise(resolve=>{
-    function tick(now){
-      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+    const iv=setInterval(()=>{
+      elapsed+=frameInterval/1000;
       vsProgress('banner',5+Math.round(elapsed/totalDur*85),`${fmtDur(elapsed)} / ${fmtDur(totalDur)}`);
-      if(elapsed>=VS.bannerDur){resolve();return;}
-      ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
-      // Draw all banners
+      if(elapsed>=VS.bannerDur){clearInterval(iv);resolve();return;}
+      ctx.clearRect(0,0,VW,VH);
+      try{ctx.drawImage(vidEl,0,0,VW,VH);}catch(e){}
       VS.banners.forEach(b=>vsDrawBanner(ctx,b,VW,VH,elapsed));
       if(wmark) vsDrawWatermark(ctx,VW,VH);
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
+    }, frameInterval);
   });
   vidEl.pause();
 
@@ -5556,20 +5641,24 @@ async function vsBannerExport(){
   if(addOutro&&outroTxt){
     vsLog(logId,'🎬 Rendering outro...','info');
     const frames=Math.ceil(outroDur*fps);
-    for(let f=0;f<frames;f++){
-      const fade=Math.min(1,f/(fps*0.5));
-      ctx.fillStyle=`rgba(7,9,15,${fade})`; ctx.fillRect(0,0,VW,VH);
-      if(fade>0.3){
-        ctx.save(); ctx.globalAlpha=(fade-0.3)/0.7;
-        ctx.font=`bold ${Math.round(VH*0.07)}px Arial`; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText(outroTxt,VW/2,VH/2-20);
-        ctx.font=`${Math.round(VH*0.03)}px Arial`; ctx.fillStyle='#00f5ff';
-        ctx.fillText('🕷 K Spider AI — kspiderai.in',VW/2,VH/2+40);
-        ctx.restore();
-      }
-      if(wmark) vsDrawWatermark(ctx,VW,VH);
-      await new Promise(r=>requestAnimationFrame(r));
-    }
+    await new Promise(resolve=>{
+      let f=0;
+      const iv=setInterval(()=>{
+        if(f>=frames){clearInterval(iv);resolve();return;}
+        const fade=Math.min(1,f/(fps*0.5));
+        ctx.fillStyle=`rgba(7,9,15,${fade})`; ctx.fillRect(0,0,VW,VH);
+        if(fade>0.3){
+          ctx.save(); ctx.globalAlpha=(fade-0.3)/0.7;
+          ctx.font=`bold ${Math.round(VH*0.07)}px Arial`; ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(outroTxt,VW/2,VH/2-20);
+          ctx.font=`${Math.round(VH*0.03)}px Arial`; ctx.fillStyle='#00f5ff';
+          ctx.fillText('🕷 K Spider AI — kspiderai.in',VW/2,VH/2+40);
+          ctx.restore();
+        }
+        if(wmark) vsDrawWatermark(ctx,VW,VH);
+        f++;
+      }, frameInterval);
+    });
   }
 
   mr.stop(); await new Promise(r=>{mr.onstop=r;});
@@ -5623,25 +5712,35 @@ async function vsEffectExport(){
   const actx=vsActx(); if(actx.state==='suspended') await actx.resume();
   const audioDest=actx.createMediaStreamDestination();
   const masterGain=actx.createGain(); masterGain.connect(audioDest);
-  try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
-  catch(e){vidEl.muted=true;}
+  try{
+    const mediaSrc=vsGetOrCreateMediaSource(actx,vidEl);
+    if(mediaSrc){const gn=actx.createGain();gn.gain.value=1;mediaSrc.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+    else{vidEl.muted=true;}
+  }catch(e){vidEl.muted=true;}
 
   const {mr,chunks,mime}=vsMakeRecorder(canvas,audioDest,fps,8000000);
   mr.start(100); vsProgress('effect',2,'Applying effects...');
+  const frameInterval=1000/fps;
 
   vidEl.playbackRate=speedUp?2:1;
-  vidEl.currentTime=0; await new Promise(r=>{vidEl.onseeked=r;}); vidEl.play();
+  vidEl.currentTime=0;
+  await new Promise(r=>{
+    const os=()=>{vidEl.removeEventListener('seeked',os);r();};
+    vidEl.addEventListener('seeked',os);
+    setTimeout(r,2000);
+  });
+  vidEl.play().catch(()=>{});
 
-  let elapsed=0, lastT=performance.now(); const recDur=speedUp?vidDur/2:vidDur;
+  let elapsed=0; const recDur=speedUp?vidDur/2:vidDur;
 
   await new Promise(resolve=>{
-    function tick(now){
-      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+    const iv=setInterval(()=>{
+      elapsed+=frameInterval/1000;
       vsProgress('effect',2+Math.round(elapsed/recDur*95),`${fmtDur(elapsed)} / ${fmtDur(recDur)}`);
-      if(elapsed>=recDur){resolve();return;}
+      if(elapsed>=recDur){clearInterval(iv);resolve();return;}
       ctx.clearRect(0,0,VW,VH);
       if(mirror){ctx.save();ctx.translate(VW,0);ctx.scale(-1,1);}
-      ctx.drawImage(vidEl,0,0,VW,VH);
+      try{ctx.drawImage(vidEl,0,0,VW,VH);}catch(e){}
       if(mirror) ctx.restore();
 
       // CSS-like filter via imagedata
@@ -5650,26 +5749,21 @@ async function vsEffectExport(){
         const img=ctx.getImageData(0,0,VW,VH), d=img.data;
         for(let i=0;i<d.length;i+=4){
           let r=d[i],g=d[i+1],b=d[i+2];
-          // brightness
           r=Math.max(0,Math.min(255,r+brightness*2.5));g=Math.max(0,Math.min(255,g+brightness*2.5));b=Math.max(0,Math.min(255,b+brightness*2.5));
-          // contrast
           const f2=(259*(contrast+255))/(255*(259-contrast));
           r=Math.max(0,Math.min(255,f2*(r-128)+128));g=Math.max(0,Math.min(255,f2*(g-128)+128));b=Math.max(0,Math.min(255,f2*(b-128)+128));
-          // saturation
           const l=0.299*r+0.587*g+0.114*b,s2=saturation/100;
           r=Math.max(0,Math.min(255,l+(r-l)*(1+s2)));g=Math.max(0,Math.min(255,l+(g-l)*(1+s2)));b=Math.max(0,Math.min(255,l+(b-l)*(1+s2)));
           d[i]=r;d[i+1]=g;d[i+2]=b;
         }
         ctx.putImageData(img,0,0);
       }
-      if(sharpness>0){ctx.save();ctx.filter=`blur(${sharpness}px)`;ctx.globalCompositeOperation='difference';ctx.globalAlpha=0.3;ctx.drawImage(canvas,0,0);ctx.restore();}
+      if(sharpness>0){ctx.save();ctx.filter=`blur(${sharpness}px)`;ctx.globalCompositeOperation='difference';ctx.globalAlpha=0.3;try{ctx.drawImage(canvas,0,0);}catch(e){}ctx.restore();}
       if(grain) vsDrawGrain(ctx,VW,VH,18);
       if(glow) vsDrawGlow(ctx,VW,VH);
       if(vignette) vsDrawVignette(ctx,VW,VH,vigStr);
       if(wmark) vsDrawWatermark(ctx,VW,VH);
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
+    }, frameInterval);
   });
 
   vidEl.pause(); vidEl.playbackRate=1;
@@ -5721,28 +5815,36 @@ async function vsConvExport(){
   const masterGain=actx.createGain(); masterGain.connect(audioDest);
 
   if(!muteAudio){
-    try{const src=actx.createMediaElementSource(vidEl);const gn=actx.createGain();gn.gain.value=1;src.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
-    catch(e){vidEl.muted=true;vsLog(logId,'⚠ Audio routing fallback','info');}
+    try{
+      const mediaSrc=vsGetOrCreateMediaSource(actx,vidEl);
+      if(mediaSrc){const gn=actx.createGain();gn.gain.value=1;mediaSrc.connect(gn);gn.connect(masterGain);vidEl.muted=false;}
+      else{vidEl.muted=true;vsLog(logId,'⚠ Audio routing fallback','info');}
+    }catch(e){vidEl.muted=true;vsLog(logId,'⚠ Audio routing fallback','info');}
   } else {vidEl.muted=true;}
 
   const {mr,chunks,mime}=vsMakeRecorder(canvas,!muteAudio?audioDest:null,fps,vbr);
   mr.start(100);
-  vidEl.currentTime=0; await new Promise(r=>{vidEl.onseeked=r;}); vidEl.play();
-
-  let elapsed=0, lastT=performance.now();
+  vidEl.currentTime=0;
+  await new Promise(r=>{
+    const os=()=>{vidEl.removeEventListener('seeked',os);r();};
+    vidEl.addEventListener('seeked',os);
+    setTimeout(r,2000);
+  });
+  vidEl.play().catch(()=>{});
+  const frameInterval=1000/fps;
+  let elapsed=0;
   await new Promise(resolve=>{
-    function tick(now){
-      const dt=now-lastT; lastT=now; elapsed+=dt/1000;
+    const iv=setInterval(()=>{
+      elapsed+=frameInterval/1000;
       vsProgress('conv',2+Math.round(elapsed/vidDur*95),`${fmtDur(elapsed)} / ${fmtDur(vidDur)}`);
-      if(elapsed>=vidDur){resolve();return;}
-      ctx.clearRect(0,0,VW,VH); ctx.drawImage(vidEl,0,0,VW,VH);
+      if(elapsed>=vidDur){clearInterval(iv);resolve();return;}
+      ctx.clearRect(0,0,VW,VH);
+      try{ctx.drawImage(vidEl,0,0,VW,VH);}catch(e){}
       if(wmark) vsDrawWatermark(ctx,VW,VH);
-      requestAnimationFrame(tick);
-    }
-    requestAnimationFrame(tick);
+    }, frameInterval);
   });
 
-  vidEl.pause(); mr.stop(); await new Promise(r=>{mr.onstop=r;});
+  vidEl.pause(); await new Promise(r=>setTimeout(r,150)); mr.stop(); await new Promise(r=>{mr.onstop=r;});
   vsProgress('conv',100,'Done!');
   const blob=new Blob(chunks,{type:mime});
   const ext=mime.includes('webm')?'webm':'mp4';
