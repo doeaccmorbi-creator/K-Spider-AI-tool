@@ -3639,28 +3639,28 @@ function verifyOTP() {
     showOtpStatus('OTP expire ho gaya. Resend karo.', true); return;
   }
 
-  var btn = document.getElementById('otp-btn');
-  if (btn) { btn.textContent = '⏳ Verifying...'; btn.disabled = true; }
-
   // ── String comparison — both trim karo ──
   var storedOtp  = (_otpCode || '').toString().trim();
   var enteredOtp = entered.toString().trim();
 
   if (enteredOtp === storedOtp) {
+    // ── Correct OTP — disable button immediately, show success ──
+    var btn = document.getElementById('otp-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '✅ Verified! Processing...'; }
     _otpCode = null; // One-time use — invalidate
     _clearOtpBackup();
     showOtpStatus('✅ OTP sahi hai! Account verify ho raha hai...', false);
-    if (btn) { btn.textContent = '✅ Verified! Processing...'; btn.disabled = true; }
-    setTimeout(function(){ _completeVerification(); }, 400);
+    setTimeout(function(){ _completeVerification(); }, 300);
   } else {
     showOtpStatus('❌ Galat OTP. Dobara check karo ya Resend karo.', true);
-    if (btn) { btn.textContent = '✅ Verify & Activate Account →'; btn.disabled = false; }
+    // Ensure button stays enabled on wrong OTP
+    var btn2 = document.getElementById('otp-btn');
+    if (btn2) { btn2.disabled = false; btn2.textContent = '✅ Verify & Activate Account →'; }
   }
 }
 
 /* ── OTP verification complete karo (shared between success & fallback) ── */
 function _completeVerification() {
-  var btn = document.getElementById('otp-btn');
   clearInterval(_otpTimerInterval);
   _otpCode = null;
   _clearOtpBackup();
@@ -3682,7 +3682,9 @@ function _completeVerification() {
   if (typeof gtag !== 'undefined') {
     gtag('event', 'registration_verified', { event_category: 'kspider', event_label: newUser.city || 'unknown' });
   }
-  if (btn) { btn.textContent = '✅ Verify OTP'; btn.disabled = false; }
+  // Reset button state (in case modal stays open momentarily)
+  var btn = document.getElementById('otp-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '✅ Verify & Activate Account →'; }
 }
 
 function resendOTP() {
@@ -3695,7 +3697,12 @@ function resendOTP() {
   }
   _rl['resend_otp'] = now;
   hideOtpStatus();
-  // ── Naya OTP generate karo (client-side v4.0) ──
+  // Reset button + input on resend
+  var btn = document.getElementById('otp-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '✅ Verify & Activate Account →'; }
+  var inp = document.getElementById('otp-input');
+  if (inp) { inp.value = ''; inp.disabled = false; inp.focus(); }
+  // ── Naya OTP generate karo (client-side v4.1) ──
   _otpCode = generateOTP();
   startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
   sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', _otpCode);
@@ -3884,7 +3891,7 @@ function submitReg(e) {
     // Will be updated to verified:true after OTP
     saveUserToFirebase(_pendingUser, function(){});
 
-    // ── OTP client-side generate karo PEHLE — phir modal kholo (race condition fix v4.1) ──
+    // ── OTP client-side generate karo PEHLE — race condition fix v4.1 ──
     _otpCode = generateOTP();
     startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
 
@@ -3893,8 +3900,10 @@ function submitReg(e) {
     var dispEl = document.getElementById('otp-email-display');
     if (dispEl) dispEl.textContent = _pendingUser.email;
     var otpInp = document.getElementById('otp-input');
-    if (otpInp) otpInp.value = '';
+    if (otpInp) { otpInp.value = ''; otpInp.disabled = false; }
     hideOtpStatus();
+    var otpBtn = document.getElementById('otp-btn');
+    if (otpBtn) { otpBtn.disabled = false; otpBtn.textContent = '✅ Verify & Activate Account →'; }
     openM('otp-ov');
 
     // OTP Apps Script se Gmail pe bhejo — OTP bhi pass karo
@@ -5400,24 +5409,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }
 
-  // OTP input — sirf numbers, auto-verify on 6 digits
+  // OTP input — sirf numbers, auto-verify on 6 digits (v4.1 smart polling)
   var otpInput = document.getElementById('otp-input');
   if (otpInput) {
     otpInput.addEventListener('input', function() {
       this.value = this.value.replace(/[^0-9]/g, '');
       if (this.value.length === 6) {
-        // Wait for _otpCode to be set (race condition fix v4.1)
-        // If _otpCode already set, verify immediately; else poll briefly
-        var attempts = 0;
-        function tryVerify() {
-          if (_otpCode || attempts >= 10) {
+        // Poll until _otpCode is set (handles race condition)
+        var _attempts = 0;
+        function _tryVerify() {
+          if (_otpCode || _attempts >= 15) {
             verifyOTP();
           } else {
-            attempts++;
-            setTimeout(tryVerify, 100);
+            _attempts++;
+            setTimeout(_tryVerify, 80);
           }
         }
-        setTimeout(tryVerify, 100);
+        setTimeout(_tryVerify, 80);
       }
     });
     otpInput.addEventListener('keydown', function(e) {
