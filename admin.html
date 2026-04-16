@@ -8,6 +8,23 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+<script>
+// Safe stubs — prevent "not defined" errors if main script hasn't loaded yet
+// The real implementations are defined later in the main <script data-cfasync="false"> block.
+function doLogin(){
+  var fn=window._doLoginReal;
+  if(fn){ fn(); }
+  else {
+    var btn=document.getElementById('login-btn');
+    if(btn){ btn.textContent='⏳ Loading...'; btn.disabled=true; }
+    var t=0, iv=setInterval(function(){
+      t++;
+      if(window._doLoginReal){ clearInterval(iv); if(btn){btn.textContent='🔑 Sign In as Admin';btn.disabled=false;} window._doLoginReal(); }
+      else if(t>40){ clearInterval(iv); if(btn){btn.textContent='🔑 Sign In as Admin';btn.disabled=false;} alert('Page load error — please refresh (Ctrl+Shift+R)'); }
+    },150);
+  }
+}
+</script>
 <style>
 :root{--bg:#0f0e0c;--bg2:#1a1814;--bg3:#242019;--bg4:#2e2b24;--gold:#b8792a;--gold2:#d4922e;--gold3:#f5c259;--gs:rgba(184,121,42,.12);--gb:rgba(184,121,42,.3);--neon:#059669;--red:#dc2626;--blue:#3b82f6;--pur:#7c3aed;--t1:#f0ede8;--t2:#c8c3ba;--t3:#8a8479;--t4:#5a5650;--br:rgba(255,255,255,.07);--br2:rgba(255,255,255,.12);--r8:12px;--r12:18px;--r16:24px}
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -711,14 +728,204 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
 
             <!-- Text -->
             <div id="ad-text-fields" style="display:none">
-              <label class="fl">Headline *</label>
-              <input class="fi" id="ad-text-headline" type="text" placeholder="Big Sale Today!" oninput="updatePreview()">
-              <label class="fl">Description</label>
-              <input class="fi" id="ad-text-desc" type="text" placeholder="Up to 50% off on all items" oninput="updatePreview()">
-              <label class="fl">Button Text</label>
-              <input class="fi" id="ad-text-btn" type="text" placeholder="Learn More" oninput="updatePreview()">
-              <label class="fl">Background Color</label>
-              <input class="fi" id="ad-text-bg" type="color" value="#e8520a" oninput="updatePreview()">
+
+              <!-- ── BG + Layout ── -->
+              <div style="background:var(--bg3);border:1px solid rgba(124,58,237,.25);border-radius:10px;padding:12px;margin-bottom:10px">
+                <div style="font-size:.72rem;font-weight:700;color:#a78bfa;margin-bottom:8px">🎨 Banner Background & Layout</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px">
+                  <div><label class="fl">Background Color</label><input class="fi" id="ad-text-bg" type="color" value="#e8520a" oninput="updatePreview()"></div>
+                  <div><label class="fl">Text Align</label>
+                    <select class="fi" id="ad-layout-align" oninput="updatePreview()">
+                      <option value="center">⬛ Center</option>
+                      <option value="left">◀ Left</option>
+                      <option value="right">▶ Right</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Banner Style</label>
+                    <select class="fi" id="ad-banner-style" oninput="updatePreview()">
+                      <option value="flat">Flat</option>
+                      <option value="gradient">Gradient</option>
+                      <option value="dark-glass">Dark Glass</option>
+                      <option value="neon-border">Neon Border</option>
+                      <option value="gold-luxury">Gold Luxury</option>
+                    </select>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+                  <div><label class="fl">Gradient 2nd Color</label><input class="fi" id="ad-text-bg2" type="color" value="#c0392b" oninput="updatePreview()"></div>
+                  <div><label class="fl">Border Radius</label>
+                    <select class="fi" id="ad-border-radius" oninput="updatePreview()">
+                      <option value="6px">6px</option>
+                      <option value="12px" selected>12px</option>
+                      <option value="20px">20px Rounded</option>
+                      <option value="0px">0px Sharp</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── HEADLINE ── -->
+              <div style="background:var(--bg3);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:12px;margin-bottom:10px">
+                <div style="font-size:.72rem;font-weight:700;color:#fbbf24;margin-bottom:8px">✍️ Headline (Main Title)</div>
+                <input class="fi" id="ad-text-headline" type="text" placeholder="Big Sale Today!" oninput="updatePreview()">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+                  <div><label class="fl">Font Size</label>
+                    <select class="fi" id="hl-size" oninput="updatePreview()">
+                      <option value=".85rem">Small</option>
+                      <option value="1rem" selected>Medium</option>
+                      <option value="1.2rem">Large</option>
+                      <option value="1.5rem">XLarge</option>
+                      <option value="1.9rem">XXLarge</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Font Weight</label>
+                    <select class="fi" id="hl-weight" oninput="updatePreview()">
+                      <option value="400">Regular</option>
+                      <option value="600">Semi-Bold</option>
+                      <option value="700">Bold</option>
+                      <option value="800" selected>Extra-Bold</option>
+                      <option value="900">Black</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Font Style</label>
+                    <select class="fi" id="hl-style" oninput="updatePreview()">
+                      <option value="normal" selected>Normal</option>
+                      <option value="italic">Italic</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Color</label><input class="fi" id="hl-color" type="color" value="#ffffff" oninput="updatePreview()"></div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                  <div><label class="fl">Position</label>
+                    <select class="fi" id="hl-position" oninput="updatePreview()">
+                      <option value="top">⬆ Top</option>
+                      <option value="middle" selected>⬛ Middle</option>
+                      <option value="bottom">⬇ Bottom</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Text Decoration</label>
+                    <select class="fi" id="hl-decoration" oninput="updatePreview()">
+                      <option value="none" selected>None</option>
+                      <option value="underline">Underline</option>
+                      <option value="line-through">Strike</option>
+                      <option value="overline">Overline</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── SUBHEADLINE / DESCRIPTION ── -->
+              <div style="background:var(--bg3);border:1px solid rgba(52,211,153,.2);border-radius:10px;padding:12px;margin-bottom:10px">
+                <div style="font-size:.72rem;font-weight:700;color:#34d399;margin-bottom:8px">📝 Sub-Headline / Description</div>
+                <input class="fi" id="ad-text-desc" type="text" placeholder="Up to 50% off on all items" oninput="updatePreview()">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px">
+                  <div><label class="fl">Font Size</label>
+                    <select class="fi" id="desc-size" oninput="updatePreview()">
+                      <option value=".68rem">XSmall</option>
+                      <option value=".78rem" selected>Small</option>
+                      <option value=".9rem">Medium</option>
+                      <option value="1rem">Large</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Weight</label>
+                    <select class="fi" id="desc-weight" oninput="updatePreview()">
+                      <option value="400" selected>Regular</option>
+                      <option value="600">Semi-Bold</option>
+                      <option value="700">Bold</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Style</label>
+                    <select class="fi" id="desc-style" oninput="updatePreview()">
+                      <option value="normal" selected>Normal</option>
+                      <option value="italic">Italic</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Color</label><input class="fi" id="desc-color" type="color" value="#ffffff" oninput="updatePreview()"></div>
+                </div>
+              </div>
+
+              <!-- ── CTA BUTTON ── -->
+              <div style="background:var(--bg3);border:1px solid rgba(59,130,246,.2);border-radius:10px;padding:12px;margin-bottom:10px">
+                <div style="font-size:.72rem;font-weight:700;color:#60a5fa;margin-bottom:8px">🔘 CTA Button</div>
+                <input class="fi" id="ad-text-btn" type="text" placeholder="Learn More" oninput="updatePreview()">
+                <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px">
+                  <div><label class="fl">Button BG</label><input class="fi" id="btn-bg" type="color" value="#ffffff" oninput="updatePreview()"></div>
+                  <div><label class="fl">Button Text Color</label><input class="fi" id="btn-color" type="color" value="#e8520a" oninput="updatePreview()"></div>
+                  <div><label class="fl">Font Size</label>
+                    <select class="fi" id="btn-size" oninput="updatePreview()">
+                      <option value=".68rem">Small</option>
+                      <option value=".78rem" selected>Medium</option>
+                      <option value=".9rem">Large</option>
+                    </select>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+                  <div><label class="fl">Position</label>
+                    <select class="fi" id="btn-position" oninput="updatePreview()">
+                      <option value="left">◀ Left</option>
+                      <option value="center" selected>⬛ Center</option>
+                      <option value="right">▶ Right</option>
+                    </select>
+                  </div>
+                  <div><label class="fl">Shape</label>
+                    <select class="fi" id="btn-shape" oninput="updatePreview()">
+                      <option value="20px" selected>Pill</option>
+                      <option value="8px">Rounded</option>
+                      <option value="0px">Square</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- ── LOGO UPLOAD ── -->
+              <div style="background:var(--bg3);border:1px solid rgba(184,121,42,.25);border-radius:10px;padding:12px;margin-bottom:10px">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                  <div style="font-size:.72rem;font-weight:700;color:var(--gold2)">🏷️ Logo / Watermark (Max 200KB)</div>
+                  <label style="display:flex;align-items:center;gap:5px;font-size:.72rem;cursor:pointer"><input type="checkbox" id="logo-enable" onchange="updatePreview()"> Enable Logo</label>
+                </div>
+                <div id="logo-upload-section">
+                  <div style="display:flex;gap:4px;margin-bottom:8px;background:rgba(0,0,0,.2);border-radius:8px;padding:3px">
+                    <button type="button" id="logo-tab-url" onclick="switchLogoTab('url')" style="flex:1;padding:4px;border:none;border-radius:5px;font-family:inherit;font-size:.68rem;font-weight:700;cursor:pointer;background:var(--bg2);color:var(--t1);transition:all .2s">🔗 URL</button>
+                    <button type="button" id="logo-tab-file" onclick="switchLogoTab('file')" style="flex:1;padding:4px;border:none;border-radius:5px;font-family:inherit;font-size:.68rem;font-weight:700;cursor:pointer;background:transparent;color:var(--t3);transition:all .2s">📁 Upload</button>
+                  </div>
+                  <div id="logo-url-row"><input class="fi" id="ad-logo-url" type="url" placeholder="https://example.com/logo.png" oninput="updatePreview()"></div>
+                  <div id="logo-file-row" style="display:none">
+                    <div style="border:2px dashed rgba(184,121,42,.3);border-radius:8px;padding:10px;text-align:center;cursor:pointer" onclick="document.getElementById('logo-file-input').click()">
+                      <input type="file" id="logo-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" style="display:none" onchange="handleLogoUpload(this.files[0])">
+                      <div id="logo-upload-placeholder"><div style="font-size:1.2rem">🏷️</div><div style="font-size:.7rem;color:var(--t3)">Click to upload logo</div><div style="font-size:.62rem;color:var(--t4)">PNG/SVG preferred · Max 200KB</div></div>
+                      <div id="logo-upload-done" style="display:none"><img id="logo-thumb" style="max-height:40px;border-radius:4px"><div style="font-size:.65rem;color:#34d399;margin-top:4px">✅ Logo ready</div></div>
+                    </div>
+                  </div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">
+                    <div><label class="fl">Position</label>
+                      <select class="fi" id="logo-position" onchange="updatePreview()">
+                        <option value="top-left">↖ Top-Left</option>
+                        <option value="top-center">⬆ Top-Center</option>
+                        <option value="top-right" selected>↗ Top-Right</option>
+                        <option value="bottom-left">↙ Bottom-Left</option>
+                        <option value="bottom-center">⬇ Bottom-Center</option>
+                        <option value="bottom-right">↘ Bottom-Right</option>
+                      </select>
+                    </div>
+                    <div><label class="fl">Logo Size</label>
+                      <select class="fi" id="logo-size" onchange="updatePreview()">
+                        <option value="28px">XSmall</option>
+                        <option value="40px" selected>Small</option>
+                        <option value="56px">Medium</option>
+                        <option value="72px">Large</option>
+                      </select>
+                    </div>
+                    <div><label class="fl">Opacity</label>
+                      <select class="fi" id="logo-opacity" onchange="updatePreview()">
+                        <option value="0.5">50%</option>
+                        <option value="0.75">75%</option>
+                        <option value="1" selected>100%</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
             </div>
 
             <!-- ══ ADDITIONAL INFO — shared for ALL ad types ══ -->
@@ -1354,6 +1561,8 @@ function initFB() {
 }
 
 // ── LOGIN ──
+// Register real implementation for the early stub (defined in <head>)
+window._doLoginReal = doLogin;
 function doLogin() {
   var em = (document.getElementById('a-em').value||'').trim().toLowerCase();
   var pw = document.getElementById('a-pw').value;
@@ -3496,19 +3705,54 @@ function updatePreview(){
     }
 
   } else if(type==='text'){
-    var hl       = ($id('ad-text-headline')||{}).value || 'Aapka Ad Headline Yahan';
+    var hl       = ($id('ad-text-headline')||{}).value || '';
     var dsc      = ($id('ad-text-desc')||{}).value     || '';
     var btn      = ($id('ad-text-btn')||{}).value      || 'Abhi Dekho';
     var bg       = ($id('ad-text-bg')||{}).value       || '#e8520a';
+    var bg2      = ($id('ad-text-bg2')||{}).value      || '#c0392b';
+    var bannerStyle = ($id('ad-banner-style')||{}).value || 'flat';
+    var layoutAlign = ($id('ad-layout-align')||{}).value || 'center';
+    var borderR  = ($id('ad-border-radius')||{}).value || '12px';
     var clickUrl2 = ($id('ad-click-url')||{}).value    || '';
-    var isPlaceholder = !($id('ad-text-headline')||{}).value;
+    var isPlaceholder = !hl;
 
-    var r=parseInt(bg.slice(1,3),16)||232, g=parseInt(bg.slice(3,5),16)||82, b2=parseInt(bg.slice(5,7),16)||10;
-    var bright = (r*299+g*587+b2*114)/1000;
-    var tc    = bright > 128 ? '#222222' : '#ffffff';
-    var btnBg = bright > 128 ? 'rgba(0,0,0,.18)' : 'rgba(255,255,255,.25)';
+    // Headline styles
+    var hlSize   = ($id('hl-size')||{}).value    || '1rem';
+    var hlWeight = ($id('hl-weight')||{}).value  || '800';
+    var hlStyle  = ($id('hl-style')||{}).value   || 'normal';
+    var hlColor  = ($id('hl-color')||{}).value   || '#ffffff';
+    var hlDec    = ($id('hl-decoration')||{}).value || 'none';
+    var hlPos    = ($id('hl-position')||{}).value   || 'middle';
 
-    var infoHtml = '';
+    // Desc styles
+    var descSize   = ($id('desc-size')||{}).value   || '.78rem';
+    var descWeight = ($id('desc-weight')||{}).value || '400';
+    var descStyle  = ($id('desc-style')||{}).value  || 'normal';
+    var descColor  = ($id('desc-color')||{}).value  || '#ffffff';
+
+    // Button styles
+    var btnBgC   = ($id('btn-bg')||{}).value       || '#ffffff';
+    var btnColor = ($id('btn-color')||{}).value     || '#e8520a';
+    var btnSize  = ($id('btn-size')||{}).value      || '.78rem';
+    var btnPos   = ($id('btn-position')||{}).value  || 'center';
+    var btnShape = ($id('btn-shape')||{}).value     || '20px';
+
+    // Logo
+    var logoEnabled  = ($id('logo-enable')||{}).checked || false;
+    var logoUrl      = ($id('ad-logo-url')||{}).value   || '';
+    var logoPosition = ($id('logo-position')||{}).value || 'top-right';
+    var logoSize2    = ($id('logo-size')||{}).value     || '40px';
+    var logoOpacity  = ($id('logo-opacity')||{}).value  || '1';
+
+    // Banner BG CSS
+    var bgCss = '';
+    if(bannerStyle==='gradient') bgCss='background:linear-gradient(135deg,'+bg+','+bg2+')';
+    else if(bannerStyle==='dark-glass') bgCss='background:rgba(0,0,0,.75);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15)';
+    else if(bannerStyle==='neon-border') bgCss='background:'+bg+';border:2px solid '+bg2+';box-shadow:0 0 16px '+bg2+'88';
+    else if(bannerStyle==='gold-luxury') bgCss='background:linear-gradient(135deg,#1a1209,#2d2011,#1a1209);border:1px solid #b8792a;box-shadow:inset 0 0 30px rgba(184,121,42,.15)';
+    else bgCss='background:'+bg;
+
+    // Info fields
     var companyName = ($id('ad-show-company')&&$id('ad-show-company').checked&&$id('ad-company-name'))  ? ($id('ad-company-name').value||'').trim()  : '';
     var offerText   = ($id('ad-show-offer')  &&$id('ad-show-offer').checked  &&$id('ad-offer-text'))    ? ($id('ad-offer-text').value||'').trim()    : '';
     var phone       = ($id('ad-show-phone')  &&$id('ad-show-phone').checked  &&$id('ad-contact-phone')) ? ($id('ad-contact-phone').value||'').trim() : '';
@@ -3517,25 +3761,41 @@ function updatePreview(){
     var location2   = ($id('ad-show-location')&&$id('ad-show-location').checked&&$id('ad-contact-location'))? ($id('ad-contact-location').value||'').trim() : '';
     var address2    = ($id('ad-show-address')&&$id('ad-show-address').checked&&$id('ad-contact-address'))  ? ($id('ad-contact-address').value||'').trim()  : '';
 
-    if(companyName) infoHtml += '<div style="font-size:.73rem;font-weight:800;color:'+tc+';letter-spacing:.03em;margin-bottom:3px">🏢 '+x(companyName)+'</div>';
-    if(offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;color:'+tc+';background:rgba(255,255,255,.2);display:inline-block;padding:2px 12px;border-radius:20px;margin-bottom:5px">🎉 '+x(offerText)+'</div>';
+    var infoHtml = '';
+    if(companyName) infoHtml += '<div style="font-size:.73rem;font-weight:800;color:'+hlColor+';letter-spacing:.03em;margin-bottom:3px">\u{1F3E2} '+x(companyName)+'</div>';
+    if(offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;color:'+hlColor+';background:rgba(255,255,255,.2);display:inline-block;padding:2px 12px;border-radius:20px;margin-bottom:5px">\u{1F389} '+x(offerText)+'</div>';
     var contactLine = '';
-    if(phone)  contactLine += '<a href="https://wa.me/91'+phone.replace(/[^0-9]/g,'')+'" target="_blank" style="color:'+tc+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">📱 '+x(phone)+'</a>';
-    if(email2) contactLine += '<a href="mailto:'+x(email2)+'" style="color:'+tc+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">✉️ '+x(email2)+'</a>';
-    if(url2)   contactLine += '<a href="'+x(url2)+'" target="_blank" style="color:'+tc+';text-decoration:underline;font-size:.7rem" onclick="event.stopPropagation()">🌐 '+x(url2.replace(/^https?:\/\//,''))+'</a>';
+    if(phone)  contactLine += '<a href="https://wa.me/91'+phone.replace(/[^0-9]/g,'')+'" target="_blank" style="color:'+descColor+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">\u{1F4F1} '+x(phone)+'</a>';
+    if(email2) contactLine += '<a href="mailto:'+x(email2)+'" style="color:'+descColor+';text-decoration:underline;margin-right:10px;font-size:.7rem" onclick="event.stopPropagation()">\u2709\uFE0F '+x(email2)+'</a>';
+    if(url2)   contactLine += '<a href="'+x(url2)+'" target="_blank" style="color:'+descColor+';text-decoration:underline;font-size:.7rem" onclick="event.stopPropagation()">\u{1F310} '+x(url2.replace(/^https?:\/\//,''))+'</a>';
     if(contactLine) infoHtml += '<div style="margin-bottom:5px;line-height:1.9">'+contactLine+'</div>';
-    if(location2) infoHtml += '<div style="font-size:.68rem;color:'+tc+';opacity:.82;margin-bottom:3px">📍 '+x(location2)+'</div>';
-    if(address2)  infoHtml += '<div style="font-size:.66rem;color:'+tc+';opacity:.75;margin-bottom:4px">🏠 '+x(address2)+'</div>';
+    if(location2) infoHtml += '<div style="font-size:.68rem;color:'+descColor+';opacity:.82;margin-bottom:3px">\u{1F4CD} '+x(location2)+'</div>';
+    if(address2)  infoHtml += '<div style="font-size:.66rem;color:'+descColor+';opacity:.75;margin-bottom:4px">\u{1F3E0} '+x(address2)+'</div>';
+
+    // Logo CSS
+    var logoPosCss = 'position:absolute;';
+    if(logoPosition==='top-left')       logoPosCss += 'top:8px;left:8px;';
+    else if(logoPosition==='top-center') logoPosCss += 'top:8px;left:50%;transform:translateX(-50%);';
+    else if(logoPosition==='top-right')  logoPosCss += 'top:8px;right:8px;';
+    else if(logoPosition==='bottom-left')logoPosCss += 'bottom:8px;left:8px;';
+    else if(logoPosition==='bottom-center')logoPosCss += 'bottom:8px;left:50%;transform:translateX(-50%);';
+    else                                 logoPosCss += 'bottom:8px;right:8px;';
+    logoPosCss += 'height:'+logoSize2+';width:auto;opacity:'+logoOpacity+';pointer-events:none;z-index:10;border-radius:4px;';
+    var logoHtml = (logoEnabled && logoUrl) ? '<img src="'+x(logoUrl)+'" style="'+logoPosCss+'" onerror="this.style.display=\'none\'">' : '';
+
+    var btnAlignCss = btnPos==='left'?'text-align:left':btnPos==='right'?'text-align:right':'text-align:center';
 
     box.innerHTML =
       '<div style="width:100%">'+
-        '<div style="background:'+bg+';border-radius:10px;padding:14px 18px;text-align:center;cursor:'+(clickUrl2?'pointer':'default')+'"'+(clickUrl2?' onclick="window.open(\''+x(clickUrl2)+'\',\'_blank\')"':'')+'>'+
-          '<div style="font-size:.95rem;font-weight:800;color:'+tc+';margin-bottom:'+(dsc||infoHtml?'4px':'8px')+';'+(isPlaceholder?'opacity:.45':'')+'">'+(isPlaceholder?'[ Aapka Headline Yahan ]':x(hl))+'</div>'+
-          (dsc?'<div style="font-size:.78rem;color:'+tc+';opacity:.88;margin-bottom:8px;line-height:1.45">'+x(dsc)+'</div>':'')+
+        '<div style="'+bgCss+';border-radius:'+borderR+';padding:16px 18px;text-align:'+layoutAlign+';cursor:'+(clickUrl2?'pointer':'default')+';position:relative;overflow:hidden"'+(clickUrl2?' onclick="window.open(\''+x(clickUrl2)+'\',\'_blank\')"':'')+'>'+
+          logoHtml+
+          (hlPos!=='bottom' ? '<div style="font-size:'+hlSize+';font-weight:'+hlWeight+';font-style:'+hlStyle+';color:'+hlColor+';text-decoration:'+hlDec+';margin-bottom:'+(dsc||infoHtml?'6px':'10px')+';'+(isPlaceholder?'opacity:.4':'')+'">'+(isPlaceholder?'[ Headline Yahan ]':x(hl))+'</div>' : '')+
+          (dsc?'<div style="font-size:'+descSize+';font-weight:'+descWeight+';font-style:'+descStyle+';color:'+descColor+';opacity:.92;margin-bottom:8px;line-height:1.5">'+x(dsc)+'</div>':'')+
           (infoHtml?'<div style="margin-bottom:8px">'+infoHtml+'</div>':'')+
-          '<span style="background:'+btnBg+';color:'+tc+';padding:5px 18px;border-radius:20px;font-size:.75rem;font-weight:700;display:inline-block">'+x(btn)+'</span>'+
+          '<div style="'+btnAlignCss+';margin-top:4px"><span style="background:'+btnBgC+';color:'+btnColor+';padding:6px 20px;border-radius:'+btnShape+';font-size:'+btnSize+';font-weight:700;display:inline-block">'+x(btn)+'</span></div>'+
+          (hlPos==='bottom' ? '<div style="font-size:'+hlSize+';font-weight:'+hlWeight+';font-style:'+hlStyle+';color:'+hlColor+';text-decoration:'+hlDec+';margin-top:8px">'+x(hl||'[ Headline ]')+'</div>' : '')+
         '</div>'+
-        '<div style="font-size:.62rem;color:var(--t4);padding:5px 2px;text-align:right">📝 Text Ad Preview · Website pe exactly aise dikhega</div>'+
+        '<div style="font-size:.62rem;color:var(--t4);padding:5px 2px;text-align:right">\u{1F4DD} Text Ad Preview \u00B7 Website pe exactly aise dikhega</div>'+
       '</div>';
 
   } else if(type==='html'){
@@ -3624,6 +3884,31 @@ function saveAd(){
     adData.description = ($id('ad-text-desc').value||'').trim();
     adData.btnText     = ($id('ad-text-btn').value||'Learn More').trim();
     adData.bgColor     = $id('ad-text-bg').value||'#e8520a';
+    // Enhanced text ad styling
+    adData.bgColor2      = ($id('ad-text-bg2')||{value:'#c0392b'}).value;
+    adData.bannerStyle   = ($id('ad-banner-style')||{value:'flat'}).value;
+    adData.layoutAlign   = ($id('ad-layout-align')||{value:'center'}).value;
+    adData.borderRadius  = ($id('ad-border-radius')||{value:'12px'}).value;
+    adData.hlSize        = ($id('hl-size')||{value:'1rem'}).value;
+    adData.hlWeight      = ($id('hl-weight')||{value:'800'}).value;
+    adData.hlStyle       = ($id('hl-style')||{value:'normal'}).value;
+    adData.hlColor       = ($id('hl-color')||{value:'#ffffff'}).value;
+    adData.hlDecoration  = ($id('hl-decoration')||{value:'none'}).value;
+    adData.hlPosition    = ($id('hl-position')||{value:'middle'}).value;
+    adData.descSize      = ($id('desc-size')||{value:'.78rem'}).value;
+    adData.descWeight    = ($id('desc-weight')||{value:'400'}).value;
+    adData.descStyle     = ($id('desc-style')||{value:'normal'}).value;
+    adData.descColor     = ($id('desc-color')||{value:'#ffffff'}).value;
+    adData.btnBg         = ($id('btn-bg')||{value:'#ffffff'}).value;
+    adData.btnColor      = ($id('btn-color')||{value:'#e8520a'}).value;
+    adData.btnFontSize   = ($id('btn-size')||{value:'.78rem'}).value;
+    adData.btnPosition   = ($id('btn-position')||{value:'center'}).value;
+    adData.btnShape      = ($id('btn-shape')||{value:'20px'}).value;
+    adData.logoEnabled   = ($id('logo-enable')||{checked:false}).checked;
+    adData.logoUrl       = ($id('ad-logo-url')||{value:''}).value.trim();
+    adData.logoPosition  = ($id('logo-position')||{value:'top-right'}).value;
+    adData.logoSize      = ($id('logo-size')||{value:'40px'}).value;
+    adData.logoOpacity   = ($id('logo-opacity')||{value:'1'}).value;
     // Text ads don't require URL
     if(!clickUrl) adData.clickUrl = '';
   } else if(type==='video'){
@@ -3677,6 +3962,18 @@ function clearAdForm(){
   if($id('ad-expiry')) $id('ad-expiry').value='';
   if($id('ad-size')) $id('ad-size').value='auto';
   if($id('ad-text-bg')) $id('ad-text-bg').value='#e8520a';
+  // Reset enhanced text ad styling
+  var _rv=function(id,v){ var el=$id(id); if(el) el.value=v; };
+  _rv('ad-text-bg2','#c0392b'); _rv('ad-banner-style','flat'); _rv('ad-layout-align','center');
+  _rv('ad-border-radius','12px'); _rv('hl-size','1rem'); _rv('hl-weight','800');
+  _rv('hl-style','normal'); _rv('hl-color','#ffffff'); _rv('hl-decoration','none'); _rv('hl-position','middle');
+  _rv('desc-size','.78rem'); _rv('desc-weight','400'); _rv('desc-style','normal'); _rv('desc-color','#ffffff');
+  _rv('btn-bg','#ffffff'); _rv('btn-color','#e8520a'); _rv('btn-size','.78rem'); _rv('btn-position','center'); _rv('btn-shape','20px');
+  _rv('ad-logo-url',''); _rv('logo-position','top-right'); _rv('logo-size','40px'); _rv('logo-opacity','1');
+  var loEn=$id('logo-enable'); if(loEn) loEn.checked=false;
+  // Reset logo upload UI
+  var lph=$id('logo-upload-placeholder'); var ldn=$id('logo-upload-done');
+  if(lph) lph.style.display='block'; if(ldn) ldn.style.display='none';
   // Clear info field checkboxes (including address)
   ['company','offer','phone','email','url','location','address'].forEach(function(k){
     var cb = $id('ad-show-'+k); if(cb) cb.checked=false;
@@ -3811,6 +4108,32 @@ function editAd(id){
       if($id('ad-text-desc'))     $id('ad-text-desc').value=d.description||'';
       if($id('ad-text-btn'))      $id('ad-text-btn').value=d.btnText||'Learn More';
       if($id('ad-text-bg'))       $id('ad-text-bg').value=d.bgColor||'#e8520a';
+      // Restore enhanced styling
+      var _sv = function(id,val){ var el=$id(id); if(el&&val!==undefined) el.value=val; };
+      _sv('ad-text-bg2',     d.bgColor2||'#c0392b');
+      _sv('ad-banner-style', d.bannerStyle||'flat');
+      _sv('ad-layout-align', d.layoutAlign||'center');
+      _sv('ad-border-radius',d.borderRadius||'12px');
+      _sv('hl-size',         d.hlSize||'1rem');
+      _sv('hl-weight',       d.hlWeight||'800');
+      _sv('hl-style',        d.hlStyle||'normal');
+      _sv('hl-color',        d.hlColor||'#ffffff');
+      _sv('hl-decoration',   d.hlDecoration||'none');
+      _sv('hl-position',     d.hlPosition||'middle');
+      _sv('desc-size',       d.descSize||'.78rem');
+      _sv('desc-weight',     d.descWeight||'400');
+      _sv('desc-style',      d.descStyle||'normal');
+      _sv('desc-color',      d.descColor||'#ffffff');
+      _sv('btn-bg',          d.btnBg||'#ffffff');
+      _sv('btn-color',       d.btnColor||'#e8520a');
+      _sv('btn-size',        d.btnFontSize||'.78rem');
+      _sv('btn-position',    d.btnPosition||'center');
+      _sv('btn-shape',       d.btnShape||'20px');
+      _sv('ad-logo-url',     d.logoUrl||'');
+      _sv('logo-position',   d.logoPosition||'top-right');
+      _sv('logo-size',       d.logoSize||'40px');
+      _sv('logo-opacity',    d.logoOpacity||'1');
+      var logoEl = $id('logo-enable'); if(logoEl) logoEl.checked = !!d.logoEnabled;
     } else if(d.type==='html'){
       if($id('ad-html-code')) $id('ad-html-code').value=d.htmlCode||'';
     }
@@ -4055,6 +4378,14 @@ function generateImagePrompt(){
   p += '• Indian audience: culturally appropriate, warm and relatable visual tone\n';
   p += '• High visual contrast for readability on digital screens\n';
   if(ctx.offer) p += '• The offer "' + ctx.offer + '" should be the MOST prominent visual element\n';
+  p += '\n';
+  p += '━━━ MANDATORY BRANDING WATERMARK ━━━\n';
+  p += '• COMPULSORY: Add a subtle watermark/branding at the bottom of the image\n';
+  p += '• Watermark Line 1: "www.kspiderai.in" — small, clean, readable font, semi-transparent\n';
+  p += '• Watermark Line 2: "youtube.com/@KSpider4Kreation" — even smaller, same style\n';
+  p += '• Watermark position: bottom-right corner or bottom-center, never obstructing main content\n';
+  p += '• Watermark opacity: 40-60% so it is visible but does not distract from the ad content\n';
+  p += '• Watermark color: white or light grey, with subtle dark drop-shadow for visibility\n';
 
   if($id('ai-generated-prompt')) $id('ai-generated-prompt').value = p.trim();
   generateTitleSuggestions(ctx);
@@ -4132,6 +4463,13 @@ function generateVideoPrompt(){
   p += '• Professional color grading — not flat or washed out\n';
   p += '• Smooth transitions — no jarring cuts\n';
   p += '• Indian audience: culturally relevant visuals, diverse and relatable cast\n';
+  p += '\n';
+  p += '━━━ MANDATORY BRANDING WATERMARK ━━━\n';
+  p += '• COMPULSORY: Throughout the video, a subtle watermark MUST appear\n';
+  p += '• Watermark: "www.kspiderai.in" + "youtube.com/@KSpider4Kreation"\n';
+  p += '• Position: bottom-right corner, small semi-transparent text (40-60% opacity)\n';
+  p += '• Must be visible in ALL frames but never distract from the main advertisement\n';
+  p += '• In the END CARD (last 2 seconds): show branding slightly more prominently\n';
 
   if($id('ai-generated-prompt')) $id('ai-generated-prompt').value = p.trim();
   generateTitleSuggestions(ctx);
@@ -4576,6 +4914,62 @@ editAd = function(id){
     if(d_type==='video') restoreConnectUi('vid', clickUrl);
   }, 300);
 };
+
+/* ── LOGO UPLOAD FOR TEXT ADS ── */
+function switchLogoTab(tab){
+  var urlRow  = document.getElementById('logo-url-row');
+  var fileRow = document.getElementById('logo-file-row');
+  var tabUrl  = document.getElementById('logo-tab-url');
+  var tabFile = document.getElementById('logo-tab-file');
+  if(tab==='url'){
+    urlRow.style.display='block'; fileRow.style.display='none';
+    tabUrl.style.background='var(--bg2)'; tabUrl.style.color='var(--t1)';
+    tabFile.style.background='transparent'; tabFile.style.color='var(--t3)';
+  } else {
+    urlRow.style.display='none'; fileRow.style.display='block';
+    tabFile.style.background='var(--bg2)'; tabFile.style.color='var(--t1)';
+    tabUrl.style.background='transparent'; tabUrl.style.color='var(--t3)';
+  }
+}
+
+function handleLogoUpload(file){
+  if(!file) return;
+  var maxBytes = 200*1024;
+  if(file.size > maxBytes){ toast('❌ Logo too large! Max 200 KB'); return; }
+  var placeholder = document.getElementById('logo-upload-placeholder');
+  var done        = document.getElementById('logo-upload-done');
+  var thumb       = document.getElementById('logo-thumb');
+  if(typeof firebase !== 'undefined' && firebase.storage){
+    var ref = firebase.storage().ref('ads/logos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._]/g,'_'));
+    ref.put(file).then(function(snap){
+      snap.ref.getDownloadURL().then(function(url){
+        document.getElementById('ad-logo-url').value = url;
+        if(thumb){ thumb.src = url; }
+        if(placeholder) placeholder.style.display='none';
+        if(done) done.style.display='block';
+        updatePreview();
+        toast('✅ Logo uploaded!');
+      });
+    }).catch(function(err){
+      fallbackLogoReader(file, placeholder, done, thumb);
+    });
+  } else {
+    fallbackLogoReader(file, placeholder, done, thumb);
+  }
+}
+
+function fallbackLogoReader(file, placeholder, done, thumb){
+  var reader = new FileReader();
+  reader.onload = function(e){
+    document.getElementById('ad-logo-url').value = e.target.result;
+    if(thumb){ thumb.src = e.target.result; }
+    if(placeholder) placeholder.style.display='none';
+    if(done) done.style.display='block';
+    updatePreview();
+    toast('✅ Logo ready (local preview)');
+  };
+  reader.readAsDataURL(file);
+}
 
 function restoreConnectUi(prefix, url){
   if(!url) return;
