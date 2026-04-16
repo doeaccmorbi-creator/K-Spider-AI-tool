@@ -3556,32 +3556,39 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
     return;
   }
 
-  // ── Apps Script ko fire & forget — no-cors mode, CORS issue nahi hoga ──
-  fetch(KS_SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({
-      action:   'sendOTP',
-      name:     name,
-      email:    email,
-      mobile:   mobile,
-      city:     city,
-      language: language,
-      otp:      otp
+  // ── PRIMARY: GET request — URL params Apps Script doGet mein 100% reliably milte hain ──
+  // POST no-cors body parsing kabhi kabhi Apps Script mein fail hoti hai
+  var getUrl = KS_SHEETS_URL
+    + '?action=sendOTP'
+    + '&name='     + encodeURIComponent(String(name     || ''))
+    + '&email='    + encodeURIComponent(String(email    || ''))
+    + '&mobile='   + encodeURIComponent(String(mobile   || ''))
+    + '&city='     + encodeURIComponent(String(city     || ''))
+    + '&language=' + encodeURIComponent(String(language || 'en'))
+    + '&otp='      + encodeURIComponent(String(otp));
+
+  fetch(getUrl, { method: 'GET', mode: 'no-cors' })
+    .then(function() {
+      console.log('[KSpider] OTP GET fired ✅ otp=' + otp);
     })
-  }).catch(function(err) {
-    console.warn('[KSpider] OTP email send failed (no-cors):', err);
-    // Try GET fallback
-    var url = KS_SHEETS_URL + '?action=sendOTP'
-      + '&name='     + encodeURIComponent(name)
-      + '&email='    + encodeURIComponent(email)
-      + '&mobile='   + encodeURIComponent(mobile)
-      + '&city='     + encodeURIComponent(city)
-      + '&language=' + encodeURIComponent(language)
-      + '&otp='      + encodeURIComponent(otp);
-    fetch(url, { method: 'GET', mode: 'no-cors' }).catch(function(){});
-  });
+    .catch(function(err) {
+      console.warn('[KSpider] OTP GET failed, trying POST fallback:', err);
+      // ── FALLBACK: POST no-cors ──
+      fetch(KS_SHEETS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify({
+          action:   'sendOTP',
+          name:     name,
+          email:    email,
+          mobile:   mobile,
+          city:     city,
+          language: language,
+          otp:      String(otp)
+        })
+      }).catch(function(){});
+    });
 
   toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox / Spam check karo.', 'success', 6000);
   showOtpStatus('📧 OTP aapki email pe bheja gaya. Inbox / Spam check karo.', false);
