@@ -3567,27 +3567,38 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
     return;
   }
 
-  // ── PRIMARY: POST request — Apps Script doPost mein action route hoti hai ──
-  // GET request doGet mein route hoti hai jo sendOTP handle nahi karta tha
-  fetch(KS_SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({
-      action:   'sendOTP',
-      name:     String(name     || ''),
-      email:    String(email    || ''),
-      mobile:   String(mobile   || ''),
-      city:     String(city     || ''),
-      language: String(language || 'en'),
-      otp:      String(otp)
-    })
-  })
+  // ── PRIMARY: GET request — URL params Apps Script doGet mein 100% reliably milte hain ──
+  // POST no-cors body parsing kabhi kabhi Apps Script mein fail hoti hai
+  var getUrl = KS_SHEETS_URL
+    + '?action=sendOTP'
+    + '&name='     + encodeURIComponent(String(name     || ''))
+    + '&email='    + encodeURIComponent(String(email    || ''))
+    + '&mobile='   + encodeURIComponent(String(mobile   || ''))
+    + '&city='     + encodeURIComponent(String(city     || ''))
+    + '&language=' + encodeURIComponent(String(language || 'en'))
+    + '&otp='      + encodeURIComponent(String(otp));
+
+  fetch(getUrl, { method: 'GET', mode: 'no-cors' })
     .then(function() {
-      console.log('[KSpider] OTP POST fired ✅ otp=' + otp);
+      console.log('[KSpider] OTP GET fired ✅ otp=' + otp);
     })
     .catch(function(err) {
-      console.warn('[KSpider] OTP POST failed:', err);
+      console.warn('[KSpider] OTP GET failed, trying POST fallback:', err);
+      // ── FALLBACK: POST no-cors ──
+      fetch(KS_SHEETS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify({
+          action:   'sendOTP',
+          name:     name,
+          email:    email,
+          mobile:   mobile,
+          city:     city,
+          language: language,
+          otp:      String(otp)
+        })
+      }).catch(function(){});
     });
 
   toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox / Spam check karo.', 'success', 6000);
