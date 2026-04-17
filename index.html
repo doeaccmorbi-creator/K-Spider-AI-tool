@@ -2972,20 +2972,16 @@ function ksNeedsReg() {
 }
 
 /* Load site access mode from Firestore admin/site_settings
-   — localStorage cache se instant load, Firestore se fresh update */
+   — ONLY Firestore sets _KS_REQUIRE_REG (localStorage cache removed as blocker
+     to fix stale "Registration Required" cache blocking users after admin
+     switches to "Free for All") */
 function loadSiteAccessMode(callback) {
-  // Step 1: localStorage cache — ONLY use as fallback, NOT as blocker
-  // Default is FREE (false) so guests are never blocked before Firestore loads
+  // Always default to FREE — never block users before Firestore responds.
+  // localStorage is NO LONGER read here because a stale 'true' cache was
+  // blocking guests even after admin set "Free for All" in Firestore.
   _KS_REQUIRE_REG = false;
-  try {
-    var cached = localStorage.getItem('_ks_require_reg');
-    if (cached !== null) {
-      _KS_REQUIRE_REG = (cached === 'true');
-      console.log('[KSpider] Site access mode (cache):', _KS_REQUIRE_REG);
-    }
-  } catch(e) {}
 
-  // Step 2: Firestore se fresh value fetch karo — always override cache
+  // Firestore se authoritative value fetch karo — this is the single source of truth
   try {
     var db2 = (window.KS && window.KS.db) ? window.KS.db : null;
     if (!db2) { if (callback) callback(); return; }
@@ -2998,15 +2994,18 @@ function loadSiteAccessMode(callback) {
         // Doc exist nahi = admin ne kuch set nahi kiya = free access default
         _KS_REQUIRE_REG = false;
       }
+      // Update localStorage so admin panel / analytics can read it (NOT used as gate)
       try { localStorage.setItem('_ks_require_reg', _KS_REQUIRE_REG ? 'true' : 'false'); } catch(e) {}
       console.log('[KSpider] Site access mode (Firestore):', _KS_REQUIRE_REG);
       if (callback) callback();
     }).catch(function(e) {
-      console.warn('[KSpider] site_settings load failed, using cache/default', e);
+      console.warn('[KSpider] site_settings load failed, defaulting to free', e);
+      _KS_REQUIRE_REG = false; // fail-open: never block on network error
       if (callback) callback();
     });
   } catch(e) {
     console.warn('[KSpider] loadSiteAccessMode error:', e);
+    _KS_REQUIRE_REG = false;
     if (callback) callback();
   }
 }
