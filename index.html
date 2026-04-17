@@ -2735,20 +2735,22 @@ body {
 </div>
 
 <!-- OTP VERIFICATION MODAL -->
-<div class="ov" id="otp-ov" role="dialog" aria-modal="true" aria-label="Email Verification">
+<div class="ov" id="otp-ov" role="dialog" aria-modal="true" aria-label="Account Verification">
   <div class="mod">
     <button class="mcl" onclick="closeM('otp-ov')" aria-label="Close">✕</button>
     <div class="mbd" style="text-align:center">
       <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
       <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--t1);margin-bottom:8px">Verify Your Account</h2>
-      <p style="font-size:.82rem;color:var(--t3);margin-bottom:6px">OTP aapki email pe bheja gaya hai. <strong style="color:var(--gold2)">Inbox / Spam</strong> check karo.</p>
-      <p id="otp-email-display" style="font-size:.75rem;font-weight:600;color:var(--t4);margin-bottom:12px"></p>
-      <!-- Spam tip box -->
-      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;text-align:left;">
-        <p style="margin:0;font-size:.78rem;color:#795548;line-height:1.5;">📬 <strong>OTP nahi mila?</strong> Apna <strong>Spam / Junk</strong> folder check karo. Sender: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7b10080b121f1e0949494a494b4d3b1c161a121755181416">[email&#160;protected]</a></strong></p>
+      <p style="font-size:.82rem;color:var(--t3);margin-bottom:14px">Niche aapka <strong style="color:var(--gold2)">One-Time Password (OTP)</strong> hai. Isko copy karke niche paste karo aur verify karo.</p>
+      <!-- OTP Display Box -->
+      <div id="otp-display-box" style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(168,85,247,.08));border:2px dashed rgba(99,102,241,.4);border-radius:12px;padding:18px 14px;margin-bottom:16px;position:relative;">
+        <p style="font-size:.72rem;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;">Aapka OTP</p>
+        <div id="otp-shown" style="font-size:2.4rem;font-weight:900;letter-spacing:.35em;color:var(--t1);font-family:'Syne',monospace;margin-bottom:10px;user-select:all;">------</div>
+        <button onclick="copyOTPCode()" id="otp-copy-btn" style="background:var(--t1);color:#fff;border:none;border-radius:8px;padding:7px 18px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;">📋 Copy OTP</button>
+        <p id="otp-copy-confirm" style="font-size:.72rem;color:#34d399;margin-top:8px;display:none;">✅ OTP copy ho gaya!</p>
       </div>
       <div class="form-group" style="text-align:left">
-        <label class="form-label">Enter OTP *</label>
+        <label class="form-label">OTP Yahan Paste Karo *</label>
         <input class="form-ctrl" id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:1.4rem;letter-spacing:.4em;text-align:center;font-weight:700" autocomplete="one-time-code">
       </div>
       <p id="otp-timer" style="font-size:.76rem;color:var(--t3);margin-bottom:16px;margin-top:-8px">OTP expires in <span id="otp-countdown" style="color:var(--red);font-weight:700">5:00</span></p>
@@ -2756,7 +2758,7 @@ body {
         ✅ Verify & Activate Account →
       </button>
       <button onclick="resendOTP()" id="resend-btn" style="background:none;border:none;color:var(--gold2);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline">
-        Resend OTP
+        Naya OTP Generate Karo
       </button>
       <p style="font-size:.7rem;color:var(--t4);margin-top:14px">⚠️ OTP 5 minutes mein expire hoga. Isko kisi se share mat karo.</p>
     </div>
@@ -3777,8 +3779,49 @@ function resendOTP() {
   // ── Naya OTP generate karo (client-side v4.1) ──
   _otpCode = generateOTP();
   startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
+  // On-screen OTP update karo
+  var otpShown = document.getElementById('otp-shown');
+  if (otpShown) otpShown.textContent = _otpCode;
+  var cpConfirm = document.getElementById('otp-copy-confirm');
+  if (cpConfirm) cpConfirm.style.display = 'none';
   sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', _otpCode);
-  toast('📧 Naya OTP ' + _pendingUser.email + ' par bheja ja raha hai!', 'info', 5000);
+  toast('🔐 Naya OTP screen pe display ho gaya! Usse copy karke paste karo.', 'success', 4000);
+}
+
+
+/* ══════════════════════════════════════════════════════
+   copyOTPCode — On-screen OTP clipboard pe copy karo
+   ══════════════════════════════════════════════════════ */
+function copyOTPCode() {
+  var otpEl = document.getElementById('otp-shown');
+  var otp = otpEl ? otpEl.textContent.trim() : '';
+  if (!otp || otp === '------') { toast('OTP abhi available nahi hai.', 'warn'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(otp).then(function() {
+      _showCopyConfirm();
+    }).catch(function() { _fallbackCopy(otp); });
+  } else { _fallbackCopy(otp); }
+}
+function _fallbackCopy(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    _showCopyConfirm();
+  } catch(e) { toast('Copy nahi hua — manually select karke copy karo.', 'warn'); }
+}
+function _showCopyConfirm() {
+  var el = document.getElementById('otp-copy-confirm');
+  if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+  // Also auto-paste into input
+  var inp = document.getElementById('otp-input');
+  var otpEl = document.getElementById('otp-shown');
+  if (inp && otpEl) { inp.value = otpEl.textContent.trim(); }
+  toast('✅ OTP copy ho gaya aur input mein paste bhi ho gaya!', 'success', 3000);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -3973,12 +4016,17 @@ function submitReg(e) {
     hideOtpStatus();
     var otpBtn = document.getElementById('otp-btn');
     if (otpBtn) { otpBtn.disabled = false; otpBtn.textContent = '✅ Verify & Activate Account →'; }
+    // On-screen OTP show karo
+    var otpShown = document.getElementById('otp-shown');
+    if (otpShown) otpShown.textContent = _otpCode;
+    var cpConfirm = document.getElementById('otp-copy-confirm');
+    if (cpConfirm) cpConfirm.style.display = 'none';
     openM('otp-ov');
 
     // OTP Apps Script se Gmail pe bhejo — OTP bhi pass karo
     sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
 
-    toast('📧 OTP aapki email pe bheja ja raha hai...', 'info', 3000);
+    toast('🔐 Aapka OTP screen pe display ho gaya hai! Usse copy karke paste karo.', 'success', 5000);
 
     // Button reset
     setTimeout(function() {
