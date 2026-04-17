@@ -126,6 +126,8 @@
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()">
   <meta http-equiv="X-XSS-Protection" content="1; mode=block">
+  <!-- ── CSP: Allow Firebase SDK CDNs (cdn.jsdelivr.net, unpkg.com, cdnjs, gstatic) ── -->
+  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://www.gstatic.com https://www.googletagmanager.com https://checkout.razorpay.com https://fonts.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://api.razorpay.com https://lumberjack.razorpay.com https://script.google.com https://script.googleusercontent.com https://www.google-analytics.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com;">
 
   <!-- ── PERFORMANCE HINTS ── -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -452,19 +454,25 @@
     }
 
     var CDN_SETS = [
-      // v1: jsDelivr — PRIMARY (fast, no blocking issues)
+      // v1: Official Firebase/Google CDN — PRIMARY (always CSP-safe, no blocking)
+      [
+        'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+        'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
+        'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js'
+      ],
+      // v2: jsDelivr fallback
       [
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js'
       ],
-      // v2: unpkg fallback
+      // v3: unpkg fallback
       [
         'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js'
       ],
-      // v3: cdnjs last resort
+      // v4: cdnjs last resort
       [
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js',
