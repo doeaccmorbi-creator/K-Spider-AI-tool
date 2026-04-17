@@ -126,8 +126,6 @@
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()">
   <meta http-equiv="X-XSS-Protection" content="1; mode=block">
-  <!-- ── CSP: Allow Firebase SDK CDNs (cdn.jsdelivr.net, unpkg.com, cdnjs, gstatic) ── -->
-  <meta http-equiv="Content-Security-Policy" content="script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://www.gstatic.com https://www.googletagmanager.com https://checkout.razorpay.com https://fonts.googleapis.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com https://api.razorpay.com https://lumberjack.razorpay.com https://script.google.com https://script.googleusercontent.com https://www.google-analytics.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: blob:; frame-src 'self' https://checkout.razorpay.com https://api.razorpay.com;">
 
   <!-- ── PERFORMANCE HINTS ── -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -433,6 +431,8 @@
       // Reset tool settings cache so next render picks up fresh Firestore data
       window._adminToolSettings = null;
       console.log('[KSpider] Firebase ready ✅');
+      // Load site access mode (admin-controlled registration toggle)
+      loadSiteAccessMode();
       // Re-render tools with Firestore settings (plan/status overrides from admin)
       setTimeout(function() {
         if (typeof renderTools === 'function') renderTools('all');
@@ -454,25 +454,19 @@
     }
 
     var CDN_SETS = [
-      // v1: Official Firebase/Google CDN — PRIMARY (always CSP-safe, no blocking)
-      [
-        'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
-        'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
-        'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js'
-      ],
-      // v2: jsDelivr fallback
+      // v1: jsDelivr — PRIMARY (fast, no blocking issues)
       [
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js',
         'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js'
       ],
-      // v3: unpkg fallback
+      // v2: unpkg fallback
       [
         'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js',
         'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js'
       ],
-      // v4: cdnjs last resort
+      // v3: cdnjs last resort
       [
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js',
@@ -2964,6 +2958,41 @@ function initFirebase() {
 // ══════════════════════════════════════════════════════
 var KS_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzMcp7C-fWTZaBIzPzilAhGpsBP4MHU_ydpAu5QENK1F4C8e832zA5SsUPoyPfQzjRp/exec';
 
+/* ══════════════════════════════════════════════════════
+   SITE ACCESS MODE — Admin-controlled via Firestore
+   admin/site_settings → requireRegistration: true/false
+   true  = Registration compulsory (default/safe)
+   false = Free for all (no login needed to use tools)
+   ══════════════════════════════════════════════════════ */
+var _KS_REQUIRE_REG = true; // Default: registration compulsory (overridden by Firestore)
+
+/* Check if registration is required — use this everywhere instead of hardcoded check */
+function ksNeedsReg() {
+  return _KS_REQUIRE_REG === true;
+}
+
+/* Load site access mode from Firestore admin/site_settings */
+function loadSiteAccessMode() {
+  try {
+    var db = (window.KS && window.KS.db) ? window.KS.db : (window._db || null);
+    if (!db) { return; }
+    db.collection('admin').doc('site_settings').get().then(function(doc) {
+      if (doc && doc.exists) {
+        var d = doc.data();
+        _KS_REQUIRE_REG = (d.requireRegistration !== false); // default true if missing
+      } else {
+        _KS_REQUIRE_REG = true; // doc missing = require registration
+      }
+      console.log('[KSpider] Site access mode loaded — requireRegistration:', _KS_REQUIRE_REG);
+    }).catch(function(e) {
+      console.warn('[KSpider] site_settings load failed, defaulting to requireReg=true', e);
+      _KS_REQUIRE_REG = true;
+    });
+  } catch(e) {
+    console.warn('[KSpider] loadSiteAccessMode error:', e);
+  }
+}
+
 function syncUserToGoogleSheets(userData) {
   if (!KS_SHEETS_URL || KS_SHEETS_URL === 'YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE') return;
   try {
@@ -3575,27 +3604,38 @@ function sendOTPEmail(name, email, mobile, city, language, otp) {
     return;
   }
 
-  // ── PRIMARY: POST request — Apps Script doPost mein action route hoti hai ──
-  // GET request doGet mein route hoti hai jo sendOTP handle nahi karta tha
-  fetch(KS_SHEETS_URL, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
-    body: JSON.stringify({
-      action:   'sendOTP',
-      name:     String(name     || ''),
-      email:    String(email    || ''),
-      mobile:   String(mobile   || ''),
-      city:     String(city     || ''),
-      language: String(language || 'en'),
-      otp:      String(otp)
-    })
-  })
+  // ── PRIMARY: GET request — URL params Apps Script doGet mein 100% reliably milte hain ──
+  // POST no-cors body parsing kabhi kabhi Apps Script mein fail hoti hai
+  var getUrl = KS_SHEETS_URL
+    + '?action=sendOTP'
+    + '&name='     + encodeURIComponent(String(name     || ''))
+    + '&email='    + encodeURIComponent(String(email    || ''))
+    + '&mobile='   + encodeURIComponent(String(mobile   || ''))
+    + '&city='     + encodeURIComponent(String(city     || ''))
+    + '&language=' + encodeURIComponent(String(language || 'en'))
+    + '&otp='      + encodeURIComponent(String(otp));
+
+  fetch(getUrl, { method: 'GET', mode: 'no-cors' })
     .then(function() {
-      console.log('[KSpider] OTP POST fired ✅ otp=' + otp);
+      console.log('[KSpider] OTP GET fired ✅ otp=' + otp);
     })
     .catch(function(err) {
-      console.warn('[KSpider] OTP POST failed:', err);
+      console.warn('[KSpider] OTP GET failed, trying POST fallback:', err);
+      // ── FALLBACK: POST no-cors ──
+      fetch(KS_SHEETS_URL, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+        body: JSON.stringify({
+          action:   'sendOTP',
+          name:     name,
+          email:    email,
+          mobile:   mobile,
+          city:     city,
+          language: language,
+          otp:      String(otp)
+        })
+      }).catch(function(){});
     });
 
   toast('📧 OTP aapki email ' + email + ' pe bheja gaya! Inbox / Spam check karo.', 'success', 6000);
@@ -3959,7 +3999,7 @@ function _setToolToken(toolId, plan) {
 
 function launchTool(url, toolId) {
   var u = getUser();
-  if (!u || !u.verified) { openM('gate-ov'); return false; }
+  if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
   if (!url || !toolId)   { toast('Tool temporarily unavailable.', 'warn'); return false; }
 
   u.toolsUsed = (u.toolsUsed || 0) + 1;
@@ -3998,7 +4038,7 @@ function loadToolPricingData(cb) {
 // Called when user clicks "Buy Plan" on a premium tool card
 function openToolBuyModal(toolId, toolName, toolIcon) {
   var u = getUser();
-  if (!u || !u.verified) { openM('gate-ov'); return false; }
+  if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
 
   // Find tool in TD array
   var tool = (typeof TD !== 'undefined' ? TD : []).find(function(t){ return t.id === toolId; });
@@ -4245,7 +4285,7 @@ function userHasToolPlan(toolId, callback) {
 
 function launchPremiumTool(url, toolId, requiredPlan) {
   var u = getUser();
-  if (!u || !u.verified) { openM('gate-ov'); return false; }
+  if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
 
   toast('⏳ Access check ho rahi hai...', 'info', 2000);
 
@@ -4274,7 +4314,7 @@ function launchPremiumTool(url, toolId, requiredPlan) {
             toast('🚫 Account suspended. Admin se contact karo.','error',7000);
             return;
           } else if (rsn === 'not_logged_in') {
-            openM('gate-ov'); return;
+            if (ksNeedsReg()) { openM('gate-ov'); return; }
           }
           // Open per-tool buy modal
           var tool = (typeof TD !== 'undefined' ? TD : []).find(function(t){ return t.id===toolId; }) || {id:toolId,name:toolId,icon:'🔧'};
