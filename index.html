@@ -2974,7 +2974,9 @@ function ksNeedsReg() {
 /* Load site access mode from Firestore admin/site_settings
    — localStorage cache se instant load, Firestore se fresh update */
 function loadSiteAccessMode(callback) {
-  // Step 1: localStorage cache check karo (instant, no flicker)
+  // Step 1: localStorage cache — ONLY use as fallback, NOT as blocker
+  // Default is FREE (false) so guests are never blocked before Firestore loads
+  _KS_REQUIRE_REG = false;
   try {
     var cached = localStorage.getItem('_ks_require_reg');
     if (cached !== null) {
@@ -2983,14 +2985,15 @@ function loadSiteAccessMode(callback) {
     }
   } catch(e) {}
 
-  // Step 2: Firestore se fresh value fetch karo
+  // Step 2: Firestore se fresh value fetch karo — always override cache
   try {
     var db2 = (window.KS && window.KS.db) ? window.KS.db : null;
     if (!db2) { if (callback) callback(); return; }
     db2.collection('admin').doc('site_settings').get().then(function(doc) {
       if (doc && doc.exists) {
         var d = doc.data();
-        _KS_REQUIRE_REG = (d.requireRegistration !== false);
+        // requireRegistration === true means locked, anything else = free
+        _KS_REQUIRE_REG = (d.requireRegistration === true);
       } else {
         // Doc exist nahi = admin ne kuch set nahi kiya = free access default
         _KS_REQUIRE_REG = false;
@@ -4014,7 +4017,8 @@ function _setToolToken(toolId, plan) {
 
 function launchTool(url, toolId) {
   var u = getUser();
-  if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
+  // Only block if registration is EXPLICITLY required (=== true) and user not verified
+  if (_KS_REQUIRE_REG === true && (!u || !u.verified)) { openM('gate-ov'); return false; }
   if (!url || !toolId)   { toast('Tool temporarily unavailable.', 'warn'); return false; }
 
   // Guest user (Free for All mode) ke liye null check — crash avoid karo
@@ -4056,7 +4060,7 @@ function loadToolPricingData(cb) {
 // Called when user clicks "Buy Plan" on a premium tool card
 function openToolBuyModal(toolId, toolName, toolIcon) {
   var u = getUser();
-  if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
+  if (_KS_REQUIRE_REG === true && (!u || !u.verified)) { openM('gate-ov'); return false; }
 
   // Find tool in TD array
   var tool = (typeof TD !== 'undefined' ? TD : []).find(function(t){ return t.id === toolId; });
@@ -4303,7 +4307,7 @@ function userHasToolPlan(toolId, callback) {
 
 function launchPremiumTool(url, toolId, requiredPlan) {
   var u = getUser();
-  if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
+  if (_KS_REQUIRE_REG === true && (!u || !u.verified)) { openM('gate-ov'); return false; }
 
   toast('⏳ Access check ho rahi hai...', 'info', 2000);
 
@@ -4332,7 +4336,7 @@ function launchPremiumTool(url, toolId, requiredPlan) {
             toast('🚫 Account suspended. Admin se contact karo.','error',7000);
             return;
           } else if (rsn === 'not_logged_in') {
-            if (ksNeedsReg()) { openM('gate-ov'); return; }
+            if (_KS_REQUIRE_REG === true) { openM('gate-ov'); return; }
           }
           // Open per-tool buy modal
           var tool = (typeof TD !== 'undefined' ? TD : []).find(function(t){ return t.id===toolId; }) || {id:toolId,name:toolId,icon:'🔧'};
