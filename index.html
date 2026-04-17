@@ -4017,8 +4017,11 @@ function launchTool(url, toolId) {
   if (ksNeedsReg() && (!u || !u.verified)) { openM('gate-ov'); return false; }
   if (!url || !toolId)   { toast('Tool temporarily unavailable.', 'warn'); return false; }
 
-  u.toolsUsed = (u.toolsUsed || 0) + 1;
-  saveUser(u);
+  // Guest user (Free for All mode) ke liye null check — crash avoid karo
+  if (u) {
+    u.toolsUsed = (u.toolsUsed || 0) + 1;
+    saveUser(u);
+  }
   _setToolToken(toolId, 'free');
 
   if (typeof gtag !== 'undefined') {
@@ -4308,7 +4311,7 @@ function launchPremiumTool(url, toolId, requiredPlan) {
   userHasToolPlan(toolId, function(hasToolPlan, reason) {
     if (hasToolPlan) {
       // Has specific tool plan — allow
-      u.toolsUsed = (u.toolsUsed||0) + 1; saveUser(u);
+      if (u) { u.toolsUsed = (u.toolsUsed||0) + 1; saveUser(u); }
       _setToolToken(toolId, 'tool_plan');
       if (typeof gtag !== 'undefined') gtag('event','tool_click',{event_category:'kspider',event_label:toolId+'_tool_plan'});
       window.location.href = url;
@@ -4318,7 +4321,7 @@ function launchPremiumTool(url, toolId, requiredPlan) {
     if (typeof KS !== 'undefined' && KS.checkUserAccess) {
       KS.checkUserAccess(requiredPlan, function(allowed, rsn) {
         if (allowed) {
-          u.toolsUsed = (u.toolsUsed||0) + 1; saveUser(u);
+          if (u) { u.toolsUsed = (u.toolsUsed||0) + 1; saveUser(u); }
           _setToolToken(toolId, requiredPlan);
           if (typeof gtag !== 'undefined') gtag('event','tool_click',{event_category:'kspider',event_label:toolId+'_premium'});
           window.location.href = url;
@@ -4338,11 +4341,11 @@ function launchPremiumTool(url, toolId, requiredPlan) {
       });
     } else {
       // Fallback localStorage
-      var planType = u.planType || u.plan || 'free';
+      var planType = (u && (u.planType || u.plan)) || 'free';
       var allowed2 = (requiredPlan==='premium' && (planType==='premium'||planType==='franchise')) ||
                      (requiredPlan==='franchise' && planType==='franchise');
       if (allowed2) {
-        u.toolsUsed=(u.toolsUsed||0)+1; saveUser(u);
+        if (u) { u.toolsUsed=(u.toolsUsed||0)+1; saveUser(u); }
         _setToolToken(toolId, requiredPlan);
         window.location.href = url;
       } else {
