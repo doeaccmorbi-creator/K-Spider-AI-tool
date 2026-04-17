@@ -431,14 +431,14 @@
       // Reset tool settings cache so next render picks up fresh Firestore data
       window._adminToolSettings = null;
       console.log('[KSpider] Firebase ready ✅');
-      // Load site access mode (admin-controlled registration toggle)
-      loadSiteAccessMode();
-      // Re-render tools with Firestore settings (plan/status overrides from admin)
-      setTimeout(function() {
-        if (typeof renderTools === 'function') renderTools('all');
-        if (typeof loadAndApplyPricing === 'function') loadAndApplyPricing();
-        if (typeof loadAnnouncements === 'function') loadAnnouncements();
-      }, 600);
+      // Load site access mode FIRST, then render tools (so gate check uses correct value)
+      loadSiteAccessMode(function() {
+        setTimeout(function() {
+          if (typeof renderTools === 'function') renderTools('all');
+          if (typeof loadAndApplyPricing === 'function') loadAndApplyPricing();
+          if (typeof loadAnnouncements === 'function') loadAnnouncements();
+        }, 300);
+      });
     }
 
     function loadScript(src, onSuccess, onFail) {
@@ -2964,32 +2964,47 @@ var KS_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzMcp7C-fWTZaBIzPzi
    true  = Registration compulsory (default/safe)
    false = Free for all (no login needed to use tools)
    ══════════════════════════════════════════════════════ */
-var _KS_REQUIRE_REG = true; // Default: registration compulsory (overridden by Firestore)
+var _KS_REQUIRE_REG = false; // Default: free (Firestore se override hoga — false=safe default to avoid blocking users before fetch)
 
 /* Check if registration is required — use this everywhere instead of hardcoded check */
 function ksNeedsReg() {
   return _KS_REQUIRE_REG === true;
 }
 
-/* Load site access mode from Firestore admin/site_settings */
-function loadSiteAccessMode() {
+/* Load site access mode from Firestore admin/site_settings
+   — localStorage cache se instant load, Firestore se fresh update */
+function loadSiteAccessMode(callback) {
+  // Step 1: localStorage cache check karo (instant, no flicker)
   try {
-    var db = (window.KS && window.KS.db) ? window.KS.db : (window._db || null);
-    if (!db) { return; }
-    db.collection('admin').doc('site_settings').get().then(function(doc) {
+    var cached = localStorage.getItem('_ks_require_reg');
+    if (cached !== null) {
+      _KS_REQUIRE_REG = (cached === 'true');
+      console.log('[KSpider] Site access mode (cache):', _KS_REQUIRE_REG);
+    }
+  } catch(e) {}
+
+  // Step 2: Firestore se fresh value fetch karo
+  try {
+    var db2 = (window.KS && window.KS.db) ? window.KS.db : null;
+    if (!db2) { if (callback) callback(); return; }
+    db2.collection('admin').doc('site_settings').get().then(function(doc) {
       if (doc && doc.exists) {
         var d = doc.data();
-        _KS_REQUIRE_REG = (d.requireRegistration !== false); // default true if missing
+        _KS_REQUIRE_REG = (d.requireRegistration !== false);
       } else {
-        _KS_REQUIRE_REG = true; // doc missing = require registration
+        // Doc exist nahi = admin ne kuch set nahi kiya = free access default
+        _KS_REQUIRE_REG = false;
       }
-      console.log('[KSpider] Site access mode loaded — requireRegistration:', _KS_REQUIRE_REG);
+      try { localStorage.setItem('_ks_require_reg', _KS_REQUIRE_REG ? 'true' : 'false'); } catch(e) {}
+      console.log('[KSpider] Site access mode (Firestore):', _KS_REQUIRE_REG);
+      if (callback) callback();
     }).catch(function(e) {
-      console.warn('[KSpider] site_settings load failed, defaulting to requireReg=true', e);
-      _KS_REQUIRE_REG = true;
+      console.warn('[KSpider] site_settings load failed, using cache/default', e);
+      if (callback) callback();
     });
   } catch(e) {
     console.warn('[KSpider] loadSiteAccessMode error:', e);
+    if (callback) callback();
   }
 }
 
