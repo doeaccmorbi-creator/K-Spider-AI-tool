@@ -2735,20 +2735,28 @@ body {
 </div>
 
 <!-- OTP VERIFICATION MODAL -->
-<div class="ov" id="otp-ov" role="dialog" aria-modal="true" aria-label="Email Verification">
+<div class="ov" id="otp-ov" role="dialog" aria-modal="true" aria-label="Account Verification">
   <div class="mod">
     <button class="mcl" onclick="closeM('otp-ov')" aria-label="Close">✕</button>
     <div class="mbd" style="text-align:center">
       <div style="font-size:2.5rem;margin-bottom:12px">🔐</div>
       <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--t1);margin-bottom:8px">Verify Your Account</h2>
-      <p style="font-size:.82rem;color:var(--t3);margin-bottom:6px">OTP aapki email pe bheja gaya hai. <strong style="color:var(--gold2)">Inbox / Spam</strong> check karo.</p>
-      <p id="otp-email-display" style="font-size:.75rem;font-weight:600;color:var(--t4);margin-bottom:12px"></p>
-      <!-- Spam tip box -->
-      <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;margin-bottom:14px;text-align:left;">
-        <p style="margin:0;font-size:.78rem;color:#795548;line-height:1.5;">📬 <strong>OTP nahi mila?</strong> Apna <strong>Spam / Junk</strong> folder check karo. Sender: <strong><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7b10080b121f1e0949494a494b4d3b1c161a121755181416">[email&#160;protected]</a></strong></p>
+      <p id="otp-modal-subtitle" style="font-size:.82rem;color:var(--t3);margin-bottom:14px">Niche aapka <strong style="color:var(--gold2)">One-Time Password (OTP)</strong> hai. Isko copy karke niche paste karo aur verify karo.</p>
+      <!-- OTP Display Box — sirf Free for All mode mein dikhega -->
+      <div id="otp-display-box" style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(168,85,247,.08));border:2px dashed rgba(99,102,241,.4);border-radius:12px;padding:18px 14px;margin-bottom:16px;position:relative;">
+        <p style="font-size:.72rem;color:var(--t3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.05em;font-weight:600;">Aapka OTP</p>
+        <div id="otp-shown" style="font-size:2.4rem;font-weight:900;letter-spacing:.35em;color:var(--t1);font-family:'Syne',monospace;margin-bottom:10px;user-select:all;">------</div>
+        <button onclick="copyOTPCode()" id="otp-copy-btn" style="background:var(--t1);color:#fff;border:none;border-radius:8px;padding:7px 18px;font-size:.78rem;font-weight:700;cursor:pointer;transition:all .2s;">📋 Copy OTP</button>
+        <p id="otp-copy-confirm" style="font-size:.72rem;color:#34d399;margin-top:8px;display:none;">✅ OTP copy ho gaya!</p>
+      </div>
+      <!-- Email OTP notice — sirf Registration Required mode mein dikhega -->
+      <div id="otp-email-notice" style="display:none;background:linear-gradient(135deg,rgba(232,82,10,.1),rgba(184,121,42,.08));border:2px dashed rgba(232,82,10,.4);border-radius:12px;padding:18px 14px;margin-bottom:16px;text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px">📧</div>
+        <p style="font-size:.88rem;font-weight:700;color:var(--t1);margin-bottom:6px">OTP aapki email pe bheja gaya!</p>
+        <p style="font-size:.78rem;color:var(--t3);line-height:1.6">Apna inbox check karein aur wahan bheja gaya <strong style="color:var(--gold2)">6-digit OTP</strong> niche paste karein.<br>Spam/Junk folder bhi check karein.</p>
       </div>
       <div class="form-group" style="text-align:left">
-        <label class="form-label">Enter OTP *</label>
+        <label class="form-label">OTP Yahan Paste Karo *</label>
         <input class="form-ctrl" id="otp-input" type="text" inputmode="numeric" maxlength="6" placeholder="• • • • • •" style="font-size:1.4rem;letter-spacing:.4em;text-align:center;font-weight:700" autocomplete="one-time-code">
       </div>
       <p id="otp-timer" style="font-size:.76rem;color:var(--t3);margin-bottom:16px;margin-top:-8px">OTP expires in <span id="otp-countdown" style="color:var(--red);font-weight:700">5:00</span></p>
@@ -2756,7 +2764,7 @@ body {
         ✅ Verify & Activate Account →
       </button>
       <button onclick="resendOTP()" id="resend-btn" style="background:none;border:none;color:var(--gold2);font-size:.78rem;font-weight:600;cursor:pointer;text-decoration:underline">
-        Resend OTP
+        Naya OTP Generate Karo
       </button>
       <p style="font-size:.7rem;color:var(--t4);margin-top:14px">⚠️ OTP 5 minutes mein expire hoga. Isko kisi se share mat karo.</p>
     </div>
@@ -2961,92 +2969,51 @@ var KS_SHEETS_URL = 'https://script.google.com/macros/s/AKfycbzMcp7C-fWTZaBIzPzi
 /* ══════════════════════════════════════════════════════
    SITE ACCESS MODE — Admin-controlled via Firestore
    admin/site_settings → requireRegistration: true/false
-   true  = Registration compulsory
+   true  = Registration compulsory (default/safe)
    false = Free for all (no login needed to use tools)
-   ══════════════════════════════════════════════════════
-
-   ✅ FIX v4.1 — 3 bugs fixed:
-   BUG 1: Stale localStorage '_ks_require_reg=true' was being read SYNCHRONOUSLY
-           before Firestore responded, blocking users even in Free-for-All mode.
-           FIX: localStorage is NEVER read to set _KS_REQUIRE_REG. Stale key is
-           also deleted on load so it can't affect future reads.
-   BUG 2: No real-time update — if admin changed mode while user was on page,
-           the change wasn't reflected until page reload.
-           FIX: onSnapshot() real-time listener updates _KS_REQUIRE_REG instantly.
-   BUG 3: Network failure fell back to stale cache (could be 'true').
-           FIX: Network failure now defaults to false (fail-open = never block user).
    ══════════════════════════════════════════════════════ */
+var _KS_REQUIRE_REG = false; // Default: free (Firestore se override hoga — false=safe default to avoid blocking users before fetch)
 
-// _KS_REQUIRE_REG: ALWAYS starts false. ONLY Firestore can set it true.
-var _KS_REQUIRE_REG = false;
-
-// Wipe any stale cached value immediately so it can never be read as a gate
-try { localStorage.removeItem('_ks_require_reg'); } catch(e) {}
-
-/* Check if registration is required */
+/* Check if registration is required — use this everywhere instead of hardcoded check */
 function ksNeedsReg() {
   return _KS_REQUIRE_REG === true;
 }
 
-/* Internal: apply a new value and optionally re-render if mode changed */
-function _applyAccessMode(val) {
-  var newVal = (val === true);
-  if (_KS_REQUIRE_REG !== newVal) {
-    _KS_REQUIRE_REG = newVal;
-    console.log('[KSpider] Site access mode updated:', _KS_REQUIRE_REG ? 'Registration Required' : 'Free for All');
-  } else {
-    _KS_REQUIRE_REG = newVal;
-  }
-}
-
-/* Real-time listener handle — so we can unsubscribe if needed */
-var _ksAccessModeUnsubscribe = null;
-
 /* Load site access mode from Firestore admin/site_settings
-   Uses onSnapshot for real-time updates so admin changes take effect instantly */
+   — ONLY Firestore sets _KS_REQUIRE_REG (localStorage cache removed as blocker
+     to fix stale "Registration Required" cache blocking users after admin
+     switches to "Free for All") */
 function loadSiteAccessMode(callback) {
-  // ALWAYS start free — never block before Firestore responds
+  // Always default to FREE — never block users before Firestore responds.
+  // localStorage is NO LONGER read here because a stale 'true' cache was
+  // blocking guests even after admin set "Free for All" in Firestore.
   _KS_REQUIRE_REG = false;
 
+  // Firestore se authoritative value fetch karo — this is the single source of truth
   try {
     var db2 = (window.KS && window.KS.db) ? window.KS.db : null;
-    if (!db2) {
-      // Firebase not ready — default to free, fire callback
-      console.warn('[KSpider] loadSiteAccessMode: db not ready, defaulting to free');
+    if (!db2) { if (callback) callback(); return; }
+    db2.collection('admin').doc('site_settings').get().then(function(doc) {
+      if (doc && doc.exists) {
+        var d = doc.data();
+        // requireRegistration === true means locked, anything else = free
+        _KS_REQUIRE_REG = (d.requireRegistration === true);
+      } else {
+        // Doc exist nahi = admin ne kuch set nahi kiya = free access default
+        _KS_REQUIRE_REG = false;
+      }
+      // Update localStorage so admin panel / analytics can read it (NOT used as gate)
+      try { localStorage.setItem('_ks_require_reg', _KS_REQUIRE_REG ? 'true' : 'false'); } catch(e) {}
+      console.log('[KSpider] Site access mode (Firestore):', _KS_REQUIRE_REG);
       if (callback) callback();
-      return;
-    }
-
-    var _cbFired = false;
-
-    // Use onSnapshot for real-time updates — catches admin changes instantly
-    if (_ksAccessModeUnsubscribe) {
-      try { _ksAccessModeUnsubscribe(); } catch(e) {}
-    }
-
-    _ksAccessModeUnsubscribe = db2.collection('admin').doc('site_settings')
-      .onSnapshot(function(doc) {
-        if (doc && doc.exists) {
-          var d = doc.data();
-          // Only true if admin EXPLICITLY set requireRegistration: true
-          _applyAccessMode(d.requireRegistration === true);
-        } else {
-          // Doc missing = admin set nothing = free access
-          _applyAccessMode(false);
-        }
-        console.log('[KSpider] Site access mode (Firestore live):', _KS_REQUIRE_REG ? 'Locked' : 'Free');
-        // Fire callback only on first snapshot (initial load)
-        if (!_cbFired) { _cbFired = true; if (callback) callback(); }
-      }, function(e) {
-        // onSnapshot error — fail-open: never block user on network errors
-        console.warn('[KSpider] site_settings listener error, defaulting to free:', e.message);
-        _applyAccessMode(false);
-        if (!_cbFired) { _cbFired = true; if (callback) callback(); }
-      });
-
+    }).catch(function(e) {
+      console.warn('[KSpider] site_settings load failed, defaulting to free', e);
+      _KS_REQUIRE_REG = false; // fail-open: never block on network error
+      if (callback) callback();
+    });
   } catch(e) {
     console.warn('[KSpider] loadSiteAccessMode error:', e);
-    _applyAccessMode(false);
+    _KS_REQUIRE_REG = false;
     if (callback) callback();
   }
 }
@@ -3818,8 +3785,83 @@ function resendOTP() {
   // ── Naya OTP generate karo (client-side v4.1) ──
   _otpCode = generateOTP();
   startOTPTimer(); // startOTPTimer already _saveOtpBackup call karta hai
+  // On-screen OTP update karo
+  var otpShown = document.getElementById('otp-shown');
+  if (otpShown) otpShown.textContent = _otpCode;
+  var cpConfirm = document.getElementById('otp-copy-confirm');
+  if (cpConfirm) cpConfirm.style.display = 'none';
+  // Mode-aware UI refresh on resend
+  _applyOtpModalMode();
   sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city||'', _pendingUser.language||'en', _otpCode);
-  toast('📧 Naya OTP ' + _pendingUser.email + ' par bheja ja raha hai!', 'info', 5000);
+  // Mode ke hisaab se resend toast
+  if (ksNeedsReg()) {
+    toast('📧 Naya OTP aapki email pe bheja gaya! Inbox check karein.', 'success', 6000);
+  } else {
+    toast('🔐 Naya OTP screen pe display ho gaya! Usse copy karke paste karo.', 'success', 4000);
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════
+   _applyOtpModalMode — Site Access Mode ke hisaab se
+   OTP modal UI adjust karo
+   Free for All  → on-screen OTP box dikhao, email notice chupao
+   Reg Required  → on-screen OTP box chupao, email notice dikhao
+   ══════════════════════════════════════════════════════ */
+function _applyOtpModalMode() {
+  var displayBox   = document.getElementById('otp-display-box');
+  var emailNotice  = document.getElementById('otp-email-notice');
+  var subtitle     = document.getElementById('otp-modal-subtitle');
+  var copyBtn      = document.getElementById('otp-copy-btn');
+
+  if (ksNeedsReg()) {
+    // ── Registration Required: email OTP only — screen OTP hide ──
+    if (displayBox)  displayBox.style.display  = 'none';
+    if (emailNotice) emailNotice.style.display = 'block';
+    if (copyBtn)     copyBtn.style.display     = 'none';
+    if (subtitle)    subtitle.innerHTML = 'OTP aapki <strong style="color:var(--gold2)">registered email</strong> pe bheja gaya hai. Inbox check karein aur niche paste karein.';
+  } else {
+    // ── Free for All: on-screen OTP dikhao ──
+    if (displayBox)  displayBox.style.display  = 'block';
+    if (emailNotice) emailNotice.style.display = 'none';
+    if (copyBtn)     copyBtn.style.display     = 'inline-block';
+    if (subtitle)    subtitle.innerHTML = 'Niche aapka <strong style="color:var(--gold2)">One-Time Password (OTP)</strong> hai. Isko copy karke niche paste karo aur verify karo.';
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   copyOTPCode — On-screen OTP clipboard pe copy karo
+   ══════════════════════════════════════════════════════ */
+function copyOTPCode() {
+  var otpEl = document.getElementById('otp-shown');
+  var otp = otpEl ? otpEl.textContent.trim() : '';
+  if (!otp || otp === '------') { toast('OTP abhi available nahi hai.', 'warn'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(otp).then(function() {
+      _showCopyConfirm();
+    }).catch(function() { _fallbackCopy(otp); });
+  } else { _fallbackCopy(otp); }
+}
+function _fallbackCopy(text) {
+  try {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    _showCopyConfirm();
+  } catch(e) { toast('Copy nahi hua — manually select karke copy karo.', 'warn'); }
+}
+function _showCopyConfirm() {
+  var el = document.getElementById('otp-copy-confirm');
+  if (el) { el.style.display = 'block'; setTimeout(function(){ el.style.display = 'none'; }, 2500); }
+  // Also auto-paste into input
+  var inp = document.getElementById('otp-input');
+  var otpEl = document.getElementById('otp-shown');
+  if (inp && otpEl) { inp.value = otpEl.textContent.trim(); }
+  toast('✅ OTP copy ho gaya aur input mein paste bhi ho gaya!', 'success', 3000);
 }
 
 /* ══════════════════════════════════════════════════════
@@ -4014,12 +4056,26 @@ function submitReg(e) {
     hideOtpStatus();
     var otpBtn = document.getElementById('otp-btn');
     if (otpBtn) { otpBtn.disabled = false; otpBtn.textContent = '✅ Verify & Activate Account →'; }
+    // On-screen OTP show karo
+    var otpShown = document.getElementById('otp-shown');
+    if (otpShown) otpShown.textContent = _otpCode;
+    var cpConfirm = document.getElementById('otp-copy-confirm');
+    if (cpConfirm) cpConfirm.style.display = 'none';
+
+    // ── Mode-aware OTP modal UI ──
+    _applyOtpModalMode();
+
     openM('otp-ov');
 
     // OTP Apps Script se Gmail pe bhejo — OTP bhi pass karo
     sendOTPEmail(_pendingUser.name, _pendingUser.email, _pendingUser.mobile, _pendingUser.city || '', _pendingUser.language || 'en', _otpCode);
 
-    toast('📧 OTP aapki email pe bheja ja raha hai...', 'info', 3000);
+    // Mode ke hisaab se toast message
+    if (ksNeedsReg()) {
+      toast('📧 OTP aapki email pe bheja gaya hai! Inbox check karein aur paste karein.', 'success', 6000);
+    } else {
+      toast('🔐 Aapka OTP screen pe display ho gaya hai! Usse copy karke paste karo.', 'success', 5000);
+    }
 
     // Button reset
     setTimeout(function() {
