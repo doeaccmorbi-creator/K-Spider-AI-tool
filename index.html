@@ -2980,37 +2980,46 @@ function ksNeedsReg() {
 }
 
 /* Load site access mode from Firestore admin/site_settings
-   — ONLY Firestore sets _KS_REQUIRE_REG (localStorage cache removed as blocker
-     to fix stale "Registration Required" cache blocking users after admin
-     switches to "Free for All") */
-function loadSiteAccessMode(callback) {
-  // Always default to FREE — never block users before Firestore responds.
-  // localStorage is NO LONGER read here because a stale 'true' cache was
-  // blocking guests even after admin set "Free for All" in Firestore.
-  _KS_REQUIRE_REG = false;
+   Uses onSnapshot — real-time listener so admin changes take effect instantly
+   on the live site without requiring a page reload.
+   _KS_REQUIRE_REG always starts false — only Firestore can set it true. */
 
-  // Firestore se authoritative value fetch karo — this is the single source of truth
+// Clear any stale localStorage cache immediately so it can never act as a gate
+try { localStorage.removeItem('_ks_require_reg'); } catch(e) {}
+
+var _ksAccessModeUnsub = null; // real-time listener handle
+
+function loadSiteAccessMode(callback) {
+  _KS_REQUIRE_REG = false; // always start free before Firestore responds
+
   try {
     var db2 = (window.KS && window.KS.db) ? window.KS.db : null;
     if (!db2) { if (callback) callback(); return; }
-    db2.collection('admin').doc('site_settings').get().then(function(doc) {
-      if (doc && doc.exists) {
-        var d = doc.data();
-        // requireRegistration === true means locked, anything else = free
-        _KS_REQUIRE_REG = (d.requireRegistration === true);
-      } else {
-        // Doc exist nahi = admin ne kuch set nahi kiya = free access default
+
+    // Unsubscribe any previous listener
+    if (_ksAccessModeUnsub) { try { _ksAccessModeUnsub(); } catch(e) {} }
+
+    var _fired = false;
+
+    _ksAccessModeUnsub = db2.collection('admin').doc('site_settings')
+      .onSnapshot(function(doc) {
+        if (doc && doc.exists) {
+          // Only lock if admin EXPLICITLY set requireRegistration: true
+          _KS_REQUIRE_REG = (doc.data().requireRegistration === true);
+        } else {
+          // Doc missing = admin never locked it = free
+          _KS_REQUIRE_REG = false;
+        }
+        console.log('[KSpider] Site access mode (live):', _KS_REQUIRE_REG ? 'Registration Required' : 'Free for All');
+        // Callback fires only on first snapshot (initial page load)
+        if (!_fired) { _fired = true; if (callback) callback(); }
+      }, function(e) {
+        // Network/permission error — fail open, never block users
+        console.warn('[KSpider] site_settings listener error, defaulting to free:', e.message);
         _KS_REQUIRE_REG = false;
-      }
-      // Update localStorage so admin panel / analytics can read it (NOT used as gate)
-      try { localStorage.setItem('_ks_require_reg', _KS_REQUIRE_REG ? 'true' : 'false'); } catch(e) {}
-      console.log('[KSpider] Site access mode (Firestore):', _KS_REQUIRE_REG);
-      if (callback) callback();
-    }).catch(function(e) {
-      console.warn('[KSpider] site_settings load failed, defaulting to free', e);
-      _KS_REQUIRE_REG = false; // fail-open: never block on network error
-      if (callback) callback();
-    });
+        if (!_fired) { _fired = true; if (callback) callback(); }
+      });
+
   } catch(e) {
     console.warn('[KSpider] loadSiteAccessMode error:', e);
     _KS_REQUIRE_REG = false;

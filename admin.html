@@ -1734,6 +1734,7 @@ function doLogout() {
   if (_unsubUsers)    { _unsubUsers();    _unsubUsers = null; }
   if (_unsubPending)  { _unsubPending();  _unsubPending = null; }
   if (_unsubFranchise){ _unsubFranchise();_unsubFranchise = null; }
+  if (_unsubSAM)      { _unsubSAM();      _unsubSAM = null; }
   auth.signOut().then(function() { location.reload(); });
 }
 
@@ -1775,7 +1776,8 @@ function show(name, el) {
 }
 
 function initAll() {
-  startRealtimeListeners(); // Real-time listeners for users, payments, franchise
+  startSiteAccessListener();   // SAM: dedicated onSnapshot — started ONCE here only
+  startRealtimeListeners();    // Users, payments, franchise, ads listeners
   loadDash();
   loadAccess();
   loadTools();
@@ -1796,8 +1798,12 @@ function startRealtimeListeners() {
   if (_unsubFranchise){ _unsubFranchise();_unsubFranchise = null; }
   if (_unsubAds)      { _unsubAds();      _unsubAds = null; }
 
-  // Load site access mode on every dashboard init
-  loadSiteAccessModeSetting();
+  // NOTE: loadSiteAccessModeSetting() removed from here intentionally.
+  // It caused a race condition: every loadUsers() call triggered startRealtimeListeners()
+  // which re-read Firestore with .get() during the write-propagation window (~300ms),
+  // returning the OLD stale value and reverting the badge to "Registration Required"
+  // even after admin had just saved "Free for All". SAM now uses a dedicated
+  // onSnapshot listener (startSiteAccessListener) started once in initAll().
 
   // ── ADS REQUESTS — real-time badge notification ──
   try {
@@ -1957,12 +1963,42 @@ function fmtD(s){ if(!s) return '—'; try{ return new Date(s).toLocaleDateStrin
    Firestore: admin/site_settings → requireRegistration
    ══════════════════════════════════════════════════════ */
 
+// ── Dedicated real-time listener for Site Access Mode ──
+// Uses onSnapshot so the badge always reflects the live Firestore value instantly.
+// Started ONCE in initAll() — never inside startRealtimeListeners().
+var _unsubSAM = null;
+
+function startSiteAccessListener() {
+  if (_unsubSAM) { try { _unsubSAM(); } catch(e) {} _unsubSAM = null; }
+  try {
+    _unsubSAM = db.collection('admin').doc('site_settings')
+      .onSnapshot(function(doc) {
+        var requireReg;
+        if (doc && doc.exists) {
+          requireReg = (doc.data().requireRegistration !== false);
+        } else {
+          requireReg = false; // doc missing = never locked = free
+        }
+        updateSiteAccessUI(requireReg);
+        console.log('[Admin] SAM live:', requireReg ? 'Registration Required' : 'Free for All');
+      }, function(e) {
+        console.warn('[Admin] SAM listener error:', e.message);
+        updateSiteAccessUI(true);
+      });
+  } catch(e) {
+    console.warn('[Admin] startSiteAccessListener error:', e);
+    updateSiteAccessUI(true);
+  }
+}
+
+// Keep as fallback for manual refresh button if ever needed
 function loadSiteAccessModeSetting() {
   db.collection('admin').doc('site_settings').get().then(function(doc) {
-    var requireReg = true; // default
+    var requireReg = true;
     if (doc && doc.exists) {
-      var d = doc.data();
-      requireReg = (d.requireRegistration !== false);
+      requireReg = (doc.data().requireRegistration !== false);
+    } else {
+      requireReg = false;
     }
     updateSiteAccessUI(requireReg);
   }).catch(function(e) {
@@ -1991,14 +2027,21 @@ function updateSiteAccessUI(requireReg) {
 }
 
 function setSiteAccessMode(requireReg) {
-  var msgEl = document.getElementById('sam-msg');
-  if (msgEl) { msgEl.textContent = '⏳ Saving...'; msgEl.style.color = 'var(--t3)'; }
+  var msgEl   = document.getElementById('sam-msg');
+  var btnFree = document.getElementById('sam-btn-free');
+  var btnReg  = document.getElementById('sam-btn-reg');
+
+  // Disable buttons during save to prevent double-click / race
+  if (btnFree) btnFree.disabled = true;
+  if (btnReg)  btnReg.disabled  = true;
+  if (msgEl)   { msgEl.textContent = '⏳ Saving...'; msgEl.style.color = 'var(--t3)'; }
 
   db.collection('admin').doc('site_settings').set({
     requireRegistration: requireReg,
     updatedAt: new Date().toISOString(),
     updatedBy: 'admin'
   }, { merge: true }).then(function() {
+    // onSnapshot will update the UI live — also call directly for instant feedback
     updateSiteAccessUI(requireReg);
     var label = requireReg ? '🔒 Registration Required — Tools locked for guests' : '🌐 Free for All — Anyone can use tools';
     if (msgEl) {
@@ -2006,12 +2049,16 @@ function setSiteAccessMode(requireReg) {
       msgEl.style.color = '#22c55e';
       setTimeout(function(){ if(msgEl) msgEl.textContent = ''; }, 4000);
     }
+    if (btnFree) btnFree.disabled = false;
+    if (btnReg)  btnReg.disabled  = false;
     console.log('[Admin] Site access mode set to requireRegistration:', requireReg);
   }).catch(function(e) {
     if (msgEl) {
       msgEl.textContent = '❌ Save failed: ' + e.message;
       msgEl.style.color = '#ef4444';
     }
+    if (btnFree) btnFree.disabled = false;
+    if (btnReg)  btnReg.disabled  = false;
     console.error('[Admin] setSiteAccessMode error:', e);
   });
 }
