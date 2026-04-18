@@ -67,11 +67,113 @@
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* ── Current tool ka slug detect karna (filename se) ── */
+  /* ── Filename → Admin checkbox value mapping ── */
+  /* Admin mein jo checkbox value hai, wahi yahan likhni hai */
+  var FILE_TO_SLOT = {
+    /* WhatsApp tool — file: whatsapp-bulk-sender-tool.html → admin value: tool-whatsapp-bulk-sender */
+    'whatsapp-bulk-sender-tool':    'tool-whatsapp-bulk-sender',
+    /* Learn Smarter — file: Learn_Smarter_with.html → admin value: tool-ai-teacher */
+    'Learn_Smarter_with':           'tool-ai-teacher',
+    'learn_smarter_with':           'tool-ai-teacher',
+    'learn-smarter-with':           'tool-ai-teacher',
+    /* Resume Builder */
+    'resume-builder-tool':          'tool-resume-builder',
+    'resume-builder':               'tool-resume-builder',
+    /* Image Master Pro */
+    'image-master-pro-tool':        'tool-image-master-pro',
+    'image-master-pro':             'tool-image-master-pro',
+    /* AI Business Consultant */
+    'ai-business-consultant-tool':  'tool-ai-business-consultant',
+    'ai-business-consultant':       'tool-ai-business-consultant',
+    /* AI Prompt Engine */
+    'ai-prompt-engine-tool':        'tool-ai-prompt-engine',
+    'ai-prompt-engine':             'tool-ai-prompt-engine',
+    /* AI File Converter */
+    'ai-file-converter-tool':       'tool-ai-file-converter',
+    'ai-file-converter':            'tool-ai-file-converter',
+    /* Pharmacy Master */
+    'pharmacy-master-tool':         'tool-pharmacy-master',
+    'pharmacy-master':              'tool-pharmacy-master',
+    /* Pharma Marketing */
+    'pharma-marketing-tool':        'tool-pharma-marketing-tool',
+    /* India F-Book */
+    'india-fbook-tool':             'tool-india-fbook',
+    'india-fbook':                  'tool-india-fbook',
+    /* LinkShare */
+    'linkshare-tool':               'tool-linkshare',
+    'linkshare':                    'tool-linkshare',
+    /* MultiPost */
+    'multipost-tool':               'tool-multipost',
+    'multipost':                    'tool-multipost',
+    /* Doctor Elite Pro Max */
+    'doctor-elite-pro-max-tool':    'tool-doctor-elite-pro-max',
+    'doctor-elite-pro-max':         'tool-doctor-elite-pro-max',
+    /* KSpider 400+ Tools */
+    'kspider-400-tools-tool':       'tool-kspider-400-tools',
+    'kspider-400-tools':            'tool-kspider-400-tools',
+    /* Knowledge Spider */
+    'knowledge-spider-tool':        'tool-knowledge-spider',
+    'knowledge-spider':             'tool-knowledge-spider',
+    /* WA Broadcast Pro */
+    'wa-broadcast-pro-tool':        'tool-wa-broadcast-pro',
+    'wa-broadcast-pro':             'tool-wa-broadcast-pro',
+    /* Free AI Video Generator */
+    'free-ai-video-generator-tool': 'tool-free-ai-video-generator',
+    'free-ai-video-generator':      'tool-free-ai-video-generator',
+    /* CyberShield Pro */
+    'cybershield-pro-tool':         'tool-cybershield-pro',
+    'cybershield-pro':              'tool-cybershield-pro',
+    /* Lead Scout */
+    'lead-scout-tool':              'tool-lead-scout',
+    'lead-scout':                   'tool-lead-scout',
+    /* WebCraft Pro */
+    'webcraft-pro-tool':            'tool-webcraft-pro',
+    'webcraft-pro':                 'tool-webcraft-pro',
+    /* Script Studio */
+    'script-studio-tool':           'tool-script-studio',
+    'script-studio':                'tool-script-studio',
+    /* File Analyzer Pro */
+    'file-analyzer-pro-tool':       'tool-file-analyzer-pro',
+    'file-analyzer-pro':            'tool-file-analyzer-pro',
+    /* Review Booster Pro */
+    'review-booster-pro-tool':      'tool-review-booster-pro',
+    'review-booster-pro':           'tool-review-booster-pro',
+    /* VOXAI Pro */
+    'voxai-pro-tool':               'tool-voxai-pro',
+    'voxai-pro':                    'tool-voxai-pro',
+    /* RTO Exam Pro */
+    'rto-exam-pro-tool':            'tool-rto-exam-pro',
+    'rto-exam-pro':                 'tool-rto-exam-pro',
+    /* KSpider Connect Jobs */
+    'kspider-connect-jobs-tool':    'tool-kspider-connect-jobs',
+    'kspider-connect-jobs':         'tool-kspider-connect-jobs',
+    /* Doctor Clinic Tool */
+    'doctor-clinic-tool':           'tool-doctor-clinic-tool',
+    /* Social Captions */
+    'social-captions-tool':         'tool-social-captions',
+    'social-captions':              'tool-social-captions',
+    /* Business Name Generator */
+    'biz-name-gen-tool':            'tool-biz-name-gen',
+    'biz-name-gen':                 'tool-biz-name-gen',
+    /* Health Checker */
+    'health-checker-tool':          'tool-health-checker',
+    'health-checker':               'tool-health-checker',
+    /* Legal Contract Generator */
+    'contract-gen-tool':            'tool-contract-gen',
+    'contract-gen':                 'tool-contract-gen'
+  };
+
+  /* ── Current tool ka slug detect karna ── */
   function getToolSlug() {
     var path = window.location.pathname;
     var file = path.split('/').pop().replace('.html','').replace('.htm','');
-    return 'tool-' + file; // e.g. "tool-whatsapp-bulk-sender-tool"
+    // Pehle exact match try karo
+    if (FILE_TO_SLOT[file]) return FILE_TO_SLOT[file];
+    // Lowercase se try karo
+    var fl = file.toLowerCase();
+    if (FILE_TO_SLOT[fl]) return FILE_TO_SLOT[fl];
+    // Fallback: tool- prefix laga do (last resort)
+    return 'tool-' + fl;
   }
 
   /* ── Ek ad render karna ── */
