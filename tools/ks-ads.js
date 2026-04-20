@@ -70,7 +70,7 @@
   /* ── Filename → Admin checkbox value mapping ── */
   /* Admin mein jo checkbox value hai, wahi yahan likhni hai */
   var FILE_TO_SLOT = {
-    /* WhatsApp tool — file: whatsapp-bulk-sender-tool.html → admin value: tool-whatsapp-bulk-sender */
+    /* WhatsApp tool — file: whatsapp-bulk-sender.html → admin value: tool-whatsapp-bulk-sender */
     'whatsapp-bulk-sender-tool':    'tool-whatsapp-bulk-sender',
     /* Learn Smarter — file: Learn_Smarter_with.html → admin value: tool-ai-teacher */
     'Learn_Smarter_with':           'tool-ai-teacher',
