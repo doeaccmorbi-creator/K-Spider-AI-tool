@@ -2,14 +2,14 @@
    K SPIDER AI — Universal Ad System for Tool Pages  v1.0
    File: ks-ads.js  |  Place in: /tools/  folder
    ══════════════════════════════════════════════════════════════════
-
+ 
    HOW TO USE — Har tool ki HTML file mein ye 2 cheezein karo:
-
+ 
    STEP 1 ─ </body> se pehle ye script tag paste karo:
      <script src="ks-ads.js"></script>
-
+ 
    STEP 2 ─ Jahan ad dikhani ho wahan ye div paste karo:
-
+ 
    ┌─────────────────────────────────────────────────────────┐
    │  TOP BANNER (header ke neeche):                         │
    │  <div data-ks-slot="top-banner"></div>                  │
@@ -26,7 +26,7 @@
    │  BOTTOM (page ke bilkul neeche):                        │
    │  <div data-ks-slot="bottom-banner"></div>               │
    └─────────────────────────────────────────────────────────┘
-
+ 
    ADMIN MEIN SLOT NAMES (Admin > Ads Manager > Slots field):
    ─────────────────────────────────────────────────────────
    top-banner        → Sabhi pages pe top mein
@@ -34,23 +34,23 @@
    in-content        → Content ke beech mein
    after-result      → Result/output ke neeche
    bottom-banner     → Page ke bilkul neeche
-
+ 
    SPECIFIC TOOL PE AD DIKHANA (Admin mein):
    ─────────────────────────────────────────
    Sirf WhatsApp tool pe:     tool-whatsapp
    Sirf Image Editor pe:      tool-image-editor
    Sirf Resume Builder pe:    tool-resume-builder
    ... (har tool ka naam tum set kar sakte ho admin mein)
-
+ 
    MULTIPLE TOOLS PE EK SAATH:
    Admin mein slots field mein comma se likhो:
    top-banner, tool-whatsapp, tool-image-editor
-
+ 
 ══════════════════════════════════════════════════════════════════ */
-
+ 
 (function KsToolAds() {
   'use strict';
-
+ 
   /* ── Firebase se db lena ── */
   function getDb() {
     try {
@@ -61,12 +61,12 @@
     } catch (e) {}
     return null;
   }
-
+ 
   /* ── HTML special characters safe karna ── */
   function safe(s) {
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
-
+ 
   /* ── Filename → Admin checkbox value mapping ── */
   /* Admin mein jo checkbox value hai, wahi yahan likhni hai */
   var FILE_TO_SLOT = {
@@ -162,7 +162,7 @@
     'contract-gen-tool':            'tool-contract-gen',
     'contract-gen':                 'tool-contract-gen'
   };
-
+ 
   /* ── Current tool ka slug detect karna ── */
   function getToolSlug() {
     var path = window.location.pathname;
@@ -175,25 +175,25 @@
     // Fallback: tool- prefix laga do (last resort)
     return 'tool-' + fl;
   }
-
+ 
   /* ── Ek ad render karna ── */
   function renderAd(el, ad) {
     if (!el || !ad) return;
-
+ 
     var clickUrl = ad.clickUrl || '#';
     var hasLink  = clickUrl && clickUrl !== '#';
     var inner    = '';
-
+ 
     if (ad.type === 'image' && ad.imgUrl) {
       var sizeStyle = 'max-width:100%;height:auto;display:block;margin:0 auto;border-radius:8px;';
       if (ad.size === '728x90')   sizeStyle += 'width:728px;max-height:90px;object-fit:cover;';
       else if (ad.size === '300x250') sizeStyle += 'width:300px;height:250px;object-fit:cover;';
       else if (ad.size === '320x50')  sizeStyle += 'width:320px;max-height:50px;object-fit:cover;';
-
+ 
       inner = '<img src="' + safe(ad.imgUrl) + '" alt="' + safe(ad.imgAlt || 'Advertisement') + '" ' +
         'style="' + sizeStyle + '" loading="lazy" ' +
         'onerror="this.closest(\'[data-ks-slot]\').style.display=\'none\'">';
-
+ 
     } else if (ad.type === 'video' && ad.videoUrl) {
       var vurl = ad.videoUrl;
       var isYT    = /youtube\.com|youtu\.be/i.test(vurl);
@@ -202,7 +202,7 @@
       var vsound  = ad.videoSound || 'muted';
       var vplay   = ad.videoPlay  || 'autoplay';
       var vposter = ad.videoPoster || '';
-
+ 
       if (isYT) {
         var ytId = vurl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
         if (ytId) {
@@ -229,7 +229,7 @@
       }
       if (!vidHtml) return;
       inner = '<div style="width:100%">' + vidHtml + '</div>';
-
+ 
     } else if (ad.type === 'text') {
       var bg  = ad.bgColor || '#e8520a';
       var hl  = safe(ad.headline || '');
@@ -238,10 +238,10 @@
       var inf = ad.infoFields || {};
       var sf  = ad.showFields || {};
       var infoHtml = '';
-
+ 
       if (sf.company  && inf.companyName) infoHtml += '<div style="font-size:.72rem;font-weight:800;color:#fff;margin-bottom:2px">🏢 ' + safe(inf.companyName) + '</div>';
       if (sf.offer    && inf.offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;background:rgba(255,255,255,.2);display:inline-block;padding:2px 10px;border-radius:20px;margin-bottom:4px;color:#fff">🎉 ' + safe(inf.offerText) + '</div>';
-
+ 
       var contactLine = '';
       if (sf.phone && inf.phone) {
         var waNum = inf.phone.replace(/[^0-9]/g, '');
@@ -252,37 +252,37 @@
       if (contactLine) infoHtml += '<div style="margin-bottom:3px;line-height:1.9">' + contactLine + '</div>';
       if (sf.location && inf.location) infoHtml += '<div style="font-size:.68rem;color:rgba(255,255,255,.85)">📍 ' + safe(inf.location) + '</div>';
       if (sf.address  && inf.address)  infoHtml += '<div style="font-size:.66rem;color:rgba(255,255,255,.75);margin-top:1px">🏠 ' + safe(inf.address) + '</div>';
-
+ 
       inner = '<div style="background:' + bg + ';padding:14px 22px;border-radius:8px;text-align:center;color:#fff;width:100%;cursor:' + (hasLink ? 'pointer' : 'default') + '">' +
         '<div style="font-size:.95rem;font-weight:800;margin-bottom:3px">' + hl + '</div>' +
         (dsc ? '<div style="font-size:.80rem;opacity:.88;margin-bottom:8px">' + dsc + '</div>' : '') +
         (infoHtml ? '<div style="margin-bottom:8px">' + infoHtml + '</div>' : '') +
         '<span style="background:rgba(255,255,255,.22);padding:4px 16px;border-radius:20px;font-size:.76rem;font-weight:700">' + btn + '</span>' +
         '</div>';
-
+ 
     } else if (ad.type === 'html') {
       el.innerHTML = '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
         '<div style="width:100%">' + (ad.htmlCode || '') + '</div>';
       trackImpression(ad._id);
       return;
-
+ 
     } else {
       return;
     }
-
+ 
     var wrap = hasLink
       ? '<a href="' + safe(clickUrl) + '" target="_blank" rel="noopener noreferrer sponsored" ' +
           'style="display:block;text-decoration:none;width:100%" ' +
           'onclick="window.ksAdTrackClick && window.ksAdTrackClick(\'' + safe(ad._id || '') + '\')">' + inner + '</a>'
       : '<div style="width:100%">' + inner + '</div>';
-
+ 
     el.innerHTML =
       '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
       wrap;
-
+ 
     trackImpression(ad._id);
   }
-
+ 
   /* ── Impression track karna ── */
   function trackImpression(adId) {
     if (!adId) return;
@@ -293,7 +293,7 @@
         .catch(function() {});
     }
   }
-
+ 
   /* ── Click track karna (global) ── */
   window.ksAdTrackClick = function(adId) {
     if (!adId) return;
@@ -304,12 +304,12 @@
         .catch(function() {});
     }
   };
-
+ 
   /* ── Slot rotation ── */
   var _adsBySlot = {};
   var _timers    = {};
   var _curIdx    = {};
-
+ 
   function rotateSlot(slotName, elements) {
     var ads = _adsBySlot[slotName];
     if (!ads || !ads.length) return;
@@ -317,13 +317,13 @@
     var nextAd = ads[_curIdx[slotName]];
     elements.forEach(function(el) { renderAd(el, nextAd); });
   }
-
+ 
   function startSlot(slotName, elements) {
     var ads = _adsBySlot[slotName];
     if (!ads || !ads.length) return;
     _curIdx[slotName] = 0;
     elements.forEach(function(el) { renderAd(el, ads[0]); });
-
+ 
     if (_timers[slotName]) clearInterval(_timers[slotName]);
     var interval = (ads[0].interval || 10) * 1000;
     if (interval > 0 && ads.length > 1) {
@@ -332,25 +332,25 @@
       }, interval);
     }
   }
-
+ 
   /* ── Main: Firebase se ads load karna ── */
   function loadAds() {
     var db = getDb();
     if (!db) { setTimeout(loadAds, 2000); return; }
-
+ 
     var toolSlug = getToolSlug(); // e.g. "tool-whatsapp-bulk-sender-tool"
     var now = new Date();
-
+ 
     db.collection('ads').where('status', '==', 'active').get()
       .then(function(snap) {
         if (snap.empty) return;
-
+ 
         var bySlot = {};
-
+ 
         snap.forEach(function(doc) {
           var d = doc.data();
           if (d.expiry && new Date(d.expiry) < now) return; // expired skip
-
+ 
           var slots = d.slots || [];
           slots.forEach(function(slot) {
             // Check karo: kya ye ad is page ke liye hai?
@@ -358,25 +358,25 @@
             var isGeneric    = ['top-banner','sidebar-left','in-content','after-result','bottom-banner'].indexOf(slot) > -1;
             var isToolMatch  = (slot === toolSlug);
             var isAllTools   = (slot === 'all-tools');
-
+ 
             if (isGeneric || isToolMatch || isAllTools) {
               if (!bySlot[slot]) bySlot[slot] = [];
               bySlot[slot].push(Object.assign({}, d, { _id: doc.id }));
             }
           });
         });
-
+ 
         // Shuffle for variety
         Object.keys(bySlot).forEach(function(s) {
           bySlot[s] = bySlot[s].sort(function() { return Math.random() - 0.5; });
         });
-
+ 
         _adsBySlot = bySlot;
-
+ 
         // Sabhi [data-ks-slot] elements dhoondo
         var allSlotEls = document.querySelectorAll('[data-ks-slot]');
         var slotElements = {}; // slotName → [el, el, ...]
-
+ 
         allSlotEls.forEach(function(el) {
           // Styling — slot ko visible banana
           el.style.cssText = [
@@ -388,24 +388,24 @@
             'min-height:50px',
             'box-sizing:border-box'
           ].join(';');
-
+ 
           var slotName = el.getAttribute('data-ks-slot');
           if (!slotName) return;
-
+ 
           // Check: kya is slot ka ad mila?
           // Also check 'all-tools' aur tool-specific
           var adsForThisEl = bySlot[slotName] || bySlot['all-tools'] || bySlot[toolSlug] || null;
-
+ 
           if (!adsForThisEl || !adsForThisEl.length) {
             el.style.display = 'none'; // koi ad nahi → hide
             return;
           }
-
+ 
           var useSlot = bySlot[slotName] ? slotName : (bySlot['all-tools'] ? 'all-tools' : toolSlug);
           if (!slotElements[useSlot]) slotElements[useSlot] = [];
           slotElements[useSlot].push(el);
         });
-
+ 
         // Start rotation for each slot
         Object.keys(slotElements).forEach(function(s) {
           startSlot(s, slotElements[s]);
@@ -413,12 +413,13 @@
       })
       .catch(function(e) { console.warn('[KsToolAds] Load error:', e.message); });
   }
-
+ 
   // Page load ke 3 second baad ads load karo
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', function() { setTimeout(loadAds, 3000); });
   } else {
     setTimeout(loadAds, 3000);
   }
-
+ 
 })();
+ 
