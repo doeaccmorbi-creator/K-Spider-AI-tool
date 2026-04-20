@@ -279,6 +279,13 @@
     }
     .explanation-box.show { display: block; }
     @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    .trans-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: #eff6ff; color: var(--primary); border: 1px solid #bfdbfe;
+      font-size: 0.7rem; font-weight: 600; padding: 3px 10px; border-radius: 999px;
+      margin-bottom: 10px;
+    }
     .q-actions { display: flex; gap: 10px; justify-content: space-between; margin-top: 18px; flex-wrap: wrap; }
     .bookmark-btn {
       padding: 8px 14px; border-radius: 8px; border: 1.5px solid var(--border);
@@ -604,7 +611,7 @@
         <div class="feature-card"><div class="feature-icon">⏱️</div><h3>Timed Mock Tests</h3><p>Simulate the real RTO exam with 20 randomly selected questions and a 20-minute countdown timer.</p></div>
         <div class="feature-card"><div class="feature-icon">📊</div><h3>Progress Tracking</h3><p>Monitor your test history, average scores, and identify weak areas with visual charts.</p></div>
         <div class="feature-card"><div class="feature-icon">🔖</div><h3>Smart Bookmarks</h3><p>Bookmark difficult questions for later review. Saved locally on your device, always accessible.</p></div>
-        <div class="feature-card"><div class="feature-icon">🌐</div><h3>9 Indian Languages</h3><p>Available in Hindi, Gujarati, Marathi, Tamil, Telugu, Kannada, Bengali, Punjabi & English.</p></div>
+        <div class="feature-card"><div class="feature-icon">🌐</div><h3>9 Indian Languages</h3><p>Live translation powered by MyMemory API — completely free, no API key needed. All questions, options & explanations translate in real-time.</p></div>
         <div class="feature-card"><div class="feature-icon">📱</div><h3>PWA — Install as App</h3><p>Install on your phone and use offline! Works like a native app — no Play Store needed.</p></div>
       </div>
     </div>
@@ -1475,55 +1482,102 @@ function tCat(catName, lang) {
 }
 
 /* ════════════════════════════════════════════════════════════
-   AI QUESTION TRANSLATION — Claude API
+   LIVE TRANSLATION — MyMemory Free API (No API Key Needed!)
+   ✅ Lifetime Free · Works in Browser · No CORS issues
+   ✅ Supports: Hindi, Gujarati, Marathi, Tamil, Telugu,
+      Kannada, Bengali, Punjabi & all major languages
    Cache: translCache[lang][qId] = {question, options, explanation}
 ════════════════════════════════════════════════════════════ */
 const translCache = {};
+
+// MyMemory language codes
+const MYMEMORY_LANG = {
+  hi: 'hi',   // Hindi
+  gu: 'gu',   // Gujarati
+  mr: 'mr',   // Marathi
+  ta: 'ta',   // Tamil
+  te: 'te',   // Telugu
+  kn: 'kn',   // Kannada
+  bn: 'bn',   // Bengali
+  pa: 'pa',   // Punjabi
+};
 
 const LANG_NAMES = {
   en:'English', hi:'Hindi', gu:'Gujarati', mr:'Marathi',
   ta:'Tamil', te:'Telugu', kn:'Kannada', bn:'Bengali', pa:'Punjabi'
 };
 
+// ── Core text translator using MyMemory Free API ──────────────
+async function translateText(text, targetLang) {
+  if (!text || !text.trim()) return text;
+  const langCode = MYMEMORY_LANG[targetLang];
+  if (!langCode) return text;
+  try {
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=en|${langCode}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.responseStatus === 200 && data.responseData && data.responseData.translatedText) {
+      const t = data.responseData.translatedText;
+      // If MyMemory returns same as input or empty, fallback
+      if (t && t.trim() && t.toLowerCase() !== text.toLowerCase()) return t;
+    }
+    return text;
+  } catch(e) {
+    return text;
+  }
+}
+
+// ── Translate full question (question + all options + explanation) ──
 async function translateQuestion(q, lang) {
-  if (lang === 'en') return q; // no translation needed
+  if (lang === 'en') return q;
   if (!translCache[lang]) translCache[lang] = {};
-  if (translCache[lang][q.id]) return translCache[lang][q.id]; // from cache
-
-  const langName = LANG_NAMES[lang] || 'English';
-  const prompt = `Translate this RTO (Indian driving licence) exam question from English to ${langName}.
-Return ONLY a valid JSON object with exactly these keys: question, options (array of 4 strings), explanation.
-Do NOT change meaning, facts, numbers, proper nouns, or road rules. Keep technical terms accurate.
-
-Input JSON:
-${JSON.stringify({question: q.question, options: q.options, explanation: q.explanation})}`;
+  if (translCache[lang][q.id]) return translCache[lang][q.id];
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    const data = await resp.json();
-    const raw = data.content && data.content[0] && data.content[0].text;
-    if (!raw) throw new Error('No response');
-    // Strip markdown fences if present
-    const clean = raw.replace(/```json|```/gi, '').trim();
-    const parsed = JSON.parse(clean);
-    if (!parsed.question || !Array.isArray(parsed.options) || parsed.options.length < 2) throw new Error('Bad format');
-    // Store translated version (keep id, answer, category from original)
-    const translated = { ...q, question: parsed.question, options: parsed.options, explanation: parsed.explanation || q.explanation };
+    // Translate all parts in parallel for speed
+    const [tQuestion, ...tRest] = await Promise.all([
+      translateText(q.question, lang),
+      ...q.options.map(opt => translateText(opt, lang)),
+      translateText(q.explanation || '', lang)
+    ]);
+
+    const tOptions = tRest.slice(0, q.options.length);
+    const tExplanation = tRest[q.options.length] || q.explanation;
+
+    const translated = {
+      ...q,
+      question: tQuestion,
+      options: tOptions,
+      explanation: tExplanation
+    };
+
+    // Cache result in localStorage for offline reuse
     translCache[lang][q.id] = translated;
+    try {
+      const cacheKey = `rto_trcache_${lang}`;
+      const existing = JSON.parse(localStorage.getItem(cacheKey) || '{}');
+      existing[q.id] = translated;
+      localStorage.setItem(cacheKey, JSON.stringify(existing));
+    } catch(e) {}
+
     return translated;
   } catch(e) {
-    // On error return original English
     return q;
   }
 }
+
+// ── Load translation cache from localStorage on startup ──
+(function loadTranslCacheFromStorage() {
+  const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
+  langs.forEach(lang => {
+    try {
+      const stored = localStorage.getItem(`rto_trcache_${lang}`);
+      if (stored) {
+        translCache[lang] = JSON.parse(stored);
+      }
+    } catch(e) {}
+  });
+})();
 
 /* ════════════════════════════════════════════════════════════
    APP STATE
@@ -1628,8 +1682,9 @@ function renderPractice() {
         </div>
         <div class="q-progress"><div class="q-progress-fill" style="width:${pct}%"></div></div>
         <div style="text-align:center;padding:40px 20px;color:var(--primary)">
-          <div style="font-size:2rem;margin-bottom:12px">🌐</div>
-          <div style="font-weight:600">${t('practice.translating', lang)}</div>
+          <div style="font-size:2rem;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">🌐</div>
+          <div style="font-weight:600;margin-bottom:6px">${t('practice.translating', lang)}</div>
+          <div style="font-size:0.75rem;color:var(--muted)">Translating to ${LANG_NAMES[lang]}...</div>
         </div>
       </div>`;
   }
@@ -1647,6 +1702,7 @@ function renderPractice() {
           <span class="q-cat">${tCat(q.category, lang)}</span>
         </div>
         <div class="q-progress"><div class="q-progress-fill" style="width:${pct}%"></div></div>
+        ${lang !== 'en' ? `<div><span class="trans-badge">🌐 ${LANG_NAMES[lang]}</span></div>` : ''}
         <div class="question-text">${q.question}</div>
         <div class="options-list">
           ${q.options.map((opt, i) => {
@@ -1766,6 +1822,7 @@ function renderTestQ() {
           <span class="q-num">Question ${idx+1}</span>
           <span class="q-cat">${tCat(q.category, lang)}</span>
         </div>
+        ${lang !== 'en' ? `<div><span class="trans-badge">🌐 ${LANG_NAMES[lang]}</span></div>` : ''}
         <div class="question-text">${q.question}</div>
         <div class="options-list">
           ${q.options.map((opt, i) => {
