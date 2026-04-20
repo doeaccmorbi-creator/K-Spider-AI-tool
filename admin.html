@@ -7,7 +7,6 @@
 <meta name="robots" content="noindex,nofollow,noarchive">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
 <script>
 // Safe stubs — prevent "not defined" errors if main script hasn't loaded yet
 // The real implementations are defined later in the main <script data-cfasync="false"> block.
@@ -193,6 +192,11 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
     <input class="inp" type="password" id="a-pw" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
     <div id="fb-status">⏳ Firebase connecting...</div>
     <button class="btn btn-g" style="width:100%;padding:11px;font-size:.92rem" id="login-btn" onclick="doLogin()">🔑 Sign In as Admin</button>
+    <div style="display:flex;align-items:center;gap:10px;margin:10px 0"><div style="flex:1;height:1px;background:rgba(255,255,255,.1)"></div><span style="font-size:.7rem;color:var(--t4)">OR</span><div style="flex:1;height:1px;background:rgba(255,255,255,.1)"></div></div>
+    <button class="btn" style="width:100%;padding:10px;font-size:.85rem;background:#fff;color:#333;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px" id="google-login-btn" onclick="doGoogleLogin()">
+      <svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg>
+      Sign in with Google
+    </button>
     <div id="setup-help" style="display:none;margin-top:14px;padding:11px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2);border-radius:10px;font-size:.73rem;color:#d97706;line-height:1.9;text-align:left">
       <strong>⚠️ Firebase Auth setup needed:</strong><br>
       1. <a href="https://console.firebase.google.com/project/kspideraimain/authentication/users" target="_blank" style="color:#f59e0b">Firebase Console</a> open karo<br>
@@ -1626,26 +1630,45 @@ function loadFB(cdns, i) {
 }
 
 (function() {
-  var sets = [
-    'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
-    'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js',
-    'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js'
+  // ── Firebase SDK Loader ──
+  // PRIMARY: www.gstatic.com (official CDN, always CSP-safe)
+  // FALLBACK 1: cdnjs.cloudflare.com
+  // FALLBACK 2: cdn.jsdelivr.net
+  var FIREBASE_VER = '10.14.1';
+  var SDK_SETS = [
+    [
+      'https://www.gstatic.com/firebasejs/'+FIREBASE_VER+'/firebase-app-compat.js',
+      'https://www.gstatic.com/firebasejs/'+FIREBASE_VER+'/firebase-auth-compat.js',
+      'https://www.gstatic.com/firebasejs/'+FIREBASE_VER+'/firebase-firestore-compat.js',
+      'https://www.gstatic.com/firebasejs/'+FIREBASE_VER+'/firebase-storage-compat.js'
+    ],
+    [
+      'https://cdnjs.cloudflare.com/ajax/libs/firebase/'+FIREBASE_VER+'/firebase-app-compat.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/firebase/'+FIREBASE_VER+'/firebase-auth-compat.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/firebase/'+FIREBASE_VER+'/firebase-firestore-compat.min.js',
+      'https://cdnjs.cloudflare.com/ajax/libs/firebase/'+FIREBASE_VER+'/firebase-storage-compat.min.js'
+    ],
+    [
+      'https://cdn.jsdelivr.net/npm/firebase@'+FIREBASE_VER+'/firebase-app-compat.min.js',
+      'https://cdn.jsdelivr.net/npm/firebase@'+FIREBASE_VER+'/firebase-auth-compat.min.js',
+      'https://cdn.jsdelivr.net/npm/firebase@'+FIREBASE_VER+'/firebase-firestore-compat.min.js',
+      'https://cdn.jsdelivr.net/npm/firebase@'+FIREBASE_VER+'/firebase-storage-compat.min.js'
+    ]
   ];
-  var idx = 0;
-  function next() {
-    if (idx >= sets.length) { initFB(); return; }
-    var s = document.createElement('script'); s.src = sets[idx++];
-    s.onload = next;
-    s.onerror = function() {
-      // try unpkg fallback
-      var fb = sets[idx-1].replace('cdn.jsdelivr.net/npm','unpkg.com').replace('-compat.min','');
-      var s2 = document.createElement('script'); s2.src = fb;
-      s2.onload = next; s2.onerror = function(){ fbErr('Load failed'); };
-      document.head.appendChild(s2);
-    };
+  var setIdx = 0;
+  function tryNextSet() {
+    if (setIdx >= SDK_SETS.length) { fbErr('All Firebase CDNs failed — please refresh'); return; }
+    loadSequential(SDK_SETS[setIdx++], 0, initFB, tryNextSet);
+  }
+  function loadSequential(scripts, i, onDone, onFail) {
+    if (i >= scripts.length) { onDone(); return; }
+    var s = document.createElement('script');
+    s.src = scripts[i];
+    s.onload = function() { loadSequential(scripts, i+1, onDone, onFail); };
+    s.onerror = function() { onFail(); };
     document.head.appendChild(s);
   }
-  next();
+  tryNextSet();
 })();
 
 function fbErr(msg) {
@@ -1714,6 +1737,35 @@ function doLogin() {
       if (e.code==='auth/user-not-found'||e.code==='auth/invalid-credential') {
         document.getElementById('setup-help').style.display='block';
       }
+    });
+}
+
+function doGoogleLogin() {
+  if (!auth) { showErr('Firebase still loading — wait 2 seconds and try again'); return; }
+  var btn = document.getElementById('google-login-btn');
+  if(btn){ btn.disabled=true; btn.innerHTML='⏳ Connecting...'; }
+  var provider = new firebase.auth.GoogleAuthProvider();
+  auth.signInWithPopup(provider)
+    .then(function(result) {
+      var u = result.user;
+      if (ADMINS.indexOf(u.email.toLowerCase()) === -1) {
+        auth.signOut();
+        if(btn){ btn.disabled=false; btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Sign in with Google'; }
+        showErr('❌ Access denied — this Google account is not an admin');
+        return;
+      }
+      _user = u;
+      showApp(u);
+    })
+    .catch(function(e) {
+      if(btn){ btn.disabled=false; btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Sign in with Google'; }
+      var msgs = {
+        'auth/popup-closed-by-user': '⚠️ Popup closed — please try again',
+        'auth/popup-blocked': '⚠️ Popup blocked — allow popups for this site',
+        'auth/network-request-failed': '❌ Internet check karo',
+        'auth/cancelled-popup-request': '⚠️ Please try again'
+      };
+      showErr(msgs[e.code] || '❌ Google login failed: ' + e.code);
     });
 }
 
@@ -1937,11 +1989,9 @@ function updateDashCounts(users) {
     var rt=u.registeredAt?new Date(u.registeredAt).getTime():(u.verifiedAt?new Date(u.verifiedAt).getTime():0);
     if(rt >= today.getTime()) tod++;
   });
-  // Fetch accurate total from Google Sheets CSV
-  fetchSheetUserCount(function(csvCount){
-    set('s-users', csvCount);
-    set('users-badge', csvCount);
-  });
+  // Use Firestore count (primary source — Google Sheets dependency removed)
+  set('s-users', tot);
+  set('users-badge', tot);
   set('s-today',tod); set('s-prem',prem);
   set('s-fran',fran); set('s-exp',exp); set('s-rev','₹'+rev.toLocaleString('en-IN'));
   if(exp>0){ $id('alert-bar').style.display=''; set('alert-txt',exp+' users expiring in 7 days!'); }
@@ -2066,11 +2116,7 @@ function setSiteAccessMode(requireReg) {
 function loadDash() {
   var now = Date.now();
   var today = new Date(); today.setHours(0,0,0,0);
-  // Fetch user count from Google Sheets CSV (primary source)
-  fetchSheetUserCount(function(csvCount){
-    set('s-users', csvCount);
-    set('users-badge', csvCount);
-  });
+  // Pure Firestore — Google Sheets dependency removed
   db.collection('users').get().then(function(snap) {
     var tot=0,prem=0,fran=0,exp=0,rev=0,tod=0;
     snap.forEach(function(d) {
@@ -2082,10 +2128,7 @@ function loadDash() {
       var rt = u.registeredAt?new Date(u.registeredAt).getTime():(u.verifiedAt?new Date(u.verifiedAt).getTime():0);
       if(rt >= today.getTime()) tod++;
     });
-    // Use Firebase count if CSV fetch failed or for detailed stats
-    if(!document.getElementById('s-users').innerHTML || document.getElementById('s-users').innerHTML==='—') {
-      set('s-users',tot); set('users-badge',tot);
-    }
+    set('s-users',tot); set('users-badge',tot);
     set('s-today',tod); set('s-prem',prem);
     set('s-fran',fran); set('s-exp',exp); set('s-rev','₹'+rev.toLocaleString('en-IN'));
     if(exp>0){ $id('alert-bar').style.display=''; set('alert-txt',exp+' users expiring in 7 days!'); }
@@ -2341,192 +2384,37 @@ function exportCSV() {
 }
 
 // ══════════════════════════════════════════════════════
-// GOOGLE SHEETS INTEGRATION
+// GOOGLE SHEETS INTEGRATION — REPLACED WITH FIREBASE
+// Google Sheets dependency completely removed.
+// All data now lives in Firestore exclusively.
+// Stub functions kept for backward compatibility.
 // ══════════════════════════════════════════════════════
-// Public CSV URL — ye sheet publicly published hai
-var SHEETS_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vThBY8aMyw6ZVhe5Rd2LNnmcVNQwEfG_EjI8dIAQ2J6fYUId69iDjzPHdhT_idyZdxyIL8zPzzsgOvB/pub?gid=1645336419&single=true&output=csv';
-// Sheet view URL (edit link se extract karo ya pub link)
-var SHEETS_VIEW_URL = 'https://docs.google.com/spreadsheets/d/1cUb-ERIU6zJp_m2QoZClsVD4fbOeAQpphHsi8LNHbzM/edit#gid=1645336419';
+var SHEETS_CSV_URL = ''; // Deprecated — use Firestore
+var SHEETS_VIEW_URL = ''; // Deprecated
 
-// ── Open sheet in new tab ──
-// ── Parse CSV line (handles quoted commas) ──
-function parseCSVLine(line){
-  var result=[],cur='',inQ=false;
-  for(var i=0;i<line.length;i++){
-    var ch=line[i];
-    if(ch==='"'){if(inQ&&line[i+1]==='"'){cur+='"';i++;}else{inQ=!inQ;}}
-    else if(ch===','&&!inQ){result.push(cur.trim());cur='';}
-    else{cur+=ch;}
-  }
-  result.push(cur.trim());
-  return result;
+// ── Stub: fetchSheetUserCount — returns Firestore count ──
+// ══════════════════════════════════════════════════════
+// GOOGLE SHEETS — REPLACED WITH FIREBASE FIRESTORE
+// All data now lives in Firestore. Stubs provided for 
+// backward compatibility only.
+// ══════════════════════════════════════════════════════
+
+// ── Firebase-only replacement for fetchSheetUserCount ──
+function fetchSheetUserCount(cb) {
+  if(!db){ if(cb) cb(0); return; }
+  db.collection('users').get()
+    .then(function(snap){ if(cb) cb(snap.size); })
+    .catch(function(){ if(cb) cb(0); });
 }
-
-// ── Sheet button: fetch & merge sheet users into admin ──
-function openSheetLink(){ fetchAndMergeSheetUsers(); }
-
-// ── Detect CSV header row & data start ──
-// Sheet structure: Row 1 = "TEST OK - <timestamp>, Name, Email, Mobile, City, Language, Verified"
-// Column A = meta/timestamp; columns B-G = real headers.
-// So lines[0] IS the header row and data starts from lines[1].
-function detectCSVStructure(lines) {
-  var line0 = (lines[0]||'').toLowerCase();
-  if(line0.indexOf('name')!==-1 && line0.indexOf('email')!==-1) {
-    return { headerLine: 0, dataStart: 1 };
-  }
-  var line1 = (lines[1]||'').toLowerCase();
-  if(line1.indexOf('name')!==-1 && line1.indexOf('email')!==-1) {
-    return { headerLine: 1, dataStart: 2 };
-  }
-  // Last fallback
-  return { headerLine: 0, dataStart: 1 };
+function parseCSVLine(line){ return []; }
+function openSheetLink(){
+  toast('📊 Google Sheets removed — use Firestore/CSV export instead.');
 }
-
-// ── Fetch total user count from Google Sheets CSV ──
-function fetchSheetUserCount(callback) {
-  fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
-    .then(function(r){ return r.text(); })
-    .then(function(csv){
-      var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      var struct = detectCSVStructure(lines);
-      var dataRows = lines.slice(struct.dataStart);
-      if(callback) callback(dataRows.length);
-    })
-    .catch(function(e){ console.warn('[Sheets CSV] Fetch error:', e.message); });
-}
-
-// ── Sync All + Sheet button: Fetch Google Sheet CSV → show ALL users in admin ──
-function fetchAndMergeSheetUsers(){
-  toast('⏳ Google Sheet se data fetch ho raha hai...');
-  fetch(SHEETS_CSV_URL + '&cachebust=' + Date.now())
-    .then(function(r){
-      if(!r.ok) throw new Error('HTTP '+r.status);
-      return r.text();
-    })
-    .then(function(csv){
-      var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-      if(lines.length < 2){ toast('⚠️ Sheet mein koi data nahi mila'); return; }
-
-      // ── Auto-detect header row ──
-      // Sheet row 1 in Google Sheets = "TEST OK - <timestamp>, Name, Email, Mobile, City, Language, Verified"
-      // Col A = meta/timestamp; Col B-G = real headers. lines[0] IS the header row.
-      var struct = detectCSVStructure(lines);
-      var headerCols = parseCSVLine(lines[struct.headerLine]);
-
-      // Column A (index 0) of the header row is the meta/timestamp cell — skip it.
-      // Real column headers start at index 1: Name, Email, Mobile, City, Language, Verified
-      // We find each by name anywhere in the header row (robust against position changes).
-      function hIdx(name){
-        return headerCols.findIndex(function(h){
-          return h.toLowerCase().trim()===name.toLowerCase().trim();
-        });
-      }
-      var iName=hIdx('Name'), iEmail=hIdx('Email'), iMobile=hIdx('Mobile');
-      var iCity=hIdx('City'), iLang=hIdx('Language'), iVerified=hIdx('Verified');
-
-      // Debug: log what we found
-      console.log('[SheetFetch] Header row index:', struct.headerLine, '| Data start:', struct.dataStart);
-      console.log('[SheetFetch] Columns — Name:'+iName+' Email:'+iEmail+' Mobile:'+iMobile+' City:'+iCity+' Verified:'+iVerified);
-      console.log('[SheetFetch] Header cols:', headerCols);
-
-      // If we couldn't find Name/Email columns, sheet structure is unexpected
-      if(iName < 0 && iEmail < 0){
-        toast('⚠️ Sheet headers nahi mile (Name/Email column not found). Console check karo.');
-        console.error('[SheetFetch] Could not find Name/Email in headers:', headerCols);
-        return;
-      }
-
-      // Parse all user data rows
-      var sheetUsers = [];
-      for(var i=struct.dataStart; i<lines.length; i++){
-        var cols = parseCSVLine(lines[i]);
-        var email = (iEmail>=0 && cols[iEmail] ? cols[iEmail] : '').trim().toLowerCase();
-        var name  = (iName>=0  && cols[iName]  ? cols[iName]  : '').trim();
-        // Skip completely empty rows or rows that only have a row number in col A
-        if(!email && !name) continue;
-        // Skip if only col A has content (row number) and rest is empty
-        var hasRealData = false;
-        for(var j=1; j<cols.length; j++){ if(cols[j]&&cols[j].trim()){ hasRealData=true; break; } }
-        if(!hasRealData) continue;
-
-        sheetUsers.push({
-          _sheetRow: i - struct.dataStart + 1,
-          name:     name || 'Unknown',
-          email:    email,
-          mobile:   (iMobile>=0 && cols[iMobile]) ? cols[iMobile].trim() : '',
-          phone:    (iMobile>=0 && cols[iMobile]) ? cols[iMobile].trim() : '',
-          city:     (iCity>=0   && cols[iCity])   ? cols[iCity].trim()   : '',
-          language: (iLang>=0   && cols[iLang])   ? cols[iLang].trim()   : '',
-          verified: iVerified>=0 ? (cols[iVerified]||'').trim().toLowerCase()==='yes' : false,
-          planType: 'free',
-          _fromSheet: true
-        });
-      }
-
-      console.log('[SheetFetch] Parsed', sheetUsers.length, 'users from sheet');
-
-      // ── Build Firestore email map for merging ──
-      var fsUsers = (_firestoreUsers && _firestoreUsers.length) ? _firestoreUsers : _users;
-      var fireMap = {};
-      fsUsers.forEach(function(u){ if(u.email) fireMap[u.email.toLowerCase().trim()] = u; });
-
-      // ── Merge: sheet users first (in sheet order) ──
-      var merged = [];
-      var sheetEmails = {};
-      sheetUsers.forEach(function(su){
-        if(su.email) sheetEmails[su.email] = true;
-        if(su.email && fireMap[su.email]){
-          // In Firestore — use rich Firestore data
-          merged.push(fireMap[su.email]);
-        } else {
-          // Sheet-only user (not yet in Firestore)
-          su.id = 'sheet_' + su._sheetRow;
-          merged.push(su);
-        }
-      });
-
-      // Also include Firestore-only users not in sheet
-      fsUsers.forEach(function(u){
-        if(!u.email || !sheetEmails[u.email.toLowerCase().trim()]){
-          merged.push(u);
-        }
-      });
-
-      // ── Deduplicate by id or email ──
-      var seen = {}; var final = [];
-      merged.forEach(function(u){
-        var key = u.id || u.email || ('_r'+Math.random());
-        if(!seen[key]){ seen[key]=true; final.push(u); }
-      });
-
-      // ── Sort: Firestore users first, then sheet-only ──
-      final.sort(function(a,b){
-        var aSheet = (a._fromSheet && (a.id||'').indexOf('sheet_')===0) ? 1 : 0;
-        var bSheet = (b._fromSheet && (b.id||'').indexOf('sheet_')===0) ? 1 : 0;
-        return aSheet - bSheet;
-      });
-
-      // ── Update _users so filterUsers() works on full data ──
-      _users = final;
-
-      renderUsers(final);
-      var ub=$id('users-badge'); if(ub) ub.textContent = final.length;
-      set('s-users', sheetUsers.length);
-      updateDashCounts(final);
-
-      var newCount = final.filter(function(u){ return u._fromSheet && (u.id||'').indexOf('sheet_')===0; }).length;
-      toast('✅ Sheet: '+sheetUsers.length+' | Firestore: '+fsUsers.length+' | Total: '+final.length+(newCount?' ('+newCount+' sheet-only)':''));
-    })
-    .catch(function(e){
-      toast('❌ Sheet fetch error: '+e.message);
-      console.error('[SheetFetch]', e);
-    });
-}
-
-function syncToSheet(){ fetchAndMergeSheetUsers(); }
-// Keep old name for backward compat
+function syncToSheet(){ exportCSV(); toast('📥 Exported as CSV (Sheets sync removed — Firebase is the DB)'); }
+function fetchAndMergeSheetUsers(){ loadUsers(); }
 function syncAllToSheets(){ syncToSheet(); }
 function openSheetsConfig(){ openSheetLink(); }
+function mergeSheetUsers(firestoreUsers, sheetRows){ return firestoreUsers; }
 
 // ── USER EDIT ──
 function openEditUser(uid) {
@@ -2586,25 +2474,6 @@ function suspendUser(){
   var uid=$id('eu-id').value; if(!uid) return;
   var days=parseInt($id('eu-susp-dur').value)||1;
   var reason=($id('eu-susp-reason').value||'').trim()||'Policy violation';
-  if(!confirm('User ko '+days+' din ke liye suspend karna chahte hain?\nReason: '+reason)) return;
-  var suspendUntil=new Date(Date.now()+days*864e5).toISOString();
-  db.collection('users').doc(uid).update({
-    suspended:true, suspendUntil:suspendUntil, suspendReason:reason,
-    planType:'free',
-    suspendedBy:_user?_user.email:'admin',
-    suspendedAt:firebase.firestore.FieldValue.serverTimestamp(),
-    lastModifiedBy:_user?_user.email:'admin'
-  }).then(function(){
-    closeM('m-edit-user');
-    toast('🟡 User '+days+'d ke liye suspended. Reason: '+reason);
-    loadUsers();
-  }).catch(function(e){toast('❌ '+e.message);});
-}
-
-function suspendUser(){
-  var uidEl=$id('eu-id'); var uid=uidEl?uidEl.value:''; if(!uid) return;
-  var days=parseInt(($id('eu-susp-dur')||{value:'1'}).value)||1;
-  var reason=(($id('eu-susp-reason')||{value:''}).value||'').trim()||'Policy violation';
   if(!confirm('User ko '+days+' din ke liye suspend karna chahte hain?\nReason: '+reason)) return;
   var suspendUntil=new Date(Date.now()+days*864e5).toISOString();
   db.collection('users').doc(uid).update({
@@ -3693,20 +3562,51 @@ function deleteBlog(id){
     .catch(function(e){toast('Error: '+e.message);});
 }
 
-// ── EMAIL NOTIFICATIONS (via EmailJS) ──
+// ── EMAIL NOTIFICATIONS ──
+// Uses EmailJS for admin-triggered emails (plan approval, etc.)
+// OTP emails are handled by index.html via Google Apps Script
 function sendEmailNotification(toEmail, toName, subject, message){
-  if(typeof emailjs==='undefined') return;
-  emailjs.init({publicKey:'KU5yrIwmM4PMVyqBN'});
-  emailjs.send('service_kspider','template_kspider',{
-    to_email: toEmail,
-    to_name: toName||'User',
-    subject: subject,
-    message: message,
-    from_name: 'K Spider AI Team'
+  // Try EmailJS first
+  if(typeof emailjs !== 'undefined'){
+    try {
+      emailjs.init({publicKey:'KU5yrIwmM4PMVyqBN'});
+      emailjs.send('service_kspider','template_kspider',{
+        to_email: toEmail,
+        to_name:  toName||'User',
+        subject:  subject,
+        message:  message,
+        from_name:'K Spider AI Team'
+      }).then(function(){
+        console.log('[Admin] Email sent via EmailJS to '+toEmail);
+      }).catch(function(e){
+        console.warn('[Admin] EmailJS failed, logging to Firestore:', e.message);
+        logEmailToFirestore(toEmail, toName, subject, message);
+      });
+      return;
+    } catch(e) {
+      console.warn('[Admin] EmailJS init error:', e.message);
+    }
+  }
+  // Fallback: log to Firestore admin_notifications collection
+  logEmailToFirestore(toEmail, toName, subject, message);
+}
+
+// Log email notification to Firestore (admin can see pending emails)
+function logEmailToFirestore(toEmail, toName, subject, message){
+  if(!db) return;
+  db.collection('admin_notifications').add({
+    type:      'email',
+    toEmail:   toEmail,
+    toName:    toName||'User',
+    subject:   subject,
+    message:   message,
+    status:    'pending',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    createdBy: _user ? _user.email : 'admin'
   }).then(function(){
-    toast('Email sent to '+toEmail);
+    toast('📧 Notification queued for '+toEmail);
   }).catch(function(e){
-    console.warn('Email send failed:',e);
+    console.warn('[Admin] Notification log failed:', e.message);
   });
 }
 
