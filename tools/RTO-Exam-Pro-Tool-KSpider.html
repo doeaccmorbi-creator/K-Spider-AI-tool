@@ -821,6 +821,26 @@
       <h3>🔖 Saved Questions</h3>
       <div id="bookmarks-list"></div>
     </div>
+    <!-- Offline Translation Downloader -->
+    <div class="section-card" id="offline-trans-card" style="background:linear-gradient(135deg,#eff6ff,#dbeafe);border-color:#bfdbfe">
+      <h3 style="color:var(--primary-dark)">📥 Offline Translation Download</h3>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:6px">Download translations to use app <strong>without internet</strong>. Once downloaded, works fully offline!</p>
+      <div id="offline-trans-status" style="font-size:0.78rem;margin-bottom:12px;padding:8px 12px;border-radius:8px;background:rgba(255,255,255,0.7)">
+        <span id="offline-cached-count">⏳ Checking cached translations...</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px" id="lang-dl-btns">
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('hi')">⬇️ Hindi</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('gu')">⬇️ Gujarati</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('mr')">⬇️ Marathi</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('ta')">⬇️ Tamil</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('te')">⬇️ Telugu</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('kn')">⬇️ Kannada</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('bn')">⬇️ Bengali</button>
+        <button class="btn btn-sm" style="background:#fff;border:1.5px solid var(--primary);color:var(--primary)" onclick="preTranslateLang('pa')">⬇️ Punjabi</button>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="preTranslateAll()" id="dl-all-btn">📥 Download ALL Languages (Recommended)</button>
+      <button class="btn btn-outline btn-sm" style="margin-left:8px" onclick="clearTranslCache()">🗑️ Clear Cache</button>
+    </div>
     <!-- WhatsApp Share -->
     <div class="section-card" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border-color:#bbf7d0">
       <h3 style="color:var(--success-dark)">📤 Share with Friends</h3>
@@ -1566,18 +1586,170 @@ async function translateQuestion(q, lang) {
   }
 }
 
-// ── Load translation cache from localStorage on startup ──
+// ════════════════════════════════════════════════════════════
+//  EMBEDDED OFFLINE TRANSLATIONS — Hindi & Gujarati
+//  Top 20 most common questions pre-translated.
+//  These NEVER need internet — work 100% offline always.
+// ════════════════════════════════════════════════════════════
+const EMBEDDED_TRANSLATIONS = {
+  hi: {
+    1:  { question:"लाल ट्रैफिक लाइट का क्या मतलब है?", options:["जाएं","रुकें","धीमे हों","सावधानी से आगे बढ़ें"], explanation:"लाल ट्रैफिक लाइट का मतलब है स्टॉप लाइन से पहले पूरी तरह रुकें। MV Act 2019 के तहत लाल बत्ती तोड़ने पर ₹1,000–₹5,000 का जुर्माना।" },
+    2:  { question:"पीली/एम्बर ट्रैफिक लाइट का क्या मतलब है?", options:["लाल से पहले क्रॉस करने के लिए तेज करें","सुरक्षित हो तो रुकें","उसी गति से आगे बढ़ें","केवल बाएं मुड़ें"], explanation:"पीला मतलब सावधान। अगर सुरक्षित हो तो रुकें। अगर स्टॉप लाइन के बहुत करीब हैं तो सावधानी से आगे बढ़ सकते हैं।" },
+    3:  { question:"हरी ट्रैफिक लाइट का मतलब है:", options:["बिना देखे तुरंत जाएं","रास्ता साफ हो तो आगे बढ़ें","तेज करें","ओवरटेक की अनुमति है"], explanation:"हरा मतलब आगे बढ़ सकते हैं, लेकिन यह सुनिश्चित करें कि चौराहा साफ हो।" },
+    4:  { question:"चौराहे पर चमकती लाल बत्ती का मतलब है:", options:["तेजी से निकल जाएं","STOP साइन की तरह — रुकें फिर सुरक्षित होने पर जाएं","बिना रुके जारी रखें","हॉर्न बजाएं और आगे बढ़ें"], explanation:"चमकती लाल बत्ती STOP साइन के समान होती है। पूरी तरह रुकें और जब रास्ता साफ हो तभी आगे बढ़ें।" },
+    5:  { question:"चमकती पीली बत्ती का मतलब है:", options:["पूरी तरह रुकें","सड़क बंद है","सावधानी से आगे बढ़ें","हरा चरण समाप्त हो रहा है"], explanation:"चमकती पीली बत्ती का मतलब है सावधानी से आगे बढ़ें। धीमे हों और खतरों की जांच करें।" },
+    9:  { question:"शहरी/आवासीय क्षेत्रों में कारों की अधिकतम गति सीमा क्या है?", options:["50 km/h","40 km/h","30 km/h","60 km/h"], explanation:"MV Act और IRC दिशानिर्देशों के अनुसार शहरी क्षेत्रों में डिफ़ॉल्ट अधिकतम गति सीमा 50 km/h है।" },
+    10: { question:"राष्ट्रीय राजमार्गों पर मोटरसाइकिल की अधिकतम गति सीमा क्या है?", options:["80 km/h","100 km/h","60 km/h","120 km/h"], explanation:"केंद्रीय मोटर वाहन नियमों के अनुसार राष्ट्रीय राजमार्गों पर मोटरसाइकिल के लिए अधिकतम 80 km/h की अनुमति है।" },
+    16: { question:"STOP साइन (लाल अष्टभुज) पर आपको क्या करना चाहिए?", options:["धीमे हों और साफ हो तो जाएं","पूरी तरह रुकें फिर सुरक्षित होने पर जाएं","5 सेकंड रुकें फिर जाएं","दाईं ओर से आने वाले को रास्ता दें"], explanation:"STOP साइन पर स्टॉप लाइन से पहले पूरी तरह रुकना अनिवार्य है — केवल धीमे होना काफी नहीं।" },
+    33: { question:"भारत में ड्राइविंग के लिए BAC (रक्त में अल्कोहल) सीमा क्या है?", options:["30 mg प्रति 100 ml रक्त","50 mg प्रति 100 ml","80 mg प्रति 100 ml","शून्य सहनशीलता"], explanation:"MV Act के अनुसार कानूनी BAC सीमा 30 mg प्रति 100 ml रक्त है। इससे अधिक होने पर जेल की सजा हो सकती है।" },
+    56: { question:"वैध लाइसेंस के बिना ड्राइविंग का जुर्माना (MV Act 2019)?", options:["₹500","₹2,000","₹10,000","₹5,000"], explanation:"MV Act 2019 के तहत बिना वैध लाइसेंस के गाड़ी चलाने पर ₹10,000 का जुर्माना (पहले ₹500 था)।" },
+    57: { question:"टू-व्हीलर पर बिना हेलमेट के जुर्माना (MV Act 2019)?", options:["₹500","₹1,000","₹2,000","₹5,000"], explanation:"MV Act 2019 के तहत बिना हेलमेट के टू-व्हीलर चलाने पर ₹1,000 का जुर्माना और 3 महीने के लिए लाइसेंस रद्द।" },
+  },
+  gu: {
+    1:  { question:"લાલ ટ્રાફિક સિગ્નલ નો અર્થ શું છે?", options:["જાઓ","ઉભા રહો","ધીમા પડો","સાવચેતીથી આગળ વધો"], explanation:"લાલ ટ્રાફિક સિગ્નલ નો અર્થ છે સ્ટોપ લાઈન પહેલા સંપૂર્ણ ઉભા રહો. MV Act 2019 હેઠળ ₹1,000–₹5,000 નો દંડ." },
+    2:  { question:"પીળા/એમ્બર ટ્રાફિક સિગ્નલ નો અર્થ શું છે?", options:["લાલ પહેલા ક્રોસ કરવા ઝડપ વધારો","સુરક્ષિત હોય તો ઉભા રહો","સમાન ઝડપે આગળ વધો","ફક્ત ડાબે વળો"], explanation:"પીળો એટલે સાવધાન. સુરક્ષિત હોય તો ઉભા રહો. સ્ટોપ લાઈન ખૂબ નજીક હોય તો સાવચેતીથી આગળ જઈ શકો." },
+    3:  { question:"લીલી ટ્રાફિક લાઈટ નો અર્થ:", options:["જોયા વગર તરત જ જાઓ","રસ્તો સ્પષ્ટ હોય તો આગળ વધો","ઝડપ વધારો","ઓવરટેક કરવાની મંજૂરી છે"], explanation:"લીલો મતલબ આગળ વધી શકો, પણ ચૌટો સ્પષ્ટ હોવો જ જોઈએ." },
+    4:  { question:"ચૌટા પર ઝળહળતી લાલ સિગ્નલ નો અર્થ:", options:["ઝડપથી નીકળી જાઓ","STOP ચિહ્ન જેવું — ઉભા રહો પછી સુરક્ષિત હોય ત્યારે જાઓ","ઉભ્યા વગર ચાલુ રાખો","હોર્ન વગાડો અને આગળ વધો"], explanation:"ઝળહળતી લાલ સિગ્નલ STOP ચિહ્ન જેવી જ છે. સંપૂર્ણ ઉભા રહો અને રસ્તો સ્પષ્ટ થાય ત્યારે જ આગળ વધો." },
+    5:  { question:"ઝળહળતી પીળી સિગ્નલ નો અર્થ:", options:["સંપૂર્ણ ઉભા રહો","રસ્તો બંધ છે","સાવચેતીથી આગળ વધો","લીલો તબક્કો સમાપ્ત થઈ રહ્યો છે"], explanation:"ઝળહળતી પીળી સિગ્નલ એટલે સાવચેતીથી આગળ વધો. ધીમા પડો અને જોખમ ચેક કરો." },
+    9:  { question:"શહેરી/આવાસ વિસ્તારોમાં કાર માટે મહત્તમ ઝડપ મર્યાદા?", options:["50 km/h","40 km/h","30 km/h","60 km/h"], explanation:"MV Act અને IRC માર્ગદર્શિકા અનુસાર શહેરી વિસ્તારોમાં ડિફૉલ્ટ મહત્તમ ઝડપ 50 km/h છે." },
+    10: { question:"રાષ્ટ્રીય ધોરીમાર્ગ પર મોટરસાઈકલ માટે મહત્તમ ઝડપ?", options:["80 km/h","100 km/h","60 km/h","120 km/h"], explanation:"CMVR મુજબ રાષ્ટ્રીય ધોરીમાર્ગ પર મોટરસાઈકલ માટે મહત્તમ 80 km/h ની મંજૂરી." },
+    16: { question:"STOP ચિહ્ન (લાલ અષ્ટભુજ) જોઈને ડ્રાઈવરે શું કરવું?", options:["ધીમા પડો અને સ્પષ્ટ હોય તો જાઓ","સ્ટોપ લાઈન પહેલા સંપૂર્ણ ઉભા રહો પછી સુરક્ષિત હોય ત્યારે જ જાઓ","5 સેકન્ડ ઉભા રહો પછી જાઓ","જમણી બાજુથી આવતા ટ્રાફિકને રસ્તો આપો"], explanation:"STOP ચિહ્ન પર સ્ટોપ લાઈન પહેલા સંપૂર્ણ ઉભા રહવું ફરજિયાત છે — ફક્ત ધીમા પડવું પૂરતું નથી." },
+    33: { question:"ભારતમાં ડ્રાઈવિંગ માટે BAC (લોહીમાં આલ્કોહોલ) સીમા?", options:["30 mg પ્રતિ 100 ml લોહી","50 mg પ્રતિ 100 ml","80 mg પ્રતિ 100 ml","શૂન્ય સહનશીલતા"], explanation:"MV Act મુજબ કાનૂની BAC સીમા 30 mg પ્રતિ 100 ml લોહી છે. આનાથી વધુ ડ્રાઈવ કરવું ગંભીર ગુનો." },
+    56: { question:"માન્ય લાઈસન્સ વગર ડ્રાઈવ કરવા પર દંડ (MV Act 2019)?", options:["₹500","₹2,000","₹10,000","₹5,000"], explanation:"MV Act 2019 હેઠળ માન્ય લાઈસન્સ વિના ગાડી ચલાવવા પર ₹10,000 નો દંડ." },
+    57: { question:"ટૂ-વ્હીલર પર હેલ્મેટ વગર દંડ (MV Act 2019)?", options:["₹500","₹1,000","₹2,000","₹5,000"], explanation:"MV Act 2019 હેઠળ ₹1,000 નો દંડ અને 3 મહિના માટે લાઈસન્સ સસ્પેન્ડ." },
+  }
+};
+
+// ── Load translation cache from localStorage + embedded on startup ──
 (function loadTranslCacheFromStorage() {
   const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
   langs.forEach(lang => {
     try {
+      // 1. First load embedded translations (offline baseline)
+      if (EMBEDDED_TRANSLATIONS[lang]) {
+        if (!translCache[lang]) translCache[lang] = {};
+        const embedded = EMBEDDED_TRANSLATIONS[lang];
+        // Map embedded to full question objects
+        QUESTIONS.forEach(q => {
+          if (embedded[q.id] && !translCache[lang][q.id]) {
+            translCache[lang][q.id] = {
+              ...q,
+              question: embedded[q.id].question,
+              options: embedded[q.id].options,
+              explanation: embedded[q.id].explanation
+            };
+          }
+        });
+      }
+      // 2. Then override with localStorage (user-downloaded, more complete)
       const stored = localStorage.getItem(`rto_trcache_${lang}`);
       if (stored) {
-        translCache[lang] = JSON.parse(stored);
+        const parsed = JSON.parse(stored);
+        if (!translCache[lang]) translCache[lang] = {};
+        Object.assign(translCache[lang], parsed);
       }
     } catch(e) {}
   });
+  // Update cached count badge on dashboard load
+  setTimeout(updateOfflineCacheStatus, 500);
 })();
+
+// ── Pre-translate ALL questions for a single language ──
+async function preTranslateLang(lang) {
+  if (!navigator.onLine) {
+    showToast('❌ Internet needed to download translations!', 'error');
+    return;
+  }
+  const langName = LANG_NAMES[lang];
+  showToast(`⬇️ Downloading ${langName} translations...`, 'info');
+  const btn = document.querySelector(`button[onclick="preTranslateLang('${lang}')"]`);
+  if (btn) { btn.disabled = true; btn.textContent = `⏳ ${langName}...`; }
+
+  const toTranslate = QUESTIONS.filter(q => !(translCache[lang] && translCache[lang][q.id]));
+  let done = 0;
+  const statusEl = document.getElementById('offline-cached-count');
+
+  for (const q of toTranslate) {
+    try {
+      await translateQuestion(q, lang);
+      done++;
+      if (statusEl) statusEl.textContent = `⬇️ ${langName}: ${done}/${toTranslate.length} questions translated...`;
+      // Small delay to avoid rate limiting
+      await new Promise(r => setTimeout(r, 200));
+    } catch(e) {}
+  }
+
+  if (btn) { btn.disabled = false; btn.textContent = `✅ ${langName}`; btn.style.background = '#f0fdf4'; btn.style.borderColor = '#22c55e'; btn.style.color = '#15803d'; }
+  showToast(`✅ ${langName} ready for offline use!`, 'success');
+  updateOfflineCacheStatus();
+}
+
+// ── Pre-translate ALL languages ──
+async function preTranslateAll() {
+  if (!navigator.onLine) {
+    showToast('❌ Internet needed to download translations!', 'error');
+    return;
+  }
+  const btn = document.getElementById('dl-all-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Downloading all languages...'; }
+  const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
+  for (const lang of langs) {
+    await preTranslateLang(lang);
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '✅ All Languages Downloaded!'; btn.style.background = '#22c55e'; btn.style.color = '#fff'; }
+  showToast('✅ All languages ready for offline!', 'success');
+}
+
+// ── Show how many questions are cached per language ──
+function updateOfflineCacheStatus() {
+  const statusEl = document.getElementById('offline-cached-count');
+  if (!statusEl) return;
+  const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
+  const total = QUESTIONS.length;
+  const parts = langs.map(lang => {
+    const count = translCache[lang] ? Object.keys(translCache[lang]).length : 0;
+    const pct = Math.round((count / total) * 100);
+    const langName = LANG_NAMES[lang];
+    const icon = count >= total ? '✅' : count > 0 ? '🟡' : '⭕';
+    // Update individual buttons
+    const btn = document.querySelector(`button[onclick="preTranslateLang('${lang}')"]`);
+    if (btn && count >= total) {
+      btn.textContent = `✅ ${langName}`;
+      btn.style.background = '#f0fdf4';
+      btn.style.borderColor = '#22c55e';
+      btn.style.color = '#15803d';
+    } else if (btn && count > 0) {
+      btn.textContent = `🔄 ${langName} (${pct}%)`;
+    }
+    return `${icon} ${langName}: ${count}/${total}`;
+  });
+  statusEl.innerHTML = parts.join(' &nbsp;|&nbsp; ');
+}
+
+// ── Clear all cached translations ──
+function clearTranslCache() {
+  const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
+  langs.forEach(lang => {
+    try { localStorage.removeItem(`rto_trcache_${lang}`); } catch(e) {}
+    if (translCache[lang]) {
+      // Keep embedded ones, clear localStorage ones
+      delete translCache[lang];
+    }
+  });
+  // Reload embedded
+  langs.forEach(lang => {
+    if (EMBEDDED_TRANSLATIONS[lang]) {
+      translCache[lang] = {};
+      QUESTIONS.forEach(q => {
+        if (EMBEDDED_TRANSLATIONS[lang][q.id]) {
+          translCache[lang][q.id] = { ...q, ...EMBEDDED_TRANSLATIONS[lang][q.id] };
+        }
+      });
+    }
+  });
+  showToast('🗑️ Translation cache cleared!', 'info');
+  updateOfflineCacheStatus();
+}
 
 /* ════════════════════════════════════════════════════════════
    APP STATE
@@ -2076,6 +2248,9 @@ function renderDashboard() {
       </div>`;
     }).join('');
   }
+
+  // Update offline cache status
+  updateOfflineCacheStatus();
 }
 
 function removeBookmark(id) {
