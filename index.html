@@ -431,14 +431,28 @@
       // Reset tool settings cache so next render picks up fresh Firestore data
       window._adminToolSettings = null;
       console.log('[KSpider] Firebase ready ✅');
-      // Load site access mode FIRST, then render tools (so gate check uses correct value)
-      loadSiteAccessMode(function() {
-        setTimeout(function() {
-          if (typeof renderTools === 'function') renderTools('all');
-          if (typeof loadAndApplyPricing === 'function') loadAndApplyPricing();
-          if (typeof loadAnnouncements === 'function') loadAnnouncements();
-        }, 300);
-      });
+      // ── SAFE DEFERRED SAM INIT ──
+      // loadSiteAccessMode is defined in the body <script> block.
+      // If Firebase SDK was cached the head script fires before body parses.
+      // Poll window.loadSiteAccessMode until it exists (max ~2s), then call it.
+      function _runSAMInit() {
+        if (typeof window.loadSiteAccessMode === 'function') {
+          window.loadSiteAccessMode(function() {
+            setTimeout(function() {
+              if (typeof renderTools === 'function') renderTools('all');
+              if (typeof loadAndApplyPricing === 'function') loadAndApplyPricing();
+              if (typeof loadAnnouncements === 'function') loadAnnouncements();
+            }, 300);
+          });
+        } else {
+          setTimeout(_runSAMInit, 50); // retry until body script is parsed
+        }
+      }
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', _runSAMInit);
+      } else {
+        setTimeout(_runSAMInit, 0);
+      }
     }
 
     function loadScript(src, onSuccess, onFail) {
@@ -454,23 +468,23 @@
     }
 
     var CDN_SETS = [
-      // v1: jsDelivr — PRIMARY (fast, no blocking issues)
+      // v1: www.gstatic.com — PRIMARY (official Firebase CDN, always CSP-safe, no .map noise)
       [
-        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js',
-        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js',
-        'https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js'
+        'https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js',
+        'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js',
+        'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js'
       ],
-      // v2: unpkg fallback
-      [
-        'https://unpkg.com/firebase@11.6.0/firebase-app-compat.js',
-        'https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js',
-        'https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js'
-      ],
-      // v3: cdnjs last resort
+      // v2: cdnjs fallback
       [
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js',
         'https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-auth-compat.min.js'
+      ],
+      // v3: jsDelivr last resort
+      [
+        'https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-app-compat.min.js',
+        'https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-firestore-compat.min.js',
+        'https://cdn.jsdelivr.net/npm/firebase@10.14.1/firebase-auth-compat.min.js'
       ]
     ];
     var _cdnIdx = 0;
@@ -2989,7 +3003,7 @@ try { localStorage.removeItem('_ks_require_reg'); } catch(e) {}
 
 var _ksAccessModeUnsub = null; // real-time listener handle
 
-function loadSiteAccessMode(callback) {
+window.loadSiteAccessMode = function loadSiteAccessMode(callback) {
   _KS_REQUIRE_REG = false; // always start free before Firestore responds
 
   try {
@@ -3011,6 +3025,11 @@ function loadSiteAccessMode(callback) {
           _KS_REQUIRE_REG = false;
         }
         console.log('[KSpider] Site access mode (live):', _KS_REQUIRE_REG ? 'Registration Required' : 'Free for All');
+        // Re-apply OTP modal mode if it's currently open (handles live admin changes)
+        if (typeof _applyOtpModalMode === 'function') {
+          var _otpModal = document.getElementById('otp-ov');
+          if (_otpModal && _otpModal.classList.contains('open')) { _applyOtpModalMode(); }
+        }
         // Callback fires only on first snapshot (initial page load)
         if (!_fired) { _fired = true; if (callback) callback(); }
       }, function(e) {
@@ -3069,14 +3088,18 @@ function saveUserToFirebase(userData, callback) {
     }
     var newLoginCount = userData.verified ? prevLoginCount + 1 : prevLoginCount;
 
-    _db.collection('users').doc(key).set({
+    var _now = new Date().toISOString();
+    var _fsNow = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+                   ? firebase.firestore.FieldValue.serverTimestamp()
+                   : _now;
+    var _saveData = {
       name:          userData.name,
       email:         userData.email,
-      mobile:        userData.mobile,
+      mobile:        userData.mobile || '',
       city:          userData.city || '',
       language:      userData.language || 'en',
       verified:      userData.verified || false,
-      registeredAt:  userData.registeredAt,
+      registeredAt:  userData.registeredAt || _now,
       verifiedAt:    userData.verifiedAt || null,
       toolsUsed:     userData.toolsUsed || 0,
       premium:       userData.premium || false,
@@ -3084,14 +3107,26 @@ function saveUserToFirebase(userData, callback) {
       planExpiry:    userData.planExpiry || null,
       paymentStatus: userData.paymentStatus || 'none',
       paidAmount:    userData.paidAmount || 0,
-      lastSeen:      new Date().toISOString(),
+      lastSeen:      _fsNow,
       loginCount:    newLoginCount,
-      lastLogin:     userData.verified ? new Date().toISOString() : (prevLastLogin || null),
-      source:        'kspiderai.in'
-    }, { merge: true })
+      lastLogin:     userData.verified ? _now : (prevLastLogin || null),
+      source:        userData.source || 'kspiderai.in',
+      loginMethod:   userData.loginMethod || 'email',
+      photoURL:      userData.photoURL || '',
+      // ── Admin access-control fields (never overwrite if admin set them) ──
+      banned:        existingDoc.exists ? (existingDoc.data().banned    || false) : false,
+      suspended:     existingDoc.exists ? (existingDoc.data().suspended || false) : false,
+      disabled:      existingDoc.exists ? (existingDoc.data().disabled  || false) : false,
+      updatedAt:     _fsNow
+    };
+    // On first registration set createdAt server timestamp for proper ordering
+    if (!existingDoc.exists) {
+      _saveData.createdAt = _fsNow;
+    }
+    _db.collection('users').doc(key).set(_saveData, { merge: true })
     .then(function() {
       console.log('[KSpider] User saved to Firebase ✅');
-      // Google Sheets sync karo
+      // Google Sheets sync karo (fire & forget — does not affect Firebase)
       syncUserToGoogleSheets(Object.assign({}, userData, { loginCount: newLoginCount }));
       if (callback) callback(true);
     })
@@ -3100,15 +3135,19 @@ function saveUserToFirebase(userData, callback) {
       if (callback) callback(false);
     });
   }).catch(function(err) {
-    // Fallback — without login count
+    // Fallback — without login count (read failed, still save)
+    var _now2 = new Date().toISOString();
+    var _fsNow2 = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+                    ? firebase.firestore.FieldValue.serverTimestamp()
+                    : _now2;
     _db.collection('users').doc(key).set({
       name:          userData.name,
       email:         userData.email,
-      mobile:        userData.mobile,
+      mobile:        userData.mobile || '',
       city:          userData.city || '',
       language:      userData.language || 'en',
       verified:      userData.verified || false,
-      registeredAt:  userData.registeredAt,
+      registeredAt:  userData.registeredAt || _now2,
       verifiedAt:    userData.verifiedAt || null,
       toolsUsed:     userData.toolsUsed || 0,
       premium:       userData.premium || false,
@@ -3116,9 +3155,16 @@ function saveUserToFirebase(userData, callback) {
       planExpiry:    userData.planExpiry || null,
       paymentStatus: userData.paymentStatus || 'none',
       paidAmount:    userData.paidAmount || 0,
-      lastSeen:      new Date().toISOString(),
+      lastSeen:      _fsNow2,
       loginCount:    1,
-      source:        'kspiderai.in'
+      source:        userData.source || 'kspiderai.in',
+      loginMethod:   userData.loginMethod || 'email',
+      photoURL:      userData.photoURL || '',
+      banned:        false,
+      suspended:     false,
+      disabled:      false,
+      createdAt:     _fsNow2,
+      updatedAt:     _fsNow2
     }, { merge: true })
     .then(function() {
       syncUserToGoogleSheets(Object.assign({}, userData, { loginCount: 1 }));
@@ -3161,13 +3207,18 @@ function fetchUserFromFirebase(email, callback) {
     // ── Login count update on every return login ──
     var newCount = (userData.loginCount || 0) + 1;
     var now = new Date().toISOString();
+    var _fsTs = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+                  ? firebase.firestore.FieldValue.serverTimestamp()
+                  : now;
     _db.collection('users').doc(key).update({
       loginCount: newCount,
       lastLogin:  now,
-      lastSeen:   now
+      lastSeen:   _fsTs,
+      updatedAt:  _fsTs
     }).catch(function(){});
     userData.loginCount = newCount;
     userData.lastLogin  = now;
+    userData.lastSeen   = now;
     // Google Sheets sync on login
     syncUserToGoogleSheets(userData);
     callback(userData);
@@ -3753,12 +3804,38 @@ function _completeVerification() {
   clearInterval(_otpTimerInterval);
   _otpCode = null;
   _clearOtpBackup();
-  _pendingUser.verified  = true;
-  _pendingUser.verifiedAt = new Date().toISOString();
+  var _verifyNow = new Date().toISOString();
+  _pendingUser.verified   = true;
+  _pendingUser.verifiedAt = _verifyNow;
+  _pendingUser.loginCount = (_pendingUser.loginCount || 0) + 1;
+  _pendingUser.lastLogin  = _verifyNow;
+  _pendingUser.lastSeen   = _verifyNow;
 
   saveUser(_pendingUser);
   saveUserToFirebase(_pendingUser, function(ok) {
-    if (ok) console.log('[KSpider] User saved to Firebase ✅');
+    if (ok) {
+      console.log('[KSpider] Verified user saved to Firebase ✅');
+      // Additional write: mark verified=true with serverTimestamp for admin live ordering
+      if (initFirebase() && _db) {
+        var _fsNow = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
+                       ? firebase.firestore.FieldValue.serverTimestamp()
+                       : _verifyNow;
+        var _key = _pendingUser ? _pendingUser.email.replace(/[.#$\/\[\]]/g,'_')
+                                : (_pendingUser||{email:''}).email.replace(/[.#$\/\[\]]/g,'_');
+        // Re-fetch key from closure
+        var _uKey = _pendingUser
+          ? _pendingUser.email.replace(/[.#$\/\[\]]/g,'_')
+          : '';
+        if (_uKey) {
+          _db.collection('users').doc(_uKey).update({
+            verified:   true,
+            verifiedAt: _verifyNow,
+            lastSeen:   _fsNow,
+            updatedAt:  _fsNow
+          }).catch(function(){});
+        }
+      }
+    }
   });
 
   closeM('otp-ov');
@@ -3937,6 +4014,7 @@ function signInWithGoogle() {
       }
 
       // New user via Google — no OTP needed, Google email is verified
+      var _gNow = new Date().toISOString();
       var newUser = {
         name:         name,
         email:        email,
@@ -3945,15 +4023,21 @@ function signInWithGoogle() {
         language:     'en',
         consentGDPR:  true,
         consentIT:    true,
-        registeredAt: new Date().toISOString(),
-        verifiedAt:   new Date().toISOString(),
+        registeredAt: _gNow,
+        verifiedAt:   _gNow,
         toolsUsed:    0,
         premium:      false,
         verified:     true,
         loginMethod:  'google',
         photoURL:     photo,
         planType:     'free',
-        source:       'kspiderai.in'
+        source:       'kspiderai.in',
+        loginCount:   1,
+        lastLogin:    _gNow,
+        lastSeen:     _gNow,
+        banned:       false,
+        suspended:    false,
+        disabled:     false
       };
 
       saveUser(newUser);
@@ -4039,14 +4123,27 @@ function submitReg(e) {
     }
 
     // Naya user ya unverified — aage badho
+    var _regNow = new Date().toISOString();
     _pendingUser = {
-      name: n.replace(/[<>"&]/g,'').substring(0,100),
-      email: em,
-      mobile: m,
-      city: document.getElementById('rc').value.trim().substring(0,60),
-      language: document.getElementById('rl').value,
-      consentGDPR: true, consentIT: true,
-      registeredAt: new Date().toISOString(), toolsUsed: 0, premium: false, verified: false
+      name:         n.replace(/[<>"&]/g,'').substring(0,100),
+      email:        em,
+      mobile:       m,
+      city:         document.getElementById('rc').value.trim().substring(0,60),
+      language:     document.getElementById('rl').value,
+      consentGDPR:  true,
+      consentIT:    true,
+      registeredAt: _regNow,
+      toolsUsed:    0,
+      premium:      false,
+      verified:     false,
+      planType:     'free',
+      source:       'kspiderai.in',
+      loginMethod:  'email',
+      photoURL:     '',
+      loginCount:   0,
+      banned:       false,
+      suspended:    false,
+      disabled:     false
     };
     // ── Save to Firebase IMMEDIATELY (unverified) so admin sees it ──
     // Will be updated to verified:true after OTP
