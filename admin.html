@@ -254,6 +254,10 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
         <span class="ic">📝</span> Blog / Notice
         <span class="nbadge" id="blog-badge" style="display:none">0</span>
       </a>
+      <a class="ni" id="n-rto-agents" onclick="show('rto-agents',this)" href="#">
+        <span class="ic">🚗</span> RTO Agents
+        <span class="nbadge red" id="agent-badge" style="display:none">0</span>
+      </a>
       <a class="ni" id="n-ads" onclick="show('ads',this)" href="#">
         <span class="ic">📢</span> Ads Manager
         <span class="nbadge red" id="ads-badge" style="display:none">0</span>
@@ -1361,6 +1365,71 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
       </div>
 
     </div><!-- /panel-ads -->
+
+    <!-- ══════════ RTO AGENTS PANEL ══════════ -->
+    <div class="panel" id="panel-rto-agents" style="display:none">
+      <div class="ph">
+        <div>
+          <div class="pt">🚗 RTO Agent Registrations</div>
+          <div class="ps">Review and approve agent promotional link requests</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn btn-g btn-sm" onclick="loadAgentRequests()">🔄 Refresh</button>
+          <button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="exportAgentsCSV()">📥 Export CSV</button>
+        </div>
+      </div>
+      <!-- Stats row -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:16px">
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#2563eb" id="agent-stat-total">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Total Requests</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#f59e0b" id="agent-stat-pending">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Pending</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#16a34a" id="agent-stat-approved">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Approved</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#ef4444" id="agent-stat-rejected">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Rejected</div>
+        </div>
+      </div>
+      <!-- Filter tabs -->
+      <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:#2563eb;color:#fff" id="agent-filter-all" onclick="filterAgents('all')">All</button>
+        <button class="btn btn-sm btn-gh" id="agent-filter-pending" onclick="filterAgents('pending')">⏳ Pending</button>
+        <button class="btn btn-sm btn-gh" id="agent-filter-approved" onclick="filterAgents('approved')">✅ Approved</button>
+        <button class="btn btn-sm btn-gh" id="agent-filter-rejected" onclick="filterAgents('rejected')">❌ Rejected</button>
+        <input type="text" id="agent-search" placeholder="🔍 Search by name/firm/city..." 
+               style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);font-size:.8rem;flex:1;min-width:200px"
+               oninput="filterAgents()">
+      </div>
+      <!-- Agent list table -->
+      <div style="overflow-x:auto;padding:0 16px 16px">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead>
+            <tr style="background:var(--bg2)">
+              <th style="padding:10px;text-align:left;font-weight:600;color:var(--t2)">Agent Details</th>
+              <th style="padding:10px;text-align:left;font-weight:600;color:var(--t2)">Contact</th>
+              <th style="padding:10px;text-align:left;font-weight:600;color:var(--t2)">Location</th>
+              <th style="padding:10px;text-align:left;font-weight:600;color:var(--t2)">Submitted</th>
+              <th style="padding:10px;text-align:left;font-weight:600;color:var(--t2)">Status</th>
+              <th style="padding:10px;text-align:center;font-weight:600;color:var(--t2)">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="agents-table-body">
+            <tr><td colspan="6" style="text-align:center;padding:32px;color:var(--t3)">Loading agent requests...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="agents-empty" style="display:none;text-align:center;padding:40px;color:var(--t3)">
+        <div style="font-size:2.5rem;margin-bottom:10px">🏢</div>
+        <p>No agent registrations yet</p>
+      </div>
+    </div><!-- /panel-rto-agents -->
 
   </main>
 </div>
@@ -5126,6 +5195,255 @@ function restoreConnectUi(prefix, url){
     if(parts[1]){ var m3=parts[1].match(/subject=([^&]*)/); var el7=document.getElementById(prefix+'-email-subj'); if(el7&&m3) el7.value=decodeURIComponent(m3[1]); }
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   RTO AGENT MANAGEMENT SYSTEM — Admin Panel
+═══════════════════════════════════════════════════════ */
+
+let allAgentData = [];
+let agentFilterMode = 'all';
+
+function loadAgentRequests() {
+  // Load from localStorage (simulated DB — replace with Firebase/API in production)
+  try {
+    const stored = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
+    allAgentData = stored;
+    renderAgentsTable(allAgentData);
+    updateAgentStats(allAgentData);
+  } catch(e) {
+    console.error('Error loading agents:', e);
+  }
+}
+
+function updateAgentStats(data) {
+  const total = data.length;
+  const pending = data.filter(a => a.status === 'pending').length;
+  const approved = data.filter(a => a.status === 'approved').length;
+  const rejected = data.filter(a => a.status === 'rejected').length;
+  
+  const setEl = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  setEl('agent-stat-total', total);
+  setEl('agent-stat-pending', pending);
+  setEl('agent-stat-approved', approved);
+  setEl('agent-stat-rejected', rejected);
+  
+  const badge = document.getElementById('agent-badge');
+  if (badge) {
+    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  }
+}
+
+function filterAgents(mode) {
+  if (mode) agentFilterMode = mode;
+  // Update filter button styles
+  ['all','pending','approved','rejected'].forEach(m => {
+    const btn = document.getElementById('agent-filter-' + m);
+    if (!btn) return;
+    if (m === agentFilterMode) {
+      btn.style.background = '#2563eb'; btn.style.color = '#fff';
+    } else {
+      btn.style.background = ''; btn.style.color = '';
+    }
+  });
+  const search = (document.getElementById('agent-search')?.value || '').toLowerCase();
+  let filtered = allAgentData;
+  if (agentFilterMode !== 'all') filtered = filtered.filter(a => a.status === agentFilterMode);
+  if (search) filtered = filtered.filter(a =>
+    (a.name||'').toLowerCase().includes(search) ||
+    (a.company||'').toLowerCase().includes(search) ||
+    (a.city||'').toLowerCase().includes(search) ||
+    (a.email||'').toLowerCase().includes(search) ||
+    (a.mobile||'').toLowerCase().includes(search)
+  );
+  renderAgentsTable(filtered);
+}
+
+function renderAgentsTable(data) {
+  const tbody = document.getElementById('agents-table-body');
+  const empty = document.getElementById('agents-empty');
+  if (!tbody) return;
+  if (!data || !data.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = '';
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+  
+  const statusBadge = (s) => {
+    const map = {
+      pending: 'background:#fef3c7;color:#92400e',
+      approved: 'background:#dcfce7;color:#15803d',
+      rejected: 'background:#fee2e2;color:#dc2626'
+    };
+    const icons = { pending: '⏳', approved: '✅', rejected: '❌' };
+    return `<span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;${map[s]||''}">${icons[s]||''}${(s||'').toUpperCase()}</span>`;
+  };
+  
+  const formatDate = (iso) => {
+    try { return new Date(iso).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+    catch(e) { return iso || '—'; }
+  };
+  
+  tbody.innerHTML = data.map((agent, idx) => `
+    <tr style="border-bottom:1px solid var(--border);transition:.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
+      <td style="padding:12px 10px">
+        <div style="font-weight:700;color:var(--t1)">${agent.name||'—'}</div>
+        <div style="font-size:.75rem;color:var(--t2);margin-top:2px">${agent.company||'—'}</div>
+        <div style="font-size:.68rem;color:var(--t3);margin-top:1px">${agent.refId||'—'}</div>
+      </td>
+      <td style="padding:12px 10px">
+        <div style="font-size:.78rem"><a href="tel:${agent.mobile||''}" style="color:var(--t1)">${agent.mobile||'—'}</a></div>
+        <div style="font-size:.75rem;color:var(--t3);margin-top:2px"><a href="mailto:${agent.email||''}" style="color:var(--t3)">${agent.email||'—'}</a></div>
+        ${agent.whatsapp ? `<a href="${agent.whatsapp}" target="_blank" style="font-size:.68rem;color:#16a34a">💬 WhatsApp</a>` : ''}
+      </td>
+      <td style="padding:12px 10px">
+        <div style="font-size:.78rem;color:var(--t2)">${agent.city||'—'}</div>
+        <div style="font-size:.72rem;color:var(--t3);margin-top:2px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${agent.address||'—'}</div>
+      </td>
+      <td style="padding:12px 10px;font-size:.75rem;color:var(--t3)">${formatDate(agent.submittedAt)}</td>
+      <td style="padding:12px 10px">${statusBadge(agent.status)}</td>
+      <td style="padding:12px 10px;text-align:center">
+        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
+          <button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:.72rem;padding:5px 10px" onclick="viewAgentDetails('${agent.refId}')">👁️ View</button>
+          ${agent.status !== 'approved' ? `<button class="btn btn-sm" style="background:#16a34a;color:#fff;font-size:.72rem;padding:5px 10px" onclick="approveAgent('${agent.refId}')">✅ Approve</button>` : ''}
+          ${agent.status !== 'rejected' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff;font-size:.72rem;padding:5px 10px" onclick="rejectAgent('${agent.refId}')">❌ Reject</button>` : ''}
+          <button class="btn btn-sm btn-gh" style="font-size:.72rem;padding:5px 10px" onclick="deleteAgent('${agent.refId}')">🗑️</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function viewAgentDetails(refId) {
+  const agent = allAgentData.find(a => a.refId === refId);
+  if (!agent) return;
+  const socials = ['website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps']
+    .filter(k => agent[k])
+    .map(k => `<a href="${agent[k]}" target="_blank" rel="noopener" style="color:#2563eb;font-size:.8rem;display:block;margin-top:3px">${k}: ${agent[k]}</a>`)
+    .join('');
+  
+  // Build agent promo link
+  const payload = { name:agent.name, company:agent.company, mobile:agent.mobile, email:agent.email, city:agent.city, website:agent.website, logo:agent.logo, whatsapp:agent.whatsapp, facebook:agent.facebook, instagram:agent.instagram, youtube:agent.youtube, telegram:agent.telegram, linkedin:agent.linkedin, twitter:agent.twitter, gmaps:agent.gmaps };
+  const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
+  const agentLink = 'https://www.kspiderai.in/?agent=' + encoded;
+  
+  alert(`🏢 AGENT DETAILS
+
+` +
+    `Name: ${agent.name}
+Company: ${agent.company}
+Mobile: ${agent.mobile}
+Email: ${agent.email}
+City: ${agent.city}
+Address: ${agent.address}
+
+` +
+    `Services: ${agent.services||'—'}
+Status: ${agent.status}
+Ref ID: ${agent.refId}
+
+` +
+    `Promo Link:
+${agentLink}`
+  );
+}
+
+function approveAgent(refId) {
+  const idx = allAgentData.findIndex(a => a.refId === refId);
+  if (idx < 0) return;
+  if (!confirm(`Approve agent: ${allAgentData[idx].name} (${allAgentData[idx].company})?
+This will activate their promotional link.`)) return;
+  allAgentData[idx].status = 'approved';
+  allAgentData[idx].approvedAt = new Date().toISOString();
+  saveAgentsToStorage();
+  renderAgentsTable(allAgentData);
+  updateAgentStats(allAgentData);
+  showAdminToast('Agent approved! Their promo link is now active ✅', 'success');
+}
+
+function rejectAgent(refId) {
+  const idx = allAgentData.findIndex(a => a.refId === refId);
+  if (idx < 0) return;
+  const reason = prompt(`Reason for rejecting ${allAgentData[idx].name}?
+(Optional — leave blank to reject without reason)`);
+  if (reason === null) return; // cancelled
+  allAgentData[idx].status = 'rejected';
+  allAgentData[idx].rejectedAt = new Date().toISOString();
+  allAgentData[idx].rejectReason = reason || '';
+  saveAgentsToStorage();
+  renderAgentsTable(allAgentData);
+  updateAgentStats(allAgentData);
+  showAdminToast('Agent rejected ❌', 'info');
+}
+
+function deleteAgent(refId) {
+  const agent = allAgentData.find(a => a.refId === refId);
+  if (!agent) return;
+  if (!confirm(`Permanently delete ${agent.name} (${agent.company})? This cannot be undone.`)) return;
+  allAgentData = allAgentData.filter(a => a.refId !== refId);
+  saveAgentsToStorage();
+  renderAgentsTable(allAgentData);
+  updateAgentStats(allAgentData);
+  showAdminToast('Agent deleted 🗑️', 'info');
+}
+
+function saveAgentsToStorage() {
+  localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData));
+}
+
+function exportAgentsCSV() {
+  if (!allAgentData.length) { alert('No agent data to export'); return; }
+  const cols = ['refId','name','company','mobile','email','city','address','website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','services','status','submittedAt','approvedAt'];
+  const header = cols.join(',');
+  const rows = allAgentData.map(a => cols.map(c => {
+    const v = (a[c]||'').toString().replace(/"/g,'""');
+    return v.includes(',') || v.includes('"') || v.includes('
+') ? `"${v}"` : v;
+  }).join(',')).join('
+');
+  const csv = header + '
+' + rows;
+  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'rto_agents_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+  URL.revokeObjectURL(url);
+  showAdminToast('CSV exported successfully 📥', 'success');
+}
+
+function showAdminToast(msg, type) {
+  // Use existing toast system if available, else alert
+  if (typeof showToast === 'function') { showToast(msg, type); return; }
+  const t = document.createElement('div');
+  t.textContent = msg;
+  t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e3a8a;color:#fff;padding:10px 20px;border-radius:999px;font-size:.82rem;z-index:9999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2500);
+}
+
+// Hook into the existing show() function to load agents when panel opens
+const _origShow = window.show;
+window.show = function(name, el) {
+  if (typeof _origShow === 'function') _origShow(name, el);
+  else {
+    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
+    const panel = document.getElementById('panel-' + name);
+    if (panel) panel.style.display = '';
+    document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+    if (el) el.classList.add('on');
+  }
+  if (name === 'rto-agents') loadAgentRequests();
+};
+
+// Check for pending agents on admin load
+setTimeout(() => {
+  loadAgentRequests();
+}, 2000);
+
+/* ═══ END RTO AGENT MANAGEMENT ═══ */
+
+
 
 </script>
 </body>
