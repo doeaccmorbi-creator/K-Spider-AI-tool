@@ -23,6 +23,28 @@ function doLogin(){
     },150);
   }
 }
+
+// Stub for Google login — real implementation registered after main script loads
+function doGoogleLogin(){
+  var fn=window._doGoogleLoginReal;
+  if(fn){ fn(); return; }
+  var btn=document.getElementById('google-login-btn');
+  var origHTML=btn?btn.innerHTML:'';
+  if(btn){ btn.disabled=true; btn.textContent='⏳ Loading...'; }
+  var t=0, iv=setInterval(function(){
+    t++;
+    if(window._doGoogleLoginReal){
+      clearInterval(iv);
+      if(btn){ btn.disabled=false; btn.innerHTML=origHTML; }
+      window._doGoogleLoginReal();
+    } else if(t>40){
+      clearInterval(iv);
+      if(btn){ btn.disabled=false; btn.innerHTML=origHTML; }
+      var err=document.getElementById('login-err');
+      if(err){ err.textContent='Firebase load failed — please refresh (Ctrl+Shift+R)'; err.style.display='block'; }
+    }
+  },150);
+}
 </script>
 <style>
 :root{--bg:#0f0e0c;--bg2:#1a1814;--bg3:#242019;--bg4:#2e2b24;--gold:#b8792a;--gold2:#d4922e;--gold3:#f5c259;--gs:rgba(184,121,42,.12);--gb:rgba(184,121,42,.3);--neon:#059669;--red:#dc2626;--blue:#3b82f6;--pur:#7c3aed;--t1:#f0ede8;--t2:#c8c3ba;--t3:#8a8479;--t4:#5a5650;--br:rgba(255,255,255,.07);--br2:rgba(255,255,255,.12);--r8:12px;--r12:18px;--r16:24px}
@@ -1763,8 +1785,9 @@ function initFB() {
 }
 
 // ── LOGIN ──
-// Register real implementation for the early stub (defined in <head>)
-window._doLoginReal = doLogin;
+// Register real implementations for early stubs (defined in <head>)
+window._doLoginReal = function(){ doLogin(); };
+window._doGoogleLoginReal = function(){ doGoogleLogin(); };
 function doLogin() {
   var em = (document.getElementById('a-em').value||'').trim().toLowerCase();
   var pw = document.getElementById('a-pw').value;
@@ -5352,8 +5375,7 @@ ${agentLink}`
 function approveAgent(refId) {
   const idx = allAgentData.findIndex(a => a.refId === refId);
   if (idx < 0) return;
-  if (!confirm(`Approve agent: ${allAgentData[idx].name} (${allAgentData[idx].company})?
-This will activate their promotional link.`)) return;
+  if (!confirm(`Approve agent: ${allAgentData[idx].name} (${allAgentData[idx].company})?\nThis will activate their promotional link.`)) return;
   allAgentData[idx].status = 'approved';
   allAgentData[idx].approvedAt = new Date().toISOString();
   saveAgentsToStorage();
@@ -5394,19 +5416,17 @@ function saveAgentsToStorage() {
 
 function exportAgentsCSV() {
   if (!allAgentData.length) { alert('No agent data to export'); return; }
-  const cols = ['refId','name','company','mobile','email','city','address','website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','services','status','submittedAt','approvedAt'];
-  const header = cols.join(',');
-  const rows = allAgentData.map(a => cols.map(c => {
-    const v = (a[c]||'').toString().replace(/"/g,'""');
-    return v.includes(',') || v.includes('"') || v.includes('
-') ? `"${v}"` : v;
-  }).join(',')).join('
-');
-  const csv = header + '
-' + rows;
-  const blob = new Blob(['﻿' + csv], {type:'text/csv;charset=utf-8;'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
+  var cols = ['refId','name','company','mobile','email','city','address','website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','services','status','submittedAt','approvedAt'];
+  var header = cols.join(',');
+  var nl = '\n';
+  var rows = allAgentData.map(function(a){ return cols.map(function(c){
+    var v = (a[c]||'').toString().replace(/"/g,'""');
+    return (v.indexOf(',') !== -1 || v.indexOf('"') !== -1 || v.indexOf('\n') !== -1) ? '"' + v + '"' : v;
+  }).join(','); }).join(nl);
+  var csv = header + nl + rows;
+  var blob = new Blob(['\uFEFF' + csv], {type:'text/csv;charset=utf-8;'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
   a.href = url; a.download = 'rto_agents_' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
   URL.revokeObjectURL(url);
   showAdminToast('CSV exported successfully 📥', 'success');
