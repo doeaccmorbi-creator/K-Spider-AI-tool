@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -1389,11 +1389,11 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
     </div><!-- /panel-ads -->
 
     <!-- ══════════ RTO AGENTS PANEL ══════════ -->
-    <div class="panel" id="panel-rto-agents" style="display:none">
-      <div class="ph">
+    <div class="panel" id="panel-rto-agents">
+      <div style="padding:16px 20px 12px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
-          <div class="pt">🚗 RTO Agent Registrations</div>
-          <div class="ps">Review and approve agent promotional link requests</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--t1)">🚗 RTO Agent Registrations</div>
+          <div style="font-size:.78rem;color:var(--t3);margin-top:3px">Review and approve agent promotional link requests</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
           <button class="btn btn-g btn-sm" onclick="loadAgentRequests()">🔄 Refresh</button>
@@ -1903,19 +1903,20 @@ function show(name, el) {
   if (panel) panel.classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){ n.classList.remove('on'); });
   if (el) el.classList.add('on');
-  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements',ads:'📢 Ads Manager'};
+  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements',ads:'📢 Ads Manager','rto-agents':'🚗 RTO Agents'};
   document.getElementById('page-title').textContent = titles[name]||name;
-  if (name==='users')     loadUsers();
-  if (name==='access')    loadAccess();
-  if (name==='pay')       loadPay();
-  if (name==='franchise') loadFranchise();
-  if (name==='tools')     loadTools();
-  if (name==='dash')      loadDash();
-  if (name==='reminders') loadReminders();
-  if (name==='pricing')   loadPricing();
-  if (name==='analytics') loadAnalytics();
-  if (name==='blog')      loadBlog();
-  if (name==='ads')       { loadAds(); loadAdRequests(); loadAdsStats(); }
+  if (name==='users')       loadUsers();
+  if (name==='access')      loadAccess();
+  if (name==='pay')         loadPay();
+  if (name==='franchise')   loadFranchise();
+  if (name==='tools')       loadTools();
+  if (name==='dash')        loadDash();
+  if (name==='reminders')   loadReminders();
+  if (name==='pricing')     loadPricing();
+  if (name==='analytics')   loadAnalytics();
+  if (name==='blog')        loadBlog();
+  if (name==='ads')         { loadAds(); loadAdRequests(); loadAdsStats(); }
+  if (name==='rto-agents')  loadAgentRequests();
   closeMobMenu(); // Close sidebar on mobile after nav click
 }
 
@@ -5227,9 +5228,8 @@ let allAgentData = [];
 let agentFilterMode = 'all';
 
 function loadAgentRequests() {
-  // Load from localStorage (simulated DB — replace with Firebase/API in production)
   try {
-    const stored = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
+    var stored = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
     allAgentData = stored;
     renderAgentsTable(allAgentData);
     updateAgentStats(allAgentData);
@@ -5239,18 +5239,18 @@ function loadAgentRequests() {
 }
 
 function updateAgentStats(data) {
-  const total = data.length;
-  const pending = data.filter(a => a.status === 'pending').length;
-  const approved = data.filter(a => a.status === 'approved').length;
-  const rejected = data.filter(a => a.status === 'rejected').length;
-  
-  const setEl = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+  var total = data.length;
+  var pending = data.filter(function(a){ return a.status === 'pending'; }).length;
+  var approved = data.filter(function(a){ return a.status === 'approved'; }).length;
+  var rejected = data.filter(function(a){ return a.status === 'rejected'; }).length;
+
+  function setEl(id, val) { var el = document.getElementById(id); if(el) el.textContent = val; }
   setEl('agent-stat-total', total);
   setEl('agent-stat-pending', pending);
   setEl('agent-stat-approved', approved);
   setEl('agent-stat-rejected', rejected);
-  
-  const badge = document.getElementById('agent-badge');
+
+  var badge = document.getElementById('agent-badge');
   if (badge) {
     if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
     else badge.style.display = 'none';
@@ -5259,9 +5259,8 @@ function updateAgentStats(data) {
 
 function filterAgents(mode) {
   if (mode) agentFilterMode = mode;
-  // Update filter button styles
-  ['all','pending','approved','rejected'].forEach(m => {
-    const btn = document.getElementById('agent-filter-' + m);
+  ['all','pending','approved','rejected'].forEach(function(m) {
+    var btn = document.getElementById('agent-filter-' + m);
     if (!btn) return;
     if (m === agentFilterMode) {
       btn.style.background = '#2563eb'; btn.style.color = '#fff';
@@ -5269,16 +5268,17 @@ function filterAgents(mode) {
       btn.style.background = ''; btn.style.color = '';
     }
   });
-  const search = (document.getElementById('agent-search')?.value || '').toLowerCase();
-  let filtered = allAgentData;
-  if (agentFilterMode !== 'all') filtered = filtered.filter(a => a.status === agentFilterMode);
-  if (search) filtered = filtered.filter(a =>
-    (a.name||'').toLowerCase().includes(search) ||
-    (a.company||'').toLowerCase().includes(search) ||
-    (a.city||'').toLowerCase().includes(search) ||
-    (a.email||'').toLowerCase().includes(search) ||
-    (a.mobile||'').toLowerCase().includes(search)
-  );
+  var searchEl = document.getElementById('agent-search');
+  var search = (searchEl ? searchEl.value : '').toLowerCase();
+  var filtered = allAgentData;
+  if (agentFilterMode !== 'all') filtered = filtered.filter(function(a){ return a.status === agentFilterMode; });
+  if (search) filtered = filtered.filter(function(a) {
+    return (a.name||'').toLowerCase().indexOf(search) > -1 ||
+           (a.company||'').toLowerCase().indexOf(search) > -1 ||
+           (a.city||'').toLowerCase().indexOf(search) > -1 ||
+           (a.email||'').toLowerCase().indexOf(search) > -1 ||
+           (a.mobile||'').toLowerCase().indexOf(search) > -1;
+  });
   renderAgentsTable(filtered);
 }
 
@@ -5293,121 +5293,115 @@ function renderAgentsTable(data) {
   }
   if (empty) empty.style.display = 'none';
   
-  const statusBadge = (s) => {
-    const map = {
+  var statusBadge = function(s) {
+    var map = {
       pending: 'background:#fef3c7;color:#92400e',
       approved: 'background:#dcfce7;color:#15803d',
       rejected: 'background:#fee2e2;color:#dc2626'
     };
-    const icons = { pending: '⏳', approved: '✅', rejected: '❌' };
-    return `<span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;${map[s]||''}">${icons[s]||''}${(s||'').toUpperCase()}</span>`;
+    var icons = { pending: '\u23F3', approved: '\u2705', rejected: '\u274C' };
+    return '<span style="padding:3px 10px;border-radius:99px;font-size:.72rem;font-weight:700;' + (map[s]||'') + '">' + (icons[s]||'') + (s||'').toUpperCase() + '</span>';
   };
-  
-  const formatDate = (iso) => {
+
+  var formatDate = function(iso) {
     try { return new Date(iso).toLocaleDateString('en-IN', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
-    catch(e) { return iso || '—'; }
+    catch(e) { return iso || '\u2014'; }
   };
-  
-  tbody.innerHTML = data.map((agent, idx) => `
-    <tr style="border-bottom:1px solid var(--border);transition:.15s" onmouseover="this.style.background='var(--bg2)'" onmouseout="this.style.background=''">
-      <td style="padding:12px 10px">
-        <div style="font-weight:700;color:var(--t1)">${agent.name||'—'}</div>
-        <div style="font-size:.75rem;color:var(--t2);margin-top:2px">${agent.company||'—'}</div>
-        <div style="font-size:.68rem;color:var(--t3);margin-top:1px">${agent.refId||'—'}</div>
-      </td>
-      <td style="padding:12px 10px">
-        <div style="font-size:.78rem"><a href="tel:${agent.mobile||''}" style="color:var(--t1)">${agent.mobile||'—'}</a></div>
-        <div style="font-size:.75rem;color:var(--t3);margin-top:2px"><a href="mailto:${agent.email||''}" style="color:var(--t3)">${agent.email||'—'}</a></div>
-        ${agent.whatsapp ? `<a href="${agent.whatsapp}" target="_blank" style="font-size:.68rem;color:#16a34a">💬 WhatsApp</a>` : ''}
-      </td>
-      <td style="padding:12px 10px">
-        <div style="font-size:.78rem;color:var(--t2)">${agent.city||'—'}</div>
-        <div style="font-size:.72rem;color:var(--t3);margin-top:2px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${agent.address||'—'}</div>
-      </td>
-      <td style="padding:12px 10px;font-size:.75rem;color:var(--t3)">${formatDate(agent.submittedAt)}</td>
-      <td style="padding:12px 10px">${statusBadge(agent.status)}</td>
-      <td style="padding:12px 10px;text-align:center">
-        <div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">
-          <button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:.72rem;padding:5px 10px" onclick="viewAgentDetails('${agent.refId}')">👁️ View</button>
-          ${agent.status !== 'approved' ? `<button class="btn btn-sm" style="background:#16a34a;color:#fff;font-size:.72rem;padding:5px 10px" onclick="approveAgent('${agent.refId}')">✅ Approve</button>` : ''}
-          ${agent.status !== 'rejected' ? `<button class="btn btn-sm" style="background:#ef4444;color:#fff;font-size:.72rem;padding:5px 10px" onclick="rejectAgent('${agent.refId}')">❌ Reject</button>` : ''}
-          <button class="btn btn-sm btn-gh" style="font-size:.72rem;padding:5px 10px" onclick="deleteAgent('${agent.refId}')">🗑️</button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+
+  tbody.innerHTML = data.map(function(agent) {
+    var waLink = agent.whatsapp ? '<a href="' + agent.whatsapp + '" target="_blank" style="font-size:.68rem;color:#16a34a">\uD83D\uDCAC WhatsApp</a>' : '';
+    var approveBtn = agent.status !== 'approved' ? '<button class="btn btn-sm" style="background:#16a34a;color:#fff;font-size:.72rem;padding:5px 10px" onclick="approveAgent(\'' + agent.refId + '\')">\u2705 Approve</button>' : '';
+    var rejectBtn = agent.status !== 'rejected' ? '<button class="btn btn-sm" style="background:#ef4444;color:#fff;font-size:.72rem;padding:5px 10px" onclick="rejectAgent(\'' + agent.refId + '\')">\u274C Reject</button>' : '';
+    return '<tr style="border-bottom:1px solid var(--border);transition:.15s" onmouseover="this.style.background=\'var(--bg2)\'" onmouseout="this.style.background=\'\'">' +
+      '<td style="padding:12px 10px">' +
+        '<div style="font-weight:700;color:var(--t1)">' + (agent.name||'\u2014') + '</div>' +
+        '<div style="font-size:.75rem;color:var(--t2);margin-top:2px">' + (agent.company||'\u2014') + '</div>' +
+        '<div style="font-size:.68rem;color:var(--t3);margin-top:1px">' + (agent.refId||'\u2014') + '</div>' +
+      '</td>' +
+      '<td style="padding:12px 10px">' +
+        '<div style="font-size:.78rem"><a href="tel:' + (agent.mobile||'') + '" style="color:var(--t1)">' + (agent.mobile||'\u2014') + '</a></div>' +
+        '<div style="font-size:.75rem;color:var(--t3);margin-top:2px"><a href="mailto:' + (agent.email||'') + '" style="color:var(--t3)">' + (agent.email||'\u2014') + '</a></div>' +
+        waLink +
+      '</td>' +
+      '<td style="padding:12px 10px">' +
+        '<div style="font-size:.78rem;color:var(--t2)">' + (agent.city||'\u2014') + '</div>' +
+        '<div style="font-size:.72rem;color:var(--t3);margin-top:2px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + (agent.address||'\u2014') + '</div>' +
+      '</td>' +
+      '<td style="padding:12px 10px;font-size:.75rem;color:var(--t3)">' + formatDate(agent.submittedAt) + '</td>' +
+      '<td style="padding:12px 10px">' + statusBadge(agent.status) + '</td>' +
+      '<td style="padding:12px 10px;text-align:center">' +
+        '<div style="display:flex;gap:6px;justify-content:center;flex-wrap:wrap">' +
+          '<button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:.72rem;padding:5px 10px" onclick="viewAgentDetails(\'' + agent.refId + '\')">\uD83D\uDC41\uFE0F View</button>' +
+          approveBtn + rejectBtn +
+          '<button class="btn btn-sm btn-gh" style="font-size:.72rem;padding:5px 10px" onclick="deleteAgent(\'' + agent.refId + '\')">\uD83D\uDDD1\uFE0F</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
 }
 
 function viewAgentDetails(refId) {
-  const agent = allAgentData.find(a => a.refId === refId);
+  var agent = allAgentData.find(function(a){ return a.refId === refId; });
   if (!agent) return;
-  const socials = ['website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps']
-    .filter(k => agent[k])
-    .map(k => `<a href="${agent[k]}" target="_blank" rel="noopener" style="color:#2563eb;font-size:.8rem;display:block;margin-top:3px">${k}: ${agent[k]}</a>`)
-    .join('');
-  
-  // Build agent promo link
-  const payload = { name:agent.name, company:agent.company, mobile:agent.mobile, email:agent.email, city:agent.city, website:agent.website, logo:agent.logo, whatsapp:agent.whatsapp, facebook:agent.facebook, instagram:agent.instagram, youtube:agent.youtube, telegram:agent.telegram, linkedin:agent.linkedin, twitter:agent.twitter, gmaps:agent.gmaps };
-  const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
-  const agentLink = 'https://www.kspiderai.in/?agent=' + encoded;
-  
-  alert(`🏢 AGENT DETAILS
-
-` +
-    `Name: ${agent.name}
-Company: ${agent.company}
-Mobile: ${agent.mobile}
-Email: ${agent.email}
-City: ${agent.city}
-Address: ${agent.address}
-
-` +
-    `Services: ${agent.services||'—'}
-Status: ${agent.status}
-Ref ID: ${agent.refId}
-
-` +
-    `Promo Link:
-${agentLink}`
+  var socialKeys = ['website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps'];
+  var socials = socialKeys.filter(function(k){ return !!agent[k]; }).map(function(k){ return k + ': ' + agent[k]; }).join('\n');
+  // Short promo link
+  var shortStore = {};
+  try { shortStore = JSON.parse(localStorage.getItem('rto_short_links') || '{}'); } catch(e){}
+  var shortId = agent.refId ? agent.refId.replace('RTO-','').toLowerCase() : '';
+  var agentLink = shortId ? 'https://www.kspiderai.in/tools/RTO-Exam-Pro-Tool-KSpider.html?a=' + shortId : '(Not generated yet)';
+  alert(
+    '\uD83C\uDFE2 AGENT DETAILS\n\n' +
+    'Name: ' + agent.name + '\n' +
+    'Company: ' + agent.company + '\n' +
+    'Mobile: ' + agent.mobile + '\n' +
+    'Email: ' + (agent.email||'\u2014') + '\n' +
+    'City: ' + (agent.city||'\u2014') + '\n' +
+    'Address: ' + (agent.address||'\u2014') + '\n\n' +
+    'Services: ' + (agent.services||'\u2014') + '\n' +
+    'Status: ' + agent.status + '\n' +
+    'Ref ID: ' + agent.refId + '\n' +
+    'Submitted: ' + (agent.submittedAt ? new Date(agent.submittedAt).toLocaleString('en-IN') : '\u2014') + '\n\n' +
+    'Socials:\n' + (socials || '\u2014') + '\n\n' +
+    'Short Promo Link:\n' + agentLink
   );
 }
 
 function approveAgent(refId) {
-  const idx = allAgentData.findIndex(a => a.refId === refId);
+  var idx = allAgentData.findIndex(function(a){ return a.refId === refId; });
   if (idx < 0) return;
-  if (!confirm(`Approve agent: ${allAgentData[idx].name} (${allAgentData[idx].company})?\nThis will activate their promotional link.`)) return;
+  if (!confirm('Approve agent: ' + allAgentData[idx].name + ' (' + allAgentData[idx].company + ')?\nThis will activate their promotional link.')) return;
   allAgentData[idx].status = 'approved';
   allAgentData[idx].approvedAt = new Date().toISOString();
   saveAgentsToStorage();
   renderAgentsTable(allAgentData);
   updateAgentStats(allAgentData);
-  showAdminToast('Agent approved! Their promo link is now active ✅', 'success');
+  showAdminToast('Agent approved! Their promo link is now active \u2705', 'success');
 }
 
 function rejectAgent(refId) {
-  const idx = allAgentData.findIndex(a => a.refId === refId);
+  var idx = allAgentData.findIndex(function(a){ return a.refId === refId; });
   if (idx < 0) return;
-  const reason = prompt(`Reason for rejecting ${allAgentData[idx].name}?
-(Optional — leave blank to reject without reason)`);
-  if (reason === null) return; // cancelled
+  var reason = prompt('Reason for rejecting ' + allAgentData[idx].name + '?\n(Optional — leave blank to reject without reason)');
+  if (reason === null) return;
   allAgentData[idx].status = 'rejected';
   allAgentData[idx].rejectedAt = new Date().toISOString();
   allAgentData[idx].rejectReason = reason || '';
   saveAgentsToStorage();
   renderAgentsTable(allAgentData);
   updateAgentStats(allAgentData);
-  showAdminToast('Agent rejected ❌', 'info');
+  showAdminToast('Agent rejected \u274C', 'info');
 }
 
 function deleteAgent(refId) {
-  const agent = allAgentData.find(a => a.refId === refId);
+  var agent = allAgentData.find(function(a){ return a.refId === refId; });
   if (!agent) return;
-  if (!confirm(`Permanently delete ${agent.name} (${agent.company})? This cannot be undone.`)) return;
-  allAgentData = allAgentData.filter(a => a.refId !== refId);
+  if (!confirm('Permanently delete ' + agent.name + ' (' + agent.company + ')? This cannot be undone.')) return;
+  allAgentData = allAgentData.filter(function(a){ return a.refId !== refId; });
   saveAgentsToStorage();
   renderAgentsTable(allAgentData);
   updateAgentStats(allAgentData);
-  showAdminToast('Agent deleted 🗑️', 'info');
+  showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
 }
 
 function saveAgentsToStorage() {
@@ -5442,22 +5436,10 @@ function showAdminToast(msg, type) {
   setTimeout(() => t.remove(), 2500);
 }
 
-// Hook into the existing show() function to load agents when panel opens
-const _origShow = window.show;
-window.show = function(name, el) {
-  if (typeof _origShow === 'function') _origShow(name, el);
-  else {
-    document.querySelectorAll('.panel').forEach(p => p.style.display = 'none');
-    const panel = document.getElementById('panel-' + name);
-    if (panel) panel.style.display = '';
-    document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-    if (el) el.classList.add('on');
-  }
-  if (name === 'rto-agents') loadAgentRequests();
-};
-
+// The main show() function already handles rto-agents via loadAgentRequests()
+// Just ensure badge updates on load
 // Check for pending agents on admin load
-setTimeout(() => {
+setTimeout(function() {
   loadAgentRequests();
 }, 2000);
 
