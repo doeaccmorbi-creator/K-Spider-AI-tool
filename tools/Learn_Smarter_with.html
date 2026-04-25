@@ -1400,6 +1400,24 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
     </div>
   </div>
   <div class="prog" style="margin-bottom:16px;"><div class="prog-fill" id="epfill" style="width:10%"></div></div>
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <span style="font-size:.78rem;font-weight:700;color:var(--muted);">🌐 Question Language:</span>
+    <select id="examLangSel" style="background:var(--bg);border:1.5px solid var(--border);border-radius:7px;padding:5px 10px;font-family:'Sora',sans-serif;color:var(--text);font-size:.8rem;font-weight:600;cursor:pointer;" onchange="switchLang(this.value)">
+      <option value="en">🌐 English</option>
+      <option value="hi">🇮🇳 हिन्दी</option>
+      <option value="gu">🇮🇳 ગુજરાતી</option>
+      <option value="mr">🇮🇳 मराठी</option>
+      <option value="ta">🇮🇳 தமிழ்</option>
+      <option value="te">🇮🇳 తెలుగు</option>
+      <option value="kn">🇮🇳 ಕನ್ನಡ</option>
+      <option value="ml">🇮🇳 മലയാളം</option>
+      <option value="bn">🇮🇳 বাংলা</option>
+      <option value="pa">🇮🇳 ਪੰਜਾਬੀ</option>
+      <option value="or">🇮🇳 ଓଡ଼ିଆ</option>
+      <option value="ur">🇮🇳 اردو</option>
+    </select>
+    <span style="font-size:.72rem;color:var(--muted);">Translates question, options & explanation via AI</span>
+  </div>
   <div id="qcont"></div>
   <div style="display:flex;justify-content:space-between;gap:10px;margin-top:14px;">
     <button class="btn btn-sec" onclick="prevQ()" id="bprev" disabled>← Prev</button>
@@ -2577,6 +2595,10 @@ async function generateMoreAIQuestions(){
   if(btn){btn.disabled=true;btn.textContent='🤖 Generating...';}
   showAILoader(eCfg.topics);
 
+  // Clear cache so truly fresh questions are generated each time
+  const cacheKey=eCfg.topics.join('|')+'|'+(eCfg.diff||'medium');
+  delete aiGeneratedCache[cacheKey];
+
   try{
     const newQs=await generateAIQuestions(eCfg.topics,20,eCfg.diff);
     hideAILoader();
@@ -2725,6 +2747,7 @@ async function startExam(){
   if(!examQs.length){toast('Could not generate questions.','e');return;}
   uAnswers=new Array(examQs.length).fill(null);
   curQ=0;eStart=Date.now();
+  translationCache={};translatingQ=false; // reset translation state
   document.getElementById('main').style.display='none';
   document.querySelector('footer').style.display='none';
   document.getElementById('exam-face').style.display='block';
@@ -2737,8 +2760,15 @@ async function startExam(){
   document.getElementById('etitle').innerHTML=eCfg.topics.join(' + ').slice(0,50)+(eCfg.topics.join(' + ').length>50?'...':'')+
     (aiCount>0?`<span class="ai-gen-badge">🤖 ${aiCount} AI</span>`:'');
   renderQ();renderNav();window.scrollTo(0,0);
+  // Sync language selector inside exam
+  const els = document.getElementById('examLangSel');
+  if(els) els.value = curLang;
 }
 function renderQ(){
+  if(curLang !== 'en'){
+    translateAndRenderQ();
+    return;
+  }
   const q=examQs[curQ];const s=uAnswers[curQ];
   const isPYQ=eCfg.md==='pyq'||selYears.length>0;
   const aiCount=examQs.filter(x=>x.aiGenerated).length;
@@ -3099,7 +3129,141 @@ const LANG_MSGS = {
   gu: { welcome: (n)=>`સ્વાગત છે, ${n}! Topics select karo.`, noName:'Aapnu puru naam enter karo.', noPhone:'Mobile number enter karo.', noEmail:'Valid email enter karo.', noTopic:'Ek topic select karo!', noWaNum:'WhatsApp number enter karo!', msgCopied:'Message copy thayu!' }
 };
 let curLang = 'en';
-function switchLang(lang){ curLang = lang; }
+let translationCache = {}; // cache: qIndex -> { lang -> translated obj }
+let translatingQ = false;
+
+const INDIAN_LANGS = {
+  en:  { label:'🌐 English',    native:'English' },
+  hi:  { label:'🇮🇳 हिन्दी',    native:'Hindi' },
+  gu:  { label:'🇮🇳 ગુજરાતી',  native:'Gujarati' },
+  mr:  { label:'🇮🇳 मराठी',     native:'Marathi' },
+  ta:  { label:'🇮🇳 தமிழ்',    native:'Tamil' },
+  te:  { label:'🇮🇳 తెలుగు',   native:'Telugu' },
+  kn:  { label:'🇮🇳 ಕನ್ನಡ',   native:'Kannada' },
+  ml:  { label:'🇮🇳 മലയാളം',  native:'Malayalam' },
+  bn:  { label:'🇮🇳 বাংলা',    native:'Bengali' },
+  pa:  { label:'🇮🇳 ਪੰਜਾਬੀ',  native:'Punjabi' },
+  or:  { label:'🇮🇳 ଓଡ଼ିଆ',   native:'Odia' },
+  ur:  { label:'🇮🇳 اردو',      native:'Urdu' },
+};
+
+function buildLangDropdown(){
+  const sel = document.getElementById('langSel');
+  if(!sel) return;
+  sel.innerHTML = Object.entries(INDIAN_LANGS).map(([v,d])=>
+    `<option value="${v}">${d.label}</option>`
+  ).join('');
+  sel.value = curLang;
+}
+
+async function switchLang(lang){
+  curLang = lang;
+  localStorage.setItem('ks_lang', lang);
+  // If exam is running, translate current question
+  if(document.getElementById('exam-face').style.display === 'block'){
+    await translateAndRenderQ();
+  }
+}
+
+async function translateAndRenderQ(){
+  if(translatingQ) return;
+  if(curLang === 'en'){ renderQ(); return; }
+  const idx = curQ;
+  const q = examQs[idx];
+  if(!q) return;
+
+  // Check cache
+  if(translationCache[idx] && translationCache[idx][curLang]){
+    renderTranslatedQ(translationCache[idx][curLang], idx);
+    return;
+  }
+
+  // Show loading state
+  translatingQ = true;
+  const qcont = document.getElementById('qcont');
+  if(qcont) qcont.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);">
+    <div style="font-size:2rem;margin-bottom:10px;">🌐</div>
+    <div style="font-weight:700;margin-bottom:6px;">Translating to ${INDIAN_LANGS[curLang]?.native||curLang}...</div>
+    <div style="font-size:.8rem;">Powered by Claude AI</div>
+  </div>`;
+
+  const langName = INDIAN_LANGS[curLang]?.native || curLang;
+  const prompt = `Translate this MCQ exactly to ${langName} language. Keep the meaning and technical terms accurate. Return ONLY valid JSON, no markdown.
+
+Input JSON:
+${JSON.stringify({q: q.q, opts: q.opts, exp: q.exp||''})}
+
+Return JSON in this exact format:
+{"q":"translated question","opts":["opt A","opt B","opt C","opt D"],"exp":"translated explanation"}`;
+
+  try {
+    const KS_PROXY = 'https://ks-api-proxy.kspiderai.workers.dev/v1/messages';
+    const res = await fetch(KS_PROXY, {
+      method:'POST',
+      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-ks-tool':'learn-smarter'},
+      body: JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1000,
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    if(!res.ok) throw new Error('API '+res.status);
+    const data = await res.json();
+    const text = data.content.map(c=>c.text||'').join('');
+    const match = text.match(/\{[\s\S]*\}/);
+    if(!match) throw new Error('No JSON');
+    const translated = JSON.parse(match[0]);
+    if(!translated.q || !Array.isArray(translated.opts) || translated.opts.length!==4) throw new Error('Bad structure');
+    // Cache it
+    if(!translationCache[idx]) translationCache[idx] = {};
+    translationCache[idx][curLang] = translated;
+    renderTranslatedQ(translated, idx);
+  } catch(err){
+    console.warn('Translation failed:', err.message);
+    toast('Translation failed — showing English','e');
+    renderQ();
+  }
+  translatingQ = false;
+}
+
+function renderTranslatedQ(translated, idx){
+  const q = examQs[idx];
+  const s = uAnswers[idx];
+  const isPYQ = eCfg.md==='pyq'||selYears.length>0;
+  const aiCount = examQs.filter(x=>x.aiGenerated).length;
+  const qAIInfo = document.getElementById('q-ai-info');
+  if(qAIInfo) qAIInfo.textContent=`🤖 ${aiCount} AI + ${examQs.length-aiCount} Local | Total: ${examQs.length} questions`;
+
+  document.getElementById('qcont').innerHTML=`
+    <div class="qcard">
+      ${q.aiGenerated?`<div class="ai-mode-banner"><span>🤖</span><div><span style="color:var(--pri);font-weight:700;">AI-Generated Question</span><span style="color:var(--muted);font-weight:400;margin-left:6px;">Fresh content by Claude AI</span></div></div>`:''}
+      ${isPYQ&&q.yr&&q.yr!=='General'?`<div class="pyr-badge">📅 Previous Year Question — ${q.yr}</div>`:''}
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:4px;">
+        <div class="qnum">Question ${idx+1} of ${examQs.length} • ${q.topic}</div>
+        <div style="font-size:.72rem;background:rgba(21,70,208,.1);color:var(--pri);border-radius:6px;padding:3px 8px;font-weight:700;">🌐 ${INDIAN_LANGS[curLang]?.native||curLang}</div>
+      </div>
+      <div class="qtext">${translated.q}</div>
+      <div class="opts">${translated.opts.map((o,i)=>`<div class="opt ${s===i?'on':''}" onclick="selOpt(${i})"><div class="okey">${String.fromCharCode(65+i)}</div><div>${o}</div></div>`).join('')}</div>
+      ${eCfg.hints&&translated.exp?`<div style="margin-top:14px;background:rgba(21,70,208,.07);border-radius:8px;padding:11px;font-size:.8rem;color:var(--muted);"><strong>💡 ${curLang==='hi'?'संकेत':curLang==='gu'?'સંકેત':'Hint'}:</strong> ${translated.exp}</div>`:''}
+    </div>`;
+  document.getElementById('eprog').textContent=`${idx+1}/${examQs.length}`;
+  document.getElementById('epfill').style.width=`${((idx+1)/examQs.length)*100}%`;
+  document.getElementById('bprev').disabled=idx===0;
+  document.getElementById('bnext').textContent=idx===examQs.length-1?'✓ Finish':'Next →';
+  renderNav();
+}
+
+// Load saved language preference
+(function(){
+  const saved = localStorage.getItem('ks_lang');
+  if(saved && INDIAN_LANGS[saved]) curLang = saved;
+  // Rebuild dropdown with all Indian languages after DOM ready
+  document.addEventListener('DOMContentLoaded', ()=>{
+    buildLangDropdown();
+    const sel = document.getElementById('langSel');
+    if(sel){ sel.value = curLang; sel.onchange = e => switchLang(e.target.value); }
+  });
+})();
 
 // ===================== SHARE TOOL =====================
 const TOOL_PROMOS = [
