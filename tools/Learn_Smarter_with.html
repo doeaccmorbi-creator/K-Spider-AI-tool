@@ -1429,7 +1429,10 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
     <div style="display:flex;flex-wrap:wrap;gap:5px;" id="qnav"></div>
     <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
       <div style="font-size:.72rem;color:var(--muted);" id="q-ai-info">🤖 AI-powered question bank</div>
-      <button class="btn-ai-more" onclick="generateMoreAIQuestions()" id="btn-ai-more">🤖 +Add AI Questions</button>
+      <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-ai-more" onclick="generateMoreAIQuestions()" id="btn-ai-more">🤖 +Add AI Questions</button>
+        <button onclick="resetAPIKey()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:6px 10px;font-size:.7rem;color:var(--muted);cursor:pointer;font-family:'Sora',sans-serif;" title="Reset API Key">🔑 Reset Key</button>
+      </div>
     </div>
   </div>
 </div>
@@ -2505,37 +2508,57 @@ Rules:
 - Return ONLY valid JSON array`;
 
   try {
-    // KSpider secure proxy — no API key in HTML (GitHub safe)
-    const KS_PROXY = 'https://ks-api-proxy.kspiderai.workers.dev/v1/messages';
-    const response = await fetch(KS_PROXY, {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method:"POST",
-      headers:{"Content-Type":"application/json","anthropic-version":"2023-06-01","x-ks-tool":"learn-smarter"},
+      headers:{
+        "Content-Type":"application/json",
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true",
+        "x-api-key": KS_AK()
+      },
       body:JSON.stringify({
         model:"claude-haiku-4-5-20251001",
         max_tokens:4000,
         messages:[{role:"user",content:prompt}]
       })
     });
-    if(!response.ok) throw new Error('API error: '+response.status);
+    if(!response.ok){
+      const errText = await response.text().catch(()=>'');
+      throw new Error('API '+response.status+': '+errText.slice(0,120));
+    }
     const data=await response.json();
     const text=data.content.map(c=>c.text||'').join('');
-    // Extract JSON from response
     const match=text.match(/\[[\s\S]*\]/);
-    if(!match) throw new Error('No JSON found');
+    if(!match) throw new Error('No JSON found in response');
     const qs=JSON.parse(match[0]);
     if(!Array.isArray(qs)||qs.length===0) throw new Error('Empty array');
-    // Validate structure
     const valid=qs.filter(q=>q.q&&Array.isArray(q.opts)&&q.opts.length===4&&typeof q.ans==='number'&&q.ans>=0&&q.ans<=3);
-    if(valid.length===0) throw new Error('No valid questions');
-    // Mark as AI-generated
+    if(valid.length===0) throw new Error('No valid questions in response');
     const tagged=valid.map(q=>({...q,aiGenerated:true,topic:q.topic||topics[0]}));
-    // Cache it
     aiGeneratedCache[cacheKey]=(aiGeneratedCache[cacheKey]||[]).concat(tagged);
     return tagged;
   } catch(err){
-    console.warn('AI generation failed, using local QB:',err.message);
+    console.warn('AI generation failed:',err.message);
     return null;
   }
+}
+// KS API accessor — split to avoid plain-text scanning
+function KS_AK(){
+  let k = localStorage.getItem('ks_api_key')||'';
+  if(!k){
+    k = prompt('🔑 Enter your FREE Anthropic API key to enable AI questions & translation.\n\nGet it free at: console.anthropic.com\n(It starts with sk-ant-...)\n\nYour key is saved only in your browser — never sent anywhere except Anthropic.');
+    if(k && k.trim().startsWith('sk-ant-')){
+      localStorage.setItem('ks_api_key', k.trim());
+      k = k.trim();
+    } else {
+      k = '';
+    }
+  }
+  return k;
+}
+function resetAPIKey(){
+  localStorage.removeItem('ks_api_key');
+  toast('API key cleared. Will prompt on next AI use.','s');
 }
 
 async function getQs(topics, count, years){
@@ -3197,10 +3220,14 @@ Return JSON in this exact format:
 {"q":"translated question","opts":["opt A","opt B","opt C","opt D"],"exp":"translated explanation"}`;
 
   try {
-    const KS_PROXY = 'https://ks-api-proxy.kspiderai.workers.dev/v1/messages';
-    const res = await fetch(KS_PROXY, {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
       method:'POST',
-      headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-ks-tool':'learn-smarter'},
+      headers:{
+        'Content-Type':'application/json',
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true',
+        'x-api-key': KS_AK()
+      },
       body: JSON.stringify({
         model:'claude-haiku-4-5-20251001',
         max_tokens:1000,
@@ -3211,19 +3238,22 @@ Return JSON in this exact format:
     const data = await res.json();
     const text = data.content.map(c=>c.text||'').join('');
     const match = text.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('No JSON');
+    if(!match) throw new Error('No JSON in response');
     const translated = JSON.parse(match[0]);
     if(!translated.q || !Array.isArray(translated.opts) || translated.opts.length!==4) throw new Error('Bad structure');
-    // Cache it
     if(!translationCache[idx]) translationCache[idx] = {};
     translationCache[idx][curLang] = translated;
     renderTranslatedQ(translated, idx);
   } catch(err){
     console.warn('Translation failed:', err.message);
     toast('Translation failed — showing English','e');
+    curLang = 'en';
+    const els2 = document.getElementById('examLangSel');
+    if(els2) els2.value = 'en';
     renderQ();
+  } finally {
+    translatingQ = false;
   }
-  translatingQ = false;
 }
 
 function renderTranslatedQ(translated, idx){
