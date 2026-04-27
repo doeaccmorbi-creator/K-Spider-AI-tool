@@ -5856,35 +5856,66 @@ document.addEventListener('DOMContentLoaded', function() {
   ksCookieInit();
 
   // ── Handle Google redirect sign-in result ──────────────────────────
-  // getRedirectResult() is ALWAYS called on page load (not just when flag set)
-  // so result is never missed even if sessionStorage was cleared
-  try {
-    var _ksAuth2 = (window.KS && window.KS.auth) ? window.KS.auth
-                   : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
-                      ? firebase.auth() : null);
-    if (_ksAuth2) {
-      var _hadRedirect = !!sessionStorage.getItem('_ks_google_redirect');
-      if (_hadRedirect) {
-        try { sessionStorage.removeItem('_ks_google_redirect'); } catch(e) {}
-        _ksShowGoogleLoading(true, 'returning');
-      }
-      _ksAuth2.getRedirectResult().then(function(result) {
-        _ksShowGoogleLoading(false);
-        if (result && result.user) {
-          _ksProcessGoogleResult(result.user);
-        } else if (_hadRedirect) {
-          // Redirect happened but no user — something went wrong
-          toast('⚠️ Google sign-in complete nahi hua. Dobara try karo.', 'warn', 5000);
-        }
-      }).catch(function(e) {
-        _ksShowGoogleLoading(false);
-        console.warn('[KSpider] getRedirectResult error:', e.code, e.message);
-        if (_hadRedirect) {
-          toast('❌ Google sign-in failed (' + (e.code || 'unknown') + '). Dobara try karo.', 'error', 6000);
-        }
-      });
+  // FIX v5.3: Race condition fix — Firebase SDK loads async via CDN.
+  // DOMContentLoaded fires BEFORE window.KS.auth is ready.
+  // Solution: Poll until auth is available (max 10s), then call getRedirectResult().
+  // This preserves all existing logic — only the timing is fixed.
+  (function _ksHandleGoogleRedirect() {
+    var _hadRedirect = !!sessionStorage.getItem('_ks_google_redirect');
+    if (_hadRedirect) {
+      // Show loading overlay immediately so screen doesn't look frozen
+      try { sessionStorage.removeItem('_ks_google_redirect'); } catch(e) {}
+      _ksShowGoogleLoading(true, 'returning');
     }
-  } catch(e) { console.warn('[KSpider] Redirect handler error:', e); }
+
+    var _pollAttempts = 0;
+    var _maxPolls = 100; // 100 × 100ms = 10 seconds max wait
+
+    function _pollForAuth() {
+      var _ksAuth2 = (window.KS && window.KS.auth) ? window.KS.auth
+                     : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
+                        ? firebase.auth() : null);
+
+      if (_ksAuth2) {
+        // Auth is ready — call getRedirectResult now
+        try {
+          _ksAuth2.getRedirectResult().then(function(result) {
+            _ksShowGoogleLoading(false);
+            if (result && result.user) {
+              _ksProcessGoogleResult(result.user);
+            } else if (_hadRedirect) {
+              toast('⚠️ Google sign-in complete nahi hua. Dobara try karo.', 'warn', 5000);
+            }
+          }).catch(function(e) {
+            _ksShowGoogleLoading(false);
+            console.warn('[KSpider] getRedirectResult error:', e.code, e.message);
+            if (_hadRedirect) {
+              var errMap = {
+                'auth/unauthorized-domain': '❌ Domain authorized nahi. Admin se contact karo.',
+                'auth/operation-not-allowed': '⚠️ Google Sign-In enable nahi. Thodi der baad try karo.',
+                'auth/network-request-failed': '❌ Network error. Internet check karo.'
+              };
+              toast(errMap[e.code] || '❌ Google sign-in failed (' + (e.code || 'unknown') + '). Dobara try karo.', 'error', 6000);
+            }
+          });
+        } catch(e) { _ksShowGoogleLoading(false); console.warn('[KSpider] Redirect handler error:', e); }
+
+      } else if (_pollAttempts < _maxPolls) {
+        // Firebase not ready yet — retry after 100ms
+        _pollAttempts++;
+        setTimeout(_pollForAuth, 100);
+      } else {
+        // Timeout after 10s — Firebase never loaded
+        _ksShowGoogleLoading(false);
+        if (_hadRedirect) {
+          toast('❌ Page load mein problem. Refresh karo aur dobara try karo.', 'error', 7000);
+        }
+        console.warn('[KSpider] Firebase auth did not initialize in time for redirect result.');
+      }
+    }
+
+    _pollForAuth();
+  })();
 
   // Returning user check - agar localStorage mein verified hai toh seedha
   if (isReg()) {
