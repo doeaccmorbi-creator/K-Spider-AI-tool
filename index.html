@@ -1513,7 +1513,7 @@ body {
      ══════════════════════════════════════════════════════ -->
 <div class="ov" id="google-profile-ov" role="dialog" aria-modal="true" aria-label="Complete Your Profile">
   <div class="mod" style="max-width:500px">
-    <button class="mcl" onclick="closeM('google-profile-ov')" aria-label="Close">✕</button>
+    <button class="mcl" onclick="(function(){_gpSubmitting=false;window._gpGoogleUser=null;var f=document.getElementById('gp-form');if(f)f.reset();var s=document.getElementById('gp-status-box');if(s)s.classList.remove('show','err');var b=document.getElementById('gp-submit-btn');if(b){b.disabled=false;b.innerHTML='🚀 Complete Registration &amp; Start Using Tools →';}closeM('google-profile-ov');})()" aria-label="Close">✕</button>
     <div class="mbd">
       <div style="font-size:2.2rem;margin-bottom:12px">🕷️</div>
       <div style="font-family:'Syne',sans-serif;font-size:1.35rem;font-weight:800;color:var(--t1);margin-bottom:6px;letter-spacing:-.03em;line-height:1.2">
@@ -3172,6 +3172,11 @@ function saveUserToFirebase(userData, callback) {
     var _now = new Date().toISOString();
     var _fsNow = (typeof firebase !== 'undefined' && firebase.firestore && firebase.firestore.FieldValue)
                    ? firebase.firestore.FieldValue.serverTimestamp() : _now;
+
+    // ── For NEW users (no existing doc): use set WITHOUT merge (creates all fields)
+    // ── For EXISTING users (doc exists): use set WITH merge (safe update)
+    var _setOptions = existingDoc.exists ? { merge: true } : {};
+
     _db.collection('users').doc(key).set({
       name:          userData.name,
       email:         userData.email,
@@ -3200,7 +3205,7 @@ function saveUserToFirebase(userData, callback) {
       suspended:     existingDoc.exists ? (existingDoc.data().suspended || false) : false,
       disabled:      existingDoc.exists ? (existingDoc.data().disabled  || false) : false,
       updatedAt:     _fsNow
-    }, { merge: true })
+    }, _setOptions)
     .then(function() {
       console.log('[KSpider] User saved to Firebase ✅');
       // On first registration, also set createdAt
@@ -4063,22 +4068,25 @@ function signInWithGoogle() {
 
   _setGoogleBtnLoading(true);
 
-  // -- Build Google provider --
-  var provider;
-  try {
-    provider = new firebase.auth.GoogleAuthProvider();
-  } catch(e) {
-    _setGoogleBtnLoading(false);
-    toast('❌ Google provider init failed. Refresh karo.', 'error', 5000);
-    console.error('[KSpider] GoogleAuthProvider init error:', e);
-    return;
-  }
-  provider.setCustomParameters({ prompt: 'select_account' });
-  provider.addScope('profile');
-  provider.addScope('email');
+  // ── Force-sign-out any existing Firebase Auth session first
+  //    so a different Google account can sign in cleanly
+  var _doSignIn = function() {
+    // -- Build Google provider --
+    var provider;
+    try {
+      provider = new firebase.auth.GoogleAuthProvider();
+    } catch(e) {
+      _setGoogleBtnLoading(false);
+      toast('❌ Google provider init failed. Refresh karo.', 'error', 5000);
+      console.error('[KSpider] GoogleAuthProvider init error:', e);
+      return;
+    }
+    provider.setCustomParameters({ prompt: 'select_account' });
+    provider.addScope('profile');
+    provider.addScope('email');
 
-  // -- Sign in with popup using KS.auth (single instance) --
-  _auth.signInWithPopup(provider)
+    // -- Sign in with popup using KS.auth (single instance) --
+    _auth.signInWithPopup(provider)
   .then(function(result) {
     var googleUser = result.user;
     var email = googleUser.email;
@@ -4092,7 +4100,9 @@ function signInWithGoogle() {
     checkEmailExists(email, function(exists, existingData) {
       _setGoogleBtnLoading(false);
 
-      if (exists && existingData && existingData.verified) {
+      // Existing verified user WITH complete profile → Welcome Back
+      if (exists && existingData && existingData.verified &&
+          existingData.mobile && existingData.city) {
         // -- Existing user - restore session --
         var mergedUser = Object.assign({}, existingData, {
           loginMethod: 'google',
@@ -4111,7 +4121,7 @@ function signInWithGoogle() {
         return;
       }
 
-      // -- New user via Google → show profile completion modal --
+      // New user OR incomplete profile → show profile completion modal
       window._gpGoogleUser = {
         email:        email,
         name:         name,
@@ -4166,6 +4176,19 @@ function signInWithGoogle() {
     var msg = errMsgs[error.code] || ('❌ Google Sign-In failed (' + error.code + '). Email se register karo ya page refresh karo.');
     toast(msg, 'error', 8000);
   });
+  }; // end _doSignIn
+
+  // ── Sign out any existing Firebase Auth user first, then open popup
+  try {
+    var _curUser = _auth.currentUser;
+    if (_curUser) {
+      _auth.signOut().then(_doSignIn).catch(_doSignIn);
+    } else {
+      _doSignIn();
+    }
+  } catch(e) {
+    _doSignIn();
+  }
 }
 
 /* ======================================================
@@ -4251,6 +4274,21 @@ function submitGoogleProfile(e) {
   saveUserToFirebase(newUser, function(ok) {
     _gpSubmitting = false;
     if (btn) { btn.disabled = false; btn.innerHTML = '🚀 Complete Registration &amp; Start Using Tools →'; }
+
+    if (!ok) {
+      // Firebase save failed - but localStorage is saved so user can continue
+      // Still proceed to let user access tools
+      console.warn('[KSpider] Firebase save had an issue, proceeding with localStorage data');
+    }
+
+    // Full cleanup of profile form for next use
+    var gpForm = document.getElementById('gp-form');
+    if (gpForm) gpForm.reset();
+    var gpCountry = document.getElementById('gp-country');
+    var gpState   = document.getElementById('gp-state');
+    if (gpCountry) gpCountry.value = 'India';
+    if (gpState)   gpState.value   = 'Gujarat';
+    _hideGpStatus();
 
     updateUW();
     closeM('google-profile-ov');
