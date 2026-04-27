@@ -1017,6 +1017,7 @@ body {
 
 .sp-icon { width: 16px; height: 16px; border: 2px solid rgba(0,0,0,.15); border-top-color: var(--t1); border-radius: 50%; animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
+@keyframes ks-spin { to { transform: rotate(360deg); } }
 
 .rv { opacity: 0; transform: translateY(24px); transition: opacity .65s var(--ease), transform .65s var(--ease); }
 .rv.v { opacity: 1; transform: translateY(0); }
@@ -2865,8 +2866,8 @@ body {
       <h2 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.3rem;color:var(--t1);margin-bottom:10px">Registration Required</h2>
       <p style="font-size:.84rem;color:var(--t2);margin-bottom:8px">You need to <strong>register for free</strong> to use K Spider AI Tools.</p>
       <p style="font-size:.78rem;color:var(--t3);margin-bottom:24px">It's 100% free — register once, access all 16+ live tools forever!</p>
-      <button onclick="closeM('gate-ov');openM('reg-ov')" style="width:100%;padding:13px;background:var(--t1);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.88rem;border:none;border-radius:var(--r8);cursor:pointer;transition:all .25s;margin-bottom:10px">
-        🔐 Register Free Now →
+      <button onclick="closeM('gate-ov');signInWithGoogle();" style="width:100%;padding:13px;background:var(--t1);color:#fff;font-family:'DM Sans',sans-serif;font-weight:800;font-size:.88rem;border:none;border-radius:var(--r8);cursor:pointer;transition:all .25s;margin-bottom:10px">
+        🔐 Register Free with Google →
       </button>
       <!-- Google Sign-In in Gate Modal -->
       <div style="display:flex;align-items:center;gap:8px;margin:10px 0 8px">
@@ -3934,7 +3935,7 @@ function _completeVerification() {
 }
 
 function resendOTP() {
-  if (!_pendingUser) { toast('Pehle register karo.', 'error'); openM('reg-ov'); return; }
+  if (!_pendingUser) { toast('Pehle Google se register karo.', 'error'); signInWithGoogle(); return; }
   var now = Date.now();
   if (_rl['resend_otp'] && (now - _rl['resend_otp']) < 30000) {
     var remaining = Math.ceil((30000 - (now - _rl['resend_otp'])) / 1000);
@@ -4046,27 +4047,65 @@ function _setGoogleBtnLoading(loading) {
   });
 }
 
+// Full-screen Google loading overlay — shown while popup/redirect is in progress
+function _ksShowGoogleLoading(show) {
+  var ov = document.getElementById('ks-google-loading-ov');
+  if (!ov) {
+    // Create overlay on first use
+    ov = document.createElement('div');
+    ov.id = 'ks-google-loading-ov';
+    ov.style.cssText = [
+      'position:fixed','top:0','left:0','width:100%','height:100%',
+      'background:rgba(0,0,0,.72)','z-index:99999',
+      'display:flex','align-items:center','justify-content:center',
+      'flex-direction:column','gap:18px','backdrop-filter:blur(4px)'
+    ].join(';');
+    ov.innerHTML = [
+      '<div style="width:52px;height:52px;border:4px solid rgba(255,255,255,.15);',
+        'border-top-color:#fff;border-radius:50%;',
+        'animation:ks-spin .8s linear infinite"></div>',
+      '<div style="text-align:center">',
+        '<div style="color:#fff;font-family:\'DM Sans\',sans-serif;font-weight:700;',
+          'font-size:1rem;margin-bottom:6px">🔐 Google Sign-In</div>',
+        '<div style="color:rgba(255,255,255,.7);font-size:.8rem;">',
+          'Ek second... Google account choose karo</div>',
+      '</div>',
+      '<div style="color:rgba(255,255,255,.45);font-size:.72rem;margin-top:4px">',
+        'Popup band ho gayi ho toh yahan click karo: ',
+        '<span onclick="_ksShowGoogleLoading(false)" ',
+          'style="color:#fbbf24;cursor:pointer;text-decoration:underline">Cancel</span>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(ov);
+  }
+  ov.style.display = show ? 'flex' : 'none';
+}
+
 function signInWithGoogle() {
   // -- Get the single authoritative auth instance --
-  // Always use KS.auth (initialized in initKS) - never create a 2nd instance
   var _auth = (window.KS && window.KS.auth) ? window.KS.auth
               : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
                  ? firebase.auth() : null);
 
   if (!_auth) {
-    // Firebase not loaded yet - retry after 1.5s
-    toast('⚠️ Google Sign-In load ho raha hai — 1 second mein dobara try karo.', 'warn', 3000);
+    // Firebase not ready yet — show loading and retry
+    _ksShowGoogleLoading(true);
+    toast('⏳ Google Sign-In prepare ho raha hai...', 'warn', 2000);
     setTimeout(function() {
       var _retryAuth = (window.KS && window.KS.auth) ? window.KS.auth
                        : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
                           ? firebase.auth() : null);
       if (_retryAuth) { signInWithGoogle(); }
-      else { toast('❌ Google Sign-In available nahi. Refresh karke try karo.', 'error', 5000); }
+      else {
+        _ksShowGoogleLoading(false);
+        toast('❌ Google Sign-In load nahi hua. Page refresh karo.', 'error', 5000);
+      }
     }, 1500);
     return;
   }
 
   _setGoogleBtnLoading(true);
+  _ksShowGoogleLoading(true);
 
   // -- Build Google provider --
   var _ksProvider;
@@ -4086,6 +4125,7 @@ function signInWithGoogle() {
 
   // ── Shared handler for successful Google sign-in result ──────────────
   function _ksHandleGoogleResult(result) {
+    _ksShowGoogleLoading(false);
     var googleUser = result.user;
     var email = googleUser.email;
     var name  = googleUser.displayName || email.split('@')[0];
@@ -4142,6 +4182,7 @@ function signInWithGoogle() {
   // ── Shared error handler ─────────────────────────────────────────────
   function _ksHandleGoogleError(error) {
     _setGoogleBtnLoading(false);
+    _ksShowGoogleLoading(false);
     console.error('[KSpider] Google Sign-In error:', error.code, error.message);
 
     if (error.code === 'auth/popup-closed-by-user' ||
@@ -5070,13 +5111,15 @@ function openRegOrProfile() {
   if (u && u.verified) {
     openWelcomeBack(u);
   } else {
-    openM('reg-ov');
+    // New system: directly trigger Google Sign-In
+    // No old modal — Google account picker appears immediately
+    signInWithGoogle();
   }
 }
 
 function openWelcomeBack(u) {
   u = u || getUser();
-  if (!u) { openM('reg-ov'); return; }
+  if (!u) { signInWithGoogle(); return; }
 
   var planType = u.planType || u.plan || 'free';
   var planColors = { premium: '#b8792a', franchise: '#7c3aed', free: 'var(--t4)' };
@@ -5151,7 +5194,7 @@ function restoreSessionFromGate() {
     } else if(fbUser && !fbUser.verified){
       msgEl.style.color = '#fbbf24';
       msgEl.textContent = '⚠️ Email registered lekin verify nahi hua. Register form mein OTP complete karo.';
-      setTimeout(function(){ closeM('gate-ov'); openM('reg-ov'); }, 2000);
+      setTimeout(function(){ closeM('gate-ov'); signInWithGoogle(); }, 2000);
     } else {
       msgEl.style.color = '#f87171';
       msgEl.textContent = '❌ Yeh email registered nahi hai. Register karo!';
@@ -5843,7 +5886,9 @@ document.addEventListener('DOMContentLoaded', function() {
                       ? firebase.auth() : null);
     if (_ksAuth2 && sessionStorage.getItem('_ks_google_redirect')) {
       sessionStorage.removeItem('_ks_google_redirect');
+      _ksShowGoogleLoading(true); // show loading while processing redirect result
       _ksAuth2.getRedirectResult().then(function(result) {
+        _ksShowGoogleLoading(false);
         if (result && result.user) {
           var _rEmail = result.user.email;
           var _rName  = result.user.displayName || _rEmail.split('@')[0];
@@ -5875,7 +5920,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
           });
         }
-      }).catch(function(e){ console.warn('[KSpider] Redirect result error:', e); });
+      }).catch(function(e){ _ksShowGoogleLoading(false); console.warn('[KSpider] Redirect result error:', e); });
     }
   } catch(e) { console.warn('[KSpider] Redirect handler error:', e); }
 
@@ -5960,8 +6005,8 @@ document.addEventListener('DOMContentLoaded', function() {
       if (isReg()) {
         openWelcomeBack();
       } else {
-        openM('reg-ov');
-        toast('🔐 K Spider AI Tools use karne ke liye register karo!', 'warn', 5000);
+        signInWithGoogle();
+        toast('🔐 K Spider AI Tools use karne ke liye Google se register karo!', 'warn', 5000);
       }
     }, 600);
     try { window.history.replaceState({}, '', window.location.pathname); } catch(e) {}
