@@ -503,9 +503,6 @@
 
     /* ═══ AGENT PROMO BANNER ═══ */
     .agent-promo-banner {
-      position: sticky;
-      top: 0;
-      z-index: 1200;
       background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #f59e0b 100%);
       color: #fff; padding: 14px 20px; text-align: center;
       border-bottom: 3px solid var(--accent);
@@ -711,12 +708,6 @@
       <div class="hero-cta">
         <button class="btn btn-accent btn-lg" onclick="showPage('practice')">📚 Start Practice</button>
         <button class="btn btn-ghost-white btn-lg" onclick="showPage('test-setup')">✏️ Take Mock Test</button>
-      </div>
-      <!-- RTO Agent CTA — visible only when NOT viewing via agent link -->
-      <div id="hero-agent-cta" style="margin-top:14px;display:none">
-        <button onclick="openRegModal()" style="background:rgba(255,255,255,0.15);border:1.5px solid rgba(255,255,255,0.5);color:#fff;padding:9px 22px;border-radius:999px;font-size:0.82rem;font-weight:600;cursor:pointer;backdrop-filter:blur(4px);transition:.2s;letter-spacing:0.02em" onmouseover="this.style.background='rgba(255,255,255,0.28)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
-          🏢 RTO Agent? Get Your FREE Promo Link →
-        </button>
       </div>
     </div>
   </section>
@@ -979,26 +970,6 @@
       <h3 style="color:var(--success-dark)">📤 Share with Friends</h3>
       <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px">Help your friends pass their RTO exam too!</p>
       <button class="btn btn-success" onclick="shareApp()">📤 Share App on WhatsApp</button>
-    </div>
-
-    <!-- Language Coverage Guide Card -->
-    <div class="section-card" style="background:linear-gradient(135deg,#fefce8,#fef9c3);border-color:#fde68a">
-      <h3 style="color:#92400e">🌐 Language Translation Status</h3>
-      <p style="font-size:0.83rem;color:var(--muted);margin-bottom:10px">
-        To show questions in <strong>Gujarati, Hindi or any Indian language</strong> from your Google Sheet directly — add these columns:
-      </p>
-      <div style="background:#fff;border-radius:8px;padding:10px 12px;font-size:0.75rem;font-family:monospace;margin-bottom:10px;border:1px solid #fde68a;overflow-x:auto;white-space:nowrap">
-        question_gu &nbsp;|&nbsp; optionA_gu &nbsp;|&nbsp; optionB_gu &nbsp;|&nbsp; optionC_gu &nbsp;|&nbsp; optionD_gu &nbsp;|&nbsp; explanation_gu
-      </div>
-      <p style="font-size:0.75rem;color:var(--muted);margin-bottom:10px">
-        Hindi → <code>_hi</code> &nbsp;·&nbsp; Marathi → <code>_mr</code> &nbsp;·&nbsp; Tamil → <code>_ta</code> &nbsp;·&nbsp; Telugu → <code>_te</code> &nbsp;·&nbsp; Kannada → <code>_kn</code> &nbsp;·&nbsp; Bengali → <code>_bn</code> &nbsp;·&nbsp; Punjabi → <code>_pa</code>
-      </p>
-      <div id="lang-coverage-info" style="font-size:0.75rem;background:rgba(255,255,255,0.7);border-radius:8px;padding:8px 10px;color:#6b7280">
-        ⏳ Loading translation coverage...
-      </div>
-      <p style="font-size:0.72rem;color:var(--muted);margin-top:8px">
-        💡 Sheet columns = instant, offline, no API · MyMemory API = online fallback · Embedded = always works
-      </p>
     </div>
     <!-- ═══ GOOGLE ADSENSE — INLINE (DASHBOARD) ═══ -->
     <div class="ad-slot ad-slot-inline">
@@ -1628,22 +1599,6 @@ let QUESTIONS = [
 
     const dataLines = allLines.slice(1);
     const parsed = [];
-
-    // ── Detect multi-language columns: question_gu, optionA_hi, etc. ──
-    const SHEET_LANGS = ['hi','gu','mr','ta','te','kn','bn','pa'];
-    const langColIdx = {};
-    SHEET_LANGS.forEach(lang => {
-      langColIdx[lang] = {
-        question:    headerCols.findIndex(h => h === 'question'+lang || h === 'q'+lang),
-        optA:        headerCols.findIndex(h => h === 'optiona'+lang || h === 'opta'+lang),
-        optB:        headerCols.findIndex(h => h === 'optionb'+lang || h === 'optb'+lang),
-        optC:        headerCols.findIndex(h => h === 'optionc'+lang || h === 'optc'+lang),
-        optD:        headerCols.findIndex(h => h === 'optiond'+lang || h === 'optd'+lang),
-        explanation: headerCols.findIndex(h => h === 'explanation'+lang || h === 'exp'+lang),
-        category:    headerCols.findIndex(h => h === 'category'+lang || h === 'cat'+lang),
-      };
-    });
-
     dataLines.forEach((row, idx) => {
       const cols = parseCSVRow(row);
       if (cols.length < 4) return;
@@ -1660,28 +1615,10 @@ let QUESTIONS = [
       if (!question || !optA) return;
       const ansMap = { A: 0, B: 1, C: 2, D: 3, '0':0, '1':1, '2':2, '3':3 };
       const ansIdx = ansMap[correctRaw] ?? ansMap[correctRaw.charAt(0)] ?? 0;
-
-      // ── Build per-language data from sheet columns ──
-      const sheetTranslations = {};
-      SHEET_LANGS.forEach(lang => {
-        const lc = langColIdx[lang];
-        const lq = get(lc.question);
-        const la = get(lc.optA);
-        if (lq && la) {
-          sheetTranslations[lang] = {
-            question:    lq,
-            options:     [la, get(lc.optB), get(lc.optC), get(lc.optD)].filter(o => o),
-            explanation: get(lc.explanation) || explanation,
-            category:    get(lc.category) || category,
-          };
-        }
-      });
-
       parsed.push({
         id: parseInt(idRaw) || (idx + 1),
         question, options: [optA, optB, optC || '', optD || ''].filter(o => o),
-        answer: ansIdx, explanation, category,
-        sheetTranslations  // ← per-language data from sheet (empty {} if not in sheet)
+        answer: ansIdx, explanation, category
       });
     });
 
@@ -1937,40 +1874,14 @@ async function translateText(text, targetLang) {
   }
 }
 
-// ── Translate full question — Priority order: ──
-// 1. Memory cache (fastest)
-// 2. Google Sheet columns (question_gu, optionA_gu etc.) — instant, no API
-// 3. MyMemory Free API (online fallback)
-// 4. English fallback
+// ── Translate full question (question + all options + explanation) ──
 async function translateQuestion(q, lang) {
   if (lang === 'en') return q;
   if (!translCache[lang]) translCache[lang] = {};
-
-  // Priority 1: Memory cache
   if (translCache[lang][q.id]) return translCache[lang][q.id];
 
-  // Priority 2: Direct from Google Sheet columns (best quality, no API needed)
-  if (q.sheetTranslations && q.sheetTranslations[lang]) {
-    const t = q.sheetTranslations[lang];
-    const translated = {
-      ...q,
-      question:    t.question,
-      options:     t.options && t.options.length >= 2 ? t.options : q.options,
-      explanation: t.explanation || q.explanation,
-      category:    t.category || q.category,
-    };
-    translCache[lang][q.id] = translated;
-    try {
-      const cacheKey = `rto_trcache_${lang}`;
-      const existing = JSON.parse(localStorage.getItem(cacheKey) || '{}');
-      existing[q.id] = translated;
-      localStorage.setItem(cacheKey, JSON.stringify(existing));
-    } catch(e) {}
-    return translated;
-  }
-
-  // Priority 3: MyMemory Free API (online)
   try {
+    // Translate all parts in parallel for speed
     const [tQuestion, ...tRest] = await Promise.all([
       translateText(q.question, lang),
       ...q.options.map(opt => translateText(opt, lang)),
@@ -1998,19 +1909,8 @@ async function translateQuestion(q, lang) {
 
     return translated;
   } catch(e) {
-    // Priority 4: English fallback
     return q;
   }
-}
-
-// ── Check how many questions have sheet translations for a language ──
-function getTranslationCoverage(lang) {
-  if (lang === 'en') return { covered: QUESTIONS.length, total: QUESTIONS.length, pct: 100 };
-  const covered = QUESTIONS.filter(q =>
-    (q.sheetTranslations && q.sheetTranslations[lang]) ||
-    (translCache[lang] && translCache[lang][q.id])
-  ).length;
-  return { covered, total: QUESTIONS.length, pct: Math.round((covered / QUESTIONS.length) * 100) };
 }
 
 // ════════════════════════════════════════════════════════════
@@ -2052,10 +1952,11 @@ const EMBEDDED_TRANSLATIONS = {
   const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
   langs.forEach(lang => {
     try {
-      // 1. Load embedded translations (offline baseline — always works)
+      // 1. First load embedded translations (offline baseline)
       if (EMBEDDED_TRANSLATIONS[lang]) {
         if (!translCache[lang]) translCache[lang] = {};
         const embedded = EMBEDDED_TRANSLATIONS[lang];
+        // Map embedded to full question objects
         QUESTIONS.forEach(q => {
           if (embedded[q.id] && !translCache[lang][q.id]) {
             translCache[lang][q.id] = {
@@ -2067,15 +1968,13 @@ const EMBEDDED_TRANSLATIONS = {
           }
         });
       }
-      // 2. Override with localStorage (user-downloaded via MyMemory)
+      // 2. Then override with localStorage (user-downloaded, more complete)
       const stored = localStorage.getItem(`rto_trcache_${lang}`);
       if (stored) {
         const parsed = JSON.parse(stored);
         if (!translCache[lang]) translCache[lang] = {};
         Object.assign(translCache[lang], parsed);
       }
-      // 3. Sheet translations (loaded when questions fetch) override all
-      //    — handled live in translateQuestion() via q.sheetTranslations
     } catch(e) {}
   });
   // Update cached count badge on dashboard load
@@ -2215,15 +2114,6 @@ function showPage(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (id === 'practice') renderPractice();
   if (id === 'dashboard') renderDashboard();
-
-  // ── Ensure agent banner stays visible on EVERY screen ──
-  // When user clicks a promo link, banner must show on ALL screens
-  if (window._activeUrlAgent) {
-    const banner = document.getElementById('agent-promo-banner');
-    if (banner && banner.style.display === 'none') {
-      banner.style.display = 'block';
-    }
-  }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -2233,17 +2123,6 @@ function setLang(lang) {
   if (!lang) return;
   appState.lang = lang;
   localStorage.setItem('rto_lang', lang);
-  // Show translation coverage info on language change
-  if (lang !== 'en') {
-    const cov = getTranslationCoverage(lang);
-    if (cov.pct === 100) {
-      showToast('✅ ' + LANG_NAMES[lang] + ': All ' + cov.total + ' questions available!', 'success');
-    } else if (cov.pct > 0) {
-      showToast('🟡 ' + LANG_NAMES[lang] + ': ' + cov.covered + '/' + cov.total + ' from sheet · rest via API', 'info');
-    } else {
-      showToast('🌐 ' + LANG_NAMES[lang] + ': Translating via MyMemory API...', 'info');
-    }
-  }
   var hdr = document.getElementById('header-lang');
   var hero = document.getElementById('hero-lang');
   if (hdr) hdr.value = lang;
@@ -2710,18 +2589,6 @@ function renderDashboard() {
 
   // Update offline cache status
   updateOfflineCacheStatus();
-
-  // Update language coverage info card
-  const covEl = document.getElementById('lang-coverage-info');
-  if (covEl) {
-    const langs = ['hi','gu','mr','ta','te','kn','bn','pa'];
-    const parts = langs.map(lang => {
-      const cov = getTranslationCoverage(lang);
-      const icon = cov.pct === 100 ? '✅' : cov.pct > 0 ? '🟡' : '⭕';
-      return `${icon} ${LANG_NAMES[lang]}: ${cov.covered}/${cov.total}`;
-    });
-    covEl.innerHTML = '<strong>Sheet Translation Coverage:</strong><br><span style="line-height:2">' + parts.join(' &nbsp;·&nbsp; ') + '</span>';
-  }
 }
 
 function removeBookmark(id) {
@@ -2962,16 +2829,7 @@ function getAgentFromURL() {
 /* ── Display agent promo banner if URL has agent param ───── */
 function initAgentBanner() {
   const urlAgent = getAgentFromURL();
-
-  // Show register CTA on hero only when NOT viewing via agent link
-  const heroCta = document.getElementById('hero-agent-cta');
-  if (heroCta) heroCta.style.display = urlAgent ? 'none' : 'block';
-
   if (!urlAgent) return;
-
-  // Store urlAgent globally so every screen can re-render it
-  window._activeUrlAgent = urlAgent;
-
   const banner = document.getElementById('agent-promo-banner');
   if (!banner) return;
   banner.style.display = 'block';
@@ -3026,9 +2884,6 @@ function initAgentBanner() {
   }
   // Update page title
   document.title = 'RTO Exam Pro \u2014 ' + (urlAgent.company || urlAgent.name) + ' | Powered by KSpiderAI';
-  // Ensure banner is visible and re-shown on every page navigation
-  const bannerEl = document.getElementById('agent-promo-banner');
-  if (bannerEl) bannerEl.style.display = 'block';
 }
 
 /* ── Registration Modal ──────────────────────────────────── */
