@@ -4047,173 +4047,149 @@ function _setGoogleBtnLoading(loading) {
   });
 }
 
-// Full-screen Google loading overlay — shown while popup/redirect is in progress
-function _ksShowGoogleLoading(show) {
+// Full-screen Google loading overlay — shown while redirect is in progress
+function _ksShowGoogleLoading(show, mode) {
   var ov = document.getElementById('ks-google-loading-ov');
   if (!ov) {
-    // Create overlay on first use
     ov = document.createElement('div');
     ov.id = 'ks-google-loading-ov';
     ov.style.cssText = [
       'position:fixed','top:0','left:0','width:100%','height:100%',
-      'background:rgba(0,0,0,.72)','z-index:99999',
+      'background:rgba(0,0,0,.82)','z-index:99999',
       'display:flex','align-items:center','justify-content:center',
-      'flex-direction:column','gap:18px','backdrop-filter:blur(4px)'
+      'flex-direction:column','gap:18px','backdrop-filter:blur(6px)',
+      '-webkit-backdrop-filter:blur(6px)'
     ].join(';');
-    ov.innerHTML = [
-      '<div style="width:52px;height:52px;border:4px solid rgba(255,255,255,.15);',
-        'border-top-color:#fff;border-radius:50%;',
-        'animation:ks-spin .8s linear infinite"></div>',
-      '<div style="text-align:center">',
-        '<div style="color:#fff;font-family:\'DM Sans\',sans-serif;font-weight:700;',
-          'font-size:1rem;margin-bottom:6px">🔐 Google Sign-In</div>',
-        '<div style="color:rgba(255,255,255,.7);font-size:.8rem;">',
-          'Ek second... Google account choose karo</div>',
-      '</div>',
-      '<div style="color:rgba(255,255,255,.45);font-size:.72rem;margin-top:4px">',
-        'Popup band ho gayi ho toh yahan click karo: ',
-        '<span onclick="_ksShowGoogleLoading(false)" ',
-          'style="color:#fbbf24;cursor:pointer;text-decoration:underline">Cancel</span>',
-      '</div>'
-    ].join('');
     document.body.appendChild(ov);
   }
-  ov.style.display = show ? 'flex' : 'none';
+  if (show) {
+    var isReturn = (mode === 'returning');
+    ov.innerHTML = [
+      '<div style="width:56px;height:56px;border:4px solid rgba(255,255,255,.12);',
+        'border-top-color:#4285F4;border-radius:50%;',
+        'animation:ks-spin .8s linear infinite"></div>',
+      '<div style="text-align:center;padding:0 20px">',
+        '<div style="color:#fff;font-family:\'DM Sans\',sans-serif;font-weight:800;',
+          'font-size:1.1rem;margin-bottom:8px;letter-spacing:-.02em">',
+          isReturn
+            ? '⏳ Google Sign-In result process ho raha hai...'
+            : '🔐 Google Sign-In — Ek second...',
+        '</div>',
+        '<div style="color:rgba(255,255,255,.65);font-size:.82rem;line-height:1.6;">',
+          isReturn
+            ? 'Aapka Google account verify ho raha hai. Please wait...'
+            : 'Page Google login page pe ja raha hai.<br>Wahan apna Gmail account select karo.',
+        '</div>',
+      '</div>',
+      '<div style="color:rgba(255,255,255,.35);font-size:.7rem;margin-top:2px;">',
+        'Koi problem? <span onclick="_ksShowGoogleLoading(false)" ',
+          'style="color:#fbbf24;cursor:pointer;text-decoration:underline;',
+          'font-weight:700">Cancel</span>',
+      '</div>'
+    ].join('');
+    ov.style.display = 'flex';
+  } else {
+    ov.style.display = 'none';
+  }
 }
 
 function signInWithGoogle() {
-  // -- Get the single authoritative auth instance --
   var _auth = (window.KS && window.KS.auth) ? window.KS.auth
               : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
                  ? firebase.auth() : null);
 
   if (!_auth) {
-    // Firebase not ready yet — show loading and retry
-    _ksShowGoogleLoading(true);
-    toast('⏳ Google Sign-In prepare ho raha hai...', 'warn', 2000);
-    setTimeout(function() {
-      var _retryAuth = (window.KS && window.KS.auth) ? window.KS.auth
-                       : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
-                          ? firebase.auth() : null);
-      if (_retryAuth) { signInWithGoogle(); }
-      else {
-        _ksShowGoogleLoading(false);
-        toast('❌ Google Sign-In load nahi hua. Page refresh karo.', 'error', 5000);
-      }
-    }, 1500);
+    toast('⏳ Please wait — page load ho raha hai. 2 second mein retry karo.', 'warn', 3000);
+    setTimeout(signInWithGoogle, 2000);
     return;
   }
 
-  _setGoogleBtnLoading(true);
-  _ksShowGoogleLoading(true);
-
-  // -- Build Google provider --
-  var _ksProvider;
+  var _provider;
   try {
-    _ksProvider = new firebase.auth.GoogleAuthProvider();
+    _provider = new firebase.auth.GoogleAuthProvider();
+    _provider.setCustomParameters({ prompt: 'select_account' });
+    _provider.addScope('profile');
+    _provider.addScope('email');
   } catch(e) {
-    _setGoogleBtnLoading(false);
-    toast('❌ Google provider init failed. Refresh karo.', 'error', 5000);
-    console.error('[KSpider] GoogleAuthProvider init error:', e);
+    toast('❌ Google provider error. Page refresh karo.', 'error', 5000);
     return;
   }
-  // prompt:'select_account' forces Google account picker every time
-  // — no need to sign out first; this handles multi-account on same browser
-  _ksProvider.setCustomParameters({ prompt: 'select_account' });
-  _ksProvider.addScope('profile');
-  _ksProvider.addScope('email');
 
-  // ── Shared handler for successful Google sign-in result ──────────────
-  function _ksHandleGoogleResult(result) {
-    _ksShowGoogleLoading(false);
-    var googleUser = result.user;
-    var email = googleUser.email;
-    var name  = googleUser.displayName || email.split('@')[0];
-    var photo = googleUser.photoURL || '';
-    var now   = new Date().toISOString();
+  // ── PRIMARY: signInWithRedirect — page navigates to Google, no popup
+  //    On return, getRedirectResult() on DOMContentLoaded handles the result
+  _setGoogleBtnLoading(true);
+  _ksShowGoogleLoading(true, 'redirect');
 
-    console.log('[KSpider] Google Sign-In success:', email);
+  try {
+    sessionStorage.setItem('_ks_google_redirect', '1');
+  } catch(e) {}
 
-    checkEmailExists(email, function(exists, existingData) {
-      _setGoogleBtnLoading(false);
-
-      // Existing verified user WITH complete profile → Welcome Back
-      if (exists && existingData && existingData.verified &&
-          existingData.mobile && existingData.city) {
-        var mergedUser = Object.assign({}, existingData, {
-          loginMethod: 'google',
-          photoURL:    photo || existingData.photoURL || '',
-          lastSeen:    now,
-          lastLogin:   now
-        });
-        saveUser(mergedUser);
-        saveUserToFirebase(mergedUser, function(){});
-        updateUW();
-        closeM('reg-ov');
-        closeM('gate-ov');
-        setTimeout(function(){ openWelcomeBack(mergedUser); }, 300);
-        toast('✅ Welcome back, ' + mergedUser.name + '! 🎉', 'success', 5000);
-        if (typeof gtag !== 'undefined') gtag('event','google_login_existing',{event_category:'kspider',event_label:'google_auth'});
-        return;
-      }
-
-      // New user OR incomplete profile → show profile completion modal
-      window._gpGoogleUser = { email: email, name: name, photo: photo, now: now };
-
-      var gpEmailEl  = document.getElementById('gp-email');
-      var gpEmailDsp = document.getElementById('gp-email-display');
-      var gpNameEl   = document.getElementById('gp-name');
-      if (gpEmailEl)  gpEmailEl.value       = email;
-      if (gpEmailDsp) gpEmailDsp.textContent = email;
-      if (gpNameEl)   gpNameEl.value         = name;
-
-      // Reset form state
-      var gpStatusBox = document.getElementById('gp-status-box');
-      if (gpStatusBox) gpStatusBox.classList.remove('show','err');
-      var gpBtn = document.getElementById('gp-submit-btn');
-      if (gpBtn) { gpBtn.disabled = false; gpBtn.innerHTML = '🚀 Complete Registration &amp; Start Using Tools →'; }
-
-      closeM('reg-ov');
-      closeM('gate-ov');
-      openM('google-profile-ov');
-    });
-  }
-
-  // ── Shared error handler ─────────────────────────────────────────────
-  function _ksHandleGoogleError(error) {
+  _auth.signInWithRedirect(_provider).catch(function(err) {
     _setGoogleBtnLoading(false);
     _ksShowGoogleLoading(false);
-    console.error('[KSpider] Google Sign-In error:', error.code, error.message);
+    try { sessionStorage.removeItem('_ks_google_redirect'); } catch(e) {}
+    console.error('[KSpider] signInWithRedirect error:', err.code, err.message);
+    var errMsgs = {
+      'auth/network-request-failed': '❌ Network error. Internet check karo aur retry karo.',
+      'auth/operation-not-allowed':  '⚠️ Google Sign-In enable ho raha hai. Thodi der baad try karo.',
+      'auth/unauthorized-domain':    '❌ Domain authorized nahi. Admin se contact karo.',
+      'auth/too-many-requests':      '⚠️ Bahut zyada attempts. 5 min baad try karo.',
+      'auth/internal-error':         '❌ Internal error. Page refresh karo.'
+    };
+    toast(errMsgs[err.code] || '❌ Google Sign-In failed. Page refresh karo aur retry karo.', 'error', 7000);
+  });
+}
 
-    if (error.code === 'auth/popup-closed-by-user' ||
-        error.code === 'auth/cancelled-popup-request') { return; }
+// ── Central handler: called with the Firebase auth result (redirect or any flow)
+function _ksProcessGoogleResult(googleUser) {
+  if (!googleUser) return;
+  var email = googleUser.email;
+  var name  = googleUser.displayName || email.split('@')[0];
+  var photo = googleUser.photoURL || '';
+  var now   = new Date().toISOString();
 
-    // Popup blocked → auto-fallback to redirect
-    if (error.code === 'auth/popup-blocked') {
-      toast('⚠️ Popup block hua — redirect se try kar raha hun...', 'warn', 3000);
-      try {
-        sessionStorage.setItem('_ks_google_redirect', '1');
-        _auth.signInWithRedirect(_ksProvider);
-      } catch(re) {
-        toast('⚠️ Browser ne popup block kiya! Address bar mein popup icon → Always allow → retry karo.', 'error', 8000);
-      }
+  console.log('[KSpider] Google auth success:', email);
+
+  checkEmailExists(email, function(exists, existingData) {
+    _setGoogleBtnLoading(false);
+
+    if (exists && existingData && existingData.verified &&
+        existingData.mobile && existingData.city) {
+      // ── Returning user: restore session → Welcome Back
+      var mergedUser = Object.assign({}, existingData, {
+        loginMethod: 'google',
+        photoURL:    photo || existingData.photoURL || '',
+        lastSeen:    now,
+        lastLogin:   now
+      });
+      saveUser(mergedUser);
+      saveUserToFirebase(mergedUser, function(){});
+      updateUW();
+      setTimeout(function(){ openWelcomeBack(mergedUser); }, 300);
+      toast('✅ Welcome back, ' + mergedUser.name + '! 🎉', 'success', 5000);
+      if (typeof gtag !== 'undefined') gtag('event','google_login_existing',{event_category:'kspider',event_label:'google_auth'});
       return;
     }
 
-    var errMsgs = {
-      'auth/network-request-failed': '❌ Network error. Internet check karo aur dobara try karo.',
-      'auth/operation-not-allowed':  '⚠️ Google Sign-In enable ho raha hai. Thodi der baad try karo.',
-      'auth/unauthorized-domain':    '❌ Domain authorized nahi. Admin: kspider221206@gmail.com',
-      'auth/internal-error':         '❌ Internal error. Page refresh karo aur dobara try karo.',
-      'auth/too-many-requests':      '⚠️ Bahut zyada attempts. 5 min baad try karo.'
-    };
-    toast(errMsgs[error.code] || ('❌ Google Sign-In failed (' + error.code + '). Refresh karke retry karo.'), 'error', 8000);
-  }
+    // ── New user or incomplete profile → Profile completion form
+    window._gpGoogleUser = { email: email, name: name, photo: photo, now: now };
 
-  // ── Try popup first; if it fails auto-falls to redirect ─────────────
-  _auth.signInWithPopup(_ksProvider)
-    .then(_ksHandleGoogleResult)
-    .catch(_ksHandleGoogleError);
+    var gpEmailEl  = document.getElementById('gp-email');
+    var gpEmailDsp = document.getElementById('gp-email-display');
+    var gpNameEl   = document.getElementById('gp-name');
+    if (gpEmailEl)  gpEmailEl.value       = email;
+    if (gpEmailDsp) gpEmailDsp.textContent = email;
+    if (gpNameEl)   gpNameEl.value         = name;
+
+    var gpStatusBox = document.getElementById('gp-status-box');
+    if (gpStatusBox) gpStatusBox.classList.remove('show','err');
+    var gpBtn = document.getElementById('gp-submit-btn');
+    if (gpBtn) { gpBtn.disabled = false; gpBtn.innerHTML = '🚀 Complete Registration &amp; Start Using Tools →'; }
+
+    closeM('reg-ov');
+    closeM('gate-ov');
+    openM('google-profile-ov');
+  });
 }
 
 /* ======================================================
@@ -5879,48 +5855,34 @@ document.addEventListener('DOMContentLoaded', function() {
   setTimeout(function(){ if (typeof loadAnnouncements === 'function') loadAnnouncements(); }, 2000);
   ksCookieInit();
 
-  // ── Handle Google redirect sign-in result (fallback when popup was blocked) ──
+  // ── Handle Google redirect sign-in result ──────────────────────────
+  // getRedirectResult() is ALWAYS called on page load (not just when flag set)
+  // so result is never missed even if sessionStorage was cleared
   try {
     var _ksAuth2 = (window.KS && window.KS.auth) ? window.KS.auth
                    : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
                       ? firebase.auth() : null);
-    if (_ksAuth2 && sessionStorage.getItem('_ks_google_redirect')) {
-      sessionStorage.removeItem('_ks_google_redirect');
-      _ksShowGoogleLoading(true); // show loading while processing redirect result
+    if (_ksAuth2) {
+      var _hadRedirect = !!sessionStorage.getItem('_ks_google_redirect');
+      if (_hadRedirect) {
+        try { sessionStorage.removeItem('_ks_google_redirect'); } catch(e) {}
+        _ksShowGoogleLoading(true, 'returning');
+      }
       _ksAuth2.getRedirectResult().then(function(result) {
         _ksShowGoogleLoading(false);
         if (result && result.user) {
-          var _rEmail = result.user.email;
-          var _rName  = result.user.displayName || _rEmail.split('@')[0];
-          var _rPhoto = result.user.photoURL || '';
-          var _rNow   = new Date().toISOString();
-          checkEmailExists(_rEmail, function(exists, existingData) {
-            if (exists && existingData && existingData.verified &&
-                existingData.mobile && existingData.city) {
-              var mergedUser = Object.assign({}, existingData, {
-                loginMethod: 'google', photoURL: _rPhoto || existingData.photoURL || '',
-                lastSeen: _rNow, lastLogin: _rNow
-              });
-              saveUser(mergedUser);
-              saveUserToFirebase(mergedUser, function(){});
-              updateUW();
-              setTimeout(function(){ openWelcomeBack(mergedUser); }, 500);
-              toast('✅ Welcome back, ' + mergedUser.name + '!', 'success', 5000);
-            } else {
-              window._gpGoogleUser = { email: _rEmail, name: _rName, photo: _rPhoto, now: _rNow };
-              var gpEmailEl  = document.getElementById('gp-email');
-              var gpEmailDsp = document.getElementById('gp-email-display');
-              var gpNameEl   = document.getElementById('gp-name');
-              if (gpEmailEl)  gpEmailEl.value       = _rEmail;
-              if (gpEmailDsp) gpEmailDsp.textContent = _rEmail;
-              if (gpNameEl)   gpNameEl.value         = _rName;
-              var gpBtn = document.getElementById('gp-submit-btn');
-              if (gpBtn) { gpBtn.disabled = false; gpBtn.innerHTML = '🚀 Complete Registration &amp; Start Using Tools →'; }
-              setTimeout(function(){ openM('google-profile-ov'); }, 600);
-            }
-          });
+          _ksProcessGoogleResult(result.user);
+        } else if (_hadRedirect) {
+          // Redirect happened but no user — something went wrong
+          toast('⚠️ Google sign-in complete nahi hua. Dobara try karo.', 'warn', 5000);
         }
-      }).catch(function(e){ _ksShowGoogleLoading(false); console.warn('[KSpider] Redirect result error:', e); });
+      }).catch(function(e) {
+        _ksShowGoogleLoading(false);
+        console.warn('[KSpider] getRedirectResult error:', e.code, e.message);
+        if (_hadRedirect) {
+          toast('❌ Google sign-in failed (' + (e.code || 'unknown') + '). Dobara try karo.', 'error', 6000);
+        }
+      });
     }
   } catch(e) { console.warn('[KSpider] Redirect handler error:', e); }
 
