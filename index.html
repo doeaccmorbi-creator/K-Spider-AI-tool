@@ -375,6 +375,12 @@
 
     function initKS() {
       if (!firebase.apps.length) firebase.initializeApp(_cfg);
+      // Guard: firebase.auth may not exist yet if only firebase-app-compat loaded (race condition)
+      if (typeof firebase.auth !== 'function') {
+        console.warn('[KSpider] firebase.auth not ready, retrying in 200ms...');
+        setTimeout(initKS, 200);
+        return;
+      }
       window.KS = {
         auth:    firebase.auth(),
         db:      firebase.firestore(),
@@ -499,8 +505,16 @@
       loadScript(set[i], function() { loadSDKSet(set, i+1, onDone, onFail); }, function() { onFail(); });
     }
 
-    if (typeof firebase !== 'undefined') { initKS(); }
-    else { tryNextCDN(); }
+    // If firebase global exists, app-compat is cached — but auth-compat & firestore-compat
+    // may NOT be loaded yet (separate scripts). Check before calling initKS.
+    if (typeof firebase !== 'undefined' && typeof firebase.auth === 'function' && typeof firebase.firestore === 'function') {
+      initKS();
+    } else if (typeof firebase !== 'undefined') {
+      // App loaded but auth/firestore compat not yet — load remaining SDKs then init
+      tryNextCDN();
+    } else {
+      tryNextCDN();
+    }
   })();
   </script>
   <script src="payment.js"></script>
@@ -4096,6 +4110,7 @@ function _ksShowGoogleLoading(show, mode) {
 function signInWithGoogle() {
   var _auth = (window.KS && window.KS.auth) ? window.KS.auth
               : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
+                 && typeof firebase.auth === 'function'
                  ? firebase.auth() : null);
 
   if (!_auth) {
@@ -4106,12 +4121,19 @@ function signInWithGoogle() {
 
   var _provider;
   try {
-    _provider = new firebase.auth.GoogleAuthProvider();
+    // firebase.auth.GoogleAuthProvider is available on the compat namespace
+    // Fallback to _auth.GoogleAuthProvider for safety
+    var _GPClass = (typeof firebase !== 'undefined' && firebase.auth && firebase.auth.GoogleAuthProvider)
+                     ? firebase.auth.GoogleAuthProvider
+                     : null;
+    if (!_GPClass) { toast('❌ Google provider load nahi hua. Page refresh karo.', 'error', 5000); return; }
+    _provider = new _GPClass();
     _provider.setCustomParameters({ prompt: 'select_account' });
     _provider.addScope('profile');
     _provider.addScope('email');
   } catch(e) {
     toast('❌ Google provider error. Page refresh karo.', 'error', 5000);
+    console.error('[KSpider] GoogleAuthProvider error:', e);
     return;
   }
 
@@ -5267,7 +5289,7 @@ function ksLogout() {
   localStorage.removeItem('ks_last_email');
 
   // Firebase signout if available
-  if (typeof firebase !== 'undefined' && firebase.auth) {
+  if (typeof firebase !== 'undefined' && typeof firebase.auth === 'function') {
     try { firebase.auth().signOut(); } catch(e) {}
   }
   if (typeof KS !== 'undefined' && KS.auth) {
@@ -5874,6 +5896,7 @@ document.addEventListener('DOMContentLoaded', function() {
     function _pollForAuth() {
       var _ksAuth2 = (window.KS && window.KS.auth) ? window.KS.auth
                      : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
+                        && typeof firebase.auth === 'function'
                         ? firebase.auth() : null);
 
       if (_ksAuth2) {
