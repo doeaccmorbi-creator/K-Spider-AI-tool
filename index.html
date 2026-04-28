@@ -4077,29 +4077,26 @@ function _ksShowGoogleLoading(show, mode) {
     document.body.appendChild(ov);
   }
   if (show) {
+    var isPopup  = (mode === 'popup');
     var isReturn = (mode === 'returning');
+    var title = isReturn ? '⏳ Google Sign-In verify ho raha hai...'
+                         : '🔐 Google Sign-In — Ek second...';
+    var sub   = isReturn ? 'Aapka Google account verify ho raha hai. Please wait...'
+              : isPopup  ? 'Google popup window mein apna account select karo.<br><b style="color:#fbbf24">Popup nazar nahi aa rahi? Taskbar/bottom mein check karo.</b>'
+                         : 'Page Google login page pe ja raha hai.<br>Wahan apna Gmail account select karo.';
     ov.innerHTML = [
       '<div style="width:56px;height:56px;border:4px solid rgba(255,255,255,.12);',
-        'border-top-color:#4285F4;border-radius:50%;',
-        'animation:ks-spin .8s linear infinite"></div>',
-      '<div style="text-align:center;padding:0 20px">',
-        '<div style="color:#fff;font-family:\'DM Sans\',sans-serif;font-weight:800;',
-          'font-size:1.1rem;margin-bottom:8px;letter-spacing:-.02em">',
-          isReturn
-            ? '⏳ Google Sign-In result process ho raha hai...'
-            : '🔐 Google Sign-In — Popup open ho rahi hai...',
-        '</div>',
-        '<div style="color:rgba(255,255,255,.65);font-size:.82rem;line-height:1.6;">',
-          isReturn
-            ? 'Aapka Google account verify ho raha hai. Please wait...'
-            : 'Google ka popup window open hoga.<br>Wahan apna Gmail account select karo.',
-        '</div>',
+        'border-top-color:#4285F4;border-radius:50%;animation:ks-spin .8s linear infinite"></div>',
+      '<div style="text-align:center;padding:0 20px;max-width:320px">',
+        '<div style="color:#fff;font-family:\'DM Sans\',sans-serif;font-weight:800;font-size:1.05rem;margin-bottom:8px">' + title + '</div>',
+        '<div style="color:rgba(255,255,255,.7);font-size:.82rem;line-height:1.7">' + sub + '</div>',
       '</div>',
-      '<div style="color:rgba(255,255,255,.35);font-size:.7rem;margin-top:2px;">',
-        'Koi problem? <span onclick="_ksShowGoogleLoading(false)" ',
-          'style="color:#fbbf24;cursor:pointer;text-decoration:underline;',
-          'font-weight:700">Cancel</span>',
-      '</div>'
+      '<button onclick="_setGoogleBtnLoading(false);_ksShowGoogleLoading(false);" ',
+        'style="margin-top:6px;padding:9px 26px;background:rgba(255,255,255,.1);',
+        'color:#fbbf24;border:1.5px solid rgba(251,191,36,.5);border-radius:9px;',
+        'font-family:\'DM Sans\',sans-serif;font-weight:700;font-size:.82rem;cursor:pointer;">',
+        '✕  Cancel / Cancel Karo',
+      '</button>'
     ].join('');
     ov.style.display = 'flex';
   } else {
@@ -4108,6 +4105,10 @@ function _ksShowGoogleLoading(show, mode) {
 }
 
 function signInWithGoogle() {
+  // ── Reset any stale loading overlay first
+  _ksShowGoogleLoading(false);
+  _setGoogleBtnLoading(false);
+
   var _auth = (window.KS && window.KS.auth) ? window.KS.auth
               : (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length
                  && typeof firebase.auth === 'function'
@@ -4119,65 +4120,63 @@ function signInWithGoogle() {
     return;
   }
 
-  var _provider;
-  try {
-    var _GPClass = (typeof firebase !== 'undefined' && firebase.auth && firebase.auth.GoogleAuthProvider)
-                     ? firebase.auth.GoogleAuthProvider
-                     : null;
-    if (!_GPClass) { toast('❌ Google provider load nahi hua. Page refresh karo.', 'error', 5000); return; }
-    _provider = new _GPClass();
-    _provider.setCustomParameters({ prompt: 'select_account' });
-    _provider.addScope('profile');
-    _provider.addScope('email');
-  } catch(e) {
-    toast('❌ Google provider error. Page refresh karo.', 'error', 5000);
-    console.error('[KSpider] GoogleAuthProvider error:', e);
-    return;
-  }
+  var _GPClass = (typeof firebase !== 'undefined' && firebase.auth && firebase.auth.GoogleAuthProvider)
+                   ? firebase.auth.GoogleAuthProvider : null;
+  if (!_GPClass) { toast('❌ Google provider load nahi hua. Page refresh karo.', 'error', 5000); return; }
 
-  // ── PRIMARY: signInWithPopup — instant result, no redirect race condition
+  var _provider = new _GPClass();
+  _provider.setCustomParameters({ prompt: 'select_account' });
+  _provider.addScope('profile');
+  _provider.addScope('email');
+
+  // ── Show loading
   _setGoogleBtnLoading(true);
-  _ksShowGoogleLoading(true, 'redirect');
+  _ksShowGoogleLoading(true, 'popup');
 
-  _auth.signInWithPopup(_provider).then(function(result) {
-    _setGoogleBtnLoading(false);
-    _ksShowGoogleLoading(false);
-    if (result && result.user) {
-      _ksProcessGoogleResult(result.user);
-    } else {
-      toast('⚠️ Google sign-in complete nahi hua. Dobara try karo.', 'warn', 5000);
-    }
-  }).catch(function(err) {
-    _setGoogleBtnLoading(false);
-    _ksShowGoogleLoading(false);
-    console.error('[KSpider] signInWithPopup error:', err.code, err.message);
-    // Popup blocked ya user ne close kiya — fallback to redirect
-    if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user') {
+  // ── signInWithPopup: instant result, no redirect/race condition
+  _auth.signInWithPopup(_provider)
+    .then(function(result) {
+      _setGoogleBtnLoading(false);
+      _ksShowGoogleLoading(false);
+      if (result && result.user) {
+        _ksProcessGoogleResult(result.user);
+      } else {
+        toast('⚠️ Google login result nahi mila. Dobara try karo.', 'warn', 5000);
+      }
+    })
+    .catch(function(err) {
+      _setGoogleBtnLoading(false);
+      _ksShowGoogleLoading(false);
+      console.warn('[KSpider] signInWithPopup error:', err.code, err.message);
+
+      if (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
+        // User ne khud popup close kiya — koi error nahi dikhana
+        toast('ℹ️ Google login cancel ho gaya. Dobara try karo.', 'warn', 3000);
+        return;
+      }
+
       if (err.code === 'auth/popup-blocked') {
-        toast('⚠️ Popup block ho gayi. Redirect method try kar raha hai...', 'warn', 3000);
-        try { sessionStorage.setItem('_ks_google_redirect', '1'); } catch(e2) {}
-        _ksShowGoogleLoading(true, 'redirect');
+        // Browser ne popup block ki — redirect fallback
+        toast('⚠️ Popup block ho gayi! Redirect mode try ho raha hai...', 'warn', 4000);
+        try { sessionStorage.setItem('_ks_google_redirect', '1'); } catch(e) {}
+        _ksShowGoogleLoading(true, 'returning');
         _auth.signInWithRedirect(_provider).catch(function(err2) {
           _ksShowGoogleLoading(false);
-          try { sessionStorage.removeItem('_ks_google_redirect'); } catch(e2) {}
-          toast('❌ Google Sign-In failed. Page refresh karo aur retry karo.', 'error', 7000);
+          try { sessionStorage.removeItem('_ks_google_redirect'); } catch(e) {}
+          toast('❌ Google Sign-In failed. Browser settings check karo ya page refresh karo.', 'error', 7000);
         });
-      } else {
-        // User closed popup themselves — silently reset
-        console.log('[KSpider] User closed Google popup.');
+        return;
       }
-      return;
-    }
-    var errMsgs = {
-      'auth/network-request-failed':   '❌ Network error. Internet check karo aur retry karo.',
-      'auth/operation-not-allowed':    '⚠️ Google Sign-In enable ho raha hai. Thodi der baad try karo.',
-      'auth/unauthorized-domain':      '❌ Domain authorized nahi. Admin se contact karo.',
-      'auth/too-many-requests':        '⚠️ Bahut zyada attempts. 5 min baad try karo.',
-      'auth/internal-error':           '❌ Internal error. Page refresh karo.',
-      'auth/cancelled-popup-request':  'ℹ️ Pehli popup cancel ho gayi. Dobara try karo.'
-    };
-    toast(errMsgs[err.code] || '❌ Google Sign-In failed: ' + (err.code || 'unknown') + '. Retry karo.', 'error', 7000);
-  });
+
+      var errMsgs = {
+        'auth/network-request-failed': '❌ Network error. Internet check karo.',
+        'auth/operation-not-allowed':  '⚠️ Google Sign-In abhi enable nahi. Thodi der baad try karo.',
+        'auth/unauthorized-domain':    '❌ Domain authorized nahi. Admin se contact karo.',
+        'auth/too-many-requests':      '⚠️ Bahut zyada attempts. 5 min baad try karo.',
+        'auth/internal-error':         '❌ Internal error. Page refresh karo.'
+      };
+      toast(errMsgs[err.code] || ('❌ Google login failed (' + (err.code||'unknown') + '). Retry karo.'), 'error', 7000);
+    });
 }
 
 // ── Central handler: called with the Firebase auth result (redirect or any flow)
@@ -5924,9 +5923,8 @@ document.addEventListener('DOMContentLoaded', function() {
             _ksShowGoogleLoading(false);
             if (result && result.user) {
               _ksProcessGoogleResult(result.user);
-            } else if (_hadRedirect) {
-              toast('⚠️ Google sign-in complete nahi hua. Dobara try karo.', 'warn', 5000);
             }
+            // _hadRedirect true ho lekin result null — popup mode mein normal hai, ignore karo
           }).catch(function(e) {
             _ksShowGoogleLoading(false);
             console.warn('[KSpider] getRedirectResult error:', e.code, e.message);
