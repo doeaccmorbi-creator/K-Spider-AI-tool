@@ -1778,7 +1778,14 @@ function initFB() {
     auth.onAuthStateChanged(function(u) {
       if (u && ADMINS.indexOf(u.email.toLowerCase()) !== -1) {
         _user = u;
-        showApp(u);
+        // Force token refresh so request.auth.token.email is available in
+        // Firestore Security Rules before any Firestore calls are made.
+        u.getIdToken(true).then(function() {
+          showApp(u);
+        }).catch(function() {
+          // Token refresh failed — still try to show app (fallback)
+          showApp(u);
+        });
       }
     });
   } catch(e) { fbErr('Init error: '+e.message); }
@@ -1814,7 +1821,13 @@ function doLogin() {
         return;
       }
       _user = c.user;
-      showApp(c.user);
+      // Force token refresh so request.auth.token.email is available in
+      // Firestore Security Rules before any Firestore calls are made.
+      c.user.getIdToken(true).then(function() {
+        showApp(c.user);
+      }).catch(function() {
+        showApp(c.user);
+      });
     })
     .catch(function(e) {
       btn.textContent = '🔑 Sign In as Admin'; btn.disabled = false;
@@ -1847,7 +1860,13 @@ function doGoogleLogin() {
         return;
       }
       _user = u;
-      showApp(u);
+      // Force token refresh so request.auth.token.email is available in
+      // Firestore Security Rules before any Firestore calls are made.
+      u.getIdToken(true).then(function() {
+        showApp(u);
+      }).catch(function() {
+        showApp(u);
+      });
     })
     .catch(function(e) {
       if(btn){ btn.disabled=false; btn.innerHTML='<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M16.51 8H8.98v3h4.3c-.18 1-.74 1.48-1.6 2.04v2.01h2.6a7.8 7.8 0 0 0 2.38-5.88c0-.57-.05-.66-.15-1.18z"/><path fill="#34A853" d="M8.98 17c2.16 0 3.97-.72 5.3-1.94l-2.6-2a4.8 4.8 0 0 1-7.18-2.54H1.83v2.07A8 8 0 0 0 8.98 17z"/><path fill="#FBBC05" d="M4.5 10.52a4.8 4.8 0 0 1 0-3.04V5.41H1.83a8 8 0 0 0 0 7.18l2.67-2.07z"/><path fill="#EA4335" d="M8.98 4.18c1.17 0 2.23.4 3.06 1.2l2.3-2.3A8 8 0 0 0 1.83 5.4L4.5 7.49a4.77 4.77 0 0 1 4.48-3.31z"/></svg> Sign in with Google'; }
@@ -2996,9 +3015,20 @@ function saveTools(){
   if(!_user){toast('❌ Login required');return;}
   toast('⏳ Saving...');
   var s={};Object.keys(_tools).forEach(function(id){s[id]=_tools[id];});
-  db.collection('admin').doc('tool_settings').set(s)
-    .then(function(){_unsaved=0;updateUnsaved();toast('✅ Tools saved to Firestore!');})
-    .catch(function(e){toast('❌ '+e.message);});
+  function _doSave(){
+    db.collection('admin').doc('tool_settings').set(s)
+      .then(function(){_unsaved=0;updateUnsaved();toast('✅ Tools saved to Firestore!');})
+      .catch(function(e){
+        // If permission denied, force token refresh and retry once
+        if(e.code==='permission-denied'&&_user){
+          toast('🔄 Refreshing auth token...');
+          _user.getIdToken(true).then(function(){ _doSave(); }).catch(function(){ toast('❌ Auth error: '+e.message); });
+        } else {
+          toast('❌ '+e.message);
+        }
+      });
+  }
+  _doSave();
 }
 function updateToolStats(){
   var a=Object.values(_tools);
@@ -4217,6 +4247,7 @@ function loadAds(){
   var slotF   = ($id('ads-filter-slot')||{}).value||'';
   var statusF = ($id('ads-filter-status')||{}).value||'';
 
+  function _doLoadAds(){
   db.collection('ads').orderBy('createdAt','desc').limit(100).get()
     .then(function(snap){
       var items=[];
@@ -4265,9 +4296,17 @@ function loadAds(){
       html+='</tbody></table>';
       el.innerHTML=html;
     }).catch(function(e){
-      el.innerHTML='<div style="color:#f87171;padding:16px">❌ Error: '+e.message+'<br><small>Check Firestore Rules (see instructions below)</small></div>';
-      console.error('[Ads] loadAds error:', e);
+      if(e.code==='permission-denied'&&_user){
+        _user.getIdToken(true).then(function(){ _doLoadAds(); }).catch(function(){
+          el.innerHTML='<div style="color:#f87171;padding:16px">❌ Error: '+e.message+'<br><small>Check Firestore Rules (see instructions below)</small></div>';
+        });
+      } else {
+        el.innerHTML='<div style="color:#f87171;padding:16px">❌ Error: '+e.message+'<br><small>Check Firestore Rules (see instructions below)</small></div>';
+        console.error('[Ads] loadAds error:', e);
+      }
     });
+  }
+  _doLoadAds();
 }
 
 function loadAdsStats(){
@@ -4770,7 +4809,8 @@ function loadAdRequests(){
   var el=$id('ad-requests-list');
   if(!el) return;
   el.innerHTML='<div style="text-align:center;color:var(--t4);padding:20px">⏳ Loading...</div>';
-  db.collection('adRequests').orderBy('createdAt','desc').limit(30).get()
+  function _doLoad(){
+    db.collection('adRequests').orderBy('createdAt','desc').limit(30).get()
     .then(function(snap){
       if(snap.empty){ el.innerHTML='<div style="text-align:center;color:var(--t4);padding:20px">No requests yet</div>'; return; }
       var sc={pending:'#f59e0b',approved:'#34d399',rejected:'#f87171'};
@@ -4808,7 +4848,16 @@ function loadAdRequests(){
             '</div>':'')+'</div>';
       });
       el.innerHTML=html;
-    }).catch(function(e){ el.innerHTML='<div style="color:#f87171;padding:16px">Error: '+e.message+'</div>'; });
+    }).catch(function(e){
+      // If permission denied, force token refresh and retry once
+      if(e.code==='permission-denied'&&_user){
+        _user.getIdToken(true).then(function(){ _doLoad(); }).catch(function(){ el.innerHTML='<div style="color:#f87171;padding:16px">Error: '+e.message+'</div>'; });
+      } else {
+        el.innerHTML='<div style="color:#f87171;padding:16px">Error: '+e.message+'</div>';
+      }
+    });
+  }
+  _doLoad();
 }
 
 function approveAdRequest(id, data){
