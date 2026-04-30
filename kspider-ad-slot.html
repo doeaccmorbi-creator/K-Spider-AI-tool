@@ -1,23 +1,27 @@
 <!-- 
   ╔══════════════════════════════════════════════════════════════╗
-  ║  K Spider AI — Ad Slot Code for index.html                   ║
-  ║  Paste this wherever you want ads to appear.                 ║
-  ║  Ads auto-load from Firebase, image/video auto-play,         ║
-  ║  clicking takes user to the connected link directly.         ║
+  ║  K Spider AI — Ad Slot Code (FIXED VERSION)                  ║
+  ║  index.html + ALL TOOL FILES mein paste karo                 ║
+  ║  Fix: onclick broken quotes, Firebase double-init guard,     ║
+  ║       tool files mein ads show nahi hoti thi — solved        ║
   ╚══════════════════════════════════════════════════════════════╝
 -->
 
-<!-- ① Include Firebase (if not already in your index.html) -->
+<!-- ① Firebase (agar pehle se load nahi hai) -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <!-- ② Ad Slot — change data-slot to: top-banner | below-title | in-content | after-result | bottom-banner -->
 <div class="kspider-ad-slot" data-slot="top-banner"></div>
 
-<!-- ③ Ad Loader Script — paste once per page, before </body> -->
+<!-- ③ Ad Loader Script — paste once per page (tool files mein bhi), before </body> -->
 <script>
 (function(){
-  // ── Firebase Config — same as your main config ──
+  // Agar ye script already is page pe chal chuki hai to dobara mat chalao
+  if(window.__kspiderAdLoaded) return;
+  window.__kspiderAdLoaded = true;
+
+  // ── Firebase Config — apna config yahan daalo ──
   var firebaseConfig = {
     apiKey: "YOUR_API_KEY",
     authDomain: "YOUR_PROJECT.firebaseapp.com",
@@ -27,8 +31,10 @@
     appId: "YOUR_APP_ID"
   };
 
-  // Init Firebase (skip if already initialized)
-  if(!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+  // Init Firebase — double-init se bachaav (index.html + tool file dono mein safe)
+  if(!firebase.apps.length){
+    firebase.initializeApp(firebaseConfig);
+  }
   var db = firebase.firestore();
 
   // Size map → CSS dimensions matching Google AdSense standard sizes
@@ -81,10 +87,10 @@
       inner = ad.htmlCode||'';
     }
 
-    // Wrap with click link if clickUrl exists
+    // ✅ FIX: onclick mein broken quotes fix kiya — pehle '' tha jo HTML mein break hota tha
     var html;
     if(clickUrl && ad.type !== 'html'){
-      html = '<a href="'+esc(clickUrl)+'" target="_blank" rel="noopener" style="'+wrapStyle+'text-decoration:none;cursor:pointer;" onclick="kspiderAdClick(''+esc(ad._id)+'')">'+inner+'</a>';
+      html = '<a href="'+esc(clickUrl)+'" target="_blank" rel="noopener" style="'+wrapStyle+'text-decoration:none;cursor:pointer;" onclick="kspiderAdClick(\''+esc(ad._id)+'\')">'+inner+'</a>';
     } else {
       html = '<div style="'+wrapStyle+'">'+inner+'</div>';
     }
@@ -96,7 +102,8 @@
 
   function esc(s){
     if(!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+    // ✅ FIX: single quote escape bhi add kiya — onclick attribute ke andar safe rahega
   }
 
   window.kspiderAdClick = function(id){
@@ -128,6 +135,7 @@
         var key = slot + '_' + container.dataset.slotIdx;
         var idx = (slotRotation[key]||0) % ads.length;
         renderAd(container, ads[idx]);
+
         // Track impression
         db.collection('ads').doc(ads[idx]._id).update({impressions: firebase.firestore.FieldValue.increment(1)}).catch(function(){});
 
