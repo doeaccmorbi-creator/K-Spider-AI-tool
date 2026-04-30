@@ -13,6 +13,7 @@
 <!-- K Spider Auth Guard — Must load before page renders -->
 <!-- K Spider Auth Guard — Inlined -->
 <script>
+
 // ══════════════════════════════════════════════════════════
 // K SPIDER AI — AUTH GUARD + PLAN ENFORCER
 // Include this FIRST in doctor.html before any other script
@@ -65,38 +66,35 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if (_ksAuth && _ksDb) {
-_ksAuth.onAuthStateChanged(async (user) => {
-  if (!user) {
-    (function() {
-    // Smart redirect: works both on web server and local file
-    var isLocal = window.location.protocol === 'file:';
-    if (isLocal) {
-      // Running locally - can't redirect to ../index.html (file not found)
-      // Show friendly message
-      document.addEventListener('DOMContentLoaded', function() {
-        document.body.innerHTML = '<div style="position:fixed;inset:0;background:#0b2545;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:DM Sans,sans-serif;color:white;text-align:center;padding:20px;z-index:99999"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;margin-bottom:4px;">K Spider Doctor AI</div><div style="font-size:15px;color:rgba(255,255,255,0.8);max-width:400px;">Please open this app from the website.<br><br><a href=\'https://kspiderai.in/doctor\' style=\'color:#00c9a7;font-weight:700;\'>👉 kspiderai.in/doctor</a></div><a href=\'https://kspiderai.in/doctor\' style=\'margin-top:16px;background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;\'>Open K Spider AI</a></div>';
-      });
-    } else {
-      window.location.href = '../index.html';
+// ── Firebase Auth — Unsubscribe Pattern (correct, race-free) ─
+// _ksAuth.onAuthStateChanged is wrapped so it fires ONCE then
+// unsubscribes. Firebase calls it with null briefly on init while
+// it restores the persisted session from IndexedDB. We unsubscribe
+// immediately on first call — which is always the REAL auth state
+// after the SDK has finished initializing (compat SDK guarantees this).
+
+function _ksDoRedirect() {
+  var isLocal = window.location.protocol === 'file:';
+  if (isLocal) {
+    var ldr = document.getElementById('ks-auth-loader');
+    if (ldr) {
+      ldr.style.flexDirection = 'column';
+      ldr.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;gap:16px;text-align:center;padding:20px;"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;">K Spider Doctor AI</div><div style="font-size:15px;color:rgba(255,255,255,0.8);max-width:400px;">Please open this app from the website.<br><a href=\'https://kspiderai.in/doctor\' style=\'color:#00c9a7;font-weight:700;display:block;margin-top:12px;\'>👉 kspiderai.in/doctor</a></div><a href=\'https://kspiderai.in/doctor\' style=\'margin-top:16px;background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;\'>Open K Spider AI</a></div>';
     }
-  })();
+  } else {
+    window.location.href = '../index.html';
+  }
+}
+
+var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
+  _ksUnsubAuth(); // One-shot: unsubscribe immediately after first definitive state
+  if (!user) {
+    _ksDoRedirect();
     return;
   }
   try {
     const snap = await _ksDb.collection('doctors').doc(user.uid).get();
-    if (!snap.exists) { (function() {
-    // Smart redirect: works both on web server and local file
-    var isLocal = window.location.protocol === 'file:';
-    if (isLocal) {
-      // Running locally - can't redirect to ../index.html (file not found)
-      // Show friendly message
-      document.addEventListener('DOMContentLoaded', function() {
-        document.body.innerHTML = '<div style="position:fixed;inset:0;background:#0b2545;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:DM Sans,sans-serif;color:white;text-align:center;padding:20px;z-index:99999"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;margin-bottom:4px;">K Spider Doctor AI</div><div style="font-size:15px;color:rgba(255,255,255,0.8);max-width:400px;">Please open this app from the website.<br><br><a href=\'https://kspiderai.in/doctor\' style=\'color:#00c9a7;font-weight:700;\'>👉 kspiderai.in/doctor</a></div><a href=\'https://kspiderai.in/doctor\' style=\'margin-top:16px;background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;\'>Open K Spider AI</a></div>';
-      });
-    } else {
-      window.location.href = '../index.html';
-    }
-  })(); return; }
+    if (!snap.exists) { _ksDoRedirect(); return; }
     const data = snap.data();
 
     // Check status
@@ -162,21 +160,11 @@ _ksAuth.onAuthStateChanged(async (user) => {
 
   } catch(e) {
     console.error('Auth check error:', e);
-    (function() {
-    // Smart redirect: works both on web server and local file
-    var isLocal = window.location.protocol === 'file:';
-    if (isLocal) {
-      // Running locally - can't redirect to ../index.html (file not found)
-      // Show friendly message
-      document.addEventListener('DOMContentLoaded', function() {
-        document.body.innerHTML = '<div style="position:fixed;inset:0;background:#0b2545;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:DM Sans,sans-serif;color:white;text-align:center;padding:20px;z-index:99999"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;margin-bottom:4px;">K Spider Doctor AI</div><div style="font-size:15px;color:rgba(255,255,255,0.8);max-width:400px;">Please open this app from the website.<br><br><a href=\'https://kspiderai.in/doctor\' style=\'color:#00c9a7;font-weight:700;\'>👉 kspiderai.in/doctor</a></div><a href=\'https://kspiderai.in/doctor\' style=\'margin-top:16px;background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;\'>Open K Spider AI</a></div>';
-      });
-    } else {
-      window.location.href = '../index.html';
-    }
-  })();
+    _ksDoRedirect();
   }
+
 });
+
 }
 
 function updateTopbar() {
@@ -326,19 +314,7 @@ async function ksSignOut() {
   if (confirm('Sign out of K Spider Doctor AI?')) {
     if (_ksAuth) await _ksAuth.signOut();
     localStorage.removeItem('ks_user');
-    (function() {
-    // Smart redirect: works both on web server and local file
-    var isLocal = window.location.protocol === 'file:';
-    if (isLocal) {
-      // Running locally - can't redirect to ../index.html (file not found)
-      // Show friendly message
-      document.addEventListener('DOMContentLoaded', function() {
-        document.body.innerHTML = '<div style="position:fixed;inset:0;background:#0b2545;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:DM Sans,sans-serif;color:white;text-align:center;padding:20px;z-index:99999"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;margin-bottom:4px;">K Spider Doctor AI</div><div style="font-size:15px;color:rgba(255,255,255,0.8);max-width:400px;">Please open this app from the website.<br><br><a href=\'https://kspiderai.in/doctor\' style=\'color:#00c9a7;font-weight:700;\'>👉 kspiderai.in/doctor</a></div><a href=\'https://kspiderai.in/doctor\' style=\'margin-top:16px;background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;\'>Open K Spider AI</a></div>';
-      });
-    } else {
-      window.location.href = '../index.html';
-    }
-  })();
+    _ksDoRedirect();
   }
 }
 </script>
