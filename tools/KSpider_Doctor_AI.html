@@ -66,12 +66,13 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 if (_ksAuth && _ksDb) {
-// ── Firebase Auth — Unsubscribe Pattern (correct, race-free) ─
-// _ksAuth.onAuthStateChanged is wrapped so it fires ONCE then
-// unsubscribes. Firebase calls it with null briefly on init while
-// it restores the persisted session from IndexedDB. We unsubscribe
-// immediately on first call — which is always the REAL auth state
-// after the SDK has finished initializing (compat SDK guarantees this).
+// ══════════════════════════════════════════════════════════
+// K SPIDER AUTH GUARD — RACE-FREE PATTERN (FIXED v2)
+// Problem: Firebase compat SDK emits null briefly on page load
+// while restoring persisted session from IndexedDB.
+// Fix: Wait up to 4s for a non-null user before redirecting.
+// This prevents premature redirect when navigating from index.html.
+// ══════════════════════════════════════════════════════════
 
 function _ksDoRedirect() {
   var isLocal = window.location.protocol === 'file:';
@@ -86,8 +87,29 @@ function _ksDoRedirect() {
   }
 }
 
-var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
-  _ksUnsubAuth(); // One-shot: unsubscribe immediately after first definitive state
+// Race-free auth wait: resolve on first non-null user OR after timeout
+function _ksWaitForAuth(timeoutMs) {
+  return new Promise(function(resolve) {
+    var timer = null;
+    var unsub = _ksAuth.onAuthStateChanged(function(user) {
+      if (user) {
+        // Got a real user — stop waiting
+        if (timer) clearTimeout(timer);
+        unsub();
+        resolve(user);
+      }
+      // If null — keep waiting until timeout
+    });
+    // After timeoutMs with no user → resolve(null) → redirect
+    timer = setTimeout(function() {
+      unsub();
+      resolve(null);
+    }, timeoutMs || 4000);
+  });
+}
+
+// Main auth flow — wait for Firebase to restore persisted session
+_ksWaitForAuth(4000).then(async function(user) {
   if (!user) {
     _ksDoRedirect();
     return;
@@ -318,7 +340,7 @@ async function ksSignOut() {
   }
 }
 </script>
-<!-- tool-guard and ks-guard removed for local use -->
+<!-- tool-guard and ks-guard loaded before </body> -->
 <meta name="viewport" content="width=device-width,initial-scale=1">
 
 <!-- ═══════════════════ SEO META TAGS ═══════════════════ -->
@@ -17650,5 +17672,9 @@ window.addEventListener('toggleDarkMode_v2', () => {
   localStorage.setItem('kspider_dark', dark ? '1' : '0');
 });
 </script>
+
+<!-- ── K SPIDER SECURITY GUARDS ── -->
+<script src="/tool-guard.js"></script>
+<script src="../ks-guard.js"></script>
 </body>
 </html>
