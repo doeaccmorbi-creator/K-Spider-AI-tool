@@ -5698,22 +5698,20 @@ function _ksEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
     if(!el||!ad) return;
     var type=ad.type||'image', clickUrl=getUrl(ad), inf=strip(ad);
     var lbl='<span class="ks-ad-lbl">Ad</span>';
-    var clickAttr = clickUrl
-      ? 'onclick="ksAdGo(\''+x(ad._id)+'\',\''+x(clickUrl)+'\')" style="cursor:pointer"'
-      : 'style="cursor:default"';
     var html='';
 
     if(type==='image'){
       if(!ad.imgUrl){hideEl(el);return;}
-      var imgHtml = lbl+
+      var imgInner = lbl+
         '<img src="'+x(ad.imgUrl)+'" alt="'+x(ad.imgAlt||ad.title||'Advertisement')+'" loading="lazy" '+
         'style="width:100%;height:auto;display:block;object-fit:cover;border-radius:12px" '+
         'onerror="this.closest(\'.ks-ad-slot\').style.display=\'none\'">'+inf;
       if(clickUrl){
+        /* Use <a> tag — clean, no double-style conflict, native browser link handling */
         html='<a href="'+x(clickUrl)+'" target="_blank" rel="noopener sponsored" class="ks-ad-block" '+
-          'onclick="ksAdGo(\''+x(ad._id)+'\',\''+x(clickUrl)+'\');event.preventDefault()">'+imgHtml+'</a>';
+          'onclick="ksAdGo(\''+x(ad._id)+'\',\''+x(clickUrl)+'\');event.preventDefault()">'+imgInner+'</a>';
       } else {
-        html='<div class="ks-ad-block" style="cursor:default">'+imgHtml+'</div>';
+        html='<div class="ks-ad-block" style="cursor:default">'+imgInner+'</div>';
       }
 
     } else if(type==='video'){
@@ -5725,7 +5723,10 @@ function _ksEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
       else if(isVM){var vm=vurl.match(/vimeo\.com\/(\d+)/);if(vm)vHtml='<div style="position:relative;width:100%;padding-top:56.25%;border-radius:12px;overflow:hidden"><iframe style="position:absolute;inset:0;width:100%;height:100%;border:0" src="https://player.vimeo.com/video/'+vm[1]+'?autoplay='+(vplay==='autoplay'?'1':'0')+'&muted='+(vsound==='muted'?'1':'0')+'&loop=1" allow="autoplay;fullscreen" allowfullscreen></iframe></div>';}
       else{var aa=(vplay==='autoplay')?'autoplay loop playsinline':'',ma=(vsound==='muted')?'muted':'',pp=ad.videoPoster?'poster="'+x(ad.videoPoster)+'"':'';vHtml='<video '+aa+' '+ma+' controls '+pp+' style="width:100%;max-height:320px;display:block;border-radius:12px;background:#000"><source src="'+x(vurl)+'" type="video/mp4"><source src="'+x(vurl)+'"></video>';}
       if(!vHtml){hideEl(el);return;}
-      html='<div class="ks-ad-block" '+clickAttr+' onclick="ksAdGo(\''+x(ad._id)+'\',\''+x(clickUrl)+'\')">'+lbl+'<div style="border-radius:12px;overflow:hidden">'+vHtml+'</div>'+inf+'</div>';
+      /* Single merged style — no double-style conflict */
+      var vCursor=clickUrl?'cursor:pointer':'cursor:default';
+      var vClick=clickUrl?'onclick="ksAdGo(\''+x(ad._id)+'\',\''+x(clickUrl)+'\')"':'';
+      html='<div class="ks-ad-block" '+vClick+' style="'+vCursor+'">'+lbl+'<div style="border-radius:12px;overflow:hidden">'+vHtml+'</div>'+inf+'</div>';
 
     } else if(type==='text'){
       var hl=x(ad.headline||''), desc=x(ad.description||''), btn=x(ad.btnText||'Abhi Dekho');
@@ -5756,7 +5757,12 @@ function _ksEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
         else btnHtml='<span style="background:'+bb+';color:'+bc+';font-size:'+bfz+';border-radius:'+bsh+';padding:7px 20px;font-weight:700;display:inline-block">'+btn+'</span>';
       }
 
-      html='<div class="ks-ad-textbanner" '+clickAttr+' style="'+bgCss(ad)+';border-radius:'+br+';text-align:'+align+';align-items:'+af+'">'+
+      /* ── Merge ALL styles into ONE style attribute (no double style= conflict) ── */
+      var textStyle = bgCss(ad)+';border-radius:'+br+';text-align:'+align+';align-items:'+af+
+        ';cursor:'+(clickUrl?'pointer':'default')+';width:100%;box-sizing:border-box;';
+      var textOnClick = clickUrl ? 'onclick="ksAdGo(\''+x(ad._id)+'\',\''+x(clickUrl)+'\')"' : '';
+
+      html='<div class="ks-ad-textbanner" '+textOnClick+' style="'+textStyle+'">'+
         lbl+logo+
         '<div style="'+hls+'">'+hl+'</div>'+
         (desc?'<div style="'+ds+'">'+desc+'</div>':'')+
