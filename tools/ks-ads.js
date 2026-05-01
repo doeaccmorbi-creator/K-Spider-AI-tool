@@ -60,12 +60,12 @@
 
   /* ── Apna Firebase config yahan daalo (same as index.html) ── */
   var _FB_CONFIG = {
-    apiKey:            "YOUR_API_KEY",
-    authDomain:        "YOUR_PROJECT.firebaseapp.com",
-    projectId:         "YOUR_PROJECT_ID",
-    storageBucket:     "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId:             "YOUR_APP_ID"
+    apiKey:            "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+    authDomain:        "kspideraimain.firebaseapp.com",
+    projectId:         "kspideraimain",
+    storageBucket:     "kspideraimain.firebasestorage.app",
+    messagingSenderId: "940003391760",
+    appId:             "1:940003391760:web:8617000465b6991d348d95"
   };
 
   /* ── Script inject helper ── */
