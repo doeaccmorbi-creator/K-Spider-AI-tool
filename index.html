@@ -5810,13 +5810,38 @@ function _ksEsc(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').re
     db.collection('ads').where('status','==','active').get()
       .then(function(snap){
         var fresh={};
+        // Homepage slot names that map to actual DOM elements
+        var homepageSlots = ['top-banner','below-title','in-content','after-result','bottom-banner'];
         snap.forEach(function(doc){
           var d=doc.data();
           if(d.expiry&&new Date(d.expiry)<now)return;
           (d.slots||[]).forEach(function(s){
-            if(!SLOTS[s])return;
-            if(!fresh[s])fresh[s]=[];
-            fresh[s].push(Object.assign({},d,{_id:doc.id}));
+            // Direct homepage slot match
+            if(SLOTS[s]){
+              if(!fresh[s])fresh[s]=[];
+              fresh[s].push(Object.assign({},d,{_id:doc.id}));
+              return;
+            }
+            // 'all-tools' — show on all homepage slots too
+            if(s==='all-tools'){
+              homepageSlots.forEach(function(hs){
+                if(!fresh[hs])fresh[hs]=[];
+                // Avoid duplicates
+                var exists=fresh[hs].some(function(a){return a._id===doc.id;});
+                if(!exists) fresh[hs].push(Object.assign({},d,{_id:doc.id}));
+              });
+              return;
+            }
+            // Tool-specific slots (e.g. 'tool-whatsapp-bulk-sender')
+            // On homepage, show these in in-content and after-result slots
+            if(s.indexOf('tool-')===0){
+              ['in-content','after-result'].forEach(function(hs){
+                if(!fresh[hs])fresh[hs]=[];
+                var exists=fresh[hs].some(function(a){return a._id===doc.id;});
+                if(!exists) fresh[hs].push(Object.assign({},d,{_id:doc.id}));
+              });
+              return;
+            }
           });
         });
         /* Shuffle each slot randomly */
