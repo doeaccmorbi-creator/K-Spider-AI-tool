@@ -226,28 +226,47 @@
   function renderAd(el, ad) {
     if (!el || !ad) return;
 
-    var clickUrl = ad.clickUrl || '#';
-    var hasLink  = clickUrl && clickUrl !== '#';
+    var clickUrl = ad.clickUrl || '';
+    var hasLink  = !!(clickUrl && clickUrl !== '#');
     var inner    = '';
 
+    // ── Size map ──
+    var sizeMap = {
+      '728x90' :'width:728px;max-width:100%;height:90px;',
+      '970x90' :'width:970px;max-width:100%;height:90px;',
+      '970x250':'width:970px;max-width:100%;height:250px;',
+      '300x250':'width:300px;max-width:100%;height:250px;',
+      '336x280':'width:336px;max-width:100%;height:280px;',
+      '250x250':'width:250px;max-width:100%;height:250px;',
+      '200x200':'width:200px;max-width:100%;height:200px;',
+      '160x600':'width:160px;max-width:100%;height:600px;',
+      '120x600':'width:120px;max-width:100%;height:600px;',
+      '300x600':'width:300px;max-width:100%;height:600px;',
+      '320x50' :'width:320px;max-width:100%;height:50px;',
+      '320x100':'width:320px;max-width:100%;height:100px;',
+      'auto'   :'width:100%;'
+    };
+    var sizeStyle = sizeMap[ad.size || 'auto'] || 'width:100%;';
+
+    // ══════════════════════════════
+    // IMAGE AD
+    // ══════════════════════════════
     if (ad.type === 'image' && ad.imgUrl) {
-      var sizeStyle = 'max-width:100%;height:auto;display:block;margin:0 auto;border-radius:8px;';
-      if (ad.size === '728x90')   sizeStyle += 'width:728px;max-height:90px;object-fit:cover;';
-      else if (ad.size === '300x250') sizeStyle += 'width:300px;height:250px;object-fit:cover;';
-      else if (ad.size === '320x50')  sizeStyle += 'width:320px;max-height:50px;object-fit:cover;';
-
       inner = '<img src="' + safe(ad.imgUrl) + '" alt="' + safe(ad.imgAlt || 'Advertisement') + '" ' +
-        'style="' + sizeStyle + '" loading="lazy" ' +
-        'onerror="this.closest(\'[data-ks-slot]\').style.display=\'none\'">';
+        'style="' + sizeStyle + 'height:auto;max-height:100%;display:block;margin:0 auto;border-radius:8px;object-fit:cover" ' +
+        'loading="lazy" onerror="this.closest(\'[data-ks-slot]\').style.display=\'none\'">';
 
+    // ══════════════════════════════
+    // VIDEO AD
+    // ══════════════════════════════
     } else if (ad.type === 'video' && ad.videoUrl) {
-      var vurl = ad.videoUrl;
+      var vurl    = ad.videoUrl;
+      var vsound  = ad.videoSound  || 'muted';
+      var vplay   = ad.videoPlay   || 'autoplay';
+      var vposter = ad.videoPoster || '';
       var isYT    = /youtube\.com|youtu\.be/i.test(vurl);
       var isVimeo = /vimeo\.com/i.test(vurl);
       var vidHtml = '';
-      var vsound  = ad.videoSound || 'muted';
-      var vplay   = ad.videoPlay  || 'autoplay';
-      var vposter = ad.videoPoster || '';
 
       if (isYT) {
         var ytId = vurl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -270,57 +289,136 @@
         var muteA = (vsound === 'muted') ? 'muted' : '';
         vidHtml = '<video ' + autoA + ' ' + muteA + ' controls style="width:100%;max-height:280px;border-radius:8px;background:#000"' +
           (vposter ? ' poster="' + safe(vposter) + '"' : '') + '>' +
-          '<source src="' + safe(vurl) + '" type="video/mp4">' +
-          '</video>';
+          '<source src="' + safe(vurl) + '" type="video/mp4"></video>';
       }
       if (!vidHtml) return;
       inner = '<div style="width:100%">' + vidHtml + '</div>';
 
+    // ══════════════════════════════
+    // TEXT AD — Full admin fields
+    // ══════════════════════════════
     } else if (ad.type === 'text') {
-      var bg  = ad.bgColor || '#e8520a';
-      var hl  = safe(ad.headline || '');
+
+      // All fields from admin — with exact same defaults as admin.html
+      var bg           = ad.bgColor       || '#e8520a';
+      var bg2          = ad.bgColor2      || '#c0392b';
+      var bannerStyle  = ad.bannerStyle   || 'flat';
+      var layoutAlign  = ad.layoutAlign   || 'center';
+      var borderRadius = ad.borderRadius  || '12px';
+      var hlSize       = ad.hlSize        || '1rem';
+      var hlWeight     = ad.hlWeight      || '800';
+      var hlStyle      = ad.hlStyle       || 'normal';
+      var hlColor      = ad.hlColor       || '#ffffff';
+      var hlDec        = ad.hlDecoration  || 'none';
+      var hlPos        = ad.hlPosition    || 'middle';
+      var descSize     = ad.descSize      || '.78rem';
+      var descWeight   = ad.descWeight    || '400';
+      var descStyle2   = ad.descStyle     || 'normal';
+      var descColor    = ad.descColor     || '#ffffff';
+      var btnBg        = ad.btnBg         || '#ffffff';
+      var btnColor     = ad.btnColor      || '#e8520a';
+      var btnFontSize  = ad.btnFontSize   || '.78rem';
+      var btnPos       = ad.btnPosition   || 'center';
+      var btnShape     = ad.btnShape      || '20px';
+      var logoEnabled  = ad.logoEnabled   || false;
+      var logoUrl      = ad.logoUrl       || '';
+      var logoPosition = ad.logoPosition  || 'top-right';
+      var logoSize     = ad.logoSize      || '40px';
+      var logoOpacity  = ad.logoOpacity   || '1';
+
+      var hl  = safe(ad.headline    || '');
       var dsc = safe(ad.description || '');
-      var btn = safe(ad.btnText || 'Learn More');
+      var btn = safe(ad.btnText     || 'Learn More');
       var inf = ad.infoFields || {};
       var sf  = ad.showFields || {};
-      var infoHtml = '';
 
-      if (sf.company  && inf.companyName) infoHtml += '<div style="font-size:.72rem;font-weight:800;color:#fff;margin-bottom:2px">🏢 ' + safe(inf.companyName) + '</div>';
-      if (sf.offer    && inf.offerText)   infoHtml += '<div style="font-size:.76rem;font-weight:700;background:rgba(255,255,255,.2);display:inline-block;padding:2px 10px;border-radius:20px;margin-bottom:4px;color:#fff">🎉 ' + safe(inf.offerText) + '</div>';
+      // Banner background CSS — exactly matching admin preview
+      var bgCss = '';
+      if (bannerStyle === 'gradient')
+        bgCss = 'background:linear-gradient(135deg,' + bg + ',' + bg2 + ')';
+      else if (bannerStyle === 'dark-glass')
+        bgCss = 'background:rgba(0,0,0,.75);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15)';
+      else if (bannerStyle === 'neon-border')
+        bgCss = 'background:' + bg + ';border:2px solid ' + bg2 + ';box-shadow:0 0 16px ' + bg2 + '88';
+      else if (bannerStyle === 'gold-luxury')
+        bgCss = 'background:linear-gradient(135deg,#1a1209,#2d2011,#1a1209);border:1px solid #b8792a;box-shadow:inset 0 0 30px rgba(184,121,42,.15)';
+      else
+        bgCss = 'background:' + bg;
+
+      // Info fields HTML
+      var infoHtml = '';
+      if (sf.company && inf.companyName)
+        infoHtml += '<div style="font-size:.73rem;font-weight:800;color:' + hlColor + ';letter-spacing:.03em;margin-bottom:3px">🏢 ' + safe(inf.companyName) + '</div>';
+      if (sf.offer && inf.offerText)
+        infoHtml += '<div style="font-size:.76rem;font-weight:700;color:' + hlColor + ';background:rgba(255,255,255,.2);display:inline-block;padding:2px 12px;border-radius:20px;margin-bottom:5px">🎉 ' + safe(inf.offerText) + '</div>';
 
       var contactLine = '';
       if (sf.phone && inf.phone) {
         var waNum = inf.phone.replace(/[^0-9]/g, '');
-        contactLine += '<span style="font-size:.7rem;margin-right:8px"><a href="https://wa.me/91' + waNum + '" target="_blank" style="color:#fff;text-decoration:underline" onclick="event.stopPropagation()">📱 ' + safe(inf.phone) + '</a></span>';
+        contactLine += '<span style="font-size:.7rem;margin-right:8px"><a href="https://wa.me/91' + waNum + '" target="_blank" style="color:' + descColor + ';text-decoration:underline" onclick="event.stopPropagation()">📱 ' + safe(inf.phone) + '</a></span>';
       }
-      if (sf.email && inf.email)   contactLine += '<span style="font-size:.7rem;margin-right:8px"><a href="mailto:' + safe(inf.email) + '" style="color:#fff;text-decoration:underline" onclick="event.stopPropagation()">✉️ ' + safe(inf.email) + '</a></span>';
-      if (sf.url   && inf.url)     contactLine += '<span style="font-size:.7rem"><a href="' + safe(inf.url) + '" target="_blank" style="color:#fff;text-decoration:underline" onclick="event.stopPropagation()">🌐 ' + safe(inf.url.replace(/^https?:\/\//, '')) + '</a></span>';
-      if (contactLine) infoHtml += '<div style="margin-bottom:3px;line-height:1.9">' + contactLine + '</div>';
-      if (sf.location && inf.location) infoHtml += '<div style="font-size:.68rem;color:rgba(255,255,255,.85)">📍 ' + safe(inf.location) + '</div>';
-      if (sf.address  && inf.address)  infoHtml += '<div style="font-size:.66rem;color:rgba(255,255,255,.75);margin-top:1px">🏠 ' + safe(inf.address) + '</div>';
+      if (sf.email && inf.email)
+        contactLine += '<span style="font-size:.7rem;margin-right:8px"><a href="mailto:' + safe(inf.email) + '" style="color:' + descColor + ';text-decoration:underline" onclick="event.stopPropagation()">✉️ ' + safe(inf.email) + '</a></span>';
+      if (sf.url && inf.url)
+        contactLine += '<span style="font-size:.7rem"><a href="' + safe(inf.url) + '" target="_blank" style="color:' + descColor + ';text-decoration:underline" onclick="event.stopPropagation()">🌐 ' + safe(inf.url.replace(/^https?:\/\//, '')) + '</a></span>';
+      if (contactLine)
+        infoHtml += '<div style="margin-bottom:5px;line-height:1.9">' + contactLine + '</div>';
+      if (sf.location && inf.location)
+        infoHtml += '<div style="font-size:.68rem;color:' + descColor + ';opacity:.82;margin-bottom:3px">📍 ' + safe(inf.location) + '</div>';
+      if (sf.address && inf.address)
+        infoHtml += '<div style="font-size:.66rem;color:' + descColor + ';opacity:.75;margin-bottom:4px">🏠 ' + safe(inf.address) + '</div>';
 
-      inner = '<div style="background:' + bg + ';padding:14px 22px;border-radius:8px;text-align:center;color:#fff;width:100%;cursor:' + (hasLink ? 'pointer' : 'default') + '">' +
-        '<div style="font-size:.95rem;font-weight:800;margin-bottom:3px">' + hl + '</div>' +
-        (dsc ? '<div style="font-size:.80rem;opacity:.88;margin-bottom:8px">' + dsc + '</div>' : '') +
-        (infoHtml ? '<div style="margin-bottom:8px">' + infoHtml + '</div>' : '') +
-        '<span style="background:rgba(255,255,255,.22);padding:4px 16px;border-radius:20px;font-size:.76rem;font-weight:700">' + btn + '</span>' +
+      // Logo HTML
+      var logoPosCss = 'position:absolute;';
+      if      (logoPosition === 'top-left')       logoPosCss += 'top:8px;left:8px;';
+      else if (logoPosition === 'top-center')     logoPosCss += 'top:8px;left:50%;transform:translateX(-50%);';
+      else if (logoPosition === 'top-right')      logoPosCss += 'top:8px;right:8px;';
+      else if (logoPosition === 'bottom-left')    logoPosCss += 'bottom:8px;left:8px;';
+      else if (logoPosition === 'bottom-center')  logoPosCss += 'bottom:8px;left:50%;transform:translateX(-50%);';
+      else                                         logoPosCss += 'bottom:8px;right:8px;';
+      logoPosCss += 'height:' + logoSize + ';width:auto;opacity:' + logoOpacity + ';pointer-events:none;z-index:10;border-radius:4px;';
+      var logoHtml = (logoEnabled && logoUrl)
+        ? '<img src="' + safe(logoUrl) + '" style="' + logoPosCss + '" onerror="this.style.display=\'none\'">'
+        : '';
+
+      // Button align
+      var btnAlignCss = btnPos === 'left' ? 'text-align:left' : btnPos === 'right' ? 'text-align:right' : 'text-align:center';
+
+      // Headline (top or bottom based on hlPos)
+      var hlHtml = '<div style="font-size:' + hlSize + ';font-weight:' + hlWeight + ';font-style:' + hlStyle + ';color:' + hlColor + ';text-decoration:' + hlDec + ';margin-bottom:' + (dsc || infoHtml ? '6px' : '10px') + '">' + hl + '</div>';
+
+      inner =
+        '<div style="' + bgCss + ';border-radius:' + borderRadius + ';padding:16px 18px;text-align:' + layoutAlign + ';cursor:' + (hasLink ? 'pointer' : 'default') + ';position:relative;overflow:hidden;width:100%;box-sizing:border-box">' +
+          logoHtml +
+          (hlPos !== 'bottom' ? hlHtml : '') +
+          (dsc ? '<div style="font-size:' + descSize + ';font-weight:' + descWeight + ';font-style:' + descStyle2 + ';color:' + descColor + ';opacity:.92;margin-bottom:8px;line-height:1.5">' + dsc + '</div>' : '') +
+          (infoHtml ? '<div style="margin-bottom:8px">' + infoHtml + '</div>' : '') +
+          '<div style="' + btnAlignCss + ';margin-top:4px">' +
+            '<span style="background:' + btnBg + ';color:' + btnColor + ';padding:6px 20px;border-radius:' + btnShape + ';font-size:' + btnFontSize + ';font-weight:700;display:inline-block">' + btn + '</span>' +
+          '</div>' +
+          (hlPos === 'bottom' ? '<div style="font-size:' + hlSize + ';font-weight:' + hlWeight + ';font-style:' + hlStyle + ';color:' + hlColor + ';text-decoration:' + hlDec + ';margin-top:8px">' + hl + '</div>' : '') +
         '</div>';
 
+    // ══════════════════════════════
+    // HTML AD
+    // ══════════════════════════════
     } else if (ad.type === 'html') {
-      el.innerHTML = '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
+      el.innerHTML =
+        '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
         '<div style="width:100%">' + (ad.htmlCode || '') + '</div>';
       trackImpression(ad._id);
       return;
 
     } else {
-      return;
+      return; // unknown type
     }
 
+    // ── Wrap with click link ──
     var wrap = hasLink
       ? '<a href="' + safe(clickUrl) + '" target="_blank" rel="noopener noreferrer sponsored" ' +
-          'style="display:block;text-decoration:none;width:100%" ' +
+          'style="display:block;text-decoration:none;' + sizeStyle + '" ' +
           'onclick="window.ksAdTrackClick && window.ksAdTrackClick(\'' + safe(ad._id || '') + '\')">' + inner + '</a>'
-      : '<div style="width:100%">' + inner + '</div>';
+      : '<div style="' + sizeStyle + '">' + inner + '</div>';
 
     el.innerHTML =
       '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
