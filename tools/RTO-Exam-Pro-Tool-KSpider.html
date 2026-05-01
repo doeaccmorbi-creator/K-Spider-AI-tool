@@ -10,13 +10,26 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="RTO Exam Pro">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://pagead2.googlesyndication.com https://www.googletagmanager.com;
+    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com;
+    img-src 'self' data: https: blob:;
+    connect-src 'self' https:;
+    frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com;
+    object-src 'none';
+    base-uri 'self';
+    form-action 'self';
+  ">
   <!-- Open Graph -->
   <meta property="og:title" content="RTO Exam Pro — Free Driving Licence Exam Practice">
   <meta property="og:description" content="Practice with 150+ expert RTO questions in 9 Indian languages. Free Mock Tests & Progress Tracking. Powered by KSpiderAI.">
   <meta property="og:url" content="https://www.kspiderai.in">
   <meta property="og:type" content="website">
-  <!-- Google AdSense — Replace ca-pub-XXXXXXXXXXXXXXXX with your Publisher ID -->
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
+  <!-- Google AdSense: Apna approved ca-pub ID aane ke baad niche ki line uncomment karein -->
+  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="keywords" content="RTO exam, driving licence test, RTO mock test, driving test India, learner licence test, DL exam, traffic rules India, road signs India, motor vehicle act 2019, free RTO practice, KSpiderAI, RTO agent marketing tool">
   <meta name="author" content="KSpiderAI">
@@ -637,15 +650,10 @@
 </div>
 
 <!-- ══════════════════════════════════════════ AD SLOT TOP ══ -->
-<div class="ad-slot ad-slot-top" id="ad-top">
-  <!-- Google AdSense — Top Banner -->
-  <ins class="adsbygoogle"
-       style="display:block"
-       data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-       data-ad-slot="1111111111"
-       data-ad-format="auto"
-       data-full-width-responsive="true"></ins>
-  <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+<!-- ══════════════════════════════════════════ AD SLOT TOP ══ -->
+<div class="ad-slot ad-slot-top" id="ad-top" style="min-height:60px;display:flex;align-items:center;justify-content:center;">
+  <!-- AdSense approved hone ke baad yahan real ad code daalen -->
+  <span style="font-size:0.7rem;color:#94a3b8;letter-spacing:0.05em;">ADVERTISEMENT</span>
 </div>
 
 <!-- ══════════════════════════════════════════ OFFLINE BANNER ══ -->
@@ -972,9 +980,9 @@
       <button class="btn btn-success" onclick="shareApp()">📤 Share App on WhatsApp</button>
     </div>
     <!-- ═══ GOOGLE ADSENSE — INLINE (DASHBOARD) ═══ -->
-    <div class="ad-slot ad-slot-inline">
-      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="2222222222" data-ad-format="auto" data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <div class="ad-slot ad-slot-inline" style="min-height:90px;display:flex;align-items:center;justify-content:center;">
+      <!-- AdSense approved hone ke baad yahan real ad code daalen -->
+      <span style="font-size:0.7rem;color:#94a3b8;letter-spacing:0.05em;">ADVERTISEMENT</span>
     </div>
 
     <!-- ═══ RTO AGENT — REGISTRATION & SHARE ═══ -->
@@ -1072,9 +1080,9 @@
     </div>
 
     <!-- ═══ GOOGLE ADSENSE — BOTTOM (DASHBOARD) ═══ -->
-    <div class="ad-slot ad-slot-bottom">
-      <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="3333333333" data-ad-format="auto" data-full-width-responsive="true"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <div class="ad-slot ad-slot-bottom" style="min-height:90px;display:flex;align-items:center;justify-content:center;">
+      <!-- AdSense approved hone ke baad yahan real ad code daalen -->
+      <span style="font-size:0.7rem;color:#94a3b8;letter-spacing:0.05em;">ADVERTISEMENT</span>
     </div>
   </div>
 </div>
@@ -1118,8 +1126,13 @@
           <textarea id="reg-address" placeholder="Your business address" rows="2"></textarea>
         </div>
         <div class="reg-field full">
-          <label>🖼️ Logo URL (optional — link to your logo image)</label>
-          <input type="url" id="reg-logo" placeholder="https://i.imgur.com/yourlogo.jpg">
+          <label>🖼️ Logo URL (optional — sirf HTTPS image link daalen)</label>
+          <input type="url" id="reg-logo" placeholder="https://i.imgur.com/yourlogo.jpg" oninput="previewLogoURL(this.value)">
+          <div id="logo-preview-wrap" style="display:none;margin-top:8px;text-align:center;">
+            <img id="logo-preview-img" src="" alt="Logo Preview"
+              style="max-height:80px;max-width:180px;border-radius:8px;border:1px solid #e2e8f0;padding:4px;background:#f8fafc;"
+              onerror="document.getElementById('logo-preview-wrap').innerHTML='<span style=color:#ef4444;font-size:.8rem>⚠️ Invalid image URL ya HTTPS nahi hai</span>'">
+          </div>
         </div>
       </div>
 
@@ -2808,21 +2821,30 @@ function saveAgentState() {
   localStorage.setItem('rto_agent_data', JSON.stringify(agentData));
 }
 
-/* ── Read URL parameters for agent branding ─────────────── */
+/* Read URL parameters for agent branding — self-contained, works on all devices/browsers */
 function getAgentFromURL() {
   try {
     const params = new URLSearchParams(window.location.search);
-    // Short link format: ?a=shortid
+    // Primary format: ?agent=base64 (self-contained, works everywhere)
+    const encoded = params.get('agent');
+    if (encoded) {
+      try {
+        // Support both plain and URI-encoded variants
+        const decoded = decodeURIComponent(encoded);
+        const json = decodeURIComponent(escape(atob(decoded)));
+        return JSON.parse(json);
+      } catch(e1) {
+        // Fallback: try plain atob
+        try { return JSON.parse(atob(encoded)); } catch(e2) {}
+      }
+    }
+    // Legacy short-link fallback: ?a=shortid (only works same device/browser)
     const shortId = params.get('a');
     if (shortId) {
       const store = JSON.parse(localStorage.getItem('rto_short_links') || '{}');
       if (store[shortId]) return store[shortId];
     }
-    // Full encoded format: ?agent=base64...
-    const encoded = params.get('agent');
-    if (!encoded) return null;
-    const decoded = JSON.parse(atob(decodeURIComponent(encoded)));
-    return decoded;
+    return null;
   } catch(e) { return null; }
 }
 
@@ -2862,39 +2884,55 @@ function initAgentBanner() {
     if (urlAgent.services) parts.push('Services: ' + urlAgent.services);
     addrEl.textContent = parts.join(' | ');
   }
-  if (urlAgent.logo && logoWrap) {
+  if (urlAgent.logo && urlAgent.logo.startsWith('https://') && logoWrap) {
     logoWrap.src = urlAgent.logo;
     logoWrap.style.display = 'block';
     if (logoEmoji) logoEmoji.style.display = 'none';
     logoWrap.onerror = function(){ logoWrap.style.display='none'; if(logoEmoji) logoEmoji.style.display='block'; };
   }
   if (l) {
-    const links = [];
-    if (urlAgent.whatsapp) links.push('<a class="apb-link" href="' + urlAgent.whatsapp + '" target="_blank" rel="noopener">\uD83D\uDCAC WhatsApp</a>');
-    if (urlAgent.mobile) links.push('<a class="apb-link" href="tel:' + urlAgent.mobile + '">\uD83D\uDCDE Call</a>');
-    if (urlAgent.website) links.push('<a class="apb-link" href="' + urlAgent.website + '" target="_blank" rel="noopener">\uD83C\uDF10 Website</a>');
-    if (urlAgent.facebook) links.push('<a class="apb-link" href="' + urlAgent.facebook + '" target="_blank" rel="noopener">\uD83D\uDCD8 Facebook</a>');
-    if (urlAgent.instagram) links.push('<a class="apb-link" href="' + urlAgent.instagram + '" target="_blank" rel="noopener">\uD83D\uDCF8 Instagram</a>');
-    if (urlAgent.youtube) links.push('<a class="apb-link" href="' + urlAgent.youtube + '" target="_blank" rel="noopener">\uD83C\uDFA5 YouTube</a>');
-    if (urlAgent.telegram) links.push('<a class="apb-link" href="' + urlAgent.telegram + '" target="_blank" rel="noopener">\u2708\uFE0F Telegram</a>');
-    if (urlAgent.linkedin) links.push('<a class="apb-link" href="' + urlAgent.linkedin + '" target="_blank" rel="noopener">\uD83D\uDCBC LinkedIn</a>');
-    if (urlAgent.twitter) links.push('<a class="apb-link" href="' + urlAgent.twitter + '" target="_blank" rel="noopener">\uD83D\uDC26 Twitter</a>');
-    if (urlAgent.gmaps) links.push('<a class="apb-link" href="' + urlAgent.gmaps + '" target="_blank" rel="noopener">\uD83D\uDDFA Maps</a>');
-    l.innerHTML = links.join('');
+    l.innerHTML = ''; // clear first
+    const linkDefs = [
+      { key:'whatsapp', label:'\uD83D\uDCAC WhatsApp' },
+      { key:'mobile',   label:'\uD83D\uDCDE Call', href: urlAgent.mobile ? 'tel:'+urlAgent.mobile.replace(/[^\d+]/g,'') : null },
+      { key:'website',  label:'\uD83C\uDF10 Website' },
+      { key:'facebook', label:'\uD83D\uDCD8 Facebook' },
+      { key:'instagram',label:'\uD83D\uDCF8 Instagram' },
+      { key:'youtube',  label:'\uD83C\uDFA5 YouTube' },
+      { key:'telegram', label:'\u2708\uFE0F Telegram' },
+      { key:'linkedin', label:'\uD83D\uDCBC LinkedIn' },
+      { key:'twitter',  label:'\uD83D\uDC26 Twitter' },
+      { key:'gmaps',    label:'\uD83D\uDDFA Maps' }
+    ];
+    linkDefs.forEach(function(def) {
+      const val = urlAgent[def.key];
+      if (!val && def.key !== 'mobile') return;
+      if (def.key === 'mobile' && !urlAgent.mobile) return;
+      const href = def.href || sanitizeURL(val);
+      if (href === '#') return; // skip unsafe URLs
+      const a = document.createElement('a');
+      a.className = 'apb-link';
+      a.href = href;
+      if (!href.startsWith('tel:')) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      a.textContent = def.label;
+      l.appendChild(a);
+    });
   }
-  // Update page title
-  document.title = 'RTO Exam Pro \u2014 ' + (urlAgent.company || urlAgent.name) + ' | Powered by KSpiderAI';
+  // Update page title safely (no HTML injection possible via textContent logic)
+  const safeTitle = ((urlAgent.company || urlAgent.name) + '').replace(/[<>&"]/g, '');
+  document.title = 'RTO Exam Pro \u2014 ' + safeTitle + ' | Powered by KSpiderAI';
 }
 
 /* ── Registration Modal ──────────────────────────────────── */
 function openRegModal() {
   if (agentData && agentData.status !== 'pending') {
-    // Pre-fill form with existing data
     const fields = ['fullname','company','mobile','email','website','city','address','logo','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps','services'];
     fields.forEach(f => {
       const el = document.getElementById('reg-' + f);
       if (el && agentData[f]) el.value = agentData[f];
     });
+    // Trigger logo preview if logo exists
+    if (agentData.logo) previewLogoURL(agentData.logo);
   }
   document.getElementById('reg-modal').classList.add('open');
 }
@@ -2903,25 +2941,50 @@ function closeRegModal() {
   document.getElementById('reg-modal').classList.remove('open');
 }
 
+/* Live logo preview — sirf https:// URLs allowed */
+function previewLogoURL(val) {
+  const wrap = document.getElementById('logo-preview-wrap');
+  const img  = document.getElementById('logo-preview-img');
+  if (!val || !val.startsWith('https://')) { if(wrap) wrap.style.display='none'; return; }
+  if (wrap && img) {
+    img.src = val;
+    wrap.style.display = 'block';
+  }
+}
+
 function submitAgentReg() {
   const get = (id) => (document.getElementById('reg-' + id)?.value || '').trim();
   const fullname = get('fullname');
-  const company = get('company');
-  const mobile = get('mobile');
-  const email = get('email');
-  const city = get('city');
-  const address = get('address');
+  const company  = get('company');
+  const mobile   = get('mobile');
+  const email    = get('email');
+  const city     = get('city');
+  const address  = get('address');
   if (!fullname || !company || !mobile || !email || !city || !address) {
-    showToast('Please fill all required fields (*)', 'error');
-    return;
+    showToast('Please fill all required fields (*)', 'error'); return;
   }
   if (!/^[\w.-]+@[\w.-]+\.\w{2,}$/.test(email)) {
-    showToast('Please enter a valid email address', 'error');
-    return;
+    showToast('Valid email address daalen', 'error'); return;
+  }
+  if (!/^[6-9]\d{9}$/.test(mobile.replace(/\s/g,''))) {
+    showToast('Valid 10-digit Indian mobile number daalen', 'error'); return;
+  }
+  /* Logo: only allow https:// to prevent mixed-content browser block */
+  const logoRaw = get('logo');
+  if (logoRaw && !logoRaw.startsWith('https://')) {
+    showToast('Logo URL sirf HTTPS hona chahiye (https:// se shuru ho)', 'error'); return;
+  }
+  /* All optional URL fields — enforce https:// or blank */
+  const urlFields = ['website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps'];
+  for (const f of urlFields) {
+    const v = get(f);
+    if (v && !v.startsWith('https://') && !v.startsWith('http://')) {
+      showToast(f.charAt(0).toUpperCase()+f.slice(1) + ' URL mein https:// daalen', 'error'); return;
+    }
   }
   const data = {
-    name: fullname, company, mobile, email, city, address,
-    website: get('website'), logo: get('logo'),
+    name: fullname, company, mobile: mobile.replace(/\s/g,''), email, city, address,
+    website: get('website'), logo: logoRaw,
     whatsapp: get('whatsapp'), facebook: get('facebook'),
     instagram: get('instagram'), youtube: get('youtube'),
     telegram: get('telegram'), linkedin: get('linkedin'),
@@ -2936,11 +2999,8 @@ function submitAgentReg() {
   closeRegModal();
   renderAgentSection();
   showToast('Registration submitted! Admin approval ni raah joi raha che 🎉', 'success');
-  // NOTE: Auto-approval removed — admin must approve from Admin Panel > RTO Agents
-  // Send to admin localStorage (shared notification channel)
   try {
     const pending = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
-    // Remove any existing entry with same refId or same mobile
     const filtered = pending.filter(function(p){ return p.mobile !== data.mobile; });
     filtered.push(data);
     localStorage.setItem('rto_admin_pending', JSON.stringify(filtered));
@@ -3016,45 +3076,69 @@ function generateAgentLink() {
     instagram: agentData.instagram, youtube: agentData.youtube, telegram: agentData.telegram,
     linkedin: agentData.linkedin, twitter: agentData.twitter, gmaps: agentData.gmaps
   };
-  const encoded = encodeURIComponent(btoa(JSON.stringify(payload)));
-  return baseURL + '?agent=' + encoded;
+  try {
+    const json = JSON.stringify(payload);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    return baseURL + '?agent=' + encodeURIComponent(encoded);
+  } catch(e) { return baseURL; }
 }
 
-/* Short link — stores payload in localStorage with a short ID, uses ID in URL */
+/* Self-contained agent link — all data encoded in URL so it works on ANY device/browser */
 function generateShortAgentLink() {
   if (!agentData) return '';
   const baseURL = window.location.href.split('?')[0];
-  // Generate short 8-char ID from refId or timestamp
-  const shortId = agentData.refId ? agentData.refId.replace('RTO-','').toLowerCase() : Date.now().toString(36);
-  // Store in localStorage so URL-opener can look it up
+  const payload = {
+    name: agentData.name, company: agentData.company, mobile: agentData.mobile,
+    email: agentData.email, city: agentData.city, website: agentData.website,
+    logo: agentData.logo, whatsapp: agentData.whatsapp, facebook: agentData.facebook,
+    instagram: agentData.instagram, youtube: agentData.youtube, telegram: agentData.telegram,
+    linkedin: agentData.linkedin, twitter: agentData.twitter, gmaps: agentData.gmaps,
+    address: agentData.address, services: agentData.services
+  };
   try {
-    const store = JSON.parse(localStorage.getItem('rto_short_links') || '{}');
-    const payload = {
-      name: agentData.name, company: agentData.company, mobile: agentData.mobile,
-      email: agentData.email, city: agentData.city, website: agentData.website,
-      logo: agentData.logo, whatsapp: agentData.whatsapp, facebook: agentData.facebook,
-      instagram: agentData.instagram, youtube: agentData.youtube, telegram: agentData.telegram,
-      linkedin: agentData.linkedin, twitter: agentData.twitter, gmaps: agentData.gmaps,
-      address: agentData.address, services: agentData.services
-    };
-    store[shortId] = payload;
-    localStorage.setItem('rto_short_links', JSON.stringify(store));
-  } catch(e) {}
-  return baseURL + '?a=' + shortId;
+    // Use standard base64url encoding — works across all browsers, no localStorage dependency
+    const json = JSON.stringify(payload);
+    const encoded = btoa(unescape(encodeURIComponent(json)));
+    return baseURL + '?agent=' + encodeURIComponent(encoded);
+  } catch(e) { return baseURL; }
+}
+
+/* Sanitize external URLs — only allow http/https/tel/mailto to prevent javascript: injection */
+function sanitizeURL(url) {
+  if (!url) return '#';
+  try {
+    const u = new URL(url);
+    if (['http:', 'https:', 'tel:', 'mailto:'].includes(u.protocol)) return url;
+    return '#';
+  } catch(e) {
+    if (/^[a-zA-Z0-9]/.test(url)) return 'https://' + url;
+    return '#';
+  }
 }
 
 function previewAgentLink() {
-  window.open(currentAgentLink, '_blank', 'noopener');
+  window.open(currentAgentLink, '_blank', 'noopener,noreferrer');
 }
 
 function copyAgentLink() {
-  const link = currentAgentLink || generateAgentLink();
-  navigator.clipboard.writeText(link).then(() => {
-    showToast('Link copied to clipboard! 📋', 'success');
-  }).catch(() => {
+  const link = currentAgentLink || generateShortAgentLink();
+  if (!link) { showToast('No link available', 'error'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(link).then(() => {
+      showToast('Link copied to clipboard! 📋', 'success');
+    }).catch(() => {
+      fallbackCopyLink(link);
+    });
+  } else {
+    fallbackCopyLink(link);
+  }
+}
+
+function fallbackCopyLink(link) {
+  try {
     const el = document.getElementById('agent-share-link');
-    if (el) { el.select(); document.execCommand('copy'); showToast('Link copied!', 'success'); }
-  });
+    if (el) { el.select(); el.setSelectionRange(0, 99999); document.execCommand('copy'); showToast('Link copied!', 'success'); }
+  } catch(e) { showToast('Copy manually from the link box', 'info'); }
 }
 
 /* ── Message Carousel ────────────────────────────────────── */
@@ -3132,7 +3216,7 @@ function shareOnPlatform(platform) {
     return;
   }
   const url = urls[platform];
-  if (url) window.open(url, '_blank', 'noopener,width=600,height=500');
+  if (url) window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500');
 }
 
 /* ── Close reg modal on overlay click ───────────────────── */
