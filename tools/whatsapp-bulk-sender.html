@@ -2155,29 +2155,59 @@ window.nativeShareTool = nativeShareTool;
      Works with data-ks-slot="top-banner|in-content|after-result|bottom-banner"
      Firebase se ads load hoti hain — same as index.html
 ════════════════════════════════════════════════════════ -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
   // ── Agar ye script already chal chuki hai to dobara mat chalao ──
   if(window.__kspiderAdLoaded) return;
   window.__kspiderAdLoaded = true;
 
-  // ── Firebase Config — apna actual config yahan daalo ──
-  var firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_PROJECT.firebaseapp.com",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_PROJECT.appspot.com",
-    messagingSenderId: "YOUR_SENDER_ID",
-    appId: "YOUR_APP_ID"
+  var FB_CONFIG = {
+    apiKey: "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+    authDomain: "kspideraimain.firebaseapp.com",
+    projectId: "kspideraimain",
+    storageBucket: "kspideraimain.firebasestorage.app",
+    messagingSenderId: "940003391760",
+    appId: "1:940003391760:web:8617000465b6991d348d95"
   };
 
-  // ── Firebase Init — double-init se bachaav ──
-  if(!firebase.apps.length){
-    firebase.initializeApp(firebaseConfig);
+  // ── Firebase CDN dynamically load karo, PHIR init karo ──
+  // Ye ensure karta hai firebase object ready hai before use
+  function loadFirebaseAndInit(callback) {
+    if (typeof firebase !== 'undefined' && firebase.apps) {
+      // Already loaded (e.g. index.html ne load kar di)
+      initFB(callback);
+      return;
+    }
+    // Step 1: firebase-app load karo
+    var s1 = document.createElement('script');
+    s1.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js';
+    s1.onload = function() {
+      // Step 2: firestore load karo AFTER app loads
+      var s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js';
+      s2.onload = function() {
+        initFB(callback);
+      };
+      s2.onerror = function() { console.warn('[KSpider Ads] Firestore CDN load failed'); };
+      document.head.appendChild(s2);
+    };
+    s1.onerror = function() { console.warn('[KSpider Ads] Firebase App CDN load failed'); };
+    document.head.appendChild(s1);
   }
-  var db = firebase.firestore();
+
+  function initFB(callback) {
+    try {
+      if (!firebase.apps.length) {
+        firebase.initializeApp(FB_CONFIG);
+      }
+      var db = firebase.firestore();
+      callback(db);
+    } catch(e) {
+      console.warn('[KSpider Ads] Firebase init error:', e.message);
+    }
+  }
+
+  var db = null; // will be set after Firebase loads
 
   // ── Size map — Google AdSense standard sizes ──
   var sizeMap = {
@@ -2333,10 +2363,18 @@ window.nativeShareTool = nativeShareTool;
     });
   }
 
+  // ── Start: Firebase load karo phir slots init karo ──
+  function startAds() {
+    loadFirebaseAndInit(function(firebaseDb) {
+      db = firebaseDb; // global db set karo
+      initSlots();     // ab slots load karo
+    });
+  }
+
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', initSlots);
+    document.addEventListener('DOMContentLoaded', startAds);
   } else {
-    initSlots();
+    startAds();
   }
 
 })();
