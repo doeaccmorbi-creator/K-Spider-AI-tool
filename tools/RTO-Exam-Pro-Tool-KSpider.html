@@ -843,14 +843,14 @@
       <h3>⚙️ Configure Your Test</h3>
       <div class="setup-row">
         <label>Number of Questions</label>
-        <select id="test-count">
-          <option value="10">10 Questions</option>
-          <option value="15">15 Questions</option>
-          <option value="20" selected>20 Questions (Standard)</option>
-          <option value="30">30 Questions
-          <option value="50">50 Questions
-          <option value="100">100 Questions
-          <option value="150">300 Questions (Full Bank)</option>
+        <select id="test-count" onchange="updateTestInfo()">
+          <option value="10">10 Questions (10 min)</option>
+          <option value="15">15 Questions (15 min)</option>
+          <option value="20" selected>20 Questions — Standard (20 min)</option>
+          <option value="30">30 Questions (30 min)</option>
+          <option value="50">50 Questions (50 min)</option>
+          <option value="100">100 Questions (100 min)</option>
+          <option value="300">300 Questions — Full Bank (300 min)</option>
         </select>
       </div>
       <div class="setup-row">
@@ -860,7 +860,7 @@
         </select>
       </div>
       <div class="info-row">
-        <div class="info-box"><div class="val">20</div><div class="key">Minutes</div></div>
+        <div class="info-box"><div class="val" id="test-info-mins">20</div><div class="key">Minutes</div></div>
         <div class="info-box"><div class="val">70%</div><div class="key">Pass Mark</div></div>
         <div class="info-box"><div class="val" id="total-q-count">300</div><div class="key">Total Q's</div></div>
       </div>
@@ -1018,6 +1018,18 @@
         <div class="share-panel">
           <h3>🎉 Your Promo Link is LIVE!</h3>
           <p style="font-size:.82rem;color:var(--success-dark);margin-bottom:4px">Share this link — it opens RTO Exam Pro with YOUR branding on top.</p>
+
+          <!-- SmartScreen notice -->
+          <div style="background:#fef9c3;border:1.5px solid #fde047;border-radius:10px;padding:10px 13px;margin-bottom:10px;font-size:.78rem;color:#713f12;">
+            <strong>⚠️ Microsoft Edge / SmartScreen Users:</strong> Agar koi "Dangerous Site" warning dekhe to —
+            niche <em>"More information → Continue anyway"</em> click karein. Ye warning sirf nayi domain ke liye hoti hai aur
+            <strong>apne domain ko Microsoft SafeLinks mein report karke hatwa sakte ho:</strong>
+            <a href="https://www.microsoft.com/en-us/wdsi/support/report-unsafe-site-guest" target="_blank" rel="noopener noreferrer"
+               style="color:#1d4ed8;text-decoration:underline;word-break:break-all;">
+              microsoft.com/wdsi/support/report-unsafe-site-guest
+            </a>
+          </div>
+
           <div class="share-link-box">
             <input type="text" class="share-link-input" id="agent-share-link" readonly value="">
             <button class="btn btn-primary btn-sm" onclick="copyAgentLink()">📋 Copy</button>
@@ -2296,19 +2308,44 @@ function shareQuestion(qId) {
 /* ════════════════════════════════════════════════════════════
    MOCK TEST
 ════════════════════════════════════════════════════════════ */
+/* Update info-row when count changes */
+function updateTestInfo() {
+  const count = parseInt(document.getElementById('test-count').value) || 20;
+  const el = document.getElementById('test-info-mins');
+  if (el) el.textContent = count;
+}
+
 function startTest() {
-  const count = parseInt(document.getElementById('test-count').value);
-  const cat = document.getElementById('test-cat').value;
-  let pool = cat ? QUESTIONS.filter(q => q.category === cat) : QUESTIONS;
-  // shuffle
-  pool = [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(count, pool.length));
+  const count = parseInt(document.getElementById('test-count').value) || 20;
+  const cat   = document.getElementById('test-cat').value;
+
+  /* Filter by category if selected */
+  let pool = cat ? QUESTIONS.filter(function(q){ return q.category === cat; }) : [...QUESTIONS];
+
+  /* Guard: no questions available */
+  if (!pool || pool.length === 0) {
+    showToast('Is category mein koi question nahi mila. "All Categories" select karo.', 'error');
+    return;
+  }
+
+  /* Shuffle and slice */
+  pool = pool.sort(function(){ return Math.random() - 0.5; }).slice(0, Math.min(count, pool.length));
+
+  if (pool.length === 0) {
+    showToast('Questions load nahi hue. Page reload karo.', 'error');
+    return;
+  }
+
   appState.testQuestions = pool;
-  appState.testAnswers = {};
-  appState.testIndex = 0;
-  appState.timeLeft = TEST_DURATION;
-  // Start timer
+  appState.testAnswers   = {};
+  appState.testIndex     = 0;
+  /* Dynamic timer: 1 minute per question (min 10 min, max 300 min) */
+  appState.timeLeft      = Math.min(Math.max(pool.length, 10), 300) * 60;
+  appState.testStartSecs = appState.timeLeft; /* save for time-taken calc */
+
   clearInterval(appState.timerInterval);
   appState.timerInterval = setInterval(tickTimer, 1000);
+
   renderTestQ();
   renderPalette();
   showPage('test-active');
@@ -2409,7 +2446,9 @@ function confirmEnd() {
 
 function submitTest() {
   clearInterval(appState.timerInterval);
-  const timeTaken = TEST_DURATION - appState.timeLeft;
+  /* Use dynamic start time stored in appState — fallback to TEST_DURATION for old sessions */
+  const startSecs = appState.testStartSecs || TEST_DURATION;
+  const timeTaken = startSecs - appState.timeLeft;
   const m = Math.floor(timeTaken / 60), s = timeTaken % 60;
   const timeStr = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
 
@@ -2824,21 +2863,32 @@ function saveAgentState() {
 /* Read URL parameters for agent branding — self-contained, works on all devices/browsers */
 function getAgentFromURL() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    // Primary format: ?agent=base64 (self-contained, works everywhere)
-    const encoded = params.get('agent');
-    if (encoded) {
+    /* ── PRIMARY: Hash format  #agent:base64  ──────────────────────
+       Hash data is NEVER sent to servers or URL scanners (SmartScreen,
+       Google SafeBrowsing, etc.) so it cannot trigger "dangerous site"
+       warnings. This is the safest format for self-contained sharing. */
+    const hash = window.location.hash; // e.g. "#agent:eyJ..."
+    if (hash && hash.startsWith('#agent:')) {
+      const encoded = hash.slice(7); // strip '#agent:'
       try {
-        // Support both plain and URI-encoded variants
-        const decoded = decodeURIComponent(encoded);
-        const json = decodeURIComponent(escape(atob(decoded)));
+        const json = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
         return JSON.parse(json);
       } catch(e1) {
-        // Fallback: try plain atob
         try { return JSON.parse(atob(encoded)); } catch(e2) {}
       }
     }
-    // Legacy short-link fallback: ?a=shortid (only works same device/browser)
+    /* ── LEGACY FALLBACK: ?agent= query param (old links) ── */
+    const params = new URLSearchParams(window.location.search);
+    const encoded = params.get('agent');
+    if (encoded) {
+      try {
+        const json = decodeURIComponent(escape(atob(decodeURIComponent(encoded))));
+        return JSON.parse(json);
+      } catch(e1) {
+        try { return JSON.parse(atob(encoded)); } catch(e2) {}
+      }
+    }
+    /* ── LEGACY: ?a=shortid (localStorage-based, same device only) ── */
     const shortId = params.get('a');
     if (shortId) {
       const store = JSON.parse(localStorage.getItem('rto_short_links') || '{}');
@@ -3068,7 +3118,7 @@ function renderAgentSection() {
 
 function generateAgentLink() {
   if (!agentData) return '';
-  const baseURL = window.location.href.split('?')[0];
+  const baseURL = window.location.href.split('?')[0].split('#')[0];
   const payload = {
     name: agentData.name, company: agentData.company, mobile: agentData.mobile,
     email: agentData.email, city: agentData.city, website: agentData.website,
@@ -3077,16 +3127,15 @@ function generateAgentLink() {
     linkedin: agentData.linkedin, twitter: agentData.twitter, gmaps: agentData.gmaps
   };
   try {
-    const json = JSON.stringify(payload);
-    const encoded = btoa(unescape(encodeURIComponent(json)));
-    return baseURL + '?agent=' + encodeURIComponent(encoded);
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    return baseURL + '#agent:' + encoded;
   } catch(e) { return baseURL; }
 }
 
-/* Self-contained agent link — all data encoded in URL so it works on ANY device/browser */
+/* Self-contained agent link — data in URL HASH (never scanned by SmartScreen/SafeBrowsing) */
 function generateShortAgentLink() {
   if (!agentData) return '';
-  const baseURL = window.location.href.split('?')[0];
+  const baseURL = window.location.href.split('?')[0].split('#')[0];
   const payload = {
     name: agentData.name, company: agentData.company, mobile: agentData.mobile,
     email: agentData.email, city: agentData.city, website: agentData.website,
@@ -3096,10 +3145,9 @@ function generateShortAgentLink() {
     address: agentData.address, services: agentData.services
   };
   try {
-    // Use standard base64url encoding — works across all browsers, no localStorage dependency
-    const json = JSON.stringify(payload);
-    const encoded = btoa(unescape(encodeURIComponent(json)));
-    return baseURL + '?agent=' + encodeURIComponent(encoded);
+    const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
+    /* Use #agent: hash — hash is NEVER sent to URL scanners */
+    return baseURL + '#agent:' + encoded;
   } catch(e) { return baseURL; }
 }
 
@@ -3249,6 +3297,9 @@ if ('serviceWorker' in navigator) {
     // In single-file mode, PWA install prompt still works
   });
 }
+
+// Init test info display
+updateTestInfo();
 </script>
 </body>
 </html>
