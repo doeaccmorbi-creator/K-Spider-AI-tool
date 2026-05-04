@@ -86,6 +86,15 @@ body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
 .nbdg.hot{background:linear-gradient(135deg,var(--O),var(--R));color:#fff;animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 
+/* ══ HEALTH TIPS LIBRARY ══ */
+.ht-tip-card{transition:all .18s ease;}
+.ht-tip-card:hover{background:var(--G4)!important;border-color:var(--G)!important;transform:translateY(-1px);box-shadow:0 3px 12px rgba(0,135,90,.12);}
+.ht-tip-selected{background:var(--G3)!important;border-color:var(--G)!important;}
+#ht-list::-webkit-scrollbar{width:3px;}
+#ht-list::-webkit-scrollbar-thumb{background:var(--BR);border-radius:3px;}
+.alrt.ao{background:rgba(213,120,0,.06);border:1px solid rgba(213,120,0,.2);color:var(--O);}
+.alrt.ar{background:rgba(204,34,64,.06);border:1px solid rgba(204,34,64,.2);color:var(--R);}
+
 /* MAIN */
 main{margin-left:var(--SB);min-height:100vh;position:relative;z-index:1;}
 .tab{display:none;padding:20px 20px 60px;min-height:100vh;animation:fadeIn .2s ease;}
@@ -1153,6 +1162,7 @@ body { background:var(--BG); color:var(--T1); }
     <div class="nav-label">WhatsApp &amp; SMS</div>
     <div class="ni" onclick="go('wa',this)" data-tab="wa"><span class="nico">💬</span>WhatsApp Pro</div>
     <div class="ni" onclick="go('sms',this)" data-tab="sms"><span class="nico">📱</span>SMS Campaign</div>
+    <div class="ni" onclick="go('gsheets',this);setTimeout(loadGSheetTips,200)" data-tab="gsheets"><span class="nico">💊</span>Health Tips Library<span class="nbdg new">LIVE</span></div>
   </div>
 
   <div class="nav-section">
@@ -1232,6 +1242,7 @@ body { background:var(--BG); color:var(--T1); }
   <div class="qgrid">
     <div class="qcard" onclick="go('mkt',null)"><div class="qcard-ico">📢</div><div class="qcard-name">Marketing Studio</div></div>
     <div class="qcard" onclick="go('wa',null)"><div class="qcard-ico">💬</div><div class="qcard-name">WhatsApp Pro</div></div>
+    <div class="qcard" onclick="go('gsheets',null);setTimeout(loadGSheetTips,200)" style="border-color:var(--BR);background:var(--G4)"><div class="qcard-ico">💊</div><div class="qcard-name">Health Tips Library</div></div>
     <div class="qcard" onclick="go('img',null)"><div class="qcard-ico">🎨</div><div class="qcard-name">Image AI Studio</div></div>
     <div class="qcard" onclick="go('greet',null)"><div class="qcard-ico">🙏</div><div class="qcard-name">Greetings AI</div></div>
     <div class="qcard" onclick="go('offer',null)"><div class="qcard-ico">🎁</div><div class="qcard-name">Offer Builder</div></div>
@@ -1273,6 +1284,7 @@ body { background:var(--BG); color:var(--T1); }
               </select></div>
           </div>
           <button class="btn btn-g btn-full" onclick="genMkt()">📢 Generate Marketing Messages</button>
+          <button class="btn btn-o btn-sm btn-full" style="margin-top:5px" onclick="insertHTipToMkt()">💊 Insert Health Tip from Library</button>
         </div>
       </div>
     </div>
@@ -1328,6 +1340,7 @@ body { background:var(--BG); color:var(--T1); }
               </select></div>
           </div>
           <button class="btn btn-g btn-full" onclick="genGreet()">🙏 Generate Greetings</button>
+          <button class="btn btn-o btn-sm btn-full" style="margin-top:5px" onclick="insertHTipToGreet()">💊 Add Health Tip from Library</button>
         </div>
       </div>
     </div>
@@ -1720,6 +1733,168 @@ body { background:var(--BG); color:var(--T1); }
     </div>
   </div>
   <div class="bbar">Powered by <a href="https://www.kspiderai.in" target="_blank">K Spider AI Tool</a> · <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank">@KSpider4Kreation</a> · By Gaurang &amp; Khush Raval</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     💊 GOOGLE SHEET HEALTH TIPS LIBRARY TAB
+     Fetches from: K Spider AI Curated Health Tips Sheet
+     Owner can select any tip → merge with promo → WA share
+══════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-gsheets">
+  <button class="back" onclick="goBack()">← Back</button>
+  <div class="sh">
+    <div class="sh-title">💊 Health Tips <em>Library</em></div>
+    <div class="sh-sub">Curated health tips from K Spider AI database · Select any tip · Merge with promotion · Share on WhatsApp instantly</div>
+  </div>
+
+  <!-- Status bar -->
+  <div id="ht-status" class="alrt ab" style="margin-bottom:10px"><span>🔄</span><div>Loading health tips from K Spider AI database…</div></div>
+
+  <div class="g2">
+    <!-- LEFT: Filters + tip list -->
+    <div>
+      <div class="card p0">
+        <div class="ch">
+          <div class="ct">🔍 Browse &amp; Filter Tips</div>
+          <button class="cpb" onclick="loadGSheetTips(true)" id="ht-refresh-btn" title="Refresh tips from Google Sheet">🔄 Refresh</button>
+        </div>
+        <div style="padding:10px 12px">
+          <!-- Search + Category filter -->
+          <div class="fr2" style="margin-bottom:8px">
+            <div class="fg" style="margin-bottom:0">
+              <input class="fi" id="ht-search" placeholder="🔍 Search tips… e.g. Diabetes, Vitamin D" oninput="filterHTips()">
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <select class="fs" id="ht-cat" onchange="filterHTips()">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+          </div>
+          <!-- Language filter -->
+          <div class="fr2" style="margin-bottom:8px">
+            <div class="fg" style="margin-bottom:0">
+              <select class="fs" id="ht-lang" onchange="filterHTips()">
+                <option value="">All Languages</option>
+                <option value="Gujarati">🇮🇳 Gujarati</option>
+                <option value="Hindi">🇮🇳 Hindi</option>
+                <option value="English">🇬🇧 English</option>
+              </select>
+            </div>
+            <div class="fg" style="margin-bottom:0">
+              <select class="fs" id="ht-sort">
+                <option value="default">Sort: Default</option>
+                <option value="az">Sort: A-Z</option>
+                <option value="category">Sort: By Category</option>
+              </select>
+            </div>
+          </div>
+          <div id="ht-count" style="font-size:9px;color:var(--T4);margin-bottom:6px"></div>
+          <!-- Tips list -->
+          <div id="ht-list" style="max-height:420px;overflow-y:auto;display:flex;flex-direction:column;gap:6px">
+            <div class="alrt ab"><span>⏳</span><div>Fetching tips…</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Selected tip + composer -->
+    <div>
+      <!-- Selected tip preview -->
+      <div class="card p0" style="margin-bottom:10px">
+        <div class="ch"><div class="ct">✅ Selected Health Tip</div>
+          <button class="cpb" id="ht-clear-btn" onclick="clearSelectedTip()" style="display:none">✕ Clear</button>
+        </div>
+        <div style="padding:10px 12px">
+          <div id="ht-selected-preview" style="background:var(--G4);border:1px solid var(--BR);border-radius:10px;padding:10px 12px;font-size:11px;line-height:1.7;color:var(--T1);min-height:54px;white-space:pre-wrap">
+            <span style="color:var(--T4);font-size:10px">👆 Click any tip from the list to select it here</span>
+          </div>
+          <div id="ht-selected-meta" style="font-size:9px;color:var(--T4);margin-top:5px"></div>
+        </div>
+      </div>
+
+      <!-- Promo composer -->
+      <div class="card p0">
+        <div class="ch"><div class="ct">📢 Compose Promo Message</div></div>
+        <div style="padding:10px 12px">
+          <div class="fg">
+            <label class="fl">Add Promotional Offer (optional)</label>
+            <input class="fi" id="ht-promo" placeholder="e.g. 15% off on all vitamins today! | Free BP check camp | New stock arrived…">
+          </div>
+          <div class="fr2">
+            <div class="fg">
+              <label class="fl">Output Language</label>
+              <select class="fs" id="ht-outlang">
+                <option>As Selected</option>
+                <option>Gujarati</option>
+                <option>Hindi</option>
+                <option>English</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label class="fl">Message Style</label>
+              <select class="fs" id="ht-style">
+                <option value="standard">Standard</option>
+                <option value="formal">Formal / Professional</option>
+                <option value="friendly">Friendly / Casual</option>
+                <option value="urgent">Urgent / Offer</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg">
+            <label class="fl">Add Emojis?</label>
+            <select class="fs" id="ht-emoji">
+              <option value="yes">✅ Yes — Add Emojis</option>
+              <option value="no">No Emojis</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-g btn-full" onclick="composeHTMsg()">💬 Compose WhatsApp Message</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Composed message output -->
+      <div class="card p0" style="margin-top:10px" id="ht-output-card" style="display:none">
+        <div class="ch"><div class="ct">📤 Composed Message</div>
+          <button class="cpb" onclick="composeHTMsg()">🔄 Regenerate</button>
+        </div>
+        <div style="padding:10px 12px">
+          <textarea id="ht-output" class="fi" rows="9" style="font-size:11px;line-height:1.7;resize:vertical;font-family:var(--F)" readonly placeholder="Compose a message above to see it here…"></textarea>
+          <div id="ht-char-count" style="font-size:9px;color:var(--T4);text-align:right;margin-top:3px"></div>
+          <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+            <button class="wabtn" style="flex:1;justify-content:center" onclick="htShareWA()">💬 Share on WhatsApp</button>
+            <button class="cpb" onclick="htCopy()">📋 Copy</button>
+            <button class="btn btn-o btn-sm" onclick="htSendToMkt()">📢 Use in Marketing Studio</button>
+          </div>
+          <div style="margin-top:8px">
+            <div style="font-size:9.5px;color:var(--T3);margin-bottom:5px;font-weight:600">📡 Share on more platforms:</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap">
+              <button class="cpb" onclick="htPlatShare('tg')">✈️ Telegram</button>
+              <button class="cpb" onclick="htPlatShare('fb')">📘 Facebook</button>
+              <button class="cpb" onclick="htPlatShare('tw')">𝕏 Twitter</button>
+              <button class="cpb" onclick="htPlatShare('ig')">📸 Instagram</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Site owner marketing section -->
+  <div class="card" style="margin-top:10px;background:linear-gradient(135deg,var(--G4),rgba(0,102,204,.04));border-color:var(--BR)">
+    <div style="font-size:11px;font-weight:800;color:var(--G);margin-bottom:6px">🕷️ K Spider AI — Site Owner Marketing Tips</div>
+    <div style="font-size:10px;color:var(--T2);line-height:1.75;margin-bottom:10px">
+      As the tool owner, you can use this Health Tips Library to <strong>market K Spider AI</strong> to pharmacists. Here's how:
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="btn btn-g btn-sm" onclick="ownerMktWA()">📤 Share Tool in WA Groups</button>
+      <button class="btn btn-o btn-sm" onclick="ownerYTPost()">▶️ Generate YT Post</button>
+      <button class="cpb" onclick="ownerCopyPitch()">📋 Copy Agency Pitch</button>
+    </div>
+    <div id="owner-pitch-out" style="display:none;margin-top:8px;font-size:10px;background:var(--BG2);border:1px solid var(--BR);border-radius:8px;padding:10px;white-space:pre-wrap;line-height:1.8"></div>
+  </div>
+
+  <div class="bbar">Health Tips powered by <a href="https://www.kspiderai.in" target="_blank">K Spider AI Google Sheet Database</a> · By Gaurang &amp; Khush Raval · <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank">@KSpider4Kreation</a></div>
 </div>
 
 <!-- ── SMS CAMPAIGN ── -->
@@ -4158,6 +4333,391 @@ if(document.readyState==='loading'){
 }
 
 
+
+/* ════════════════════════════════════════════════════════════
+   K SPIDER AI — GOOGLE SHEET HEALTH TIPS LIBRARY MODULE
+   Sheet: K Spider AI curated pharmacy health tips
+   CSV URL: https://docs.google.com/spreadsheets/d/e/...
+   Features: Fetch → Filter → Select → Compose → WA Share
+   By: Gaurang Raval & Khush Raval | kspiderai.in
+════════════════════════════════════════════════════════════ */
+
+const HT_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiIbkF9LbJCCbbEG2YGFqGSysNGXzaE-NFielPO2c38BSAMy7TLe4QesECe5xIS-uZ-exsn42AcGqD/pub?gid=0&single=true&output=csv';
+
+let _htAll      = [];   // all tips fetched from sheet
+let _htFiltered = [];   // currently filtered list
+let _htSelected = null; // selected tip object
+let _htLoaded   = false;
+
+/* ── Parse CSV (handles quoted commas & newlines) ── */
+function parseCSV(text){
+  const rows = [];
+  const re = /("(?:[^"]|"")*"|[^,\n\r]*)(?:,|\r?\n|\r|$)/g;
+  let row = [];
+  let m;
+  while((m = re.exec(text)) !== null){
+    if(m[0] === '') break;
+    let val = m[1];
+    if(val.startsWith('"') && val.endsWith('"'))
+      val = val.slice(1,-1).replace(/""/g,'"');
+    row.push(val.trim());
+    if(/\r?\n|\r|$/.test(m[0].slice(m[1].length))) {
+      if(row.some(v=>v!=='')) rows.push(row);
+      row = [];
+    }
+  }
+  return rows;
+}
+
+/* ── Load tips from Google Sheet CSV ── */
+async function loadGSheetTips(force){
+  if(_htLoaded && !force) return;
+  const statusEl = g('ht-status');
+  const listEl   = g('ht-list');
+  if(statusEl) statusEl.innerHTML = '<span>🔄</span><div>Connecting to K Spider AI Health Tips database…</div>';
+  if(listEl)   listEl.innerHTML   = '<div class="alrt ab"><span>⏳</span><div>Fetching tips from Google Sheet…</div></div>';
+
+  try {
+    // Use a CORS proxy to fetch the public CSV
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(HT_CSV_URL);
+    let resp = await fetch(proxyUrl, { cache: 'no-cache' });
+    if(!resp.ok) throw new Error('Fetch failed: ' + resp.status);
+    const csv = await resp.text();
+    if(!csv || csv.length < 30) throw new Error('Empty response');
+
+    const rows = parseCSV(csv);
+    if(rows.length < 2) throw new Error('No data rows');
+
+    // First row = headers
+    const headers = rows[0].map(h => h.toLowerCase().trim());
+    // Map columns flexibly
+    const col = (names) => {
+      for(const n of names){
+        const i = headers.indexOf(n);
+        if(i >= 0) return i;
+      }
+      return -1;
+    };
+    const iCat  = col(['category','cat','type','topic']);
+    const iLang = col(['language','lang','भाषा']);
+    const iTip  = col(['tip','health tip','healthtip','content','message','text','tip text']);
+    const iTags = col(['tags','tag','keywords','keyword']);
+    const iSrc  = col(['source','ref','reference']);
+
+    _htAll = rows.slice(1).filter(r => r.length > 0).map((r, idx) => ({
+      id: idx,
+      category: iCat  >= 0 ? (r[iCat]  || 'General') : 'General',
+      language:  iLang >= 0 ? (r[iLang] || 'English') : 'English',
+      tip:       iTip  >= 0 ? (r[iTip]  || r[0] || '') : (r[0] || ''),
+      tags:      iTags >= 0 ? (r[iTags] || '') : '',
+      source:    iSrc  >= 0 ? (r[iSrc]  || '') : '',
+    })).filter(t => t.tip.length > 3);
+
+    if(_htAll.length === 0) throw new Error('No valid tips found in sheet');
+
+    _htLoaded = true;
+    populateHTCategories();
+    _htFiltered = [..._htAll];
+    renderHTList();
+    if(statusEl) statusEl.innerHTML = `<span>✅</span><div><strong>${_htAll.length} health tips</strong> loaded from K Spider AI database. Select any tip to compose a WhatsApp message!</div>`;
+    if(statusEl) statusEl.className = 'alrt ag';
+
+  } catch(e){
+    // Fallback: try direct fetch (may work if CORS allows)
+    try {
+      const resp2 = await fetch(HT_CSV_URL);
+      if(resp2.ok){
+        const csv2 = await resp2.text();
+        // re-run with csv2
+        // (inline parse for fallback)
+        const rows2 = csv2.split('\n').map(r => r.split(','));
+        _htAll = rows2.slice(1).filter(r=>r[0]).map((r,idx)=>({
+          id:idx, category: r[1]||'General', language: r[2]||'English',
+          tip: r[0]||'', tags: r[3]||'', source:r[4]||''
+        })).filter(t=>t.tip.length>3);
+        if(_htAll.length > 0){
+          _htLoaded = true;
+          populateHTCategories();
+          _htFiltered = [..._htAll];
+          renderHTList();
+          if(statusEl){ statusEl.innerHTML = `<span>✅</span><div><strong>${_htAll.length} health tips</strong> loaded!</div>`; statusEl.className='alrt ag';}
+          return;
+        }
+      }
+    } catch(_){}
+    // Final fallback: built-in tips
+    _htAll = _htBuiltIn;
+    _htLoaded = true;
+    populateHTCategories();
+    _htFiltered = [..._htAll];
+    renderHTList();
+    if(statusEl){ statusEl.innerHTML = '<span>⚠️</span><div>Could not reach Google Sheet — showing <strong>built-in health tips</strong>. Check your internet or refresh.</div>'; statusEl.className='alrt ao';}
+    if(listEl && _htAll.length === 0) listEl.innerHTML = '<div class="alrt ar"><span>❌</span><div>No tips available.</div></div>';
+  }
+}
+
+/* ── Built-in fallback tips (shown if Sheet unreachable) ── */
+const _htBuiltIn = [
+  {id:0,category:'Diabetes',language:'Gujarati',tip:'રોજ સવારે ખાલી પેટ ચાલવાથી ડાયાબિટીઝ કન્ટ્રોલ થાય છે. 30 મિનિટ ચાલવું ખૂબ ફાયદાકારક છે. 💊',tags:'diabetes,walk',source:'K Spider AI'},
+  {id:1,category:'Vitamin D',language:'Gujarati',tip:'સવારે 8-10 વાગ્યા સુધી સૂર્યપ્રકાશ મળવો જ જોઈએ. Vitamin D ની ઉણપ ટાળવા દરરોજ 15-20 મિનિટ સૂર્ય સ્નાન કરો. ☀️',tags:'vitamin d,sun',source:'K Spider AI'},
+  {id:2,category:'Hypertension',language:'Hindi',tip:'रोज नमक कम खाएं और पानी ज्यादा पिएं। हाई ब्लड प्रेशर को कंट्रोल करने का सबसे आसान तरीका है रोज 8 गिलास पानी पीना। 💧',tags:'bp,salt,water',source:'K Spider AI'},
+  {id:3,category:'Immunity',language:'English',tip:'Vitamin C boosts your immunity! Eat citrus fruits like orange, lemon daily. A strong immune system fights infections naturally. 🍊',tags:'immunity,vitamin c',source:'K Spider AI'},
+  {id:4,category:'Monsoon Health',language:'Gujarati',tip:'ચોમાસામાં ઉકાળેલું પાણી જ પીઓ. ગંદા પાણીથી ઝાડા, ઉલ્ટી, ટાઈફૉઈડ થઈ શકે. સ્વચ્છ પાણી = સ્વસ્થ જીવન! 🌧️',tags:'monsoon,water,health',source:'K Spider AI'},
+  {id:5,category:'Eye Care',language:'Hindi',tip:'मोबाइल और लैपटॉप से 20-20-20 का नियम अपनाएं — हर 20 मिनट में 20 फीट दूर 20 सेकंड देखें। 👁️ आंखों को आराम दें!',tags:'eyes,screen,20-20-20',source:'K Spider AI'},
+  {id:6,category:'Heart Health',language:'English',tip:'Walk 10,000 steps daily for a healthy heart! Regular walking reduces the risk of heart disease by up to 30%. ❤️ Start today!',tags:'heart,walk,steps',source:'K Spider AI'},
+  {id:7,category:'Sleep',language:'Gujarati',tip:'7-8 કલાક સારી ઊંઘ = તંદુરસ્ત શરીર. ઊંઘ ન આવે તો મોબાઈલ બંધ કરો, ઓરડો અંધારો રાખો અને રોજ એક જ સમયે સૂઈ જાઓ. 😴',tags:'sleep,rest,health',source:'K Spider AI'},
+  {id:8,category:'Bone Health',language:'Hindi',tip:'हड्डियों को मजबूत बनाएं — रोज एक गिलास दूध पिएं। Calcium और Vitamin D की कमी से हड्डियाँ कमजोर होती हैं। 🦴',tags:'bones,calcium,milk',source:'K Spider AI'},
+  {id:9,category:'Skin Care',language:'English',tip:'Stay hydrated for glowing skin! Drink at least 8 glasses of water daily. Dehydration leads to dry, dull skin. 💧✨',tags:'skin,water,hydration',source:'K Spider AI'},
+  {id:10,category:'Diabetes',language:'Hindi',tip:'मधुमेह के रोगी रोज खाने के बाद 15 मिनट टहलें। इससे Blood Sugar तेजी से कम होती है। 🚶 स्वस्थ आदत, स्वस्थ जीवन!',tags:'diabetes,walk,blood sugar',source:'K Spider AI'},
+  {id:11,category:'Children Health',language:'Gujarati',tip:'બાળકોને રોજ ઓછામાં ઓછું 1 ફળ ખવડાવો. ફળોમાં Vitamins, Minerals અને Fiber હોય છે જે બાળકોના વિકાસ માટે જરૂરી છે. 🍎🍌',tags:'children,fruits,vitamins',source:'K Spider AI'},
+  {id:12,category:'Senior Health',language:'Hindi',tip:'बुजुर्गों को रोज सुबह हल्का व्यायाम जरूर करना चाहिए। योग और प्राणायाम से शरीर लचीला रहता है और मन शांत रहता है। 🧘',tags:'senior,exercise,yoga',source:'K Spider AI'},
+];
+
+/* ── Populate category dropdown ── */
+function populateHTCategories(){
+  const sel = g('ht-cat');
+  if(!sel) return;
+  const cats = [...new Set(_htAll.map(t => t.category).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">All Categories</option>' +
+    cats.map(c => `<option value="${escH(c)}">${escH(c)}</option>`).join('');
+}
+
+/* ── Filter tips based on search + category + language ── */
+function filterHTips(){
+  const search = (g('ht-search')?.value || '').toLowerCase().trim();
+  const cat    = g('ht-cat')?.value || '';
+  const lang   = g('ht-lang')?.value || '';
+  const sort   = g('ht-sort')?.value || 'default';
+
+  _htFiltered = _htAll.filter(t => {
+    const matchSearch = !search || t.tip.toLowerCase().includes(search) ||
+      t.category.toLowerCase().includes(search) || t.tags.toLowerCase().includes(search);
+    const matchCat  = !cat  || t.category === cat;
+    const matchLang = !lang || t.language === lang;
+    return matchSearch && matchCat && matchLang;
+  });
+
+  if(sort === 'az') _htFiltered.sort((a,b) => a.tip.localeCompare(b.tip));
+  else if(sort === 'category') _htFiltered.sort((a,b) => a.category.localeCompare(b.category));
+
+  renderHTList();
+}
+
+/* ── Render tips list ── */
+function renderHTList(){
+  const listEl = g('ht-list');
+  const countEl = g('ht-count');
+  if(!listEl) return;
+  if(countEl) countEl.textContent = `Showing ${_htFiltered.length} of ${_htAll.length} tips`;
+
+  if(_htFiltered.length === 0){
+    listEl.innerHTML = '<div class="alrt ao"><span>🔍</span><div>No tips found. Try different filters.</div></div>';
+    return;
+  }
+
+  const langEmoji = {Gujarati:'🇮🇳',Hindi:'🇮🇳',English:'🇬🇧'};
+  listEl.innerHTML = _htFiltered.map(t => {
+    const le = langEmoji[t.language] || '🌐';
+    const isSelected = _htSelected && _htSelected.id === t.id;
+    return `<div class="ht-tip-card${isSelected?' ht-tip-selected':''}" onclick="selectHTip(${t.id})" style="cursor:pointer;border-radius:10px;padding:9px 11px;background:${isSelected?'var(--G3)':'var(--BG2)'};border:1px solid ${isSelected?'var(--G)':'var(--BR)'};transition:all .2s">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span style="font-size:8.5px;font-weight:700;color:var(--G);background:var(--G4);padding:1px 7px;border-radius:20px">${escH(t.category)}</span>
+        <span style="font-size:9px;color:var(--T4)">${le} ${escH(t.language)}</span>
+      </div>
+      <div style="font-size:10.5px;color:var(--T1);line-height:1.65">${escH(t.tip.substring(0,120))}${t.tip.length>120?'…':''}</div>
+      ${isSelected?'<div style="font-size:9px;color:var(--G);margin-top:4px;font-weight:700">✅ Selected</div>':''}
+    </div>`;
+  }).join('');
+}
+
+/* ── Select a tip ── */
+function selectHTip(id){
+  _htSelected = _htAll.find(t => t.id === id) || null;
+  if(!_htSelected) return;
+
+  const prev = g('ht-selected-preview');
+  const meta = g('ht-selected-meta');
+  const clearBtn = g('ht-clear-btn');
+  if(prev) prev.textContent = _htSelected.tip;
+  if(meta) meta.textContent = `📂 ${_htSelected.category} · 🌐 ${_htSelected.language}${_htSelected.source?' · 📖 '+_htSelected.source:''}`;
+  if(clearBtn) clearBtn.style.display = 'inline-flex';
+
+  // Re-render list to show selection
+  renderHTList();
+  toast('✅ Health tip selected! Now compose your message.', 'success');
+}
+
+/* ── Clear selection ── */
+function clearSelectedTip(){
+  _htSelected = null;
+  const prev = g('ht-selected-preview');
+  const meta = g('ht-selected-meta');
+  const clearBtn = g('ht-clear-btn');
+  if(prev) prev.innerHTML = '<span style="color:var(--T4);font-size:10px">👆 Click any tip from the list to select it here</span>';
+  if(meta) meta.textContent = '';
+  if(clearBtn) clearBtn.style.display = 'none';
+  renderHTList();
+}
+
+/* ── Compose WhatsApp message from selected tip ── */
+function composeHTMsg(){
+  if(!_htSelected){ toast('⚠️ Please select a health tip first!','warn'); return; }
+
+  const promo   = (g('ht-promo')?.value || '').trim();
+  const style   = g('ht-style')?.value || 'standard';
+  const emoji   = g('ht-emoji')?.value !== 'no';
+  const outlang = g('ht-outlang')?.value || 'As Selected';
+  const lang    = outlang === 'As Selected' ? _htSelected.language : outlang;
+
+  const e = emoji;
+  const storeInfo = `${S.name}${S.phone?' | 📞 '+S.phone:''}${S.addr?' | 📍 '+S.addr:''}`;
+
+  let msg = '';
+
+  if(style === 'standard'){
+    msg = (e?`💊 *HealthTip from ${S.name}*\n`:`HealthTip from ${S.name}\n`) +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      _htSelected.tip + '\n\n';
+    if(promo) msg += (e?`🎁 *Special Offer:* `:'{Special Offer: }') + promo + '\n\n';
+    msg += (e?`🏪 `:'{Store: }') + storeInfo + '\n' +
+           (e?`🌐 `:'') + WEBF + '\n' +
+           (e?`▶️ `:'') + YTH;
+
+  } else if(style === 'formal'){
+    msg = `*${S.name}* — Health Advisory\n` +
+      `${'─'.repeat(22)}\n\n` +
+      `Dear Customer,\n\n` + _htSelected.tip + '\n\n';
+    if(promo) msg += `*Offer:* ${promo}\n\n`;
+    msg += `— ${S.name}\n📞 ${S.phone||'Contact pharmacy'}\n🌐 ${WEBF}`;
+
+  } else if(style === 'friendly'){
+    const hiPrefix = e ? '👋 Hey! ' : 'Hey! ';
+    const heartSfx = e ? '💚' : '';
+    const cryPfx   = e ? '🎉 ' : '';
+    const careSfx  = e ? '🙏' : '';
+    msg = hiPrefix + 'A health tip from *' + S.name + '* for you ' + heartSfx + '\n\n' +
+      _htSelected.tip + '\n\n';
+    if(promo) msg += cryPfx + '*Today\'s Offer:* ' + promo + '\n\n';
+    msg += 'Take care ' + careSfx + '\n' + storeInfo + '\n' + WEBF;
+
+  } else if(style === 'urgent'){
+    msg = (e?`🔥 *HEALTH ALERT — ${S.name}* 🔥\n`:`HEALTH ALERT — ${S.name}\n`) +
+      `━━━━━━━━━━━━━━━━━━\n` +
+      _htSelected.tip + '\n\n';
+    if(promo) msg += (e?`⚡ *LIMITED OFFER:* `:'{Limited Offer: }') + promo + (e?' ⏰':'') + '\n\n';
+    msg += (e?`🏥 `:'') + storeInfo + '\n' + (e?`📲 `:'') + WEBF;
+  }
+
+  // Append WA channel for site owner marketing
+  msg += `\n\n${e?'📢 ':''}Powered by K Spider AI Tool — ${WEBF}`;
+
+  const out = g('ht-output');
+  const card = g('ht-output-card');
+  const count = g('ht-char-count');
+  if(out){ out.value = msg; out.readOnly = false; }
+  if(card) card.style.display = '';
+  if(count) count.textContent = `${msg.length} characters`;
+  toast('✅ Message composed! Edit if needed, then share.', 'success');
+}
+
+/* ── WhatsApp share from composer ── */
+function htShareWA(){
+  const msg = g('ht-output')?.value;
+  if(!msg?.trim()){ toast('⚠️ Compose a message first!','warn'); return; }
+  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank', 'noopener');
+}
+
+/* ── Copy composed message ── */
+function htCopy(){
+  const msg = g('ht-output')?.value;
+  if(!msg?.trim()){ toast('⚠️ Compose a message first!','warn'); return; }
+  docp(msg, g('ht-output'));
+  toast('📋 Message copied!','success');
+}
+
+/* ── Send to Marketing Studio ── */
+function htSendToMkt(){
+  const msg = g('ht-output')?.value;
+  if(!msg?.trim()){ toast('⚠️ Compose a message first!','warn'); return; }
+  const ta = g('socMsg') || g('mktOut');
+  if(ta){ if(ta.tagName==='TEXTAREA') ta.value = msg; go('mkt',null); toast('✅ Tip sent to Marketing Studio!','success'); }
+}
+
+/* ── Platform share from composer ── */
+function htPlatShare(plat){
+  const msg = g('ht-output')?.value;
+  if(!msg?.trim()){ toast('⚠️ Compose a message first!','warn'); return; }
+  const enc = encodeURIComponent(msg);
+  const urls = {
+    tg:`https://t.me/share/url?url=${encodeURIComponent(WEBF)}&text=${enc}`,
+    fb:`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(WEBF)}&quote=${enc}`,
+    tw:`https://twitter.com/intent/tweet?text=${enc}`,
+    ig:`https://www.instagram.com/`
+  };
+  window.open(urls[plat]||WEBF,'_blank','noopener');
+}
+
+/* ── Insert tip into Marketing Studio topic field ── */
+function insertHTipToMkt(){
+  if(!_htLoaded || _htAll.length===0){
+    loadGSheetTips();
+    go('gsheets',null);
+    toast('⏳ Loading tips... Select one and come back!','warn');
+    return;
+  }
+  if(!_htSelected){
+    go('gsheets',null);
+    toast('💊 Select a health tip from the Library first!','warn');
+    return;
+  }
+  const mt = g('mt');
+  if(mt) mt.value = _htSelected.category + ' — ' + _htSelected.tip.substring(0,80);
+  toast('✅ Health tip inserted into Marketing Studio!','success');
+}
+
+/* ── Insert tip into Greetings ── */
+function insertHTipToGreet(){
+  if(!_htLoaded || _htAll.length===0){
+    loadGSheetTips();
+    go('gsheets',null);
+    toast('⏳ Loading tips... Select one and come back!','warn');
+    return;
+  }
+  if(!_htSelected){
+    go('gsheets',null);
+    toast('💊 Select a health tip from the Library first!','warn');
+    return;
+  }
+  const gpromo = g('gpromo');
+  if(gpromo) gpromo.value = _htSelected.tip.substring(0,100);
+  const ginc = g('ginc');
+  if(ginc) ginc.value = 'Full (Greeting + Tip + Offer)';
+  toast('✅ Health tip added to Greetings!','success');
+}
+
+/* ── Site owner marketing helpers ── */
+function ownerMktWA(){
+  const msgs = [
+    `🕷️ *K Spider AI Pharmacy Master Pro — FREE!* 🕷️\n\n💊 Pharmacy owners! Ye FREE tool dekho:\n✅ 100+ curated Health Tips Library (Google Sheet se live!)\n✅ WhatsApp message composer\n✅ 3 languages (Gujarati/Hindi/English)\n✅ Festival greetings + offer builder\n✅ 15+ tools — BILKUL FREE!\n\n👇 Try now:\n🌐 ${WEBF}\n▶️ ${YTH}\n\nBy Gaurang & Khush Raval 🇮🇳`,
+    `💚 Pharmacy marketing aasaan ho gaya!\n\n🕷️ *K Spider AI* — Health Tips Library:\n• 100+ ready-made health tips\n• Gujarati, Hindi, English\n• 1 click WhatsApp share\n• FREE forever!\n\n🌐 ${WEBF}`
+  ];
+  const msg = msgs[Math.floor(Math.random()*msgs.length)];
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank','noopener');
+}
+
+function ownerYTPost(){
+  const post = `📹 *NEW VIDEO IDEA for K Spider AI YouTube:*\n\n"Pharmacy ki marketing ek button mein! — K Spider AI Health Tips Library tour"\n\nContent:\n1. Google Sheet se live tips fetch karna\n2. Category filter use karna\n3. WhatsApp message compose karna\n4. Direct share karna\n5. Earning opportunity explain karna\n\nYouTube channel: ${YTH}\nTool: ${WEBF}\n\n#KSpiderAI #PharmacyMarketing #FreeTool`;
+  docp(post, null);
+  toast('📋 YouTube video idea copied! Paste it in your notes.','success');
+}
+
+function ownerCopyPitch(){
+  const pitch = `🕷️ K SPIDER AI — PHARMACY MARKETING TOOL\n━━━━━━━━━━━━━━━━━━━━━━━━━\n\nDear Pharmacy Owner,\n\nAre you spending hours every week creating WhatsApp messages and health tips for your customers?\n\nK Spider AI Pharmacy Master Pro has just launched its LIVE Health Tips Library — 100+ curated health tips directly fetched from our database, in Gujarati, Hindi, and English!\n\n✅ What you get FREE:\n• 100+ curated health tips (live, updated regularly)\n• 1-click WhatsApp message composer\n• Promotional offer integration\n• Festival greetings\n• Marketing Studio, SEO Tools, and 15+ more tools\n\n🌐 Try it FREE now: ${WEBF}\n▶️ Watch tutorial: ${YTH}\n\nMade for Indian pharmacists by:\nGaurang Raval & Khush Raval\nK Spider for Kreation — Gujarat, India 🇮🇳`;
+  const el = g('owner-pitch-out');
+  if(el){ el.textContent = pitch; el.style.display=''; }
+  docp(pitch, null);
+  toast('📋 Agency pitch copied to clipboard!','success');
+}
 
 /* ════════════════════════════════════════════════════════════
    K SPIDER AI — VIRAL WHATSAPP MARKETING MESSAGES MODULE
