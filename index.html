@@ -500,7 +500,9 @@
     else { tryNextCDN(); }
   })();
   </script>
-  <script src="payment.js"></script>
+  <script>
+  (function(){var s=document.createElement('script');s.src='payment.js';s.onerror=function(){console.warn('[KSpider] payment.js not found — safe ignore');};document.head.appendChild(s);})();
+  </script>
 
   <!-- [Duplicate GA removed — using correct ID G-PLBHWMHEC1 in head above] -->
 
@@ -5652,7 +5654,7 @@ function ksFaqToggle(btn) {
   }, 60000);
 
   // ── 18. BOT DETECTION ──
-  if(window.location.protocol !== 'file:') {
+  if(window.location.protocol !== 'file:' && window.location.hostname !== '' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
     var _humanDetected = false;
     ['mousemove','touchstart','keypress','scroll','click'].forEach(function(evt){
       document.addEventListener(evt, function(){ _humanDetected = true; }, { once: true, passive: true });
@@ -5662,7 +5664,7 @@ function ksFaqToggle(btn) {
         document.body.style.display = 'none';
         setTimeout(function(){ document.body.style.display = ''; }, 5000);
       }
-    }, 3000);
+    }, 10000);
   }
 
 })();
@@ -6638,8 +6640,18 @@ function fallbackCopy(text, btn) {
 </script>
 
 <!-- ── SECURITY SCRIPTS ── -->
-<script src="/tool-guard.js"></script>
-<script src="/ks-guard.js"></script>
+<script>
+(function(){
+  function safeLoad(src){
+    var s=document.createElement('script');
+    s.src=src;
+    s.onerror=function(){/* guard script not found — safe ignore */};
+    document.body.appendChild(s);
+  }
+  safeLoad('/tool-guard.js');
+  safeLoad('/ks-guard.js');
+})();
+</script>
 
 </body>
 </html>
