@@ -126,7 +126,7 @@ onAuthStateChanged(auth,user=>{window._currentUser=user;if(user){document.getEle
   --bg:#F0F4F8;--surface:#fff;--s2:#F8FAFC;
   --border:#E2E8F0;--b2:#CBD5E1;
   --text:#0F172A;--t2:#475569;--t3:#94A3B8;
-  --sw:260px;--rw:300px;--hh:60px;
+  --sw:260px;--rw:300px;--hh:60px;--ah:0px;
   --r:14px;--rs:8px;
   --sh:0 1px 3px rgba(0,0,0,.08),0 4px 16px rgba(0,0,0,.06);
   --shl:0 8px 32px rgba(0,0,0,.14);
@@ -887,17 +887,6 @@ img{max-width:100%;display:block;}
     </div>
   </header>
 
-  <!-- ── AUTO-AD UNIT (Header Bottom) ── -->
-  <div style="text-align:center;background:var(--surface);border-bottom:1px solid var(--border);padding:4px 0;min-height:50px;">
-    <ins class="adsbygoogle"
-         style="display:block"
-         data-ad-client="ca-pub-XXXXXXXXXXXXXXXX"
-         data-ad-slot="AUTO"
-         data-ad-format="auto"
-         data-full-width-responsive="true"></ins>
-    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-  </div>
-
   <!-- LAYOUT -->
   <div class="layout">
     <!-- SIDEBAR LEFT -->
@@ -931,6 +920,7 @@ img{max-width:100%;display:block;}
         <button class="mi" onclick="showPage('marketplace',null)"><span class="mic">📚</span>Sell Courses<span class="min">EARN</span></button>
         <button class="mi" onclick="showPage('boost',null)"><span class="mic">🚀</span>Boost Job<span class="min">₹199+</span></button>
         <button class="mi" onclick="showPage('referral',null)"><span class="mic">💰</span>Refer &amp; Earn</button>
+        <button class="mi" onclick="showPage('viral',null)"><span class="mic">📲</span>Viral Messages<span class="min">SHARE</span></button>
         <button class="mi" onclick="showPage('applicants',null)"><span class="mic">👥</span>Applicants</button>
         <button class="mi" onclick="showPage('analytics',null)"><span class="mic">📊</span>Analytics</button>
         <button class="mi" onclick="showPage('pro',null)"><span class="mic">💎</span>KSpider Pro<span class="min">EARN</span></button>
@@ -956,6 +946,12 @@ img{max-width:100%;display:block;}
 
     <!-- MAIN -->
     <main class="main">
+      <!-- ── IN-CONTENT AD BANNER (top of feed) ── -->
+      <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:4px;margin-bottom:12px;font-size:9px;color:var(--t3);letter-spacing:1px;">
+        ADVERTISEMENT
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="TOP-CONTENT-SLOT" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+      </div>
       <div class="main-inner">
 
         <!-- ── FEED PAGE ── -->
@@ -2688,6 +2684,87 @@ Frontend Intern | TechNova | June–Aug 2023
               </div>
             </div>
             <div style="font-size:10px;color:var(--t3);margin-top:8px;text-align:center;">💡 Supports plain text and HTML format · Visible to recruiters who view your profile</div>
+          </div>
+        </div>
+
+        <!-- ── VIRAL MESSAGES PAGE ── -->
+        <div id="page-viral" class="page">
+          <div class="ph2">📲 Viral Marketing Messages <span style="font-size:12px;font-weight:500;color:var(--t3);">20 messages · 4 categories</span></div>
+
+          <!-- Category Filter + Message Selector -->
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--sh);">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px;">📂 Category</label>
+                <select id="vmCatSelect" class="fc" style="font-size:12px;" onchange="vmFilterMessages()">
+                  <option value="all">🌐 All Categories</option>
+                  <option value="networking">🤝 Networking & Dual Benefit</option>
+                  <option value="recruiters">💼 For Recruiters</option>
+                  <option value="seekers">🚀 For Job Seekers</option>
+                  <option value="earning">🔥 Earning & Viral</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;font-weight:700;color:var(--t2);display:block;margin-bottom:5px;">💬 Select Message</label>
+                <select id="vmMsgSelect" class="fc" style="font-size:12px;" onchange="vmLoadMessage()">
+                  <option value="">-- Choose a message --</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Message Preview Box -->
+            <div style="position:relative;">
+              <textarea id="vmPreviewBox" class="fc" rows="7" style="font-size:12px;line-height:1.75;resize:none;background:var(--s2);font-family:inherit;" readonly placeholder="Select a category and message above to preview it here…"></textarea>
+              <div id="vmCharCount" style="position:absolute;bottom:10px;right:12px;font-size:10px;color:var(--t3);"></div>
+            </div>
+
+            <!-- Action Row -->
+            <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+              <button onclick="vmCopyMsg()" style="flex:1;min-width:120px;padding:9px;border-radius:var(--rs);background:var(--primary);color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:5px;" id="vmCopyBtn">
+                📋 Copy Message
+              </button>
+              <button onclick="vmRandomMsg()" style="padding:9px 14px;border-radius:var(--rs);background:var(--s2);color:var(--t2);border:1px solid var(--border);font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;">
+                🎲 Random
+              </button>
+            </div>
+          </div>
+
+          <!-- Social Share Buttons -->
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px;margin-bottom:14px;box-shadow:var(--sh);">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;">📤 Share Directly On</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;" id="vmShareGrid">
+              <button onclick="vmShare('whatsapp')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#25D36615;border:1px solid #25D36630;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#25D36625'" onmouseout="this.style.background='#25D36615'">
+                <span style="font-size:22px;">💬</span><span style="font-size:10px;font-weight:700;color:#25D366;">WhatsApp</span>
+              </button>
+              <button onclick="vmShare('telegram')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#229ED915;border:1px solid #229ED930;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#229ED925'" onmouseout="this.style.background='#229ED915'">
+                <span style="font-size:22px;">✈️</span><span style="font-size:10px;font-weight:700;color:#229ED9;">Telegram</span>
+              </button>
+              <button onclick="vmShare('facebook')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#1877F215;border:1px solid #1877F230;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#1877F225'" onmouseout="this.style.background='#1877F215'">
+                <span style="font-size:22px;">👤</span><span style="font-size:10px;font-weight:700;color:#1877F2;">Facebook</span>
+              </button>
+              <button onclick="vmShare('twitter')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#00000015;border:1px solid #00000025;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#00000020'" onmouseout="this.style.background='#00000015'">
+                <span style="font-size:22px;">🐦</span><span style="font-size:10px;font-weight:700;color:var(--text);">X / Twitter</span>
+              </button>
+              <button onclick="vmShare('linkedin')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#0A66C215;border:1px solid #0A66C230;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#0A66C225'" onmouseout="this.style.background='#0A66C215'">
+                <span style="font-size:22px;">💼</span><span style="font-size:10px;font-weight:700;color:#0A66C2;">LinkedIn</span>
+              </button>
+              <button onclick="vmShare('instagram')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#E113631A;border:1px solid #E1136330;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#E1136325'" onmouseout="this.style.background='#E1136318'">
+                <span style="font-size:22px;">📸</span><span style="font-size:10px;font-weight:700;color:#E11363;">Instagram</span>
+              </button>
+              <button onclick="vmShare('threads')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#00000015;border:1px solid #00000025;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#00000022'" onmouseout="this.style.background='#00000015'">
+                <span style="font-size:22px;">🧵</span><span style="font-size:10px;font-weight:700;color:var(--text);">Threads</span>
+              </button>
+              <button onclick="vmShare('email')" style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 6px;border-radius:var(--rs);background:#EA433515;border:1px solid #EA433530;cursor:pointer;font-family:inherit;transition:all .2s;" onmouseover="this.style.background='#EA433525'" onmouseout="this.style.background='#EA433515'">
+                <span style="font-size:22px;">📧</span><span style="font-size:10px;font-weight:700;color:#EA4335;">Email</span>
+              </button>
+            </div>
+            <div style="font-size:10px;color:var(--t3);margin-top:10px;text-align:center;">💡 Select a message first, then tap any platform to share instantly</div>
+          </div>
+
+          <!-- All Messages Grid (browse) -->
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--sh);">
+            <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;">📋 All Messages — Click to Select</div>
+            <div id="vmAllGrid" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
         </div>
 
@@ -5283,8 +5360,207 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ══════════════════════════════════════
-// RESUME VIEWER
+// VIRAL MESSAGES ENGINE
 // ══════════════════════════════════════
+var _vmData=[
+  {cat:'networking',catLabel:'🤝 Networking',title:'The Matchmaker 🎯',body:'Recruiter ho ya Job Seeker — KSpider AI dono ko sahi waqt pe milata hai! ⚡ Screening ka jhanjhat khatam aur placement ki speed 10x fast. 🚀\n✅ Apply/Post: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Seekho Kaise: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'networking',catLabel:'🤝 Networking',title:'The Time Saver ⏳',body:'Galat hiring aur berozgari dono ka ek hi ilaaj — KSpider Connect! 🤖 AI se perfect matching pao aur apna kimti waqt bachaao. ✨\n🔗 Check Tool: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Guide: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'networking',catLabel:'🤝 Networking',title:'Direct Contact 📞',body:'Ab beech mein koi nahi! Direct hiring manager se judo ya best talent se baat karo. 🕷️ Transparency aur trust ka naya address. 🌟\n🔗 Join Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Watch More: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'networking',catLabel:'🤝 Networking',title:'Quality Hiring Hub 💎',body:'Bheed se bacho, quality talent aur genuine jobs se milo! 🏆 KSpider AI sirf verified profiles hi suggest karta hai. 📊\n🔗 Explore: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Tutorial: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'recruiters',catLabel:'💼 For Recruiters',title:'Zero Cost Hiring 💸',body:'Agency fees ko maro goli! KSpider AI se direct top talent ko hire karein bilkul free. 🎯 Smart hiring ka naya hack yahan hai. 🏢\n🔗 Hire Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Demo: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'recruiters',catLabel:'💼 For Recruiters',title:'Filter The Best 📄',body:'Hazaron resumes scan karne ki zarurat nahi — AI aapke liye sirf "A-players" chunega. 💎 Mehnat aadhi, result dugna! ⚡\n🔗 Access Tool: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Subscribe: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'recruiters',catLabel:'💼 For Recruiters',title:'Scalable Recruitment 📈',body:'Niche skill ho ya bulk hiring — KSpider ka AI har requirement handle kar lega. 🏗️ Apni hiring pipeline aaj hi set karein! 🤝\n🔗 Post Job: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Learn More: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'recruiters',catLabel:'💼 For Recruiters',title:"Recruiter's Secret Weapon 🔑",body:'Smart recruiters ab AI use kar rahe hain — aap kab shuru karenge? 🎤 Top talent attract karne ka sabse fast tarika. 🚀\n🔗 Try Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Watch: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'seekers',catLabel:'🚀 For Job Seekers',title:'Dream Job Key 🔑',body:'Aapki skills behtareen hain, bas sahi recruiter ki talash hai. 🏆 KSpider AI aapko wahi jobs dikhayega jo aapke liye bani hain! 🤖\n🔗 Register: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Tips: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'seekers',catLabel:'🚀 For Job Seekers',title:'Interview Edge 🎤',body:'Sirf job mat dhundho — use crack karna bhi seekho! 🎤 AI simulator aur placement guidance ek hi jagah. 💪\n🔗 Practice: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Live Guide: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'seekers',catLabel:'🚀 For Job Seekers',title:"Freshers' First Break 🎓",body:'Experience nahi hai? Tension mat lo! KSpider Connect pe entry-level jobs ki bharmaar hai. 🚶 Pehla kadam yahan se uthao. ✨\n🔗 Apply: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 YouTube: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'seekers',catLabel:'🚀 For Job Seekers',title:'Salary Booster 📈',body:'Apni asli value pehchano aur sahi package pao. 💸 KSpider AI aapki profile ko top recruiters ke samne rank karta hai. ✈️\n🔗 Check Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Advice: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'Refer & Earn 🤝',body:'Doston ki job lagne mein madad karo aur per placement ₹5,000 tak kamao! 🤑 Sabse asaan side income ka tarika. 💸\n🔗 Start Sharing: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Earning Tips: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'Community Power 👥',body:'10k+ log jud chuke hain — aap piche kyu ho? 🕸️ India ki sabse badi AI career community ka hissa banein. 🚀\n🔗 Join Link: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Subscribe: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'Smart Choice 🤔',body:'Wahi purane portals kab tak? Move to KSpider AI aur career ko do naya mod. ⚡ AI ka zamana hai, update raho! 🕷️\n🔗 Link: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Tutorials: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'Placement Jackpot 🎰',body:'Referral + AI Hiring + Earning = KSpider Connect! 🎁 Itna sab ek hi link mein — aaj hi try karein. 💰\n🔗 Check Out: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Updates: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'Skill Over Degree 🎭',body:'Sirf degree se nahi — apne real talent se job pao. ⚡ KSpider AI aapki skills ko highlight karta hai. 🏆\n🔗 Register: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Hacks: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'No More Waiting ⏱️',body:'Application sent... and no reply? KSpider pe direct status aur instant alerts pao. 📣 Aaj hi apply karo! ⚡\n🔗 Apply: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Channel: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'Unlock Your Future 🔓',body:'Career growth ab sirf ek click ki duri par hai. 🔓 KSpider Connect ka naya placement tool ab sab ke liye open hai! 🌟\n🔗 Start Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Guide: https://www.youtube.com/@KSpider4Kreation'},
+  {cat:'earning',catLabel:'🔥 Earning & Viral',title:'The Final Call 📣',body:'Recruiters wait kar rahe hain — kya aap taiyar hain? 🚀 AI power ka fayda uthao aur dream career shuru karo! 🏁\n🔗 Last Chance: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Subscribe: https://www.youtube.com/@KSpider4Kreation'}
+];
+
+var _vmCatColors={networking:'#0A84FF',recruiters:'#7C3AED',seekers:'#10B981',earning:'#F59E0B'};
+var _vmCurrentMsg='';
+
+function vmInit(){
+  vmFilterMessages();
+  vmRenderAllGrid();
+}
+
+function vmFilterMessages(){
+  var cat=($('vmCatSelect')||{}).value||'all';
+  var sel=$('vmMsgSelect');
+  if(!sel) return;
+  sel.innerHTML='<option value="">-- Choose a message --</option>';
+  var filtered=cat==='all'?_vmData:_vmData.filter(function(m){return m.cat===cat;});
+  filtered.forEach(function(m,i){
+    var opt=document.createElement('option');
+    opt.value=_vmData.indexOf(m);
+    opt.textContent=m.catLabel+' · '+m.title;
+    sel.appendChild(opt);
+  });
+  vmRenderAllGrid(cat);
+}
+
+function vmLoadMessage(){
+  var sel=$('vmMsgSelect');
+  if(!sel||sel.value==='') return;
+  var m=_vmData[parseInt(sel.value)];
+  if(!m) return;
+  _vmCurrentMsg=m.body;
+  var box=$('vmPreviewBox');
+  if(box){
+    box.value=m.body;
+    var cc=$('vmCharCount');
+    if(cc) cc.textContent=m.body.length+' chars';
+  }
+}
+
+function vmCopyMsg(){
+  if(!_vmCurrentMsg){showToast('⚠️ Pehle ek message select karein!');return;}
+  var btn=$('vmCopyBtn');
+  navigator.clipboard.writeText(_vmCurrentMsg).then(function(){
+    if(btn){btn.textContent='✅ Copied!';btn.style.background='var(--green)';}
+    showToast('✅ Message copied! Ab share karo 🚀');
+    setTimeout(function(){if(btn){btn.textContent='📋 Copy Message';btn.style.background='var(--primary)';}},2000);
+  }).catch(function(){
+    // Fallback for browsers without clipboard API
+    var box=$('vmPreviewBox');
+    if(box){box.select();document.execCommand('copy');}
+    showToast('✅ Copied (fallback)!');
+  });
+}
+
+function vmRandomMsg(){
+  var idx=Math.floor(Math.random()*_vmData.length);
+  var m=_vmData[idx];
+  _vmCurrentMsg=m.body;
+  var sel=$('vmMsgSelect');
+  if(sel){
+    // Reset cat to all first
+    var catSel=$('vmCatSelect');
+    if(catSel) catSel.value='all';
+    vmFilterMessages();
+    if(sel) sel.value=idx;
+  }
+  var box=$('vmPreviewBox');
+  if(box){
+    box.value=m.body;
+    var cc=$('vmCharCount');
+    if(cc) cc.textContent=m.body.length+' chars';
+  }
+  showToast('🎲 Random message loaded: '+m.title);
+}
+
+function vmShare(platform){
+  if(!_vmCurrentMsg){showToast('⚠️ Pehle ek message select karein!');return;}
+  var encoded=encodeURIComponent(_vmCurrentMsg);
+  var urls={
+    whatsapp:'https://wa.me/?text='+encoded,
+    telegram:'https://t.me/share/url?url=https://kspiderai.in&text='+encoded,
+    facebook:'https://www.facebook.com/sharer/sharer.php?u=https://kspiderai.in&quote='+encoded,
+    twitter:'https://twitter.com/intent/tweet?text='+encoded,
+    linkedin:'https://www.linkedin.com/sharing/share-offsite/?url=https://kspiderai.in/tools/KSpider_Job_Placement.html&summary='+encoded,
+    instagram:'https://www.instagram.com/',
+    threads:'https://www.threads.net/intent/post?text='+encoded,
+    email:'mailto:?subject=KSpider Connect – India\'s %231 AI Job Platform&body='+encoded
+  };
+  if(platform==='instagram'){
+    navigator.clipboard.writeText(_vmCurrentMsg).then(function(){
+      showToast('📋 Copied! Instagram khulega — message paste karo Caption mein');
+      setTimeout(function(){window.open('https://www.instagram.com/','_blank');},800);
+    }).catch(function(){window.open('https://www.instagram.com/','_blank');});
+    return;
+  }
+  var url=urls[platform];
+  if(url) window.open(url,'_blank','noopener,noreferrer');
+  showToast('📤 '+platform.charAt(0).toUpperCase()+platform.slice(1)+' pe share ho raha hai…');
+}
+
+function vmSelectFromGrid(idx){
+  var m=_vmData[idx];
+  if(!m) return;
+  _vmCurrentMsg=m.body;
+  // Update selects
+  var catSel=$('vmCatSelect');
+  if(catSel){catSel.value=m.cat;vmFilterMessages();}
+  var sel=$('vmMsgSelect');
+  if(sel) sel.value=idx;
+  var box=$('vmPreviewBox');
+  if(box){
+    box.value=m.body;
+    var cc=$('vmCharCount');
+    if(cc) cc.textContent=m.body.length+' chars';
+  }
+  // Scroll to top of page
+  window.scrollTo({top:0,behavior:'smooth'});
+  showToast('✅ "'+m.title+'" selected!');
+}
+
+function vmRenderAllGrid(filterCat){
+  var grid=$('vmAllGrid');
+  if(!grid) return;
+  grid.innerHTML='';
+  var data=filterCat&&filterCat!=='all'?_vmData.filter(function(m){return m.cat===filterCat;}):_vmData;
+  var lastCat='';
+  data.forEach(function(m){
+    var idx=_vmData.indexOf(m);
+    var color=_vmCatColors[m.cat]||'#0A84FF';
+    // Category divider
+    if(m.cat!==lastCat){
+      lastCat=m.cat;
+      var div=document.createElement('div');
+      div.style.cssText='font-size:10px;font-weight:800;letter-spacing:.8px;text-transform:uppercase;color:'+color+';padding:8px 0 4px;border-bottom:1px solid var(--border);margin-bottom:2px;';
+      div.textContent=m.catLabel;
+      grid.appendChild(div);
+    }
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--s2);border:1.5px solid var(--border);border-radius:var(--rs);padding:12px 14px;cursor:pointer;transition:all .15s;';
+    card.onmouseover=function(){this.style.borderColor=color;this.style.background='var(--surface)';};
+    card.onmouseout=function(){this.style.borderColor='var(--border)';this.style.background='var(--s2)';};
+    card.onclick=function(){vmSelectFromGrid(idx);};
+    card.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">'
+      +'<div><div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:2px;">'+m.title+'</div>'
+      +'<div style="font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px;">'+m.body.substring(0,90)+'…</div></div>'
+      +'<span style="flex-shrink:0;font-size:10px;font-weight:700;color:'+color+';background:'+color+'18;border:1px solid '+color+'30;padding:3px 8px;border-radius:99px;">Select</span>'
+      +'</div>';
+    grid.appendChild(card);
+  });
+}
+
+// Auto-init viral page when shown
+document.addEventListener('DOMContentLoaded',function(){
+  var origShowPage=window.showPage;
+  window.showPage=function(pg,btn){
+    origShowPage(pg,btn);
+    if(pg==='viral') setTimeout(vmInit,50);
+  };
+});
+</script>
+
+<!-- ── SERVICE WORKER REGISTRATION ── -->
+<script>
+(function(){
+  var ALLOWED_HOSTS=['kspiderai.in','www.kspiderai.in'];
+  var host=window.location.hostname;
+  if('serviceWorker' in navigator && ALLOWED_HOSTS.indexOf(host)!==-1){
+    window.addEventListener('load',function(){
+      navigator.serviceWorker.register('/sw.js')
+        .then(function(reg){console.log('SW registered:',reg.scope);})
+        .catch(function(err){console.warn('SW error:',err);});
+    });
+  }
+})();
+</script>
+
+<!-- ── RESUME VIEWER ENGINE ── -->
+<script>
 var _resumeMode='text';
 var _resumeContent='';
 
@@ -5307,15 +5583,14 @@ function setResumeMode(mode){
   var txtBtn=document.getElementById('resumeModeText');
   var htmlBtn=document.getElementById('resumeModeHtml');
   var inp=document.getElementById('resumeInput');
-  if(!txtBtn||!htmlBtn) return;
   if(mode==='text'){
-    txtBtn.style.background='var(--primary)';txtBtn.style.color='#fff';txtBtn.style.border='none';
-    htmlBtn.style.background='var(--s2)';htmlBtn.style.color='var(--t2)';htmlBtn.style.border='1px solid var(--border)';
-    if(inp) inp.placeholder='Paste your resume in plain text format...\n\nExample:\nJOHN DOE | john@email.com | +91-XXXXX\n---\nEDUCATION\nB.Tech CSE | LDCE | 2024 | CGPA 8.5\n---\nSKILLS: React, Node.js, Firebase';
+    if(txtBtn){txtBtn.style.background='var(--primary)';txtBtn.style.color='#fff';txtBtn.style.border='none';}
+    if(htmlBtn){htmlBtn.style.background='var(--s2)';htmlBtn.style.color='var(--t2)';htmlBtn.style.border='1px solid var(--border)';}
+    if(inp) inp.placeholder='Paste your resume in plain text format...\n\nJOHN DOE | john@email.com | +91-XXXXX\n---\nEDUCATION: B.Tech CSE | LDCE | 2024\nSKILLS: React, Firebase, Node.js';
   } else {
-    htmlBtn.style.background='var(--primary)';htmlBtn.style.color='#fff';htmlBtn.style.border='none';
-    txtBtn.style.background='var(--s2)';txtBtn.style.color='var(--t2)';txtBtn.style.border='1px solid var(--border)';
-    if(inp) inp.placeholder='Paste your resume in HTML format...\n\nExample:\n<h2>John Doe</h2>\n<p>john@email.com | +91-XXXXX</p>\n<h3>Skills</h3>\n<ul><li>React.js</li><li>Firebase</li></ul>';
+    if(htmlBtn){htmlBtn.style.background='var(--primary)';htmlBtn.style.color='#fff';htmlBtn.style.border='none';}
+    if(txtBtn){txtBtn.style.background='var(--s2)';txtBtn.style.color='var(--t2)';txtBtn.style.border='1px solid var(--border)';}
+    if(inp) inp.placeholder='Paste HTML resume...\n\n<h2>John Doe</h2>\n<p>john@email.com</p>\n<h3>Skills</h3>\n<ul><li>React.js</li></ul>';
   }
 }
 
@@ -5323,14 +5598,12 @@ function saveResume(){
   var inp=document.getElementById('resumeInput');
   if(!inp) return;
   _resumeContent=inp.value.trim();
-  _resumeMode=document.getElementById('resumeModeHtml').style.background.includes('rgb(10, 132, 255)')?'html':'text';
-
-  // Save to localStorage for persistence
+  var htmlBtn=document.getElementById('resumeModeHtml');
+  _resumeMode=(htmlBtn&&htmlBtn.style.background&&htmlBtn.style.background.indexOf('rgb(10')!==-1)?'html':'text';
   try{localStorage.setItem('ks_resume',JSON.stringify({content:_resumeContent,mode:_resumeMode}));}catch(e){}
-
   renderResume();
   toggleResumeEdit();
-  showToast('✅ Resume saved successfully!');
+  showToast('✅ Resume saved!');
 }
 
 function renderResume(){
@@ -5338,16 +5611,13 @@ function renderResume(){
   var hv=document.getElementById('resumeHtmlView');
   var fmtBtn=document.getElementById('resumeFmtBtn');
   if(!tv||!hv) return;
-
   if(!_resumeContent){
     tv.style.display='block';hv.style.display='none';
     tv.textContent='No resume added yet. Click ✏️ Edit to add your resume.';
     return;
   }
-
   if(_resumeMode==='html'){
     tv.style.display='none';hv.style.display='block';
-    // Safe HTML render via srcdoc iframe
     hv.innerHTML='';
     var iframe=document.createElement('iframe');
     iframe.style.cssText='width:100%;min-height:300px;border:none;border-radius:var(--rs);background:#fff;';
@@ -5367,23 +5637,17 @@ function toggleResumeFormat(){
   renderResume();
 }
 
-// Load saved resume on init
 (function(){
   try{
     var saved=localStorage.getItem('ks_resume');
-    if(saved){
-      var d=JSON.parse(saved);
-      _resumeContent=d.content||'';
-      _resumeMode=d.mode||'text';
-      // Render after DOM ready
-      document.addEventListener('DOMContentLoaded',function(){renderResume();});
-    }
+    if(saved){var d=JSON.parse(saved);_resumeContent=d.content||'';_resumeMode=d.mode||'text';
+      document.addEventListener('DOMContentLoaded',function(){renderResume();});}
   }catch(e){}
 })();
+</script>
 
-// ══════════════════════════════════════
-// COVER IMAGE 50KB RESTRICTION
-// ══════════════════════════════════════
+<!-- ── COVER IMAGE 50KB RESTRICTION ── -->
+<script>
 var _coverImgData=null;
 function handleCoverImage(event){
   var file=event.target.files[0];
@@ -5392,88 +5656,30 @@ function handleCoverImage(event){
   var preview=document.getElementById('coverImgPreview');
   var placeholder=document.getElementById('coverImgPlaceholder');
   var thumb=document.getElementById('coverImgThumb');
-
-  if(!file){return;}
-
-  // Reset
+  if(!file) return;
   errEl.style.display='none';errEl.textContent='';
-  nameEl.style.display='none';
-  preview.style.display='none';
-
-  // Type check
+  nameEl.style.display='none';preview.style.display='none';
   var allowed=['image/jpeg','image/png','image/webp'];
   if(allowed.indexOf(file.type)===-1){
     errEl.textContent='❌ Only JPG, PNG, or WebP images are allowed.';
-    errEl.style.display='block';
-    event.target.value='';
-    return;
+    errEl.style.display='block';event.target.value='';return;
   }
-
-  // Size check — 50 KB = 51200 bytes
-  var MAX_SIZE=51200;
-  if(file.size>MAX_SIZE){
+  if(file.size>51200){
     var kb=(file.size/1024).toFixed(1);
-    errEl.innerHTML='❌ Image too large! Your file is <strong>'+kb+' KB</strong>. Maximum allowed is <strong>50 KB</strong>.<br><span style="font-size:10px;color:var(--t3);">Tip: Use <a href="https://squoosh.app" target="_blank" style="color:var(--primary);">squoosh.app</a> or <a href="https://tinypng.com" target="_blank" style="color:var(--primary);">tinypng.com</a> to compress your image.</span>';
-    errEl.style.display='block';
-    event.target.value='';
-    _coverImgData=null;
-    return;
+    errEl.innerHTML='❌ Image too large! Your file is <strong>'+kb+' KB</strong>. Max allowed: <strong>50 KB</strong>.<br><span style="font-size:10px;color:var(--t3);">Compress at <a href="https://squoosh.app" target="_blank" style="color:var(--primary);">squoosh.app</a> or <a href="https://tinypng.com" target="_blank" style="color:var(--primary);">tinypng.com</a></span>';
+    errEl.style.display='block';event.target.value='';_coverImgData=null;return;
   }
-
-  // All good — show preview
   var reader=new FileReader();
   reader.onload=function(e){
     _coverImgData=e.target.result;
-    if(thumb){thumb.src=e.target.result;}
+    if(thumb) thumb.src=e.target.result;
     preview.style.display='block';
-    placeholder.style.display='none';
+    if(placeholder) placeholder.style.display='none';
     nameEl.textContent='✅ '+file.name+' ('+(file.size/1024).toFixed(1)+' KB)';
     nameEl.style.display='block';
   };
   reader.readAsDataURL(file);
 }
-
-</script>
-<script>
-(function(){
-  var ALLOWED_HOSTS=['kspiderai.in','www.kspiderai.in'];
-  var host=window.location.hostname;
-  if('serviceWorker' in navigator && ALLOWED_HOSTS.indexOf(host)!==-1){
-    window.addEventListener('load',function(){
-      navigator.serviceWorker.register('/sw.js')
-        .then(function(reg){console.log('✅ SW registered:',reg.scope);})
-        .catch(function(err){console.warn('SW error:',err);});
-    });
-  }
-})();
-</script>
-
-<!-- ── IMAGE COMPRESSION UTILITY ── -->
-<script>
-function compressImage(file,maxWidth,quality){
-  maxWidth=maxWidth||1080; quality=quality||0.82;
-  return new Promise(function(resolve,reject){
-    if(!file||!file.type.startsWith('image/')){return resolve(file);}
-    var img=new Image();
-    var url=URL.createObjectURL(file);
-    img.onload=function(){
-      URL.revokeObjectURL(url);
-      var w=img.width,h=img.height;
-      if(w>maxWidth){h=Math.round(h*(maxWidth/w));w=maxWidth;}
-      var canvas=document.createElement('canvas');
-      canvas.width=w;canvas.height=h;
-      var ctx=canvas.getContext('2d');
-      ctx.drawImage(img,0,0,w,h);
-      canvas.toBlob(function(blob){
-        if(blob)resolve(blob);
-        else reject(new Error('Canvas compression failed'));
-      },file.type==='image/png'?'image/png':'image/jpeg',quality);
-    };
-    img.onerror=function(){reject(new Error('Image load failed'));};
-    img.src=url;
-  });
-}
-window.compressImage=compressImage;
 </script>
 
 <!-- ── GLOBAL BRANDING LOGIC ── -->
@@ -5488,218 +5694,6 @@ function appendBranding(result){
 }
 window.BRANDING=BRANDING;
 window.appendBranding=appendBranding;
-</script>
-
--e 
-<!-- ══════════════════════════════════════
-     WORLD-CLASS FOOTER
-══════════════════════════════════════ -->
-<footer id="ksFooter" style="background:linear-gradient(135deg,#0A0F1E,#0A1628);color:#E2E8F0;font-family:'Plus Jakarta Sans',sans-serif;margin-top:40px;padding:0 0 60px 0;">
-
-  <!-- Footer AdSense Banner -->
-  <div style="background:#0D1A2E;border-bottom:1px solid #1E3A5F;text-align:center;padding:8px 16px;font-size:10px;color:#64748B;letter-spacing:1px;text-transform:uppercase;">Advertisement</div>
-  <div style="text-align:center;padding:12px 16px;background:#0D1A2E;">
-    <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="FOOTER-AD-SLOT-ID" data-ad-format="auto" data-full-width-responsive="true"></ins>
-    <script>(adsbygoogle=window.adsbygoogle||[]).push({});</script>
-  </div>
-
-  <div style="max-width:1200px;margin:0 auto;padding:48px 24px 0;">
-
-    <!-- Top Grid -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:40px;margin-bottom:48px;">
-
-      <!-- Brand Column -->
-      <div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-          <div style="width:36px;height:36px;background:linear-gradient(135deg,#0A84FF,#7C3AED);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;">🕷️</div>
-          <div>
-            <div style="font-weight:800;font-size:16px;color:#fff;">KSpider Connect</div>
-            <div style="font-size:10px;color:#64748B;">by KSpider AI</div>
-          </div>
-        </div>
-        <p style="font-size:12px;color:#94A3B8;line-height:1.7;margin-bottom:16px;">India's #1 AI-powered Social + Job Placement Platform. Connect, Hire, Get Hired, and Earn — all in one place.</p>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <a href="https://youtube.com/@KSpider4Kreation" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;background:#FF000020;border:1px solid #FF000040;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;color:#FF4444;text-decoration:none;">
-            ▶ YouTube: @KSpider4Kreation
-          </a>
-          <a href="https://kspiderai.in" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:8px;background:#0A84FF20;border:1px solid #0A84FF40;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:600;color:#0A84FF;text-decoration:none;">
-            🌐 kspiderai.in
-          </a>
-        </div>
-        <p style="font-size:11px;color:#475569;margin-top:16px;">Created by <strong style="color:#94A3B8;">Gaurang Raval & Khush Raval</strong></p>
-      </div>
-
-      <!-- Tool Description -->
-      <div>
-        <h3 style="font-size:13px;font-weight:800;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:6px;">🧠 What is KSpider Connect?</h3>
-        <p style="font-size:12px;color:#94A3B8;line-height:1.8;">KSpider Connect ek revolutionary AI platform hai jahan aap:</p>
-        <ul style="font-size:12px;color:#94A3B8;line-height:2;padding-left:16px;margin-top:8px;">
-          <li>🤖 AI-powered job matches paate hain</li>
-          <li>📝 Mock interviews practice karte hain</li>
-          <li>🏫 Campus placement drives attend karte hain</li>
-          <li>💰 Candidates refer karke ₹5,000 tak kamate hain</li>
-          <li>📚 Apne courses/PDFs sell karte hain</li>
-          <li>🤝 Recruiters aur professionals se connect karte hain</li>
-        </ul>
-      </div>
-
-      <!-- User Guide -->
-      <div>
-        <h3 style="font-size:13px;font-weight:800;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:6px;">📖 How to Use — Step by Step</h3>
-        <ol style="font-size:12px;color:#94A3B8;line-height:2.1;padding-left:16px;">
-          <li><strong style="color:#E2E8F0;">Register/Login</strong> — Free account banayein</li>
-          <li><strong style="color:#E2E8F0;">Profile Complete Karein</strong> — Skills, experience add karein</li>
-          <li><strong style="color:#E2E8F0;">AI Job Match</strong> — Home feed mein tailored jobs dekhein</li>
-          <li><strong style="color:#E2E8F0;">Apply/Refer</strong> — Jobs apply karein ya refer karein</li>
-          <li><strong style="color:#E2E8F0;">Interview Simulator</strong> — AI se mock interview practice karein</li>
-          <li><strong style="color:#E2E8F0;">Marketplace</strong> — Courses/PDFs upload karke sell karein</li>
-          <li><strong style="color:#E2E8F0;">Refer & Earn</strong> — Friends invite karein, wallet mein paise payein</li>
-        </ol>
-      </div>
-
-      <!-- Earning Potential -->
-      <div>
-        <h3 style="font-size:13px;font-weight:800;color:#fff;margin-bottom:14px;display:flex;align-items:center;gap:6px;">💰 Earning Potential</h3>
-        <div style="display:flex;flex-direction:column;gap:8px;">
-          <div style="background:#10B98115;border:1px solid #10B98130;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;color:#10B981;margin-bottom:2px;">Mini Recruiter</div>
-            <div style="font-size:11px;color:#94A3B8;">Candidates refer karein → ₹500–₹5,000/placement. 5 referrals/month = ₹10,000–₹25,000</div>
-          </div>
-          <div style="background:#0A84FF15;border:1px solid #0A84FF30;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;color:#0A84FF;margin-bottom:2px;">Marketplace Seller</div>
-            <div style="font-size:11px;color:#94A3B8;">Resume templates, interview guides, course PDFs sell karein. ₹199–₹999/item</div>
-          </div>
-          <div style="background:#F59E0B15;border:1px solid #F59E0B30;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;color:#F59E0B;margin-bottom:2px;">Refer & Earn</div>
-            <div style="font-size:11px;color:#94A3B8;">₹50/seeker + ₹200/recruiter referral. 50 referrals = ₹2,500–₹10,000</div>
-          </div>
-          <div style="background:#7C3AED15;border:1px solid #7C3AED30;border-radius:8px;padding:10px 12px;">
-            <div style="font-size:11px;font-weight:700;color:#A78BFA;margin-bottom:2px;">Freelance + Content</div>
-            <div style="font-size:11px;color:#94A3B8;">Platform ko YouTube/Reels par promote karein aur affiliate earnings banayein</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- WhatsApp Viral Messages Section -->
-    <div style="background:#0D1A2E;border:1px solid #1E3A5F;border-radius:16px;padding:28px;margin-bottom:40px;">
-      <h3 style="font-size:14px;font-weight:800;color:#fff;margin-bottom:6px;">📲 20 Viral WhatsApp Marketing Messages</h3>
-      <p style="font-size:11px;color:#64748B;margin-bottom:20px;">4 categories · Copy &amp; share karein → kspiderai.in/tools/KSpider_Job_Placement.html</p>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;" id="waMessages">
-      </div>
-    </div>
-
-    <!-- Legal Links -->
-    <div style="border-top:1px solid #1E3A5F;padding-top:24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px;">
-      <div style="font-size:11px;color:#475569;">© 2025 KSpider AI · Created by <strong style="color:#64748B;">Gaurang Raval & Khush Raval</strong> · All Rights Reserved</div>
-      <div style="display:flex;flex-wrap:wrap;gap:16px;">
-        <a href="https://kspiderai.in/privacy" target="_blank" style="font-size:11px;color:#64748B;text-decoration:none;transition:color .2s;" onmouseover="this.style.color='#0A84FF'" onmouseout="this.style.color='#64748B'">Privacy Policy</a>
-        <a href="https://kspiderai.in/terms" target="_blank" style="font-size:11px;color:#64748B;text-decoration:none;" onmouseover="this.style.color='#0A84FF'" onmouseout="this.style.color='#64748B'">Terms of Service</a>
-        <a href="https://kspiderai.in/disclaimer" target="_blank" style="font-size:11px;color:#64748B;text-decoration:none;" onmouseover="this.style.color='#0A84FF'" onmouseout="this.style.color='#64748B'">Disclaimer</a>
-        <a href="https://kspiderai.in/contact" target="_blank" style="font-size:11px;color:#64748B;text-decoration:none;" onmouseover="this.style.color='#0A84FF'" onmouseout="this.style.color='#64748B'">Contact Us</a>
-        <a href="https://youtube.com/@KSpider4Kreation" target="_blank" rel="noopener" style="font-size:11px;color:#FF4444;text-decoration:none;font-weight:600;">▶ YouTube</a>
-      </div>
-    </div>
-  </div>
-</footer>
-
-<!-- Render WhatsApp Messages -->
-<script>
-(function(){
-  var msgs=[
-    {cat:'🤝 Networking', title:'The Matchmaker 🎯', body:'Recruiter ho ya Job Seeker — KSpider AI dono ko sahi waqt pe milata hai! ⚡ Screening ka jhanjhat khatam aur placement ki speed 10x fast. 🚀\n✅ Apply/Post: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Seekho Kaise: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🤝 Networking', title:'The Time Saver ⏳', body:'Galat hiring aur berozgari dono ka ek hi ilaaj — KSpider Connect! 🤖 AI se perfect matching pao aur apna kimti waqt bachaao. ✨\n🔗 Check Tool: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Guide: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🤝 Networking', title:'Direct Contact 📞', body:'Ab beech mein koi nahi! Direct hiring manager se judo ya best talent se baat karo. 🕷️ Transparency aur trust ka naya address. 🌟\n🔗 Join Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Watch More: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🤝 Networking', title:'Quality Hiring Hub 💎', body:'Bheed se bacho, quality talent aur genuine jobs se milo! 🏆 KSpider AI sirf verified profiles hi suggest karta hai. 📊\n🔗 Explore: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Tutorial: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'💼 For Recruiters', title:'Zero Cost Hiring 💸', body:'Agency fees ko maro goli! KSpider AI se direct top talent ko hire karein bilkul free. 🎯 Smart hiring ka naya hack yahan hai. 🏢\n🔗 Hire Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Demo: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'💼 For Recruiters', title:'Filter The Best 📄', body:'Hazaron resumes scan karne ki zarurat nahi — AI aapke liye sirf "A-players" chunega. 💎 Mehnat aadhi, result dugna! ⚡\n🔗 Access Tool: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Subscribe: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'💼 For Recruiters', title:'Scalable Recruitment 📈', body:'Niche skill ho ya bulk hiring — KSpider ka AI har requirement handle kar lega. 🏗️ Apni hiring pipeline aaj hi set karein! 🤝\n🔗 Post Job: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Learn More: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'💼 For Recruiters', title:"Recruiter's Secret Weapon 🔑", body:'Smart recruiters ab AI use kar rahe hain — aap kab shuru karenge? 🎤 Top talent ko attract karne ka sabse fast tarika. 🚀\n🔗 Try Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Watch: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🚀 For Job Seekers', title:'Dream Job Key 🔑', body:'Aapki skills behtareen hain, bas sahi recruiter ki talash hai. 🏆 KSpider AI aapko wahi jobs dikhayega jo aapke liye bani hain! 🤖\n🔗 Register: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Tips: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🚀 For Job Seekers', title:'Interview Edge 🎤', body:'Sirf job mat dhundho — use crack karna bhi seekho! 🎤 AI simulator aur placement guidance ek hi jagah. 💪\n🔗 Practice: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Live Guide: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🚀 For Job Seekers', title:"Freshers' First Break 🎓", body:'Experience nahi hai? Tension mat lo! KSpider Connect pe entry-level jobs ki bharmaar hai. 🚶 Pehla kadam yahan se uthao. ✨\n🔗 Apply: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 YouTube: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🚀 For Job Seekers', title:'Salary Booster 📈', body:'Apni asli value pehchano aur sahi package pao. 💸 KSpider AI aapki profile ko top recruiters ke samne rank karta hai. ✈️\n🔗 Check Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Advice: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'Refer & Earn 🤝', body:'Doston ki job lagne mein madad karo aur per placement ₹5,000 tak kamao! 🤑 Sabse asaan side income ka tarika. 💸\n🔗 Start Sharing: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Earning Tips: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'Community Power 👥', body:'10k+ log jud chuke hain — aap piche kyu ho? 🕸️ India ki sabse badi AI career community ka hissa banein. 🚀\n🔗 Join Link: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Subscribe: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'Smart Choice 🤔', body:'Wahi purane portals kab tak? Move to KSpider AI aur career ko do naya mod. ⚡ AI ka zamana hai, update raho! 🕷️\n🔗 Link: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Tutorials: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'Placement Jackpot 🎰', body:'Referral + AI Hiring + Earning = KSpider Connect! 🎁 Itna sab ek hi link mein — aaj hi try karein. 💰\n🔗 Check Out: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Updates: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'Skill Over Degree 🎭', body:'Sirf degree se nahi — apne real talent se job pao. ⚡ KSpider AI aapki skills ko highlight karta hai. 🏆\n🔗 Register: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Hacks: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'No More Waiting ⏱️', body:'Application sent... and no reply? KSpider pe direct status aur instant alerts pao. 📣 Aaj hi apply karo! ⚡\n🔗 Apply: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Channel: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'Unlock Your Future 🔓', body:'Career growth ab sirf ek click ki duri par hai. 🔓 KSpider Connect ka naya placement tool ab sab ke liye open hai! 🌟\n🔗 Start Now: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Guide: https://www.youtube.com/@KSpider4Kreation'},
-    {cat:'🔥 Earning & Viral', title:'The Final Call 📣', body:'Recruiters wait kar rahe hain — kya aap taiyar hain? 🚀 AI power ka fayda uthao aur dream career shuru karo! 🏁\n🔗 Last Chance: https://kspiderai.in/tools/KSpider_Job_Placement.html\n📺 Subscribe: https://www.youtube.com/@KSpider4Kreation'}
-  ];
-
-  var catColors={'🤝 Networking':'#0A84FF','💼 For Recruiters':'#7C3AED','🚀 For Job Seekers':'#10B981','🔥 Earning & Viral':'#F59E0B'};
-
-  var container=document.getElementById('waMessages');
-  if(!container) return;
-
-  // Group by category
-  var grouped={};
-  msgs.forEach(function(m){
-    if(!grouped[m.cat]) grouped[m.cat]=[];
-    grouped[m.cat].push(m);
-  });
-
-  Object.keys(grouped).forEach(function(cat){
-    // Category header
-    var hdr=document.createElement('div');
-    hdr.style.cssText='grid-column:1/-1;font-size:11px;font-weight:800;color:'+(catColors[cat]||'#94A3B8')+';letter-spacing:.5px;text-transform:uppercase;padding:4px 0 2px;margin-top:4px;border-bottom:1px solid #1E3A5F;padding-bottom:8px;margin-bottom:4px;';
-    hdr.textContent=cat;
-    container.appendChild(hdr);
-
-    grouped[cat].forEach(function(m){
-      var div=document.createElement('div');
-      div.style.cssText='background:#0A1628;border:1px solid #1E3A5F;border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s;';
-      div.onmouseover=function(){this.style.borderColor=catColors[cat]||'#0A84FF';};
-      div.onmouseout=function(){this.style.borderColor='#1E3A5F';};
-
-      var badge=document.createElement('div');
-      badge.style.cssText='display:inline-flex;align-items:center;gap:4px;';
-      var catTag=document.createElement('span');
-      catTag.style.cssText='font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:'+(catColors[cat]||'#94A3B8')+';background:'+(catColors[cat]||'#94A3B8')+'18;padding:2px 7px;border-radius:99px;';
-      catTag.textContent=cat;
-      badge.appendChild(catTag);
-
-      var title=document.createElement('div');
-      title.style.cssText='font-size:12px;font-weight:800;color:#E2E8F0;';
-      title.textContent=m.title;
-
-      var body=document.createElement('div');
-      body.style.cssText='font-size:11px;color:#94A3B8;line-height:1.75;white-space:pre-wrap;';
-      body.textContent=m.body;
-
-      var copyBtn=document.createElement('button');
-      copyBtn.style.cssText='background:'+(catColors[cat]||'#0A84FF')+'18;color:'+(catColors[cat]||'#0A84FF')+';border:1px solid '+(catColors[cat]||'#0A84FF')+'40;border-radius:8px;padding:7px 14px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;transition:background .2s;';
-      copyBtn.textContent='📋 Copy Message';
-      copyBtn.onclick=(function(msg,btn){
-        return function(){
-          navigator.clipboard.writeText(msg).then(function(){
-            btn.textContent='✅ Copied!';
-            btn.style.background='#10B98118';
-            btn.style.color='#10B981';
-            btn.style.borderColor='#10B98140';
-            setTimeout(function(){
-              btn.textContent='📋 Copy Message';
-              btn.style.background=(catColors[cat]||'#0A84FF')+'18';
-              btn.style.color=catColors[cat]||'#0A84FF';
-              btn.style.borderColor=(catColors[cat]||'#0A84FF')+'40';
-            },2000);
-          }).catch(function(){
-            btn.textContent='❌ Try Again';
-            setTimeout(function(){btn.textContent='📋 Copy Message';},1500);
-          });
-        };
-      })(m.body,copyBtn);
-
-      div.appendChild(badge);
-      div.appendChild(title);
-      div.appendChild(body);
-      div.appendChild(copyBtn);
-      container.appendChild(div);
-    });
-  });
-})();
 </script>
 
 </body>
