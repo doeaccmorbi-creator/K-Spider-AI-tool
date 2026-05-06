@@ -8,32 +8,6 @@
 
   <!-- ── CHARSET & VIEWPORT ── -->
   <meta charset="UTF-8">
-  <!-- ── CONTENT SECURITY POLICY ── -->
-  <!-- Note: connect-src and frame-src extended to allow Firebase Auth + CDN source maps -->
-  <meta http-equiv="Content-Security-Policy" content="
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval'
-      https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com
-      https://www.googletagmanager.com https://www.google-analytics.com
-      https://checkout.razorpay.com https://script.google.com
-      https://cdn.emailjs.com https://smtpjs.com;
-    style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net;
-    font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net;
-    img-src 'self' data: blob: https:;
-    connect-src 'self'
-      https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com
-      https://api.razorpay.com https://lumberjack.razorpay.com
-      https://script.google.com https://script.googleusercontent.com
-      https://www.google-analytics.com https://www.googletagmanager.com
-      https://cdn.jsdelivr.net https://unpkg.com https://cdnjs.cloudflare.com
-      https://api.emailjs.com https://smtpjs.com;
-    frame-src
-      https://checkout.razorpay.com
-      https://apis.google.com
-      https://*.firebaseapp.com
-      https://*.firebaseio.com;
-    worker-src 'self' blob:;
-  ">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta http-equiv="Content-Language" content="en-IN">
@@ -148,7 +122,7 @@
 
   <!-- ── SECURITY HEADERS ── -->
   <meta http-equiv="X-Content-Type-Options" content="nosniff">
-  <!-- X-Frame-Options must be set as HTTP header on server, not via meta -->
+  <!-- X-Frame-Options: set via server HTTP header, not meta -->
   <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
   <meta http-equiv="Permissions-Policy" content="camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=()">
   <meta http-equiv="X-XSS-Protection" content="1; mode=block">
@@ -479,7 +453,7 @@
 
     function loadScript(src, onSuccess, onFail) {
       var s = document.createElement('script');
-      s.crossOrigin = 'anonymous'; // Suppress .map source map requests that violate CSP
+      s.crossOrigin = 'anonymous'; // suppress .map source map fetch errors
       var done = false;
       var timer = setTimeout(function() {
         if (!done) { done = true; onFail && onFail(); }
@@ -5540,7 +5514,6 @@ function ksFaqToggle(btn) {
   var _devThreshold = 300;
   
   function checkDevTools(){
-    // Skip on local/dev environment to prevent false-positive white screens
     if(window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') return;
     var widthDiff  = window.outerWidth  - window.innerWidth;
     var heightDiff = window.outerHeight - window.innerHeight;
@@ -5604,9 +5577,8 @@ function ksFaqToggle(btn) {
   // ── 10. ANTI IFRAME ──
   try {
     if(window.top !== window.self){
-      // Only block if on actual website, not local file
       if(window.location.protocol !== 'file:' && window.location.hostname !== ''){
-        // Allow Firebase Auth iframes (googleapis.com, firebaseapp.com) needed for login
+        // Allow Firebase Auth iframes (apis.google.com, firebaseapp.com)
         var _isFirebaseAuthFrame = (
           window.location.hostname.indexOf('firebaseapp.com') !== -1 ||
           window.location.hostname.indexOf('googleapis.com') !== -1
@@ -5615,7 +5587,6 @@ function ksFaqToggle(btn) {
           try {
             window.top.location.href = window.self.location.href;
           } catch(e) {
-            // Cross-origin iframe that is not Firebase auth — hide content
             document.body.style.display = 'none';
           }
         }
