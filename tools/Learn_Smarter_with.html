@@ -561,6 +561,7 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
     <button onclick="openShareModal()" class="btn-drk" title="Share Tool">📤</button>
     <button class="btn-drk" onclick="togDark()" title="Dark mode">🌙</button>
     <button class="btn-hdr" onclick="openStudentModal()">🚀 Start Test</button>
+    <button class="btn-hdr" onclick="openInstModal()" style="background:linear-gradient(135deg,#059669,#10b981);margin-left:6px;" title="Register your School/College for promotional marketing">🏫 Register Institute</button>
     <button class="ham" onclick="togMob()" id="ham"><span></span><span></span><span></span></button>
   </div>
 </div>
@@ -1749,6 +1750,7 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
     <button class="bni" onclick="goSec('dash-sec')"><span class="ic">📊</span>Dash</button>
     <button class="bni" onclick="goPg('about')"><span class="ic">ℹ️</span>About</button>
     <button class="bni" onclick="goPg('contact')"><span class="ic">📬</span>Contact</button>
+    <button class="bni" onclick="openInstModal()"><span class="ic">🏫</span>Institute</button>
   </div>
 </nav>
 <!-- TOAST -->
@@ -3241,6 +3243,36 @@ async function switchLang(lang){
   }
 }
 
+// ── MyMemory Free Translation API ──────────────────────────────────────────
+// No API key needed. Free tier: 5000 chars/day. Email param for 50K chars/day.
+const MM_EMAIL = 'kspiderai@gmail.com'; // optional — boosts daily limit
+const MYMEMORY_LANGS = {
+  hi:'hi-IN', gu:'gu-IN', mr:'mr-IN', ta:'ta-IN', te:'te-IN',
+  kn:'kn-IN', ml:'ml-IN', bn:'bn-IN', pa:'pa-IN', or:'or-IN', ur:'ur-PK'
+};
+
+async function mmTranslate(text, targetLang) {
+  if(!text || !text.trim()) return text;
+  if(targetLang === 'en') return text;
+  const lp = 'en|' + (MYMEMORY_LANGS[targetLang] || targetLang);
+  const url = 'https://api.mymemory.translated.net/get?q='
+    + encodeURIComponent(text.slice(0,500))
+    + '&langpair=' + encodeURIComponent(lp)
+    + '&de=' + encodeURIComponent(MM_EMAIL);
+  try {
+    const r = await fetch(url);
+    if(!r.ok) throw new Error('MM HTTP ' + r.status);
+    const d = await r.json();
+    if(d.responseStatus === 200 && d.responseData && d.responseData.translatedText) {
+      return d.responseData.translatedText;
+    }
+    throw new Error('MM status ' + d.responseStatus);
+  } catch(e) {
+    console.warn('MyMemory translate error:', e.message);
+    return text; // fallback: return original
+  }
+}
+
 async function translateAndRenderQ(){
   if(translatingQ) return;
   if(curLang === 'en'){ renderQ(); return; }
@@ -3248,58 +3280,37 @@ async function translateAndRenderQ(){
   const q = examQs[idx];
   if(!q) return;
 
-  // Check cache
+  // Check cache first
   if(translationCache[idx] && translationCache[idx][curLang]){
     renderTranslatedQ(translationCache[idx][curLang], idx);
     return;
   }
 
-  // Show loading state
   translatingQ = true;
   const qcont = document.getElementById('qcont');
-  if(qcont) qcont.innerHTML = `<div style="text-align:center;padding:40px;color:var(--muted);">
-    <div style="font-size:2rem;margin-bottom:10px;">🌐</div>
-    <div style="font-weight:700;margin-bottom:6px;">Translating to ${INDIAN_LANGS[curLang]?.native||curLang}...</div>
-    <div style="font-size:.8rem;">Powered by Claude AI</div>
-  </div>`;
-
   const langName = INDIAN_LANGS[curLang]?.native || curLang;
-  const prompt = `Translate this MCQ exactly to ${langName} language. Keep the meaning and technical terms accurate. Return ONLY valid JSON, no markdown.
-
-Input JSON:
-${JSON.stringify({q: q.q, opts: q.opts, exp: q.exp||''})}
-
-Return JSON in this exact format:
-{"q":"translated question","opts":["opt A","opt B","opt C","opt D"],"exp":"translated explanation"}`;
+  if(qcont) qcont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">'
+    + '<div style="font-size:2rem;margin-bottom:10px;">🌐</div>'
+    + '<div style="font-weight:700;margin-bottom:6px;">Translating to ' + langName + '...</div>'
+    + '<div style="font-size:.8rem;color:var(--muted);">MyMemory Free API — No API key needed!</div>'
+    + '</div>';
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
-      method:'POST',
-      headers:{
-        'Content-Type':'application/json',
-        'anthropic-version':'2023-06-01',
-        'anthropic-dangerous-direct-browser-access':'true',
-        'x-api-key': KS_AK()
-      },
-      body: JSON.stringify({
-        model:'claude-haiku-4-5-20251001',
-        max_tokens:1000,
-        messages:[{role:'user',content:prompt}]
-      })
-    });
-    if(!res.ok) throw new Error('API '+res.status);
-    const data = await res.json();
-    const text = data.content.map(c=>c.text||'').join('');
-    const match = text.match(/\{[\s\S]*\}/);
-    if(!match) throw new Error('No JSON in response');
-    const translated = JSON.parse(match[0]);
-    if(!translated.q || !Array.isArray(translated.opts) || translated.opts.length!==4) throw new Error('Bad structure');
+    // Translate question, all options, and explanation in parallel
+    const allTexts = [q.q, ...q.opts, q.exp||''];
+    const translated_all = await Promise.all(allTexts.map(t => mmTranslate(t, curLang)));
+    const translated = {
+      q:    translated_all[0],
+      opts: translated_all.slice(1, 1 + q.opts.length),
+      exp:  translated_all[translated_all.length - 1]
+    };
+    if(!translated.q || !Array.isArray(translated.opts) || translated.opts.length < 2) throw new Error('Bad structure');
     if(!translationCache[idx]) translationCache[idx] = {};
     translationCache[idx][curLang] = translated;
     renderTranslatedQ(translated, idx);
   } catch(err){
     console.warn('Translation failed:', err.message);
-    toast('Translation failed — showing English','e');
+    toast('Translation failed — showing English', 'e');
     curLang = 'en';
     const els2 = document.getElementById('examLangSel');
     if(els2) els2.value = 'en';
@@ -3354,6 +3365,29 @@ const GOVT_SCHEME_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1v
 let KS_ALL_SCHEMES = [];
 let KS_SCHEME_IDX = 0;
 
+// Try direct fetch first, then CORS proxies if it fails
+async function schemeFetchCSV() {
+  var direct = GOVT_SCHEME_SHEET_URL;
+  var proxies = [
+    'https://corsproxy.io/?' + encodeURIComponent(direct),
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(direct),
+    'https://cors-anywhere.herokuapp.com/' + direct
+  ];
+  // Try direct first
+  try {
+    var r = await fetch(direct, {mode:'cors'});
+    if (r.ok) return await r.text();
+  } catch(e) {}
+  // Fallback: try proxies one by one
+  for (var pi = 0; pi < proxies.length; pi++) {
+    try {
+      var pr = await fetch(proxies[pi]);
+      if (pr.ok) { var txt = await pr.text(); if (txt && txt.length > 10) return txt; }
+    } catch(e) {}
+  }
+  throw new Error('All fetch attempts failed');
+}
+
 async function schemeInit() {
   var loadEl = document.getElementById('scheme-loading');
   var contentEl = document.getElementById('scheme-content');
@@ -3362,9 +3396,7 @@ async function schemeInit() {
   if (contentEl) contentEl.style.display = 'none';
   if (errorEl) errorEl.style.display = 'none';
   try {
-    var resp = await fetch(GOVT_SCHEME_SHEET_URL);
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
-    var csv = await resp.text();
+    var csv = await schemeFetchCSV();
     var lines = csv.trim().split('\n');
     if (lines.length < 2) throw new Error('No data rows');
     KS_ALL_SCHEMES = [];
@@ -3437,23 +3469,7 @@ function schemeNext() {
   schemeDisplay(KS_SCHEME_IDX);
 }
 
-function schemeBuildMsg() {
-  if (!KS_ALL_SCHEMES.length) return buildToolMsg();
-  var s = KS_ALL_SCHEMES[KS_SCHEME_IDX];
-  var typeLabel = s.type === 'Gujarat' ? 'Gujarat Govt Scheme' : 'Central Govt Scheme';
-  var msg = '📢 *' + typeLabel + '*\n\n';
-  msg += '*' + s.name + '*\n';
-  if (s.dept) msg += s.dept + '\n';
-  if (s.benefits) msg += '\n💰 *Benefits / Labh:*\n' + s.benefits + '\n';
-  if (s.eligibility) msg += '\n👥 *Eligibility / Patrata:*\n' + s.eligibility + '\n';
-  if (s.apply) msg += '\n📋 *How to Apply:*\n' + s.apply + '\n';
-  if (s.website) msg += '\n🌐 ' + s.website + '\n';
-  msg += '\n——\n';
-  msg += 'K Spider AI Tool | Free AI Teacher\n';
-  msg += 'NEET UG/PG | JEE | JEE Advanced | UPSC | GPSC\n';
-  msg += 'https://kspiderai.in';
-  return msg;
-}
+// schemeBuildMsg — defined in Institute JS block (with institute branding support)
 
 function shareScheme(platform) {
   var msg = schemeBuildMsg();
@@ -3509,10 +3525,7 @@ const TOOL_PROMOS = [
   '🏛️ GPSC Gujarat Civil Service prep — FREE!\n📚 History, Gujarat GK, Polity, Maths — AI + PYQ!'
 ];
 
-function buildToolMsg(){
-  const p = TOOL_PROMOS[Math.floor(Math.random() * TOOL_PROMOS.length)];
-  return p + '\n\n🔥 Try this powerful free AI tool:\n🌐 https://kspiderai.in\n📺 YouTube: https://www.youtube.com/@KSpider4Kreation\n\n🕷️ K Spider AI Tool\nDeveloped by Gaurang Raval & Khush Raval';
-}
+// buildToolMsg — defined in Institute JS block (with institute branding support)
 
 function openShareModal(){ document.getElementById('shrModal').classList.add('open'); }
 function closeShrModal(){ document.getElementById('shrModal').classList.remove('open'); }
@@ -3614,8 +3627,344 @@ function nativeShrTl(){
   var SK='ks_session_start',SM=8*60*60*1000;if(!sessionStorage.getItem(SK))sessionStorage.setItem(SK,Date.now().toString());setInterval(function(){var st=parseInt(sessionStorage.getItem(SK)||'0');if(st&&(Date.now()-st>SM)){sessionStorage.clear();localStorage.removeItem('ks_u');window.location.reload();}},60000);
   if(window.location.protocol!=='file:'){var _hd=false;['mousemove','touchstart','keypress','scroll','click'].forEach(function(ev){document.addEventListener(ev,function(){_hd=true;},{once:true,passive:true});});setTimeout(function(){if(!_hd){document.body.style.display='none';setTimeout(function(){document.body.style.display='';},5000);}},3000);}
 })();
+
+
+
+// FIREBASE + INSTITUTE REGISTRATION SYSTEM
+var KS_FB_CFG = {
+  apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+  authDomain:"kspideraimain.firebaseapp.com",
+  projectId:"kspideraimain",
+  storageBucket:"kspideraimain.firebasestorage.app",
+  messagingSenderId:"940003391760",
+  appId:"1:940003391760:web:8617000465b6991d348d95"
+};
+var ksDb = null;
+var ksFirebaseReady = false;
+
+function loadKsFirebase(cb) {
+  if (ksFirebaseReady && ksDb) { if(cb) cb(); return; }
+  var s1 = document.createElement('script');
+  s1.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js';
+  s1.onload = function() {
+    var s2 = document.createElement('script');
+    s2.src = 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js';
+    s2.onload = function() {
+      try {
+        if (!firebase.apps.length) firebase.initializeApp(KS_FB_CFG);
+        ksDb = firebase.firestore();
+        ksFirebaseReady = true;
+        if (cb) cb();
+      } catch(e) { console.warn('Firebase init:', e); }
+    };
+    document.head.appendChild(s2);
+  };
+  s1.onerror = function() { toast('Network error loading Firebase', 'e'); };
+  document.head.appendChild(s1);
+}
+
+var KS_INST = null;
+var KS_INST_REQ_ID = null;
+(function(){
+  var saved = localStorage.getItem('ks_inst_req');
+  if (saved) { try { var d = JSON.parse(saved); KS_INST_REQ_ID = d.id; KS_INST = d; } catch(e){} }
+})();
+
+function openInstModal() {
+  var m = document.getElementById('instituteModal');
+  if (!m) return;
+  m.classList.add('open');
+  if (KS_INST_REQ_ID) {
+    document.getElementById('inst-form-wrap').style.display = 'none';
+    document.getElementById('inst-success-wrap').style.display = '';
+    checkInstStatus();
+  } else {
+    document.getElementById('inst-form-wrap').style.display = '';
+    document.getElementById('inst-success-wrap').style.display = 'none';
+  }
+}
+function closeInstModal() {
+  var m = document.getElementById('instituteModal');
+  if (m) m.classList.remove('open');
+}
+function giv(id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }
+
+function submitInstRequest() {
+  var name=giv('inst-name'), type=giv('inst-type'), address=giv('inst-address');
+  var city=giv('inst-city'), state=giv('inst-state'), cname=giv('inst-contact-name');
+  var phone=giv('inst-phone'), email=giv('inst-email');
+  var courses=giv('inst-courses'), usp=giv('inst-usp');
+  var errEl = document.getElementById('inst-submit-err');
+  function showErr(msg) { errEl.textContent = msg; errEl.style.display = ''; }
+  errEl.style.display = 'none';
+  if (!name)    { showErr('Institute name required.'); return; }
+  if (!type)    { showErr('Select institute type.'); return; }
+  if (!address) { showErr('Address required.'); return; }
+  if (!city)    { showErr('City required.'); return; }
+  if (!state)   { showErr('State required.'); return; }
+  if (!cname)   { showErr('Contact person name required.'); return; }
+  if (!phone)   { showErr('Phone/WhatsApp required.'); return; }
+  if (!email || email.indexOf('@') < 0) { showErr('Valid email required.'); return; }
+  if (!courses) { showErr('Please mention courses offered.'); return; }
+  if (!usp)     { showErr('Please describe unique features / USP.'); return; }
+  var btn = document.getElementById('inst-submit-btn');
+  btn.disabled = true; btn.textContent = 'Submitting...';
+  var data = {
+    instituteName:giv('inst-name'), instituteType:giv('inst-type'),
+    address:giv('inst-address'), city:giv('inst-city'), state:giv('inst-state'),
+    pin:giv('inst-pin'), contactName:giv('inst-contact-name'),
+    designation:giv('inst-designation'), phone:giv('inst-phone'),
+    phone2:giv('inst-phone2'), email:giv('inst-email'), website:giv('inst-website'),
+    socialMedia:{
+      facebook:giv('inst-fb'), instagram:giv('inst-insta'), youtube:giv('inst-yt'),
+      twitter:giv('inst-tw'), whatsapp:giv('inst-wa-link'), telegram:giv('inst-tg')
+    },
+    courses:giv('inst-courses'), usp:giv('inst-usp'),
+    offers:giv('inst-offers'), affil:giv('inst-affil'),
+    status:'pending', source:'LearnSmarterTool', toolUrl:'https://kspiderai.in'
+  };
+  function _submit() {
+    data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    ksDb.collection('instituteRequests').add(data)
+      .then(function(ref) {
+        KS_INST_REQ_ID = ref.id;
+        KS_INST = Object.assign({id:ref.id}, data);
+        localStorage.setItem('ks_inst_req', JSON.stringify({id:ref.id, instituteName:data.instituteName, status:'pending', email:data.email}));
+        document.getElementById('inst-form-wrap').style.display = 'none';
+        document.getElementById('inst-success-wrap').style.display = '';
+        btn.disabled = false; btn.textContent = 'Submit Registration Request';
+        toast('Request submitted! Admin will review within 24hrs.', 's');
+      })
+      .catch(function(e) {
+        showErr('Submit failed: ' + e.message);
+        btn.disabled = false; btn.textContent = 'Submit Registration Request';
+      });
+  }
+  if (ksFirebaseReady && ksDb) { _submit(); } else { loadKsFirebase(_submit); }
+}
+
+function checkInstStatus() {
+  if (!KS_INST_REQ_ID) return;
+  function _check() {
+    ksDb.collection('instituteRequests').doc(KS_INST_REQ_ID).get()
+      .then(function(doc) {
+        if (!doc.exists) return;
+        var d = doc.data();
+        var saved = JSON.parse(localStorage.getItem('ks_inst_req') || '{}');
+        saved.status = d.status;
+        localStorage.setItem('ks_inst_req', JSON.stringify(saved));
+        if (d.status === 'approved') {
+          var pb = document.getElementById('inst-pending-badge');
+          var ab = document.getElementById('inst-approved-badge');
+          var bn = document.getElementById('inst-approved-banner');
+          if (pb) pb.style.display = 'none';
+          if (ab) ab.style.display = 'flex';
+          if (bn) bn.style.display = 'flex';
+          KS_INST = Object.assign({}, d, {id:KS_INST_REQ_ID});
+          toast('Your institute is APPROVED!', 's');
+        } else if (d.status === 'rejected') {
+          var pb2 = document.getElementById('inst-pending-badge');
+          if (pb2) { pb2.textContent = 'Status: Rejected by Admin'; pb2.style.color = '#f87171'; }
+        } else { toast('Status: Pending approval', 'i'); }
+      }).catch(function(e) { toast('Check status error: ' + e.message, 'e'); });
+  }
+  if (ksFirebaseReady && ksDb) { _check(); } else { loadKsFirebase(_check); }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  var saved = localStorage.getItem('ks_inst_req');
+  if (saved) {
+    try {
+      var d = JSON.parse(saved);
+      if (d.id) {
+        loadKsFirebase(function() {
+          ksDb.collection('instituteRequests').doc(d.id).get().then(function(doc){
+            if (doc.exists && doc.data().status === 'approved') {
+              d.status = 'approved';
+              localStorage.setItem('ks_inst_req', JSON.stringify(d));
+              KS_INST = Object.assign({}, doc.data(), {id:d.id});
+              var bn = document.getElementById('inst-approved-banner');
+              if (bn) { bn.style.display = 'flex'; setTimeout(function(){ bn.style.display='none'; }, 8000); }
+            }
+          }).catch(function(){});
+        });
+      }
+    } catch(e) {}
+  }
+});
+
+function getInstPromo() {
+  var saved = localStorage.getItem('ks_inst_req');
+  if (!saved) return null;
+  try { var d = JSON.parse(saved); return d.status === 'approved' ? d : null; } catch(e) { return null; }
+}
+
+// SCHEME MESSAGE BUILDER — with Institute Branding
+function schemeBuildMsg() {
+  var s = KS_ALL_SCHEMES.length ? KS_ALL_SCHEMES[KS_SCHEME_IDX] : null;
+  var inst = getInstPromo();
+  var nl = '\n';
+  var msg = '';
+  if (inst) {
+    msg += nl + '🏫 *' + (inst.instituteName || '') + '*' + nl;
+    if (inst.instituteType) msg += inst.instituteType + nl;
+    if (inst.city || inst.state) msg += '📍 ' + [inst.city, inst.state].filter(Boolean).join(', ') + nl;
+    if (inst.phone)   msg += '📞 ' + inst.phone + nl;
+    if (inst.website) msg += '🌐 ' + inst.website + nl;
+    if (inst.usp)     msg += '⭐ ' + inst.usp + nl;
+    if (inst.offers)  msg += '🎁 ' + inst.offers + nl;
+    msg += nl;
+  }
+  if (s) {
+    var typeLabel = s.type === 'Gujarat' ? 'Gujarat Govt Scheme' : 'Central Govt Scheme';
+    msg += '📢 *' + typeLabel + '*' + nl + nl;
+    msg += '*' + s.name + '*' + nl;
+    if (s.dept)        msg += s.dept + nl;
+    if (s.benefits)    msg += nl + '💰 *Benefits:*' + nl + s.benefits + nl;
+    if (s.eligibility) msg += nl + '👥 *Eligibility:*' + nl + s.eligibility + nl;
+    if (s.apply)       msg += nl + '📋 *Apply:*' + nl + s.apply + nl;
+    if (s.website)     msg += nl + '🌐 ' + s.website + nl;
+    msg += nl;
+  }
+  msg += '——————————' + nl;
+  msg += '🕷️ *K Spider AI — Free AI Teacher*' + nl;
+  msg += '📚 NEET UG/PG | JEE | JEE Advanced | UPSC | GPSC | MBBS | Board' + nl;
+  msg += '✅ 1,00,000+ Questions | Free Certificates | AI Translation' + nl;
+  msg += '🌐 www.kspiderai.in' + nl;
+  msg += '▶️ youtube.com/@kspider4kreation' + nl;
+  msg += '📲 https://kspiderai.in';
+  return msg;
+}
+
+// TOOL SHARE MESSAGE BUILDER — with Institute Branding
+function buildToolMsg() {
+  var inst = getInstPromo();
+  var p = TOOL_PROMOS[Math.floor(Math.random() * TOOL_PROMOS.length)];
+  var nl = '\n';
+  var msg = '';
+  if (inst) {
+    msg += '🏫 *' + (inst.instituteName || '') + '*';
+    if (inst.city) msg += ' | ' + inst.city;
+    msg += nl;
+    if (inst.phone)   msg += '📞 ' + inst.phone + ' ';
+    if (inst.website) msg += '🌐 ' + inst.website;
+    if (inst.phone || inst.website) msg += nl;
+    if (inst.usp)    msg += '⭐ ' + inst.usp + nl;
+    if (inst.offers) msg += '🎁 ' + inst.offers + nl;
+    msg += nl;
+  }
+  msg += p + nl + nl;
+  msg += '🕷️ *K Spider AI* — www.kspiderai.in' + nl;
+  msg += '▶️ youtube.com/@kspider4kreation';
+  return msg;
+}
+
+
 </script>
 <style>*,*::before,*::after{-webkit-user-select:none!important;-moz-user-select:none!important;-ms-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-user-select:text!important;-ms-user-select:text!important;user-select:text!important}</style>
+
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- INSTITUTE / SCHOOL / COLLEGE REGISTRATION MODAL       -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div class="modal-ov" id="instituteModal" onclick="if(event.target===this)closeInstModal()">
+  <div style="background:var(--card);border-radius:20px;max-width:640px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4);animation:mIn .3s ease;">
+    <div class="mhdr" style="background:linear-gradient(135deg,var(--pri),var(--pri2));border-radius:20px 20px 0 0;">
+      <div>
+        <h2 style="color:#fff;font-size:1.1rem;">🏫 Institute Registration</h2>
+        <div style="color:rgba(255,255,255,.8);font-size:.75rem;margin-top:3px;">Register your School / College / University for promotional marketing</div>
+      </div>
+      <button onclick="closeInstModal()" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:18px;cursor:pointer;border-radius:8px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+    <!-- Status tabs -->
+    <div id="inst-form-wrap">
+    <div class="mbody" style="padding:20px 24px;">
+      <div style="background:rgba(21,70,208,.07);border:1px solid rgba(21,70,208,.2);border-radius:10px;padding:12px 14px;margin-bottom:18px;font-size:.8rem;color:var(--muted);line-height:1.6;">
+        📢 <strong>How it works:</strong> Fill your institute details → Submit request → Admin approves within 24hrs → You can share <strong>promotional scheme messages</strong> with your institute branding on WhatsApp &amp; social media!
+      </div>
+      <!-- Step 1: Basic Info -->
+      <div style="font-size:.7rem;font-weight:800;color:var(--pri);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;">🏛️ Institute Information</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row" style="margin:0;"><label>Institute Name *</label><input type="text" id="inst-name" placeholder="ABC School / XYZ College"></div>
+        <div class="form-row" style="margin:0;"><label>Institute Type *</label>
+          <select id="inst-type" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Sora',sans-serif;font-size:.85rem;color:var(--text);">
+            <option value="">-- Select Type --</option>
+            <option>Primary School</option><option>Secondary School</option><option>Higher Secondary</option>
+            <option>Junior College</option><option>Degree College</option><option>Engineering College</option>
+            <option>Medical College</option><option>University</option><option>Coaching Institute</option>
+            <option>Skill Development Centre</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:12px;"><label>Full Address *</label><input type="text" id="inst-address" placeholder="Street / Area / Building name"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-row" style="margin:0;"><label>City *</label><input type="text" id="inst-city" placeholder="Ahmedabad"></div>
+        <div class="form-row" style="margin:0;"><label>State *</label><input type="text" id="inst-state" placeholder="Gujarat"></div>
+        <div class="form-row" style="margin:0;"><label>PIN Code</label><input type="text" id="inst-pin" placeholder="380001" maxlength="6"></div>
+      </div>
+
+      <!-- Step 2: Contact -->
+      <div style="font-size:.7rem;font-weight:800;color:var(--pri);text-transform:uppercase;letter-spacing:1px;margin:16px 0 12px;">📞 Contact Details</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row" style="margin:0;"><label>Contact Person Name *</label><input type="text" id="inst-contact-name" placeholder="Principal / Director Name"></div>
+        <div class="form-row" style="margin:0;"><label>Designation</label><input type="text" id="inst-designation" placeholder="Principal / Manager"></div>
+        <div class="form-row" style="margin:0;"><label>Phone / WhatsApp *</label><input type="tel" id="inst-phone" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="form-row" style="margin:0;"><label>Email ID *</label><input type="email" id="inst-email" placeholder="info@institute.edu.in"></div>
+        <div class="form-row" style="margin:0;"><label>Alternate Phone</label><input type="tel" id="inst-phone2" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="form-row" style="margin:0;"><label>Website</label><input type="url" id="inst-website" placeholder="https://www.institute.edu.in"></div>
+      </div>
+
+      <!-- Step 3: Social Media -->
+      <div style="font-size:.7rem;font-weight:800;color:var(--pri);text-transform:uppercase;letter-spacing:1px;margin:16px 0 12px;">📱 Social Media Links</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-row" style="margin:0;"><label>📘 Facebook Page</label><input type="url" id="inst-fb" placeholder="https://facebook.com/institute"></div>
+        <div class="form-row" style="margin:0;"><label>📸 Instagram</label><input type="url" id="inst-insta" placeholder="https://instagram.com/institute"></div>
+        <div class="form-row" style="margin:0;"><label>▶️ YouTube Channel</label><input type="url" id="inst-yt" placeholder="https://youtube.com/@institute"></div>
+        <div class="form-row" style="margin:0;"><label>𝕏 Twitter / X</label><input type="url" id="inst-tw" placeholder="https://twitter.com/institute"></div>
+        <div class="form-row" style="margin:0;"><label>💬 WhatsApp Group/Channel</label><input type="url" id="inst-wa-link" placeholder="https://chat.whatsapp.com/..."></div>
+        <div class="form-row" style="margin:0;"><label>✈️ Telegram</label><input type="url" id="inst-tg" placeholder="https://t.me/institute"></div>
+      </div>
+
+      <!-- Step 4: Promotional Info -->
+      <div style="font-size:.7rem;font-weight:800;color:var(--pri);text-transform:uppercase;letter-spacing:1px;margin:16px 0 12px;">⭐ Promotional Details</div>
+      <div class="form-row"><label>Courses / Programs Offered *</label><textarea id="inst-courses" rows="2" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Sora',sans-serif;font-size:.85rem;color:var(--text);resize:vertical;" placeholder="e.g. Science, Commerce, Arts, NEET coaching, JEE coaching, BCA, MBA..."></textarea></div>
+      <div class="form-row"><label>Unique Features / USP *</label><textarea id="inst-usp" rows="2" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Sora',sans-serif;font-size:.85rem;color:var(--text);resize:vertical;" placeholder="e.g. 100% placement record, expert faculty, smart classrooms, scholarship programs..."></textarea></div>
+      <div class="form-row"><label>Current Offers / Admissions</label><textarea id="inst-offers" rows="2" style="width:100%;background:var(--bg);border:1.5px solid var(--border);border-radius:9px;padding:11px 14px;font-family:'Sora',sans-serif;font-size:.85rem;color:var(--text);resize:vertical;" placeholder="e.g. 50% scholarship for merit students, Free demo class, Admission open for 2025-26..."></textarea></div>
+      <div class="form-row"><label>Estd. Year / Affiliation / Recognition</label><input type="text" id="inst-affil" placeholder="e.g. Est. 2005 | Affiliated to GTU | NAAC Accredited"></div>
+
+      <div id="inst-submit-err" style="display:none;background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:10px 14px;font-size:.82rem;color:#f87171;margin-bottom:12px;"></div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button class="btn btn-sec" onclick="closeInstModal()" style="flex:1;">Cancel</button>
+        <button class="btn btn-pri" onclick="submitInstRequest()" style="flex:2;" id="inst-submit-btn">📤 Submit Registration Request</button>
+      </div>
+    </div>
+    </div>
+    <!-- Success state -->
+    <div id="inst-success-wrap" style="display:none;">
+      <div class="mbody" style="text-align:center;padding:40px 24px;">
+        <div style="font-size:3rem;margin-bottom:12px;">🎉</div>
+        <h3 style="color:var(--pri);margin-bottom:8px;">Request Submitted!</h3>
+        <p style="color:var(--muted);font-size:.88rem;line-height:1.7;margin-bottom:16px;">Your institute registration request has been sent to the <strong>K Spider AI Admin</strong>.<br>You will receive a confirmation message here within <strong>24 hours</strong> after approval.</p>
+        <div id="inst-pending-badge" style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,.1);border:1.5px solid rgba(245,158,11,.3);border-radius:12px;padding:10px 18px;font-size:.85rem;font-weight:700;color:#f59e0b;margin-bottom:20px;">
+          ⏳ Status: Pending Admin Approval
+        </div>
+        <div id="inst-approved-badge" style="display:none;align-items:center;gap:8px;background:rgba(52,211,153,.1);border:1.5px solid rgba(52,211,153,.3);border-radius:12px;padding:10px 18px;font-size:.85rem;font-weight:700;color:#34d399;margin-bottom:20px;">
+          ✅ Status: APPROVED — You can now share promotional messages!
+        </div>
+        <button class="btn btn-pri" onclick="closeInstModal()">Close</button>
+        <div style="margin-top:14px;">
+          <button class="btn btn-sec" style="font-size:.8rem;" onclick="checkInstStatus()">🔄 Check Approval Status</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- INSTITUTE APPROVAL CONFIRMATION (shown in bottom nav / profile) -->
+<div id="inst-approved-banner" style="display:none;position:fixed;bottom:70px;left:10px;right:10px;z-index:4000;background:linear-gradient(135deg,#059669,#10b981);color:#fff;border-radius:14px;padding:12px 18px;box-shadow:0 8px 24px rgba(5,150,105,.4);display:none;align-items:center;justify-content:space-between;gap:12px;font-size:.82rem;font-weight:700;">
+  <span>✅ Your institute is APPROVED! Now share promotional messages with K Spider AI.</span>
+  <button onclick="document.getElementById('inst-approved-banner').style.display='none'" style="background:rgba(255,255,255,.2);border:none;color:#fff;cursor:pointer;border-radius:6px;padding:4px 8px;font-size:.75rem;">✕</button>
+</div>
 
 </body>
 </html>
