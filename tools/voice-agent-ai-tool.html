@@ -74,13 +74,12 @@
 ══════════════════════════════════════════ */
 html{
   height: 100%;
-  height: 100dvh;
   overflow: hidden;
 }
+@supports (height: 100dvh) { html { height: 100dvh; } }
 
 body{
   height: 100%;
-  height: 100dvh;
   background:var(--bg);
   color:var(--tx);
   font-family:var(--fb);
@@ -89,6 +88,7 @@ body{
   overflow:hidden;
   position:relative;
 }
+@supports (height: 100dvh) { body { height: 100dvh; } }
 
 /* animated grid bg */
 body::before{
@@ -183,7 +183,8 @@ body::before{
   flex:1;
   min-height:0;
   overflow:hidden;
-  display:flex;flex-direction:column;
+  display:flex;
+  flex-direction:column;
 }
 
 /* each page fills wrap completely */
@@ -624,54 +625,168 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
 
 /* ── ADSENSE PLACEHOLDERS ── */
-.ad-slot {
-  width:100%;background:rgba(0,212,255,.03);
-  border:1px dashed rgba(0,212,255,.18);
-  border-radius:var(--r);padding:10px;
-  text-align:center;font-size:10px;
-  font-family:var(--fh);color:var(--mu);
-  letter-spacing:.12em;flex-shrink:0;
-}
-.ad-slot-header{margin:0;border-radius:0;border-left:none;border-right:none;border-top:none;}
+/* (Handled in footer CSS above) */
 
 /* ── FOOTER ── */
-#site-footer {
-  position:relative;z-index:100;
-  background:rgba(3,6,16,.98);
-  border-top:1px solid var(--b);
-  padding:0;flex-shrink:0;
-}
-.footer-tabs{display:flex;border-bottom:1px solid var(--b);}
-.ftab{flex:1;padding:10px 5px;font-size:9px;font-family:var(--fh);color:var(--mu);
-  background:none;border:none;cursor:pointer;letter-spacing:.08em;
-  border-bottom:2px solid transparent;transition:all .2s;}
-.ftab.on,.ftab:hover{color:var(--cy);border-bottom-color:var(--cy);}
-.fpanel{display:none;padding:14px;max-height:220px;overflow-y:auto;font-size:12px;line-height:1.8;color:var(--tx2);}
-.fpanel.on{display:block;}
-.fpanel h2{font-family:var(--fh);font-size:11px;color:var(--cy);letter-spacing:.1em;margin-bottom:8px;text-transform:uppercase;}
-.fpanel h3{font-family:var(--fh);font-size:10px;color:var(--tx2);letter-spacing:.08em;margin:10px 0 5px;text-transform:uppercase;}
-.fpanel ol,.fpanel ul{padding-left:18px;margin-bottom:8px;}
-.fpanel li{margin-bottom:4px;}
-.wa-grid{display:flex;flex-direction:column;gap:7px;}
-.wa-msg{background:var(--card);border:1px solid var(--b);border-radius:9px;padding:10px 12px;font-size:12px;line-height:1.7;cursor:pointer;transition:all .2s;}
+/* #site-footer positioning handled in drawer CSS */
+/* Footer tabs/panels CSS moved to footer drawer section above */
+.wa-grid{display:flex;flex-direction:column;gap:8px;padding-bottom:16px;}
+.wa-msg{background:var(--card);border:1px solid var(--b);border-radius:10px;padding:10px 12px;font-size:12px;line-height:1.7;transition:all .2s;overflow:hidden;}
 .wa-msg:hover{border-color:var(--cy);}
-.wa-copy-btn{float:right;font-size:10px;background:rgba(0,212,255,.1);border:1px solid var(--cy);color:var(--cy);border-radius:5px;padding:2px 7px;cursor:pointer;font-family:var(--fh);}
-.footer-legal{display:flex;justify-content:center;gap:14px;padding:8px 14px;border-top:1px solid var(--b);flex-wrap:wrap;}
-.footer-legal a{font-size:10px;color:var(--mu);text-decoration:none;font-family:var(--fh);letter-spacing:.06em;transition:color .2s;}
-.footer-legal a:hover{color:var(--cy);}
-.footer-brand{text-align:center;padding:8px 14px 10px;font-size:9px;color:var(--mu);font-family:var(--fh);letter-spacing:.1em;}
+.wa-copy-btn{float:right;font-size:10px;background:rgba(0,212,255,.1);border:1px solid var(--cy);color:var(--cy);border-radius:5px;padding:3px 9px;cursor:pointer;font-family:var(--fh);margin-left:6px;}
+/* footer-legal + footer-brand handled in drawer CSS above */
 
 
 /* ── Footer height fix ── */
+/* ── FOOTER DRAWER (slide-up, fixed position) ── */
 #site-footer {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 600;
+  background: var(--bg);
+  border-top: 2px solid var(--b);
+  transform: translateY(calc(100% - 42px)); /* show only tab bar */
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -8px 32px rgba(0,0,0,.5);
+}
+#site-footer.drawer-open {
+  transform: translateY(0);
+}
+
+/* Drag handle */
+#footer-handle {
+  width: 40px; height: 4px;
+  background: var(--b);
+  border-radius: 2px;
+  margin: 8px auto 0;
+  cursor: pointer;
   flex-shrink: 0;
-  max-height: 50vh;
+}
+
+/* Footer tabs bar */
+.footer-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--b);
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+.ftab {
+  flex: 1;
+  padding: 8px 4px;
+  font-size: 10px;
+  font-family: var(--fh);
+  color: var(--mu);
+  background: none;
+  border: none;
+  cursor: pointer;
+  letter-spacing: .05em;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+  white-space: nowrap;
+}
+.ftab.on, .ftab:hover {
+  color: var(--cy);
+  border-bottom-color: var(--cy);
+}
+
+/* Footer panel content - scrollable */
+.fpanel {
+  display: none;
+  padding: 14px;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--tx2);
+  flex: 1;
+  min-height: 0;
+}
+.fpanel.on { display: block; }
+.fpanel h2 {
+  font-family: var(--fh);
+  font-size: 11px;
+  color: var(--cy);
+  letter-spacing: .1em;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+.fpanel h3 {
+  font-family: var(--fh);
+  font-size: 10px;
+  color: var(--tx2);
+  letter-spacing: .06em;
+  margin: 12px 0 5px;
+  text-transform: uppercase;
+}
+.fpanel ol, .fpanel ul { padding-left: 18px; margin-bottom: 8px; }
+.fpanel li { margin-bottom: 5px; }
+
+/* Footer legal + brand */
+.footer-legal {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--b);
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+.footer-legal a {
+  font-size: 10px;
+  color: var(--mu);
+  text-decoration: none;
+  font-family: var(--fh);
+  letter-spacing: .04em;
+  transition: color .2s;
+}
+.footer-legal a:hover { color: var(--cy); }
+.footer-brand {
+  text-align: center;
+  padding: 6px 14px 10px;
+  font-size: 9px;
+  color: var(--mu);
+  font-family: var(--fh);
+  letter-spacing: .08em;
+  flex-shrink: 0;
+}
+
+/* Ad slot in footer */
+.ad-slot {
+  width: 100%;
+  background: rgba(0,212,255,.03);
+  border-bottom: 1px dashed rgba(0,212,255,.15);
+  padding: 6px;
+  text-align: center;
+  font-size: 9px;
+  font-family: var(--fh);
+  color: var(--mu);
+  letter-spacing: .1em;
+  flex-shrink: 0;
 }
 .ad-slot-header {
-  padding: 6px;
+  padding: 5px;
   font-size: 9px;
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px dashed rgba(0,212,255,.12);
 }
+
+/* Bottom nav padding to account for footer tab bar (42px) */
+#nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Overlay backdrop when footer open */
+#footer-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 595;
+  background: rgba(0,0,0,.5);
+}
+#footer-backdrop.show { display: block; }
 
 
 /* ════════════════════════════════════════════
@@ -711,7 +826,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
 /* ── AI Summary card ── */
 #summary-card{display:none;margin:8px 12px;padding:12px;background:rgba(124,58,237,.08);
-  border:1px solid rgba(124,58,237,.3);border-radius:12px;}
+  border:1px solid rgba(124,58,237,.3);border-radius:12px;position:relative;z-index:1;}
 #summary-card .stitle{font-size:10px;font-family:var(--fh);color:var(--pu);letter-spacing:.1em;margin-bottom:6px;}
 #summary-card .sbody{font-size:13px;color:var(--tx2);line-height:1.7;}
 
@@ -720,7 +835,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .wc-indicator.over{color:var(--rd);}
 
 /* ── Keyboard shortcuts modal ── */
-#kb-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);
+#kb-modal{display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.7);
   align-items:center;justify-content:center;}
 #kb-modal.show{display:flex;}
 #kb-box{background:var(--panel);border:1px solid var(--b);border-radius:16px;
@@ -756,16 +871,37 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .aitem[data-agent="Chef"] .aico{background:linear-gradient(135deg,#d97706,#dc2626)!important;}
 
 /* ── Quick Actions FAB ── */
-#fab-wrap{position:fixed;right:14px;bottom:80px;z-index:500;display:flex;flex-direction:column;gap:8px;align-items:flex-end;}
-#fab-main{width:48px;height:48px;border-radius:50%;background:linear-gradient(135deg,var(--cy),var(--pu));
-  border:none;color:#fff;font-size:20px;cursor:pointer;box-shadow:0 4px 18px rgba(0,212,255,.4);
-  transition:transform .2s;display:flex;align-items:center;justify-content:center;}
+#fab-wrap{
+  position:fixed;
+  right:14px;
+  bottom:58px; /* above nav bar */
+  z-index:700; /* above footer drawer (600) */
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  align-items:flex-end;
+  pointer-events:none;
+}
+#fab-main{
+  width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,var(--cy),var(--pu));
+  border:none;color:#fff;font-size:18px;cursor:pointer;
+  box-shadow:0 4px 18px rgba(0,212,255,.4);
+  transition:transform .2s;
+  display:flex;align-items:center;justify-content:center;
+  pointer-events:auto;
+}
 #fab-main:hover{transform:scale(1.1);}
-.fab-sub{display:none;padding:7px 14px;background:var(--panel);border:1px solid var(--b);
-  border-radius:20px;font-size:12px;color:var(--cy);cursor:pointer;white-space:nowrap;
-  box-shadow:0 2px 12px rgba(0,0,0,.3);font-family:var(--fh);}
+.fab-sub{
+  display:none;padding:7px 14px;
+  background:var(--panel);border:1px solid var(--b);
+  border-radius:20px;font-size:12px;color:var(--cy);cursor:pointer;
+  white-space:nowrap;box-shadow:0 2px 12px rgba(0,0,0,.4);
+  font-family:var(--fh);pointer-events:auto;
+}
 .fab-sub:hover{background:var(--card);}
 #fab-wrap.open .fab-sub{display:block;}
+#fab-wrap.open { pointer-events:auto; }
 
 /* ── Proxy config in settings ── */
 .proxy-status{display:inline-flex;align-items:center;gap:5px;font-size:11px;
@@ -774,7 +910,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .proxy-status.inactive{background:rgba(239,68,68,.08);color:var(--rd);border:1px solid var(--rd);}
 
 /* ── Offline banner ── */
-#offline-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:9998;
+#offline-banner{display:none;position:fixed;top:0;left:0;right:0;z-index:10000;
   background:#dc2626;color:#fff;text-align:center;padding:6px;font-size:12px;
   font-family:var(--fh);letter-spacing:.05em;}
 #offline-banner.show{display:block;}
@@ -793,7 +929,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 .toggle-sw input:checked+.slider:before{transform:translateX(18px);}
 
 /* ── PWA Install banner ── */
-#pwa-banner{display:none;position:fixed;bottom:56px;left:0;right:0;z-index:800;
+#pwa-banner{display:none;position:fixed;bottom:44px;left:0;right:0;z-index:650;
   background:linear-gradient(90deg,var(--panel),var(--card));
   border-top:1px solid var(--b);padding:10px 16px;
   flex-direction:row;align-items:center;gap:12px;}
@@ -814,13 +950,53 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 :root[data-theme="light"] .chip{background:rgba(0,130,180,.08);border-color:rgba(0,130,180,.3);}
 
 /* ── Responsive: ensure all screens work ── */
+/* ── SMALL phones (≤360px) ── */
 @media(max-width:360px){
   :root{--hh:46px;--nh:40px;}
-  .nav-btn{font-size:9px;gap:2px;}
+  .ftab{font-size:9px;padding:7px 2px;}
   .ctitle{font-size:11px;}
+  .card{padding:10px;}
+  #fab-wrap{right:8px;bottom:50px;}
+  #fab-main{width:40px;height:40px;font-size:16px;}
 }
-@media(min-width:768px){
+
+/* ── Medium phones (361–480px) ── */
+@media(min-width:361px) and (max-width:480px){
+  #site-footer{border-radius:14px 14px 0 0;}
+}
+
+/* ── Tablets (481–768px) ── */
+@media(min-width:481px) and (max-width:768px){
+  body{max-width:540px;margin:0 auto;}
+  #site-footer{max-width:540px;left:50%;transform:translateX(-50%) translateY(calc(100% - 42px));}
+  #site-footer.drawer-open{transform:translateX(-50%) translateY(0);}
+  #footer-backdrop{display:none!important;}
+}
+
+/* ── Desktop (>768px) ── */
+@media(min-width:769px){
   body{max-width:480px;margin:0 auto;border-left:1px solid var(--b);border-right:1px solid var(--b);}
+  #site-footer{max-width:480px;left:50%;transform:translateX(-50%) translateY(calc(100% - 42px));}
+  #site-footer.drawer-open{transform:translateX(-50%) translateY(0);}
+  #footer-backdrop{background:rgba(0,0,0,.3);}
+  .fpanel{font-size:13px;}
+}
+
+/* ── Landscape phones ── */
+@media(max-height:500px) and (orientation:landscape){
+  :root{--hh:40px;--nh:36px;}
+  #site-footer{max-height:85vh;}
+  .fpanel{font-size:12px;padding:10px;}
+}
+
+/* ── Safe area (iPhone notch/home bar) ── */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  #site-footer{
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  #nav{
+    padding-bottom:env(safe-area-inset-bottom);
+  }
 }
 
 /* ══════════════════════════════════════════
@@ -854,7 +1030,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 
 
   <!-- ══ HOW IT WORKS — In-tool Guide ══ -->
-  <div id="how-it-works" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,.85);overflow-y:auto;padding:16px;">
+  <div id="how-it-works" style="display:none;position:fixed;inset:0;z-index:9500;background:rgba(0,0,0,.85);overflow-y:auto;padding:16px;">
     <div style="max-width:500px;margin:0 auto;background:var(--panel);border-radius:16px;border:1px solid var(--b);overflow:hidden;">
       <div style="background:linear-gradient(135deg,var(--cy),var(--pu));padding:20px;text-align:center;">
         <div style="font-size:2.5rem;margin-bottom:8px">🎙️</div>
@@ -980,11 +1156,10 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
   <h3>How to Use VOXAI Pro AI Voice Agent</h3>
 </div>
 
-<!-- ── ADSENSE: HEADER ── -->
-<div class="ad-slot ad-slot-header">
-  <!-- Google AdSense Header Banner -->
-  <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="HEADER_SLOT" data-ad-format="auto"></ins> -->
-  📢 Advertisement
+<!-- ── ADSENSE: HEADER (hidden until AdSense approved) ── -->
+<div class="ad-slot ad-slot-header" style="display:none">
+  <!-- Uncomment when AdSense approved: -->
+  <!-- <ins class="adsbygoogle" style="display:block;height:50px" data-ad-client="ca-pub-XXXX" data-ad-slot="HEADER_SLOT" data-ad-format="fixed"></ins> -->
 </div>
 <!-- ════════ HEADER ════════ -->
 <header id="hdr">
@@ -999,6 +1174,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
   </div>
   <div class="hdr-btns">
     <button class="hdr-btn" onclick="document.getElementById('how-it-works').style.display='block'" title="How it works" style="font-size:14px">❓</button>
+    <button class="hdr-btn" onclick="toggleFooterDrawer()" title="About & Info" style="font-size:14px">ℹ️</button>
     <button class="hdr-btn" onclick="exportChat()" title="Export">💾</button>
     <button class="hdr-btn" onclick="clearAll()" title="Clear">🗑️</button>
     <button class="hdr-btn" onclick="toggleFS()" title="Fullscreen">⛶</button>
@@ -1286,11 +1462,9 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
         </div>
       </div>
 
-<!-- ── ADSENSE: MID-CONTENT ── -->
-<div class="ad-slot" style="margin-bottom:0;">
-  <!-- Google AdSense Mid-Content Banner -->
-  <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="MID_SLOT" data-ad-format="auto"></ins> -->
-  📢 Advertisement
+<!-- ── ADSENSE: MID-CONTENT (hidden until approved) ── -->
+<div class="ad-slot" style="display:none;margin-bottom:0;">
+  <!-- <ins class="adsbygoogle" data-ad-client="ca-pub-XXXX" data-ad-slot="MID_SLOT" data-ad-format="auto"></ins> -->
 </div>
 
       <!-- Templates -->
@@ -2604,12 +2778,17 @@ function toggleFS(){
 </script>
 <style>*,*::before,*::after{-webkit-user-select:none!important;-moz-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-user-select:text!important;user-select:text!important}</style>
 
-<!-- ════════ FOOTER WITH TABS ════════ -->
+<!-- Footer backdrop -->
+<div id="footer-backdrop" onclick="closeFooterDrawer()"></div>
+
+<!-- ════════ FOOTER DRAWER ════════ -->
 <footer id="site-footer">
+  <!-- Drag handle -->
+  <div id="footer-handle" onclick="toggleFooterDrawer()" title="Tap to expand/close"></div>
+
   <!-- AdSense Footer Slot -->
-  <div class="ad-slot" style="border-radius:0;border-left:none;border-right:none;border-bottom:none;">
-    <!-- Google AdSense Footer Banner -->
-    <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="FOOTER_SLOT" data-ad-format="auto"></ins> -->
+  <div class="ad-slot">
+    <!-- <ins class="adsbygoogle" data-ad-client="ca-pub-XXXX" data-ad-slot="FOOTER_SLOT" data-ad-format="auto"></ins> -->
     📢 Advertisement
   </div>
 
@@ -2618,6 +2797,7 @@ function toggleFS(){
     <button class="ftab" onclick="openFTab(this,'ft-howto')">📖 How To</button>
     <button class="ftab" onclick="openFTab(this,'ft-earn')">💰 Earn</button>
     <button class="ftab" onclick="openFTab(this,'ft-share')">📲 Share</button>
+    <button class="ftab" onclick="closeFooterDrawer()" style="flex:0 0 32px;padding:8px 6px;color:var(--rd)">✕</button>
   </div>
 
   <!-- About Panel -->
@@ -2762,7 +2942,7 @@ function toggleFS(){
   <!-- WhatsApp Share Panel -->
   <div class="fpanel" id="ft-share">
     <h2>📲 Share VOXAI Pro</h2>
-    <p style="margin-bottom:10px;font-size:11px">Tap any message to copy &amp; share on WhatsApp!</p>
+    <p style="margin-bottom:10px;font-size:11px;color:var(--mu)">Tap <strong style="color:var(--cy)">📋 Copy</strong> → WhatsApp open karo → Paste karo!</p>
     <div class="wa-grid" id="wa-msgs"></div>
   </div>
 
@@ -2961,12 +3141,38 @@ function getProviderErrorHint(errMsg){
   return em;
 }
 
+// ── FOOTER DRAWER ──
+function toggleFooterDrawer(){
+  const f=document.getElementById('site-footer');
+  const bd=document.getElementById('footer-backdrop');
+  if(f){
+    const isOpen=f.classList.contains('drawer-open');
+    f.classList.toggle('drawer-open',!isOpen);
+    if(bd) bd.classList.toggle('show',!isOpen);
+  }
+}
+function openFooterDrawer(){
+  const f=document.getElementById('site-footer');
+  const bd=document.getElementById('footer-backdrop');
+  if(f) f.classList.add('drawer-open');
+  if(bd) bd.classList.add('show');
+}
+function closeFooterDrawer(){
+  const f=document.getElementById('site-footer');
+  const bd=document.getElementById('footer-backdrop');
+  if(f) f.classList.remove('drawer-open');
+  if(bd) bd.classList.remove('show');
+}
+
 // ── FOOTER TABS ──
 function openFTab(btn, id) {
   document.querySelectorAll('.ftab').forEach(b => b.classList.remove('on'));
   document.querySelectorAll('.fpanel').forEach(p => p.classList.remove('on'));
   btn.classList.add('on');
-  document.getElementById(id).classList.add('on');
+  const panel=document.getElementById(id);
+  if(panel) panel.classList.add('on');
+  openFooterDrawer(); // auto-open drawer on tab click
+  haptic('light');
 }
 
 // ── 15 WHATSAPP SHARE MESSAGES ──
@@ -3611,6 +3817,43 @@ self.addEventListener('fetch',e=>e.respondWith(
 }
 
 window.addEventListener('load',()=>{setTimeout(checkAPIStatus,1500);});
+</script>
+
+<script>
+// ── FOOTER DRAWER TOUCH SWIPE ──
+(function(){
+  let startY=0, isDragging=false;
+  const getFooter=()=>document.getElementById('site-footer');
+  const getBd=()=>document.getElementById('footer-backdrop');
+
+  document.addEventListener('touchstart',function(e){
+    const f=getFooter(); if(!f) return;
+    const touch=e.touches[0];
+    const rect=f.getBoundingClientRect();
+    if(touch.clientY >= rect.top && touch.clientY <= rect.top+60){
+      startY=touch.clientY; isDragging=true;
+    }
+  },{passive:true});
+
+  document.addEventListener('touchmove',function(e){
+    if(!isDragging) return;
+    const f=getFooter(); if(!f) return;
+    const dy=e.touches[0].clientY - startY;
+    if(dy > 60){
+      f.classList.remove('drawer-open');
+      const b=getBd(); if(b) b.classList.remove('show');
+      isDragging=false;
+    } else if(dy < -40){
+      f.classList.add('drawer-open');
+      const b=getBd(); if(b) b.classList.add('show');
+      isDragging=false;
+    }
+  },{passive:true});
+
+  document.addEventListener('touchend',function(){
+    isDragging=false;
+  },{passive:true});
+})();
 </script>
 
 </body>
