@@ -88,8 +88,8 @@
       --font-body: 'DM Sans', sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html { scroll-behavior: smooth; }
-    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body { font-family: var(--font-body); background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
     a { color: var(--primary); text-decoration: none; }
     button { cursor: pointer; font-family: var(--font-body); }
     img { max-width: 100%; }
@@ -158,8 +158,8 @@
     /* ═══════════════════════════════════════════════════════════
        PAGES
     ═══════════════════════════════════════════════════════════ */
-    .page { display: none; flex: 1; }
-    .page.active { display: flex; flex-direction: column; }
+    .page { display: none; min-height: calc(100vh - 64px); width: 100%; }
+    .page.active { display: block; }
     .page-header {
       background: linear-gradient(135deg, var(--primary-dark), var(--primary));
       color: #fff; padding: 28px 20px;
@@ -229,6 +229,8 @@
 
     .stats-bar { background: #fff; border-bottom: 1px solid var(--border); }
     .stats-bar-inner { max-width: 900px; margin: 0 auto; padding: 18px 20px; display: flex; gap: 16px; justify-content: space-around; flex-wrap: wrap; }
+    .home-content { max-width: 900px; margin: 0 auto; padding: 16px 16px 0; box-sizing: border-box; }
+    .home-main { max-width: 900px; margin: 0 auto; padding: 16px; box-sizing: border-box; width: 100%; }
     .stat-item { text-align: center; }
     .stat-item .num { font-family: var(--font-heading); font-size: 1.5rem; font-weight: 800; color: var(--primary); line-height: 1; }
     .stat-item .lbl { font-size: 0.72rem; color: var(--muted); font-weight: 500; margin-top: 2px; }
@@ -283,7 +285,7 @@
     /* ═══════════════════════════════════════════════════════════
        PRACTICE PAGE
     ═══════════════════════════════════════════════════════════ */
-    .practice-body { flex: 1; padding: 24px 20px; max-width: 800px; margin: 0 auto; width: 100%; }
+    .practice-body { display: block; padding: 24px 20px; max-width: 800px; margin: 0 auto; width: 100%; }
     .cat-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
     .cat-btn {
       padding: 7px 14px; border-radius: 999px; font-size: 0.8rem; font-weight: 500;
@@ -307,6 +309,9 @@
       padding: 13px 16px; border-radius: 10px; border: 2px solid var(--border);
       background: var(--card); text-align: left; font-size: 0.9rem; font-weight: 500;
       transition: 0.2s; width: 100%; color: var(--text);
+      cursor: pointer; pointer-events: auto; /* always clickable */
+      -webkit-user-select: none; user-select: none; /* prevent accidental text select */
+      position: relative; z-index: 1;
     }
     .option-btn:hover:not(:disabled) { border-color: var(--primary); background: #eff6ff; }
     .option-btn.correct { border-color: var(--success); background: #f0fdf4; color: #15803d; }
@@ -437,7 +442,7 @@
     /* ═══════════════════════════════════════════════════════════
        DASHBOARD
     ═══════════════════════════════════════════════════════════ */
-    .dashboard-body { padding: 24px 20px; max-width: 960px; margin: 0 auto; width: 100%; }
+    .dashboard-body { display: block; padding: 24px 20px; max-width: 960px; margin: 0 auto; width: 100%; }
     .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
     .dash-card {
       background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
@@ -479,7 +484,7 @@
     /* ═══════════════════════════════════════════════════════════
        FOOTER
     ═══════════════════════════════════════════════════════════ */
-    .site-footer { background: var(--dark); color: #94a3b8; padding: 32px 20px 20px; margin-top: auto; }
+    .site-footer { background: var(--dark); color: #94a3b8; padding: 32px 20px 20px; margin-top: 32px; }
     .footer-inner { max-width: 1100px; margin: 0 auto; }
     .footer-grid { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 40px; margin-bottom: 24px; }
     .footer-brand .brand-name { font-family: var(--font-heading); font-size: 1rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
@@ -521,7 +526,10 @@
       .nav-tabs { display: none; }
       .lang-select { display: none; }
       .mobile-nav { display: flex !important; }
-      body { padding-bottom: 72px; }
+      /* Enough space for mobile nav (60px) + safe area */
+      body { padding-bottom: 80px; }
+      /* When agent bottom banner also showing, add extra padding */
+      body.has-agent-bottom { padding-bottom: 148px; }
       .footer-grid { grid-template-columns: 1fr; gap: 20px; }
       .result-stats { grid-template-columns: repeat(2,1fr); }
       .result-score { font-size: 3.5rem; }
@@ -692,7 +700,7 @@
       cursor:pointer; padding:4px; line-height:1; flex-shrink:0;
     }
     /* padding for sticky bottom banner */
-    body.has-agent-bottom { padding-bottom: 68px; }
+    body.has-agent-bottom { padding-bottom: 72px; }
 
     /* ── OLD slim banner — hidden when new banners active ── */
     .agent-promo-banner {
@@ -3951,26 +3959,54 @@ updateTestInfo();
 </script>
 <!-- ══════════════════════════════════════════ KSPIDER MAX SECURITY ══ -->
 <script>
-/* ═══ K Spider Max Security Protocol v2.0 ═══
-   Anti-Theft | Anti-Inspect | Input Sanitization
+/* ═══ K Spider Max Security Protocol v2.1 ═══
+   Anti-Theft | Anti-Inspect | Input Safe
    Created by Gaurang Raval & Khush Raval — KSpiderAI
+   NOTE: All UI interactions (clicks, taps, options, forms) are preserved
 ═══════════════════════════════════════════════════ */
 (function() {
   'use strict';
 
-  /* 1. Disable Right-Click */
+  /* ── Interactive element checker ── */
+  function isInteractive(el) {
+    if (!el) return false;
+    var tag = el.tagName;
+    /* Allow all form/interactive elements + their parents */
+    if (['INPUT','TEXTAREA','SELECT','BUTTON','A','LABEL','OPTION'].includes(tag)) return true;
+    /* Allow elements with click handlers or inside question cards */
+    if (el.classList && (
+      el.classList.contains('option-btn') ||
+      el.classList.contains('q-card') ||
+      el.classList.contains('btn') ||
+      el.classList.contains('nav-tab') ||
+      el.classList.contains('mnav-btn') ||
+      el.classList.contains('cat-chip') ||
+      el.classList.contains('apb-link') ||
+      el.classList.contains('apb-cta') ||
+      el.classList.contains('sp-btn') ||
+      el.classList.contains('share-link-input') ||
+      el.classList.contains('reg-field')
+    )) return true;
+    /* Walk up DOM — if parent is interactive, allow */
+    if (el.parentElement) return isInteractive(el.parentElement);
+    return false;
+  }
+
+  /* 1. Disable Right-Click ONLY on non-interactive areas */
   document.addEventListener('contextmenu', function(e) {
+    if (isInteractive(e.target)) return; /* allow on inputs etc */
     e.preventDefault();
     showKSpiderSecurityToast();
     return false;
   });
 
-  /* 2. Block F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S, Ctrl+Shift+J, Ctrl+Shift+C */
+  /* 2. Block F12, Ctrl+Shift+I, Ctrl+U, Ctrl+S only */
   document.addEventListener('keydown', function(e) {
-    const blocked = (
+    var key = e.key ? e.key.toUpperCase() : '';
+    var blocked = (
       e.key === 'F12' ||
-      (e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(e.key.toUpperCase())) ||
-      (e.ctrlKey && ['U','S'].includes(e.key.toUpperCase()))
+      (e.ctrlKey && e.shiftKey && ['I','J','C','K'].includes(key)) ||
+      (e.ctrlKey && !e.shiftKey && ['U'].includes(key))
     );
     if (blocked) {
       e.preventDefault();
@@ -3980,43 +4016,33 @@ updateTestInfo();
     }
   });
 
-  /* 3. Detect DevTools open (size-based) */
+  /* 3. Detect DevTools open (size-based) — silent only, no disruption */
   var devToolsOpen = false;
   setInterval(function() {
-    var threshold = 160;
+    var threshold = 200;
     if (
       window.outerWidth - window.innerWidth > threshold ||
       window.outerHeight - window.innerHeight > threshold
     ) {
       if (!devToolsOpen) {
         devToolsOpen = true;
-        document.title = '🛡️ Protected by KSpiderAI';
+        /* Silent — don't disrupt the page */
       }
     } else {
       devToolsOpen = false;
     }
-  }, 1000);
+  }, 2000);
 
-  /* 4. Disable text selection on non-input elements */
-  document.addEventListener('selectstart', function(e) {
-    if (e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
-      e.preventDefault();
-    }
-  });
-
-  /* 5. Disable drag */
-  document.addEventListener('dragstart', function(e) { e.preventDefault(); });
-
-  /* 6. Security toast */
+  /* 4. Security toast — non-disruptive */
   function showKSpiderSecurityToast() {
     var existing = document.getElementById('ks-sec-toast');
     if (existing) return;
     var toast = document.createElement('div');
     toast.id = 'ks-sec-toast';
-    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:12px 24px;border-radius:12px;font-size:.85rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.35);display:flex;align-items:center;gap:10px;max-width:90vw;text-align:center';
-    toast.innerHTML = '🕷️ Protected by <strong>KSpiderAI</strong> &nbsp;|&nbsp; Unauthorized access is not allowed.';
+    toast.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:99999;background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;padding:10px 20px;border-radius:10px;font-size:.8rem;font-weight:600;box-shadow:0 8px 32px rgba(0,0,0,.3);pointer-events:none;';
+    toast.innerHTML = '🕷️ Protected by <strong>KSpiderAI</strong>';
     document.body.appendChild(toast);
-    setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 2500);
+    setTimeout(function() { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 2000);
   }
 
 })();
