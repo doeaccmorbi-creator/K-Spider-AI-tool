@@ -93,14 +93,14 @@
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,GoogleAuthProvider,signInWithPopup}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import{getStorage}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 // ── REPLACE with your Firebase config ──
 const firebaseConfig={apiKey:"AIzaSyDnDSRVyZ65-2mZw0FBWXrvWzuQk5ojot4",authDomain:"jobplacementsocial.firebaseapp.com",projectId:"jobplacementsocial",storageBucket:"jobplacementsocial.firebasestorage.app",messagingSenderId:"599809081818",appId:"1:599809081818:web:acc0cc88c4a51fe7ef80e3"};
 try{
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);const db=getFirestore(app);const storage=getStorage(app);const gp=new GoogleAuthProvider();
-window._fb={auth,db,storage,googleProvider:gp,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment};
+window._fb={auth,db,storage,googleProvider:gp,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint};
 onAuthStateChanged(auth,user=>{window._currentUser=user;if(user){document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';window.initApp(user);}else{document.getElementById('authScreen').style.display='flex';document.getElementById('appScreen').style.display='none';}});
 }catch(err){
   console.warn('Firebase init failed — Demo mode active:',err.message);
@@ -956,6 +956,15 @@ img{max-width:100%;display:block;}
 
         <!-- ── FEED PAGE ── -->
         <div id="page-feed" class="page act">
+          <!-- Live Feed Indicator + Near Me -->
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin-bottom:4px;">
+            <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2);">
+              <span style="width:7px;height:7px;border-radius:50%;background:#10B981;display:inline-block;animation:bpulse 1.5s infinite;"></span>
+              <span>Live Feed</span>
+              <span id="geoLabelFeed" style="color:var(--t3);"></span>
+            </div>
+            <button id="nearMeBtnFeed" onclick="toggleNearMeFeed()" style="display:none;padding:4px 10px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;">📍 Near Me</button>
+          </div>
           <!-- Stories -->
           <div class="stories">
             <div class="sscrl">
@@ -1012,16 +1021,23 @@ img{max-width:100%;display:block;}
 
         <!-- ── JOBS PAGE ── -->
         <div id="page-jobs" class="page">
-          <div class="ph2">💼 Job Board <button class="bap" style="font-size:12px;padding:8px 14px;width:auto;border-radius:var(--rs)" onclick="showModal('postJobModal')">+ Post Job</button></div>
-          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--sh);">
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <input type="text" class="fc" placeholder="🔍 Job title or keyword" style="flex:1;min-width:120px" id="jsq">
-              <input type="text" class="fc" placeholder="📍 Location" style="width:110px" id="jlq">
-              <select class="fc" style="width:110px" id="jtq"><option value="">All Types</option><option>Full-Time</option><option>Part-Time</option><option>Remote</option><option>Internship</option></select>
-              <button class="bap" style="width:auto;padding:9px 14px;border-radius:var(--rs)" onclick="showToast('🔍 Searching…')">Search</button>
+          <div class="ph2">💼 Job Board
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+              <span id="geoLabel" style="font-size:11px;color:var(--t3);"></span>
+              <button id="nearMeBtn" onclick="toggleNearMe()" style="display:none;padding:5px 12px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">📍 Near Me</button>
+              <button class="bap" style="font-size:12px;padding:8px 14px;width:auto;border-radius:var(--rs)" onclick="showModal('postJobModal')">+ Post Job</button>
             </div>
           </div>
-          <div id="jobsBox"><div style="text-align:center;padding:24px;color:var(--t3);"><div class="spinner2"></div>Loading jobs…</div></div>
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--sh);">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <input type="text" class="fc" placeholder="🔍 Job title or keyword" style="flex:1;min-width:120px" id="jsq" oninput="filterJobsLive()">
+              <input type="text" class="fc" placeholder="📍 Location" style="width:110px" id="jlq" oninput="filterJobsLive()">
+              <select class="fc" style="width:110px" id="jtq" onchange="filterJobsLive()"><option value="">All Types</option><option>Full-Time</option><option>Part-Time</option><option>Remote</option><option>Internship</option></select>
+              <select class="fc" style="width:120px" id="jindustryq" onchange="filterJobsLive()"><option value="">All Industries</option><option>Technology</option><option>Finance</option><option>Healthcare</option><option>Education</option><option>Marketing</option><option>Operations</option></select>
+              <button class="bap" style="width:auto;padding:9px 14px;border-radius:var(--rs)" onclick="filterJobsLive()">🔍 Search</button>
+            </div>
+          </div>
+          <div id="jobsBox"><div style="text-align:center;padding:24px;color:var(--t3);"><div class="spinner2"></div>Loading live jobs…</div></div>
         </div>
 
         <!-- ── BOOST PAGE (Feature #1) ── -->
@@ -2916,7 +2932,7 @@ Frontend Intern | TechNova | June–Aug 2023
       </div>
       <div class="fg"><input type="text" class="fc" placeholder="#Hiring #Tech #India" id="phtags"></div>
       <div id="aiPostBox" style="display:none;" class="ai-box"></div>
-      <button class="bprim" onclick="submitPost()">📤 Publish Post</button>
+      <button class="bprim" id="submitPostBtn" onclick="submitPost()">📤 Publish Post</button>
     </div>
   </div>
 </div>
@@ -2950,7 +2966,7 @@ Frontend Intern | TechNova | June–Aug 2023
         <span>🚀 Boost this job after posting for 10x more applicants!</span>
         <span style="font-weight:700;">Starting ₹199</span>
       </div>
-      <button class="bprim" onclick="submitJob()">🚀 Post Job Now</button>
+      <button class="bprim" id="submitJobBtn" onclick="submitJob()">🚀 Post Job Now</button>
       <p style="font-size:10px;color:var(--t3);text-align:center;margin-top:8px;">By posting you agree to our <span style="color:var(--primary);cursor:pointer;" onclick="showModal('termsModal')">Terms</span> · DPDP Act 2023 Compliant</p>
     </div>
   </div>
@@ -3470,7 +3486,7 @@ async function doSignOut(){
 function demoLogin(){
   $('authScreen').style.display='none';$('appScreen').style.display='block';
   _up={name:'Gaurang Raval',headline:'🚀 AI Platform Builder · KSpider AI',photoURL:'https://i.pravatar.cc/150?img=12',posts:187,jobs:12,boostedJobs:2};
-  updateUI();loadFeed();loadJobs();
+  updateUI();loadFeed();loadJobs();initGeo();
 }
 
 // ══════════════════════════════════════
@@ -3482,7 +3498,7 @@ window.initApp=async function(user){
     const s=await window._fb.getDoc(window._fb.doc(window._fb.db,'users',user.uid));
     _up=s.exists()?s.data():{name:user.displayName||'User',headline:'KSpider Member',photoURL:user.photoURL||''};
   }catch{_up={name:user.displayName||'User',headline:'KSpider Member',photoURL:user.photoURL||''};}
-  updateUI();loadFeed();loadJobs();checkExistingSub();
+  updateUI();loadFeed();loadJobs();checkExistingSub();initGeo();
   initReferral();saveReferralCode();initCampus();
 };
 
@@ -3537,54 +3553,83 @@ function inFeedAd(){
   return wrap;
 }
 
-// Pagination state
-let _feedLastDoc=null, _feedLoading=false, _feedDone=false;
-const FEED_PAGE_SIZE=10;
+// ── REALTIME FEED (onSnapshot — live updates all browsers/locations) ──
+let _feedUnsub=null;   // unsubscribe handle
+let _feedLoading=false,_feedDone=false,_feedLastDoc=null;
+const FEED_PAGE_SIZE=12;
 
 async function loadFeed(reset=true){
   const box=$('feedBox');
   if(!window._fb){box.innerHTML=demoPosts();return;}
-  if(_feedLoading) return;
-  if(reset){box.innerHTML='';_feedLastDoc=null;_feedDone=false;}
+  if(reset){
+    // Unsubscribe previous listener
+    if(_feedUnsub){_feedUnsub();_feedUnsub=null;}
+    box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 10px;"></div><div style="font-size:12px;">Loading live feed…</div></div>';
+    _feedLastDoc=null;_feedDone=false;
+  }
   _feedLoading=true;
   try{
-    let q;
-    if(_feedLastDoc){
-      q=window._fb.query(
-        window._fb.collection(window._fb.db,'posts'),
-        window._fb.orderBy('createdAt','desc'),
-        window._fb.startAfter(_feedLastDoc),
-        window._fb.limit(FEED_PAGE_SIZE)
-      );
-    } else {
-      q=window._fb.query(
-        window._fb.collection(window._fb.db,'posts'),
-        window._fb.orderBy('createdAt','desc'),
-        window._fb.limit(FEED_PAGE_SIZE)
-      );
-    }
+    const q=window._fb.query(
+      window._fb.collection(window._fb.db,'posts'),
+      window._fb.orderBy('createdAt','desc'),
+      window._fb.limit(FEED_PAGE_SIZE)
+    );
+    _feedUnsub=window._fb.onSnapshot(q,snap=>{
+      if(snap.empty){box.innerHTML=demoPosts();return;}
+      box.innerHTML='';
+      let cnt=0;
+      snap.forEach(d=>{
+        const post={id:d.id,...d.data()};
+        // Near-me badge logic
+        if(_userGeo && post.geoLat && post.geoLng){
+          const dist=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
+          post._nearbyKm=dist;
+        }
+        box.insertAdjacentHTML('beforeend',renderPost(post));
+        cnt++;
+        if(cnt%3===0) box.appendChild(inFeedAd());
+      });
+      _feedLastDoc=snap.docs[snap.docs.length-1];
+      // Load More if full page
+      const oldBtn=document.getElementById('feedLoadMoreBtn');
+      if(oldBtn) oldBtn.remove();
+      if(snap.size===FEED_PAGE_SIZE){
+        box.insertAdjacentHTML('beforeend',`<div id="feedLoadMoreBtn" style="text-align:center;padding:16px;">
+          <button onclick="loadMoreFeed()" style="padding:10px 28px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-weight:700;font-size:13px;cursor:pointer;">Load More Posts</button>
+        </div>`);
+      }
+    },err=>{console.warn('Feed snapshot error:',err);box.innerHTML=demoPosts();});
+  }catch(e){console.warn('loadFeed error:',e);box.innerHTML=demoPosts();}
+  _feedLoading=false;
+}
+
+async function loadMoreFeed(){
+  if(!_feedLastDoc||!window._fb) return;
+  const box=$('feedBox');
+  const oldBtn=document.getElementById('feedLoadMoreBtn');
+  if(oldBtn) oldBtn.remove();
+  try{
+    const q=window._fb.query(
+      window._fb.collection(window._fb.db,'posts'),
+      window._fb.orderBy('createdAt','desc'),
+      window._fb.startAfter(_feedLastDoc),
+      window._fb.limit(FEED_PAGE_SIZE)
+    );
     const snap=await window._fb.getDocs(q);
-    if(snap.empty && reset){box.innerHTML=demoPosts();_feedDone=true;_feedLoading=false;return;}
-    if(snap.empty){_feedDone=true;_feedLoading=false;return;}
-    // Remove old "Load More" btn if present
-    const oldBtn=document.getElementById('feedLoadMoreBtn');
-    if(oldBtn) oldBtn.remove();
-    let postCount=box.querySelectorAll('.pc').length;
+    if(snap.empty){_feedDone=true;return;}
+    let cnt=box.querySelectorAll('.pc').length;
     snap.forEach(d=>{
       box.insertAdjacentHTML('beforeend',renderPost({id:d.id,...d.data()}));
-      postCount++;
-      if(postCount%3===0){box.appendChild(inFeedAd());}
+      cnt++;
+      if(cnt%3===0) box.appendChild(inFeedAd());
     });
     _feedLastDoc=snap.docs[snap.docs.length-1];
     if(snap.size===FEED_PAGE_SIZE){
       box.insertAdjacentHTML('beforeend',`<div id="feedLoadMoreBtn" style="text-align:center;padding:16px;">
-        <button onclick="loadFeed(false)" style="padding:10px 28px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-weight:700;font-size:13px;cursor:pointer;">Load More Posts</button>
+        <button onclick="loadMoreFeed()" style="padding:10px 28px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-weight:700;font-size:13px;cursor:pointer;">Load More Posts</button>
       </div>`);
-    } else {
-      _feedDone=true;
     }
-  }catch(e){console.warn('Feed error:',e);if(reset) box.innerHTML=demoPosts();}
-  _feedLoading=false;
+  }catch(e){showToast('⚠️ Could not load more posts.');}
 }
 
 function demoPosts(){
@@ -3675,22 +3720,37 @@ function demoPosts(){
 
 function renderPost(p){
   const nm=p.authorName||'User',ph=p.authorPhoto||`https://ui-avatars.com/api/?name=${encodeURIComponent(nm)}&background=0A84FF&color=fff`;
-  const ht=(p.hashtags||'').split(',').map(h=>`<span class="ht">${h.trim()}</span>`).join(' ');
+  const ht=(p.hashtags||'').split(',').filter(Boolean).map(h=>`<span class="ht">${validateInput(h.trim())}</span>`).join(' ');
   const tm=p.createdAt?timeAgo(p.createdAt.toDate()):'Just now';
   const sp=p.sponsored?`<div style="background:linear-gradient(90deg,var(--gol),#FFF);padding:5px 14px;border-bottom:1px solid rgba(245,158,11,.2);display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gold);"><span class="boost-status"><span class="bpulse"></span>SPONSORED</span><span class="featured-badge" style="margin-left:auto;">⭐ FEATURED</span></div>`:'';
-  return `<div class="pc${p.sponsored?' sponsored':''}">
+  // Near-me badge
+  let nearBadge='';
+  if(p._nearbyKm!==undefined){
+    if(p._nearbyKm<5) nearBadge='<span style="font-size:10px;font-weight:700;color:#10B981;background:#10B98115;border:1px solid #10B98130;padding:2px 7px;border-radius:99px;margin-left:6px;">📍 Near You</span>';
+    else if(p._nearbyKm<30) nearBadge=`<span style="font-size:10px;color:var(--t3);background:var(--s2);border:1px solid var(--border);padding:2px 7px;border-radius:99px;margin-left:6px;">📍 ${Math.round(p._nearbyKm)} km away</span>`;
+  }
+  // User type badge
+  const roleBadge=p.userRole==='recruiter'?'<span style="font-size:9px;font-weight:700;background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED30;padding:1px 6px;border-radius:99px;margin-left:4px;">RECRUITER</span>':
+    p.userRole==='jobseeker'?'<span style="font-size:9px;font-weight:700;background:#0A84FF18;color:#0A84FF;border:1px solid #0A84FF30;padding:1px 6px;border-radius:99px;margin-left:4px;">JOB SEEKER</span>':'';
+  // Location line
+  const locLine=p.locationCity?`<span style="font-size:11px;color:var(--t3);">📍 ${validateInput(p.locationCity)}</span> · `:'';
+  return `<div class="pc${p.sponsored?' sponsored':''}" style="animation:fu .3s ease;">
     ${sp}
     <div class="ph">
-      <div class="pav"><img src="${ph}" alt=""></div>
-      <div class="pm"><div class="pnm">${nm}</div><div class="ps">${p.headline||''}</div><div class="ps">${tm} · 🌐 ${p.visibility||'Public'}</div></div>
-      <button class="pmb">⋯</button>
+      <div class="pav"><img src="${ph}" alt="" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(nm)}&background=0A84FF&color=fff'"><div class="vb" style="display:${p.verified?'flex':'none'}">✓</div></div>
+      <div class="pm">
+        <div class="pnm">${validateInput(nm)}${roleBadge}${nearBadge}</div>
+        <div class="ps">${validateInput(p.headline||'')}</div>
+        <div class="ps">${locLine}${tm} · 🌐 ${p.visibility||'Public'}</div>
+      </div>
+      <button class="pmb" onclick="showToast('More options coming soon!')">⋯</button>
     </div>
-    <div class="pb"><div class="pt">${p.text||''}<br><br>${ht}</div></div>
+    <div class="pb"><div class="pt" style="white-space:pre-wrap;">${validateInput(p.text||'')}<br><br>${ht}</div></div>
     <div class="pst2"><span>👍 ${(p.likes||[]).length} likes</span></div>
     <div class="pacts">
       <button class="ab" onclick="likePost('${p.id}',this)"><span class="ai">👍</span> Like</button>
       <button class="ab" onclick="toggleCmt(this)"><span class="ai">💬</span> Comment</button>
-      <button class="ab" onclick="showToast('🔁 Shared!')"><span class="ai">🔁</span> Share</button>
+      <button class="ab" onclick="sharePost('${encodeURIComponent(p.text||'').slice(0,100)}')"><span class="ai">🔁</span> Share</button>
       <button class="ab" onclick="showToast('📤 Sent!')"><span class="ai">📤</span> Send</button>
     </div>
   </div>`;
@@ -3699,16 +3759,42 @@ function renderPost(p){
 // ══════════════════════════════════════
 // JOBS
 // ══════════════════════════════════════
+// ── REALTIME JOBS (onSnapshot — live across all browsers/locations) ──
+let _jobsUnsub=null;
+
 async function loadJobs(){
   const box=$('jobsBox');
   if(!window._fb){box.innerHTML=demoJobs();return;}
+  if(_jobsUnsub){_jobsUnsub();_jobsUnsub=null;}
+  box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 10px;"></div><div style="font-size:12px;">Loading live jobs…</div></div>';
   try{
-    const q=window._fb.query(window._fb.collection(window._fb.db,'jobs'),window._fb.orderBy('sponsored','desc'),window._fb.orderBy('createdAt','desc'),window._fb.limit(30));
-    window._fb.onSnapshot(q,snap=>{
+    const q=window._fb.query(
+      window._fb.collection(window._fb.db,'jobs'),
+      window._fb.orderBy('sponsored','desc'),
+      window._fb.orderBy('createdAt','desc'),
+      window._fb.limit(50)
+    );
+    _jobsUnsub=window._fb.onSnapshot(q,snap=>{
       if(snap.empty){box.innerHTML=demoJobs();return;}
-      box.innerHTML='';snap.forEach(d=>box.insertAdjacentHTML('beforeend',renderJobCard({id:d.id,...d.data()})));
-    });
-  }catch{box.innerHTML=demoJobs();}
+      let jobs=[];
+      snap.forEach(d=>jobs.push({id:d.id,...d.data()}));
+      _allJobsCache=[...jobs]; // cache for live filter
+      // Geo-sort: near-me jobs first if location available
+      if(_userGeo){
+        jobs.forEach(j=>{
+          if(j.geoLat&&j.geoLng) j._dist=geoDistKm(_userGeo.lat,_userGeo.lng,j.geoLat,j.geoLng);
+          else j._dist=99999;
+        });
+        jobs.sort((a,b)=>{
+          // Sponsored always first
+          if(b.sponsored!==a.sponsored) return (b.sponsored?1:0)-(a.sponsored?1:0);
+          return a._dist-b._dist;
+        });
+      }
+      box.innerHTML='';
+      jobs.forEach(j=>box.insertAdjacentHTML('beforeend',renderJobCard(j)));
+    },err=>{console.warn('Jobs snapshot error:',err);box.innerHTML=demoJobs();});
+  }catch(e){console.warn('loadJobs error:',e);box.innerHTML=demoJobs();}
 }
 
 function demoJobs(){
@@ -3747,18 +3833,50 @@ function demoJobs(){
 
 function renderJobCard(j){
   const lg=(j.company||'J')[0].toUpperCase();
-  const sks=(j.skills||'').split(',').slice(0,5).map(s=>`<span class="sk">${s.trim()}</span>`).join('');
+  const sks=(j.skills||'').split(',').filter(Boolean).slice(0,5).map(s=>`<span class="sk">${validateInput(s.trim())}</span>`).join('');
   const tm=j.createdAt?timeAgo(j.createdAt.toDate()):'Just now';
   const sp=j.sponsored?`<div style="background:linear-gradient(90deg,var(--gol),#FFF);padding:5px 14px;border-bottom:1px solid rgba(245,158,11,.2);display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gold);"><span class="boost-status"><span class="bpulse"></span>SPONSORED</span><span class="featured-badge" style="margin-left:auto;">⭐ FEATURED</span></div>`:'';
-  return `<div class="pc${j.sponsored?' sponsored':''}">
+  let nearBadge='';
+  if(j._dist!==undefined&&j._dist<99999){
+    if(j._dist<5) nearBadge='<span style="font-size:10px;font-weight:700;color:#10B981;background:#10B98115;border:1px solid #10B98130;padding:2px 7px;border-radius:99px;margin-left:4px;">📍 Near You</span>';
+    else if(j._dist<50) nearBadge=`<span style="font-size:10px;color:#F59E0B;background:#F59E0B12;border:1px solid #F59E0B30;padding:2px 7px;border-radius:99px;margin-left:4px;">📍 ${Math.round(j._dist)} km</span>`;
+  }
+  const verBadge=j.verified?'<span style="font-size:9px;color:#10B981;background:#10B98115;border:1px solid #10B98130;padding:1px 6px;border-radius:99px;margin-left:4px;">✓ VERIFIED</span>':'';
+  const urgentBadge=j.urgent?'<span style="font-size:9px;font-weight:700;color:#EF4444;background:#EF444415;border:1px solid #EF444430;padding:1px 6px;border-radius:99px;margin-left:4px;">🔥 URGENT</span>':'';
+  const desc=validateInput((j.description||'').slice(0,150))+(j.description&&j.description.length>150?'…':'');
+  const logoUrl=j.logoUrl||`https://ui-avatars.com/api/?name=${encodeURIComponent(j.company||'C')}&background=0A84FF&color=fff&size=48&bold=true`;
+  const t=validateInput(j.title||''),co=validateInput(j.company||''),sal=validateInput(j.salary||''),exp=validateInput(j.experience||''),typ=validateInput(j.type||'');
+  return `<div class="pc${j.sponsored?' sponsored':''}" style="animation:fu .3s ease;">
     ${sp}
-    <div style="padding:12px;"><div class="je">
-      <div class="jcr"><div class="clog">${lg}</div><div><div class="jtt">${j.title||'Job Title'}</div><div class="cnm">${j.company||'Company'} · ${tm}</div></div></div>
-      <div class="jtgs">${j.location?`<span class="jtg tl">📍 ${j.location}</span>`:''} ${j.type?`<span class="jtg tt">🕐 ${j.type}</span>`:''} ${j.salary?`<span class="jtg ts">💰 ${j.salary}</span>`:''} ${j.experience?`<span class="jtg te">⭐ ${j.experience}</span>`:''}</div>
-      <div class="sktgs">${sks}</div>
-      <div style="font-size:12px;color:var(--t2);margin-bottom:8px;line-height:1.5;">${(j.description||'').slice(0,100)}${(j.description||'').length>100?'…':''}</div>
-      <div class="jar"><button class="bap" onclick="openApply('${j.title}','${j.company}','${j.salary||''}','${j.experience||''}','${j.type||''}')">⚡ Easy Apply</button><button class="bsv" onclick="showToast('✅ Saved!')">🔖</button></div>
-    </div></div>
+    <div style="padding:14px;">
+      <div class="je">
+        <div class="jcr">
+          <div class="clog" style="background:none;padding:0;overflow:hidden;width:44px;height:44px;flex-shrink:0;">
+            <img src="${logoUrl}" alt="" style="width:44px;height:44px;border-radius:10px;object-fit:cover;" onerror="this.style.display='none'">
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div class="jtt" style="display:flex;align-items:center;flex-wrap:wrap;gap:4px;">${t}${urgentBadge}${nearBadge}</div>
+            <div class="cnm">${co}${verBadge} · ${tm}</div>
+            ${j.recruiterName?`<div style="font-size:10px;color:var(--t3);">Posted by ${validateInput(j.recruiterName)}</div>`:''}
+          </div>
+        </div>
+        <div class="jtgs" style="margin:8px 0;">
+          ${j.location?`<span class="jtg tl">📍 ${validateInput(j.location)}</span>`:''}
+          ${j.workMode?`<span class="jtg tt">🏠 ${validateInput(j.workMode)}</span>`:''}
+          ${j.type?`<span class="jtg tt">🕐 ${validateInput(j.type)}</span>`:''}
+          ${j.salary?`<span class="jtg ts">💰 ${validateInput(j.salary)}</span>`:''}
+          ${j.experience?`<span class="jtg te">⭐ ${validateInput(j.experience)}</span>`:''}
+          ${j.industry?`<span class="jtg" style="background:var(--pl);color:var(--primary);border:1px solid var(--primary)30;">🏢 ${validateInput(j.industry)}</span>`:''}
+        </div>
+        ${sks?`<div class="sktgs" style="margin-bottom:8px;">${sks}</div>`:''}
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.6;">${desc}</div>
+        <div class="jar" style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="bap" onclick="openApply('${t}','${co}','${sal}','${exp}','${typ}')">⚡ Easy Apply</button>
+          <button class="bsv" onclick="showToast('✅ Job saved!')" title="Save">🔖</button>
+          <button class="bsv" onclick="shareJob('${t}','${co}','${validateInput(j.location||'')}')" title="Share" style="font-size:14px;">📤</button>
+        </div>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -3861,28 +3979,228 @@ async function onBoostSuccess(response){
 async function submitPost(){
   const txt=$('ptxt').value.trim();
   if(!txt)return showToast('⚠️ Write something first!');
-  if(!window._fb||!_user){closeModal('postModal');showToast('✅ Post published! (Configure Firebase)');$('feedBox').insertAdjacentHTML('afterbegin',renderPost({id:'local',text:txt,hashtags:$('phtags').value,authorName:_up?.name,authorPhoto:_up?.photoURL,visibility:$('pvis').value,likes:[]}));return;}
+  const vis=$('pvis').value;
+  const tags=$('phtags').value;
+  // Build post data with geo
+  const postData={
+    text:validateInput(txt),
+    hashtags:tags,
+    visibility:vis,
+    authorId:_user?_user.uid:'demo',
+    authorName:_up?.name||(_user?_user.displayName:'Anonymous'),
+    authorPhoto:_up?.photoURL||(_user?_user.photoURL:'')||'',
+    headline:_up?.headline||'',
+    userRole:_up?.role||'',
+    likes:[],
+    sponsored:false,
+    createdAt:window._fb?window._fb.serverTimestamp():new Date()
+  };
+  // Attach geo if available
+  if(_userGeo){
+    postData.geoLat=_userGeo.lat;
+    postData.geoLng=_userGeo.lng;
+    postData.locationCity=_userGeo.city||'';
+  }
+  if(!window._fb||!_user){
+    closeModal('postModal');
+    showToast('✅ Post published!');
+    $('feedBox').insertAdjacentHTML('afterbegin',renderPost({id:'local',...postData}));
+    $('ptxt').value='';$('phtags').value='';
+    return;
+  }
+  const btn=$('submitPostBtn');
+  if(btn){btn.disabled=true;btn.textContent='Publishing…';}
   try{
-    await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),{text:txt,hashtags:$('phtags').value,visibility:$('pvis').value,authorId:_user.uid,authorName:_up?.name||_user.displayName,authorPhoto:_up?.photoURL||_user.photoURL,headline:_up?.headline||'',likes:[],sponsored:false,createdAt:window._fb.serverTimestamp()});
-    $('ptxt').value='';$('phtags').value='';closeModal('postModal');showToast('✅ Post published!');showPage('feed',null);
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),postData);
+    $('ptxt').value='';$('phtags').value='';
+    closeModal('postModal');
+    showToast('✅ Post published! Visible to everyone 🌍');
+    showPage('feed',null);
   }catch(e){showToast('⚠️ '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Post';}}
 }
 
 async function submitJob(){
   const t=$('jt').value.trim(),c=$('jc').value.trim(),l=$('jl').value.trim(),d=$('jdesc').value.trim();
   if(!t||!c||!l||!d)return showToast('⚠️ Fill all required fields!');
-  if(!window._fb||!_user){closeModal('postJobModal');showToast('✅ Job posted! Configure Firebase to save.');return;}
+  const jobData={
+    title:validateInput(t),
+    company:validateInput(c),
+    location:validateInput(l),
+    description:validateInput(d),
+    type:$('jty').value,
+    salary:$('jsal').value,
+    experience:$('jexp').value,
+    workMode:$('jwm').value,
+    industry:$('jind').value,
+    skills:$('jsk').value,
+    recruiterId:_user?_user.uid:'',
+    recruiterName:_up?.name||'',
+    applications:0,
+    sponsored:false,
+    verified:false,
+    createdAt:window._fb?window._fb.serverTimestamp():new Date()
+  };
+  // Attach geo for near-me sorting
+  if(_userGeo){
+    jobData.geoLat=_userGeo.lat;
+    jobData.geoLng=_userGeo.lng;
+    jobData.locationCity=_userGeo.city||l;
+  }
+  if(!window._fb||!_user){
+    closeModal('postJobModal');
+    showToast('✅ Job posted! Configure Firebase to save.');
+    return;
+  }
+  const btn=$('submitJobBtn');
+  if(btn){btn.disabled=true;btn.textContent='Posting…';}
   try{
-    const ref=await window._fb.addDoc(window._fb.collection(window._fb.db,'jobs'),{
-      title:t,company:c,location:l,description:d,type:$('jty').value,salary:$('jsal').value,experience:$('jexp').value,workMode:$('jwm').value,industry:$('jind').value,skills:$('jsk').value,
-      recruiterId:_user.uid,recruiterName:_up?.name,applications:0,sponsored:false,createdAt:window._fb.serverTimestamp()
-    });
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'jobs'),jobData);
     await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{jobs:window._fb.increment(1)});
     ['jt','jc','jl','jdesc','jsal','jsk'].forEach(id=>$(id).value='');
     closeModal('postJobModal');
-    showToast('✅ Job posted! Boost it for 10x more applicants?');
-    setTimeout(()=>{if(confirm('🚀 Boost your job for ₹199 to get 10x more applicants?'))showPage('boost',null);},1500);
+    showToast('✅ Job posted! Visible to all job seekers 🌍');
+    setTimeout(()=>{if(confirm('🚀 Boost this job for ₹199 to get 10x more applicants?'))showPage('boost',null);},1500);
   }catch(e){showToast('⚠️ '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Post Job';}}
+}
+
+function shareJob(title,company,location){
+  const msg=`🔥 Job Alert!\n\n💼 ${title} @ ${company}\n📍 ${location}\n\nApply Now 👉 https://kspiderai.in/tools/KSpider_Job_Placement.html\n\n#Jobs #KSpiderAI #Hiring`;
+  if(navigator.share){
+    navigator.share({title:`${title} – KSpider Jobs`,text:msg,url:'https://kspiderai.in/tools/KSpider_Job_Placement.html'}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(msg).then(()=>showToast('✅ Job link copied! Share anywhere 📤')).catch(()=>{});
+  }
+}
+
+function sharePost(text){
+  const msg=`${decodeURIComponent(text)}…\n\n— Shared from KSpider Connect\n👉 https://kspiderai.in/tools/KSpider_Job_Placement.html`;
+  if(navigator.share){
+    navigator.share({title:'KSpider Connect Post',text:msg,url:'https://kspiderai.in/tools/KSpider_Job_Placement.html'}).catch(()=>{});
+  } else {
+    navigator.clipboard.writeText(msg).then(()=>showToast('✅ Post copied! Share it 🌍')).catch(()=>{});
+  }
+}
+
+// ══════════════════════════════════════
+// GEO ENGINE — Location detection + city reverse geocode
+// ══════════════════════════════════════
+let _userGeo=null; // {lat,lng,city}
+
+function geoDistKm(lat1,lng1,lat2,lng2){
+  const R=6371,dLat=(lat2-lat1)*Math.PI/180,dLng=(lng2-lng1)*Math.PI/180;
+  const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+async function initGeo(){
+  // Try saved location first
+  try{
+    const saved=localStorage.getItem('ks_geo');
+    if(saved){
+      const g=JSON.parse(saved);
+      if(g&&g.lat&&Date.now()-g.ts<3600000){// 1hr cache
+        _userGeo=g;
+        updateGeoUI();
+        return;
+      }
+    }
+  }catch(e){}
+
+  // Request live location
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    async pos=>{
+      const lat=pos.coords.latitude, lng=pos.coords.longitude;
+      let city='';
+      // Reverse geocode via free API
+      try{
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,{headers:{'Accept-Language':'en'}});
+        const d=await r.json();
+        city=d.address?.city||d.address?.town||d.address?.village||d.address?.county||'';
+      }catch(e){}
+      _userGeo={lat,lng,city,ts:Date.now()};
+      try{localStorage.setItem('ks_geo',JSON.stringify(_userGeo));}catch(e){}
+      updateGeoUI();
+      // Reload feed+jobs with geo context
+      loadFeed(true);
+      loadJobs();
+    },
+    err=>console.log('Geo denied:',err.code),
+    {timeout:8000,maximumAge:60000}
+  );
+}
+
+function updateGeoUI(){
+  if(!_userGeo) return;
+  const city=_userGeo.city;
+  const el=document.getElementById('geoLabel');
+  if(el&&city) el.textContent='📍 '+city;
+  const nb=document.getElementById('nearMeBtn');
+  if(nb) nb.style.display='inline-flex';
+  const fl=document.getElementById('geoLabelFeed');
+  if(fl&&city) fl.textContent='· 📍 '+city;
+  const fb=document.getElementById('nearMeBtnFeed');
+  if(fb) fb.style.display='inline-flex';
+}
+
+let _nearMeFeedActive=false;
+function toggleNearMeFeed(){
+  _nearMeFeedActive=!_nearMeFeedActive;
+  const btn=document.getElementById('nearMeBtnFeed');
+  if(btn){
+    btn.style.background=_nearMeFeedActive?'var(--primary)':'var(--pl)';
+    btn.style.color=_nearMeFeedActive?'#fff':'var(--primary)';
+    btn.textContent=_nearMeFeedActive?'📍 Near Me ✓':'📍 Near Me';
+  }
+  if(_nearMeFeedActive&&!_userGeo){showToast('⚠️ Allow location access first!');_nearMeFeedActive=false;return;}
+  loadFeed(true);
+  showToast(_nearMeFeedActive?`📍 Showing posts near ${_userGeo?.city||'you'}`:'🌍 Showing all posts');
+}
+
+// Near-me filter toggle
+let _nearMeActive=false;
+function toggleNearMe(){
+  _nearMeActive=!_nearMeActive;
+  const btn=document.getElementById('nearMeBtn');
+  if(btn){
+    btn.style.background=_nearMeActive?'var(--primary)':'var(--pl)';
+    btn.style.color=_nearMeActive?'#fff':'var(--primary)';
+    btn.textContent=_nearMeActive?'📍 Near Me ✓':'📍 Near Me';
+  }
+  if(_nearMeActive && !_userGeo){
+    showToast('⚠️ Allow location access first!');
+    _nearMeActive=false;
+    return;
+  }
+  loadFeed(true);
+  loadJobs();
+  showToast(_nearMeActive?`📍 Showing jobs near ${_userGeo?.city||'you'}`:'🌍 Showing all locations');
+}
+
+// ── Live Jobs Search Filter ──
+let _allJobsCache=[];
+function filterJobsLive(){
+  const q=($('jsq')?.value||'').toLowerCase().trim();
+  const loc=($('jlq')?.value||'').toLowerCase().trim();
+  const type=($('jtq')?.value||'').toLowerCase();
+  const ind=($('jindustryq')?.value||'').toLowerCase();
+  const box=$('jobsBox');
+  if(!box) return;
+  // If cache empty, just reload
+  if(!_allJobsCache.length){loadJobs();return;}
+  const filtered=_allJobsCache.filter(j=>{
+    const matchQ=!q||(j.title||'').toLowerCase().includes(q)||(j.skills||'').toLowerCase().includes(q)||(j.description||'').toLowerCase().includes(q)||(j.company||'').toLowerCase().includes(q);
+    const matchLoc=!loc||(j.location||'').toLowerCase().includes(loc)||(j.locationCity||'').toLowerCase().includes(loc);
+    const matchType=!type||(j.type||'').toLowerCase()===type;
+    const matchInd=!ind||(j.industry||'').toLowerCase().includes(ind);
+    return matchQ&&matchLoc&&matchType&&matchInd;
+  });
+  if(!filtered.length){box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);">😔 No jobs match your search.<br><small>Try different keywords or clear filters.</small></div>';return;}
+  box.innerHTML='';
+  filtered.forEach(j=>box.insertAdjacentHTML('beforeend',renderJobCard(j)));
+  showToast(`🔍 ${filtered.length} job${filtered.length===1?'':'s'} found`);
 }
 
 // ══════════════════════════════════════
