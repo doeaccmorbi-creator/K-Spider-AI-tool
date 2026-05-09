@@ -10,12 +10,12 @@
 // ════════════════════════════════════════════════════════════════
 
 const CACHE_NAME    = 'kspider-v5';
-const OFFLINE_PAGE  = '/KSpider_Job_Placement.html';
+const OFFLINE_PAGE  = './KSpider_Job_Placement.html';
 
 // ── Assets to pre-cache on install ────────────────────────────
 const PRECACHE = [
-  '/',
-  '/KSpider_Job_Placement.html',
+  './',
+  './KSpider_Job_Placement.html',
   'https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=Sora:wght@400;600;700;800&display=swap',
 ];
 
