@@ -291,6 +291,7 @@ img{max-width:100%;display:block;}
 .sponsored-badge{background:var(--gol);color:var(--gold);font-size:9px;font-weight:700;padding:2px 7px;border-radius:99px;border:1px solid rgba(245,158,11,.3);display:inline-flex;align-items:center;gap:3px;}
 .featured-badge{background:linear-gradient(135deg,var(--gold),#F97316);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:3px;}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideDown{from{opacity:1;transform:translateX(-50%) translateY(0)}to{opacity:0;transform:translateX(-50%) translateY(20px)}}
 .ph{display:flex;align-items:flex-start;gap:8px;padding:12px 14px 8px;}
 .pav{position:relative;flex-shrink:0;}
 .pav img{width:40px;height:40px;border-radius:50%;object-fit:cover;border:1.5px solid var(--border);}
@@ -4059,10 +4060,97 @@ async function submitJob(){
     await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{jobs:window._fb.increment(1)});
     ['jt','jc','jl','jdesc','jsal','jsk'].forEach(id=>$(id).value='');
     closeModal('postJobModal');
-    showToast('✅ Job posted! Visible to all job seekers 🌍');
-    setTimeout(()=>{if(confirm('🚀 Boost this job for ₹199 to get 10x more applicants?'))showPage('boost',null);},1500);
+    showPage('jobs',null); // Show jobs feed immediately so user sees their post live
+    showToast('✅ Job posted! Now live & visible to all job seekers worldwide 🌍');
+    // Non-blocking soft boost nudge after 3 seconds (no confirm, no block)
+    setTimeout(()=>showBoostNudge(t),3000);
   }catch(e){showToast('⚠️ '+e.message);}
   finally{if(btn){btn.disabled=false;btn.textContent='Post Job';}}
+}
+
+// ── NON-BLOCKING BOOST NUDGE ─────────────────────────────────
+function showBoostNudge(jobTitle){
+  var existing=document.getElementById('boostNudgeBanner');
+  if(existing) existing.remove();
+  var safe=validateInput(jobTitle||'Your job');
+
+  // Build entirely with DOM methods — zero quote-conflict issues
+  var banner=document.createElement('div');
+  banner.id='boostNudgeBanner';
+  banner.style.cssText='position:fixed;bottom:70px;left:50%;transform:translateX(-50%);'+
+    'width:calc(100% - 32px);max-width:480px;z-index:9999;'+
+    'background:linear-gradient(135deg,#1A1200,#2A1E00);'+
+    'border:1.5px solid rgba(245,158,11,.5);border-radius:16px;padding:14px 16px;'+
+    'box-shadow:0 8px 32px rgba(0,0,0,.4);display:flex;gap:12px;align-items:flex-start;'+
+    'animation:fu .3s ease;';
+
+  // Icon
+  var icon=document.createElement('div');
+  icon.style.cssText='font-size:28px;flex-shrink:0;';
+  icon.textContent='🚀';
+
+  // Body
+  var body=document.createElement('div');
+  body.style.cssText='flex:1;min-width:0;';
+
+  var title=document.createElement('div');
+  title.style.cssText='font-size:13px;font-weight:800;color:#FCD34D;margin-bottom:3px;';
+  title.textContent='Your job is LIVE! 🎉';
+
+  var desc=document.createElement('div');
+  desc.style.cssText='font-size:11px;color:#D4A017;line-height:1.5;margin-bottom:10px;';
+  desc.innerHTML='<strong style="color:#FDE68A;">'+safe+'</strong> is now visible to all job seekers. '+
+    'Boost it for <strong style="color:#FDE68A;">10x more applicants</strong>!';
+
+  var btns=document.createElement('div');
+  btns.style.cssText='display:flex;gap:8px;';
+
+  var boostBtn=document.createElement('button');
+  boostBtn.style.cssText='flex:1;padding:8px;background:linear-gradient(135deg,#F59E0B,#F97316);'+
+    'color:#fff;border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;';
+  boostBtn.textContent='⚡ Boost for ₹199';
+  boostBtn.addEventListener('click',function(){
+    var el=document.getElementById('boostNudgeBanner');
+    if(el) el.remove();
+    showPage('boost',null);
+  });
+
+  var laterBtn=document.createElement('button');
+  laterBtn.style.cssText='padding:8px 14px;background:rgba(255,255,255,.08);color:#94A3B8;'+
+    'border:1px solid rgba(255,255,255,.12);border-radius:8px;font-size:11px;'+
+    'cursor:pointer;font-family:inherit;white-space:nowrap;';
+  laterBtn.textContent='Maybe Later';
+  laterBtn.addEventListener('click',function(){
+    var el=document.getElementById('boostNudgeBanner');
+    if(el) el.remove();
+  });
+
+  btns.appendChild(boostBtn);
+  btns.appendChild(laterBtn);
+  body.appendChild(title);
+  body.appendChild(desc);
+  body.appendChild(btns);
+
+  // Close X
+  var closeBtn=document.createElement('button');
+  closeBtn.style.cssText='background:none;border:none;color:#64748B;font-size:18px;'+
+    'cursor:pointer;flex-shrink:0;line-height:1;padding:0;margin-top:-2px;';
+  closeBtn.textContent='✕';
+  closeBtn.addEventListener('click',function(){
+    var el=document.getElementById('boostNudgeBanner');
+    if(el) el.remove();
+  });
+
+  banner.appendChild(icon);
+  banner.appendChild(body);
+  banner.appendChild(closeBtn);
+  document.body.appendChild(banner);
+
+  // Auto-dismiss after 10s — never forces user
+  setTimeout(function(){
+    var el=document.getElementById('boostNudgeBanner');
+    if(el) el.remove();
+  },10000);
 }
 
 function shareJob(title,company,location){
@@ -5668,12 +5756,6 @@ document.addEventListener('DOMContentLoaded', function() {
   if (!window._fb) {
     var dc = document.getElementById('demoBtnContainer');
     if (dc) dc.style.display = 'block';
-  }
-  // Firestore rules expiry warning - rules expire 2026-05-08
-  var now = new Date();
-  var expiry = new Date('2026-05-08');
-  if (now > expiry) {
-    console.warn('⚠️ Firestore rules expired on 2026-05-08. Update your Firebase security rules!');
   }
 });
 
