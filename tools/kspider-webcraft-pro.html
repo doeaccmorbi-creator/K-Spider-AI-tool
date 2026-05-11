@@ -1009,10 +1009,11 @@ html,body { overflow-x: hidden; max-width: 100vw; }
 
             <!-- ── TAB SWITCHER ── -->
             <div style="display:flex;gap:0;margin-bottom:10px;border:1.5px solid var(--border);border-radius:8px;overflow:hidden;">
-              <button class="wb-tab-btn active" onclick="wbSwitchTab('info',this)" style="flex:1;padding:5px;font-size:.65rem;font-weight:700;border:none;background:var(--p);color:#fff;cursor:pointer;">📋 Info</button>
-              <button class="wb-tab-btn" onclick="wbSwitchTab('media',this)" style="flex:1;padding:5px;font-size:.65rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">🖼 Media</button>
-              <button class="wb-tab-btn" onclick="wbSwitchTab('typo',this)" style="flex:1;padding:5px;font-size:.65rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">🔤 Style</button>
-              <button class="wb-tab-btn" onclick="wbSwitchTab('layout',this)" style="flex:1;padding:5px;font-size:.65rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">📐 Layout</button>
+              <button class="wb-tab-btn active" onclick="wbSwitchTab('info',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--p);color:#fff;cursor:pointer;">📋 Info</button>
+              <button class="wb-tab-btn" onclick="wbSwitchTab('media',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">🖼 Media</button>
+              <button class="wb-tab-btn" onclick="wbSwitchTab('typo',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">🔤 Style</button>
+              <button class="wb-tab-btn" onclick="wbSwitchTab('layout',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">📐 Layout</button>
+              <button class="wb-tab-btn" onclick="wbSwitchTab('advanced',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">⚡ Live</button>
             </div>
 
             <!-- ── TAB: INFO ── -->
@@ -1396,57 +1397,141 @@ Social Media, 2000, 📱" oninput="updatePreview()" style="min-height:90px;"></t
                 <textarea id="wb-custom-css" placeholder=".hero { background: red; }" style="min-height:80px;font-family:monospace;font-size:.7rem;" oninput="updatePreview()"></textarea>
               </div>
 
+            </div>
+
+            <!-- ── TAB: ADVANCED / LIVE FEATURES ── -->
+            <div id="wb-tab-advanced" class="wb-tab-panel" style="display:none;">
+
               <!-- ── GOOGLE SHEET: BLOG FEED ── -->
               <div class="section-field" style="background:rgba(66,133,244,.06);border:1.5px solid rgba(66,133,244,.2);border-radius:9px;padding:10px;">
-                <label style="color:#4285F4;font-weight:700;">📊 Google Sheet — Blog / News Feed</label>
-                <input type="url" id="wb-blog-sheet" class="inp" placeholder="https://docs.google.com/spreadsheets/d/..." oninput="updatePreview()" style="font-size:.72rem;">
-                <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">
-                  Sheet columns: <code>Title | Content | Date | Author | Category | Image URL</code><br>
-                  Sheet ko <b>Anyone with link can view</b> publish karo → File → Share → Publish to web → CSV
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:#4285F4;margin-bottom:6px;">📊 Blog / News Feed — Google Sheet</div>
+                <div style="font-size:.62rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">Sheet publish karo: <b>File → Share → Publish to web → CSV</b><br>Columns: <code>Title, Content, Date, Author, Category, Image URL</code></div>
+                <input type="url" id="wb-blog-sheet" class="inp" placeholder="https://docs.google.com/spreadsheets/d/YOUR_ID/export?format=csv" oninput="updatePreview()" style="font-size:.72rem;">
+                <div style="display:flex;gap:6px;margin-top:6px;">
+                  <input type="text" id="wb-blog-tab" class="inp" placeholder="Tab/Sheet name (Sheet1)" style="font-size:.72rem;flex:1;">
+                  <input type="number" id="wb-blog-maxrows" class="inp" placeholder="Max rows" value="6" style="font-size:.72rem;width:70px;">
                 </div>
-                <input type="text" id="wb-blog-tab" class="inp" placeholder="Sheet tab name (default: Sheet1)" style="font-size:.72rem;margin-top:6px;">
-                <label style="display:flex;align-items:center;gap:5px;font-size:.72rem;margin-top:6px;cursor:pointer;">
-                  <input type="checkbox" id="wb-blog-live" checked onchange="updatePreview()"> Live fetch on page load
-                </label>
+                <div style="display:flex;gap:8px;margin-top:6px;font-size:.7rem;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-blog-live" checked onchange="updatePreview()"> Live fetch on load</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-blog-show-img" checked onchange="updatePreview()"> Show images</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-blog-show-date" checked onchange="updatePreview()"> Show date</label>
+                </div>
+                <button class="btn-s" onclick="wbTestSheet('wb-blog-sheet')" style="margin-top:6px;font-size:.68rem;width:100%;">🔗 Test Sheet Connection</button>
               </div>
 
-              <!-- ── GOOGLE SHEET: PROMO MESSAGES ── -->
+              <!-- ── GOOGLE SHEET: PROMO POPUP MESSAGES ── -->
               <div class="section-field" style="background:rgba(255,107,0,.06);border:1.5px solid rgba(255,107,0,.2);border-radius:9px;padding:10px;">
-                <label style="color:var(--p);font-weight:700;">📣 Google Sheet — Promo Popup Messages</label>
-                <input type="url" id="wb-promo-sheet" class="inp" placeholder="https://docs.google.com/spreadsheets/d/..." oninput="updatePreview()" style="font-size:.72rem;">
-                <div style="font-size:.6rem;color:var(--muted);margin-top:3px;">
-                  Sheet columns: <code>Message | Type (offer/news/alert) | Emoji | CTA Text | CTA Link | Active (yes/no)</code><br>
-                  Random active message popup mein show hoga. WA share button auto-add hoga.
-                </div>
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:var(--p);margin-bottom:6px;">📣 Promo Popup — Google Sheet</div>
+                <div style="font-size:.62rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">Columns: <code>Message, Emoji, CTA Text, CTA Link, Active (yes/no)</code><br>Random active message visitors ko dikhega. WA share auto-add.</div>
+                <input type="url" id="wb-promo-sheet" class="inp" placeholder="https://docs.google.com/spreadsheets/d/YOUR_ID/export?format=csv" oninput="updatePreview()" style="font-size:.72rem;">
                 <div style="display:flex;gap:6px;margin-top:6px;">
                   <select id="wb-promo-pos" class="inp" style="font-size:.7rem;flex:1;">
-                    <option value="top-bar">Top Announcement Bar</option>
-                    <option value="popup" selected>Center Popup Modal</option>
-                    <option value="bottom-bar">Bottom Sticky Bar</option>
-                    <option value="corner">Corner Notification</option>
+                    <option value="top-bar">📢 Top Announcement Bar</option>
+                    <option value="popup" selected>🪟 Center Popup</option>
+                    <option value="bottom-bar">📌 Bottom Sticky Bar</option>
+                    <option value="corner">🔔 Corner Notification</option>
                   </select>
-                  <input type="number" id="wb-promo-delay" class="inp" placeholder="Delay(s)" value="3" style="font-size:.72rem;width:70px;">
+                  <input type="number" id="wb-promo-delay" class="inp" placeholder="Sec" value="3" style="font-size:.72rem;width:55px;" title="Delay in seconds before showing">
                 </div>
-                <label style="display:flex;align-items:center;gap:5px;font-size:.72rem;margin-top:6px;cursor:pointer;">
-                  <input type="checkbox" id="wb-promo-wa" checked> WhatsApp share button add karo
-                </label>
+                <div style="display:flex;gap:8px;margin-top:6px;font-size:.7rem;flex-wrap:wrap;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-promo-wa" checked> 💬 WA Share button</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-promo-once"> Show once/session</label>
+                </div>
+                <button class="btn-s" onclick="wbTestSheet('wb-promo-sheet')" style="margin-top:6px;font-size:.68rem;width:100%;">🔗 Test Sheet Connection</button>
               </div>
 
-              <!-- ── SITE API KEY (Generated Site/App mein) ── -->
+              <!-- ── SITE API KEY — Live AI Features ── -->
               <div class="section-field" style="background:rgba(124,58,237,.06);border:1.5px solid rgba(124,58,237,.2);border-radius:9px;padding:10px;">
-                <label style="color:#7C3AED;font-weight:700;">🔑 Site API Key (Generated Site ke liye)</label>
-                <div style="font-size:.62rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">
-                  Apni generated website/app mein live AI features add karo — Contact form AI reply, chatbot, product descriptions. Anthropic API key yahan add karo.
-                  <br><b style="color:#DC2626;">⚠️ Browser-safe:</b> Key ko generated site mein embed karna risky hai. Hamara system ek secure proxy approach use karta hai — key directly expose nahi hoti.
-                </div>
-                <input type="password" id="wb-site-api-key" class="inp" placeholder="sk-ant-... (optional)" style="font-size:.72rem;">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px;font-size:.68rem;">
-                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-contact"> 📧 AI Contact Reply</label>
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:#7C3AED;margin-bottom:4px;">🔑 Live AI Features (Generated Site)</div>
+                <div style="font-size:.62rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">Generated site mein AI chatbot, contact reply, FAQ bot add hoga. KSpider proxy FREE hai — key optional.<br><span style="color:#059669;font-weight:700;">✅ Browser-safe &amp; GitHub-safe approach.</span></div>
+                <input type="password" id="wb-site-api-key" class="inp" placeholder="sk-ant-... (optional — KSpider proxy already active)" style="font-size:.72rem;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;font-size:.7rem;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-contact"> 📧 AI Contact</label>
                   <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-chat"> 💬 AI Chatbot</label>
-                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-faq"> ❓ AI FAQ Bot</label>
-                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-quote"> 💰 AI Quote Generator</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-faq"> ❓ FAQ Bot</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-ai-quote"> 💰 Quote Gen</label>
                 </div>
               </div>
+
+              <!-- ── PRODUCTS / SERVICES / MENU SHEET (WEB) ── -->
+              <div class="section-field" style="background:rgba(5,150,105,.07);border:2px solid rgba(5,150,105,.25);border-radius:9px;padding:11px;">
+                <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#059669;margin-bottom:5px;">🛍 Products / Services / Menu — Google Sheet</div>
+                <div style="font-size:.62rem;color:var(--muted);margin-bottom:7px;line-height:1.6;">
+                  <b>Product Sheet columns:</b> <code>Name, Price, Category, Image URL, Description, Stock, Discount%</code><br>
+                  <b>Service Sheet columns:</b> <code>Name, Price, Duration, Category, Description, Available (yes/no)</code><br>
+                  <b>Menu Sheet columns:</b> <code>Item Name, Price, Category, Image URL, Description, Veg (yes/no), Available</code>
+                </div>
+                <select id="wb-pdata-type" class="inp" style="font-size:.72rem;margin-bottom:5px;" onchange="updatePreview()">
+                  <option value="products">🛍 Product Store (E-commerce)</option>
+                  <option value="services">⚡ Services Catalog</option>
+                  <option value="menu">🍽 Restaurant Menu</option>
+                  <option value="portfolio-items">🎨 Portfolio Items</option>
+                  <option value="inventory">📦 Inventory/Catalog</option>
+                </select>
+                <input type="url" id="wb-pdata-sheet" class="inp" placeholder="Google Sheets CSV URL..." style="font-size:.72rem;margin-bottom:5px;" oninput="updatePreview()">
+                <div style="display:flex;gap:6px;margin-bottom:5px;">
+                  <input type="number" id="wb-pdata-maxrows" class="inp" placeholder="Max items" value="12" style="font-size:.72rem;width:70px;">
+                  <select id="wb-pdata-cols" class="inp" style="font-size:.72rem;flex:1;">
+                    <option value="2">2 Columns</option>
+                    <option value="3" selected>3 Columns</option>
+                    <option value="4">4 Columns</option>
+                    <option value="list">List View</option>
+                  </select>
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;margin-bottom:6px;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-cart" checked onchange="updatePreview()"> 🛒 Add to Cart</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-qty" checked onchange="updatePreview()"> 🔢 Qty Selector</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-total" checked onchange="updatePreview()"> 💰 Auto Total</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-wa-order" checked onchange="updatePreview()"> 💬 WA Order</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-upi-pay" onchange="updatePreview()"> 💳 UPI Pay</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-search" checked onchange="updatePreview()"> 🔍 Search</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-filter" checked onchange="updatePreview()"> 🏷 Category Filter</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-pdata-img" checked onchange="updatePreview()"> 🖼 Show Images</label>
+                </div>
+                <button class="btn-s" onclick="wbTestSheet('wb-pdata-sheet')" style="font-size:.68rem;width:100%;">🔗 Test Sheet</button>
+              </div>
+
+              <!-- ── SOCIAL MEDIA FEED ── -->
+              <div class="section-field" style="background:rgba(37,211,102,.06);border:1.5px solid rgba(37,211,102,.2);border-radius:9px;padding:10px;">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:#128c7e;margin-bottom:4px;">📱 Social Media Embed</div>
+                <div style="font-size:.62rem;color:var(--muted);margin-bottom:6px;">Apni social profiles generated site mein embed karo.</div>
+                <input type="url" id="wb-fb-embed" class="inp" placeholder="Facebook Page URL" style="font-size:.72rem;margin-bottom:5px;">
+                <input type="text" id="wb-insta-handle" class="inp" placeholder="Instagram @handle (for link)" style="font-size:.72rem;margin-bottom:5px;">
+                <input type="url" id="wb-yt-embed" class="inp" placeholder="YouTube Channel / Video URL (for embed)" style="font-size:.72rem;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:7px;font-size:.7rem;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-inc-fb-embed"> FB Page widget</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-inc-yt-embed"> YouTube video</label>
+                </div>
+              </div>
+
+              <!-- ── WHATSAPP BUSINESS CHAT WIDGET ── -->
+              <div class="section-field" style="background:rgba(37,211,102,.06);border:1.5px solid rgba(37,211,102,.2);border-radius:9px;padding:10px;">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:#25d366;margin-bottom:4px;">💬 WhatsApp Business Widget</div>
+                <input type="text" id="wb-wa-greeting" class="inp" placeholder="Hi! Main aapki kaise help kar sakta hoon?" style="font-size:.72rem;margin-bottom:5px;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;margin-top:4px;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-wa-popup" checked> WA popup chat</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-wa-float" checked> Float button</label>
+                </div>
+              </div>
+
+              <!-- ── COOKIE + GDPR ── -->
+              <div class="section-field" style="background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:10px;">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:var(--text);margin-bottom:4px;">🍪 Cookie &amp; Legal</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;">
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-cookie-bar" checked onchange="updatePreview()"> Cookie consent bar</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-gdpr"> GDPR notice</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-back-to-top" checked> Back to top button</label>
+                  <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="wb-preloader"> Page preloader</label>
+                </div>
+              </div>
+
+              <!-- ── ANALYTICS ── -->
+              <div class="section-field" style="background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:10px;">
+                <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.78rem;color:var(--text);margin-bottom:4px;">📈 Analytics &amp; Tracking</div>
+                <input type="text" id="wb-ga-id" class="inp" placeholder="Google Analytics ID (G-XXXXXXXX)" value="G-PLBHWMHEC1" style="font-size:.72rem;margin-bottom:5px;">
+                <input type="text" id="wb-fb-pixel" class="inp" placeholder="Facebook Pixel ID (optional)" style="font-size:.72rem;">
+              </div>
+
             </div>
 
             <!-- Generate buttons -->
@@ -2839,28 +2924,115 @@ www.kspiderai.in
           </div>
         </div>
 
-        <!-- Google Sheet Blog Feed for App -->
-        <div style="background:rgba(66,133,244,.06);border:1.5px solid rgba(66,133,244,.2);border-radius:9px;padding:10px;margin-top:8px;">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;margin-bottom:6px;color:#4285F4;">📊 Google Sheet — Blog/Updates Feed</div>
-          <input type="url" id="app-blog-sheet" class="inp" placeholder="Google Sheets CSV URL..." style="font-size:.72rem;margin-bottom:5px;">
-          <div style="font-size:.6rem;color:var(--muted);">Columns: Title | Content | Date | Category</div>
+        <!-- ── GOOGLE SHEET: BLOG FEED (APP) ── -->
+        <div style="background:rgba(66,133,244,.06);border:1.5px solid rgba(66,133,244,.2);border-radius:9px;padding:12px;margin-top:10px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:#4285F4;margin-bottom:6px;">📊 Blog / Updates Feed — Google Sheet</div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">
+            Sheet mein: <code>Title, Content, Date, Author, Category, Image URL</code><br>
+            Publish: <b>File → Share → Publish to web → CSV</b>
+          </div>
+          <input type="url" id="app-blog-sheet" class="inp" placeholder="https://docs.google.com/spreadsheets/d/YOUR_ID/export?format=csv" style="font-size:.72rem;margin-bottom:6px;">
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <input type="number" id="app-blog-maxrows" class="inp" placeholder="Max rows" value="6" style="font-size:.72rem;width:70px;">
+            <select id="app-blog-style" class="inp" style="font-size:.72rem;flex:1;">
+              <option value="cards">Card Grid Layout</option>
+              <option value="list">List Layout</option>
+              <option value="minimal">Minimal Style</option>
+            </select>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.7rem;">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-blog-live" checked> Live fetch</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-blog-img" checked> Show images</label>
+          </div>
+          <button class="btn-s" onclick="wbTestSheet('app-blog-sheet')" style="margin-top:7px;font-size:.68rem;width:100%;">🔗 Test Sheet Connection</button>
         </div>
 
-        <!-- Promo Messages Sheet for App -->
-        <div style="background:rgba(255,107,0,.06);border:1.5px solid rgba(255,107,0,.2);border-radius:9px;padding:10px;margin-top:8px;">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;margin-bottom:6px;color:var(--p);">📣 Promo Popup Messages Sheet</div>
-          <input type="url" id="app-promo-sheet" class="inp" placeholder="Google Sheets CSV URL..." style="font-size:.72rem;margin-bottom:5px;">
-          <div style="font-size:.6rem;color:var(--muted);">Columns: Message | Emoji | CTA | Active (yes/no)</div>
+        <!-- ── GOOGLE SHEET: PROMO POPUP (APP) ── -->
+        <div style="background:rgba(255,107,0,.06);border:1.5px solid rgba(255,107,0,.2);border-radius:9px;padding:12px;margin-top:10px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:var(--p);margin-bottom:6px;">📣 Promo Popup Messages — Google Sheet</div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">
+            Columns: <code>Message, Emoji, CTA Text, CTA Link, Active (yes/no)</code><br>
+            Random active message popup mein dikhega. WA share auto.
+          </div>
+          <input type="url" id="app-promo-sheet" class="inp" placeholder="https://docs.google.com/spreadsheets/d/YOUR_ID/export?format=csv" style="font-size:.72rem;margin-bottom:6px;">
+          <div style="display:flex;gap:6px;margin-bottom:6px;">
+            <select id="app-promo-pos" class="inp" style="font-size:.7rem;flex:1;">
+              <option value="top-bar">📢 Top Bar</option>
+              <option value="popup" selected>🪟 Center Popup</option>
+              <option value="bottom-bar">📌 Bottom Bar</option>
+              <option value="corner">🔔 Corner</option>
+            </select>
+            <input type="number" id="app-promo-delay" class="inp" placeholder="Delay(s)" value="5" style="font-size:.72rem;width:55px;">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:.7rem;">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-promo-wa" checked> 💬 WA Share</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-promo-once"> Once/session</label>
+          </div>
+          <button class="btn-s" onclick="wbTestSheet('app-promo-sheet')" style="margin-top:7px;font-size:.68rem;width:100%;">🔗 Test Sheet Connection</button>
         </div>
 
-        <!-- Site API Key for App -->
-        <div style="background:rgba(124,58,237,.06);border:1.5px solid rgba(124,58,237,.2);border-radius:9px;padding:10px;margin-top:8px;">
-          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.76rem;margin-bottom:6px;color:#7C3AED;">🔑 App AI Key (Live AI Features)</div>
-          <input type="password" id="app-site-api-key" class="inp" placeholder="sk-ant-... (optional, KSpider proxy also works)" style="font-size:.72rem;margin-bottom:5px;">
-          <div style="display:flex;gap:6px;font-size:.68rem;flex-wrap:wrap;">
-            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-ai-chat"> 💬 AI Chat</label>
+        <!-- ── SITE API KEY — Live AI (APP) ── -->
+        <div style="background:rgba(124,58,237,.06);border:1.5px solid rgba(124,58,237,.2);border-radius:9px;padding:12px;margin-top:10px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:#7C3AED;margin-bottom:4px;">🔑 Live AI Features (Generated App)</div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:6px;line-height:1.5;">
+            App mein AI chatbot, FAQ bot, quote generator add hoga.<br>
+            <span style="color:#059669;font-weight:700;">✅ Browser-safe &amp; GitHub-safe.</span> KSpider proxy FREE hai.
+          </div>
+          <input type="password" id="app-site-api-key" class="inp" placeholder="sk-ant-... (optional — KSpider proxy active)" style="font-size:.72rem;margin-bottom:7px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-ai-chat"> 💬 AI Chatbot</label>
             <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-ai-faq"> ❓ FAQ Bot</label>
-            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-ai-quote"> 💰 Auto Quote</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-ai-quote"> 💰 Quote Gen</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-ai-contact"> 📧 AI Reply</label>
+          </div>
+        </div>
+
+        <!-- ── PRODUCTS / SERVICES / MENU SHEET (APP) ── -->
+        <div style="background:rgba(5,150,105,.07);border:2px solid rgba(5,150,105,.25);border-radius:9px;padding:12px;margin-top:10px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:.8rem;color:#059669;margin-bottom:5px;">🛍 Products / Services / Menu — Google Sheet</div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:6px;line-height:1.6;">
+            <b>Products:</b> <code>Name, Price, Category, Image URL, Description, Stock, Discount%</code><br>
+            <b>Services:</b> <code>Name, Price, Duration, Category, Description, Available</code><br>
+            <b>Menu:</b> <code>Item Name, Price, Category, Image URL, Veg (yes/no)</code>
+          </div>
+          <select id="app-pdata-type" class="inp" style="font-size:.72rem;margin-bottom:5px;">
+            <option value="products">🛍 Product Store</option>
+            <option value="services">⚡ Services</option>
+            <option value="menu" selected>🍽 Restaurant Menu</option>
+            <option value="inventory">📦 Catalog</option>
+          </select>
+          <input type="url" id="app-pdata-sheet" class="inp" placeholder="Google Sheets CSV URL..." style="font-size:.72rem;margin-bottom:5px;">
+          <div style="display:flex;gap:5px;margin-bottom:5px;">
+            <input type="number" id="app-pdata-maxrows" class="inp" placeholder="Max items" value="20" style="font-size:.72rem;width:70px;">
+            <select id="app-pdata-cols" class="inp" style="font-size:.72rem;flex:1;">
+              <option value="1">1 Column (Full)</option>
+              <option value="2" selected>2 Columns</option>
+              <option value="3">3 Columns</option>
+            </select>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;margin-bottom:5px;">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-cart" checked> 🛒 Cart</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-qty" checked> 🔢 Qty</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-total" checked> 💰 Auto Total</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-wa" checked> 💬 WA Order</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-upi"> 💳 UPI Pay</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-search" checked> 🔍 Search</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-filter" checked> 🏷 Filter</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-pdata-img" checked> 🖼 Images</label>
+          </div>
+          <button class="btn-s" onclick="wbTestSheet('app-pdata-sheet')" style="font-size:.68rem;width:100%;">🔗 Test Sheet</button>
+        </div>
+
+        <!-- ── ANALYTICS (APP) ── -->
+        <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:9px;padding:12px;margin-top:10px;">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:.8rem;color:var(--text);margin-bottom:6px;">📈 Analytics &amp; Extra</div>
+          <input type="text" id="app-ga-id" class="inp" placeholder="Google Analytics ID (default: G-PLBHWMHEC1)" style="font-size:.72rem;margin-bottom:5px;">
+          <input type="text" id="app-fb-pixel" class="inp" placeholder="Facebook Pixel ID (optional)" style="font-size:.72rem;margin-bottom:5px;">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;font-size:.7rem;margin-top:4px;">
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-back-to-top" checked> Back to top</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-share-btn" checked> Share button</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-cookie-bar" checked> Cookie bar</label>
+            <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="app-rating"> ⭐ Rate Us</label>
           </div>
         </div>
 
@@ -3226,7 +3398,7 @@ function wbClearAllMedia() {
 
 // ── PANEL TAB SWITCHER ──
 function wbSwitchTab(tab, btn) {
-  ['info','media','typo','layout'].forEach(function(t) {
+  ['info','media','typo','layout','advanced'].forEach(function(t) {
     var el = document.getElementById('wb-tab-'+t);
     if(el) el.style.display = (t===tab) ? 'block' : 'none';
   });
@@ -3235,6 +3407,24 @@ function wbSwitchTab(tab, btn) {
     b.style.color = 'var(--text)';
   });
   if(btn) { btn.style.background = 'var(--p)'; btn.style.color = '#fff'; }
+}
+
+// Test Google Sheet connection
+async function wbTestSheet(inputId) {
+  var url = (document.getElementById(inputId)||{value:''}).value.trim();
+  if(!url) { showToast('URL daalo pehle!','warning'); return; }
+  showToast('🔗 Sheet test ho rahi hai...','info');
+  try {
+    var csvUrl = gsUrlToCsv(url);
+    var r = await fetch(csvUrl+'&t='+Date.now());
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    var text = await r.text();
+    var rows = text.trim().split('\n').length;
+    var cols = (text.trim().split('\n')[0]||'').split(',').length;
+    showToast('✅ Sheet connected! '+rows+' rows, '+cols+' columns found.','success');
+  } catch(e) {
+    showToast('❌ Sheet error: '+(e.message||'Connection failed')+'. Sheet publicly published hai?','error');
+  }
 }
 
 function wbTogglePanel(id) {
@@ -3316,9 +3506,45 @@ function addSection(type) {
   if(!S.sections.includes(type)) {
     S.sections.push(type);
     buildPreview();
-    showToast('✅ '+type+' section added!','success');
+    showToast('✅ '+type.charAt(0).toUpperCase()+type.slice(1)+' section added!','success');
+
+    // Auto-switch to relevant tab for newly added sections
+    if(type === 'blog') {
+      // Switch to Advanced tab and highlight the blog sheet input
+      var advBtn = document.querySelector('.wb-tab-btn:nth-child(5)');
+      wbSwitchTab('advanced', advBtn);
+      setTimeout(function(){
+        var blogInput = document.getElementById('wb-blog-sheet');
+        if(blogInput) {
+          blogInput.scrollIntoView({behavior:'smooth', block:'center'});
+          blogInput.style.boxShadow = '0 0 0 3px rgba(66,133,244,.4)';
+          blogInput.style.borderColor = '#4285F4';
+          blogInput.focus();
+          setTimeout(function(){ blogInput.style.boxShadow=''; blogInput.style.borderColor=''; }, 3000);
+        }
+        showToast('📊 Blog Sheet URL daalo — Live tab mein!', 'info');
+      }, 300);
+    }
+    if(type === 'upi') {
+      var mediaBtn = document.querySelector('.wb-tab-btn:nth-child(2)');
+      wbSwitchTab('media', mediaBtn);
+      setTimeout(function(){
+        var upiInput = document.getElementById('biz-upi-id');
+        if(upiInput) { upiInput.scrollIntoView({behavior:'smooth',block:'center'}); upiInput.focus(); }
+        showToast('💳 UPI ID aur QR image upload karo — Media tab mein!', 'info');
+      }, 300);
+    }
+    if(type === 'portfolio') {
+      var mediaBtn2 = document.querySelector('.wb-tab-btn:nth-child(2)');
+      wbSwitchTab('media', mediaBtn2);
+      setTimeout(function(){
+        var portEl = document.getElementById('port-drop-0');
+        if(portEl) { portEl.scrollIntoView({behavior:'smooth',block:'center'}); }
+        showToast('🖼 Portfolio images upload karo — Media tab mein!', 'info');
+      }, 300);
+    }
   } else {
-    showToast('Section already exists','warning');
+    showToast('⚠️ '+type+' section already exists','warning');
   }
 }
 
@@ -6065,101 +6291,6 @@ var _origBuildPreview = null;
   }
 })();
 
-async function _enhanceGeneratedSite() {
-  if(typeof previewHTML === 'undefined' || !previewHTML) return;
-
-  var blogSheetUrl  = (document.getElementById('wb-blog-sheet')  ||{value:''}).value;
-  var promoSheetUrl = (document.getElementById('wb-promo-sheet') ||{value:''}).value;
-  var promoPos      = (document.getElementById('wb-promo-pos')   ||{value:'popup'}).value;
-  var promoDelay    = (document.getElementById('wb-promo-delay') ||{value:'3'}).value;
-  var promoWa       = (document.getElementById('wb-promo-wa')    ||{checked:true}).checked;
-  var siteApiKey    = (document.getElementById('wb-site-api-key')||{value:''}).value;
-  var aiContact     = (document.getElementById('wb-ai-contact')  ||{checked:false}).checked;
-  var aiChat        = (document.getElementById('wb-ai-chat')     ||{checked:false}).checked;
-  var aiFaq         = (document.getElementById('wb-ai-faq')      ||{checked:false}).checked;
-  var aiQuote       = (document.getElementById('wb-ai-quote')    ||{checked:false}).checked;
-
-  var b = getBizData();
-  var T = WB_TEMPLATES[wbCurrentTmpl] || WB_TEMPLATES.vibrant;
-  var pc = S.websiteColor || T.c1;
-  var pc2 = S.websiteColor2 || T.c2;
-  var btnBR = (document.getElementById('wb-btn-radius')||{value:'9'}).value+'px';
-  var surf = T.surfBg;
-  var txtMain = T.txtMain;
-  var txtMuted = T.txtMuted;
-  var headFont = (document.getElementById('wb-font-head')||{value:'Syne'}).value;
-  var bodyFont = (document.getElementById('wb-font-body')||{value:'DM Sans'}).value;
-
-  var extras = '';
-
-  // 1. Blog from Google Sheet (live fetch at runtime in generated site)
-  if(blogSheetUrl) {
-    var csvUrl = gsUrlToCsv(blogSheetUrl);
-    // Inject a live-fetch blog section script into the generated HTML
-    var blogScript = '\u003cscript>\n'
-      + '(function(){\n'
-      + 'var _bCsv="'+csvUrl+'";\n'
-      + 'fetch(_bCsv+"&t="+Date.now()).then(function(r){return r.text();}).then(function(t){\n'
-      + 'var rows=t.trim().split("\\n");var h=(rows[0]||"").split(",").map(function(x){return x.replace(/"/g,"").toLowerCase().trim();});\n'
-      + 'var posts=[];for(var i=1;i<rows.length&&i<=6;i++){var c=rows[i].split(",").map(function(x){return x.replace(/"/g,"").trim();});var o={};h.forEach(function(k,j){o[k]=c[j]||"";});posts.push(o);}\n'
-      + 'if(!posts.length)return;\n'
-      + 'var html="<section style=\'padding:50px 20px;\' id=\'blog-live\'>"\n'
-      + '+"<h2 style=\'text-align:center;font-size:1.6rem;font-weight:800;margin-bottom:28px;font-family:\'Syne\',sans-serif;color:'+txtMain+';\'>\uD83D\uDCF0 Latest Updates</h2>"\n'
-      + '+"<div style=\'display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;max-width:900px;margin:0 auto;\'>";\n'
-      + 'posts.forEach(function(p){\n'
-      + 'var title=p.title||p.headline||"";var body2=p.content||p.description||p.body||"";var date=p.date||"";var cat=p.category||"";var img=p["image url"]||p.image||"";\n'
-      + 'html+="<div style=\'background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 14px rgba(0,0,0,.08);transition:all .2s;\' onmouseover=\'this.style.transform=\"translateY(-3px)\"\' onmouseout=\'this.style.transform=\"none\"\'>"\ \n'
-      + '+(img?"<img src=\'"+img+"\' style=\'width:100%;height:140px;object-fit:cover;\' loading=\'lazy\'>":"<div style=\'background:linear-gradient(135deg,'+pc+','+pc2+');height:90px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem;\'>\uD83D\uDCF0</div>")\ \n'
-      + '+"<div style=\'padding:14px;\'>"+(cat?"<span style=\'background:'+pc+'18;color:'+pc+';font-size:.6rem;padding:2px 8px;border-radius:12px;font-weight:700;\'>"+(cat)+"</span>":"")\ \n'
-      + '+"<h3 style=\'font-size:.9rem;font-weight:700;margin:7px 0 5px;color:'+txtMain+';font-family:\'Syne\',sans-serif;line-height:1.3;\'>"+title+"</h3>"\ \n'
-      + '+"<p style=\'font-size:.78rem;color:'+txtMuted+';line-height:1.65;margin-bottom:8px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;\'>"+(body2)+"</p>"\ \n'
-      + '+(date?"<span style=\'font-size:.62rem;color:'+txtMuted+';\'>\uD83D\uDCC5 "+date+"</span>":"")+"</div></div>";});\n'
-      + 'html+="</div></section>";\n'
-      + 'var tgt=document.getElementById("blog-live");if(!tgt){var ftr=document.querySelector("footer");if(ftr)ftr.insertAdjacentHTML("beforebegin",html);}\n'
-      + '}).catch(function(){});\n'
-      + '})();\n'
-      + '\u003c/script>';
-    extras += blogScript;
-  }
-
-  // 2. Promo popup from Google Sheet
-  if(promoSheetUrl) {
-    extras += buildPromoScript({
-      sheetUrl: promoSheetUrl,
-      position: promoPos,
-      delay: promoDelay,
-      addWa: promoWa,
-      bizWa: b.wa,
-      bizName: b.name,
-      pc: pc, pc2: pc2,
-      btnBR: btnBR
-    });
-  }
-
-  // 3. Site AI features
-  if(siteApiKey || aiContact || aiChat || aiFaq || aiQuote) {
-    extras += buildSiteAiFeatures({
-      apiKey: siteApiKey,
-      aiContact: aiContact,
-      aiChat: aiChat,
-      aiFaq: aiFaq,
-      aiQuote: aiQuote,
-      bizName: b.name,
-      bizType: b.type,
-      pc: pc, pc2: pc2,
-      surf: surf, txtMain: txtMain,
-      btnBR: btnBR
-    });
-  }
-
-  if(extras) {
-    // Inject before </body>
-    previewHTML = previewHTML.replace('</body>', extras + '\n</body>');
-    var frame = document.getElementById('previewFrame');
-    if(frame) frame.srcdoc = previewHTML;
-  }
-}
-
 // ================================================================
 // MISSING WA messages tab fix
 // ================================================================
@@ -6172,6 +6303,695 @@ async function generateWAMessages() {
     'wa-output', {loadMsg: '\uD83D\uDCAC WA messages likh raha hai...', max_tokens:1600}
   );
   showToast('\u2705 WA messages ready!','success');
+}
+
+
+// ================================================================
+// SHEET-POWERED PRODUCT/SERVICE/MENU BUILDER
+// Generates HTML for generated website/app output
+// ================================================================
+
+// Build complete product store HTML from sheet data
+function buildProductStoreHTML(items, opts) {
+  var pc     = opts.pc     || '#FF6B00';
+  var pc2    = opts.pc2    || '#FF3D00';
+  var surf   = opts.surf   || '#fff';
+  var txtM   = opts.txtMain|| '#1a1a2e';
+  var txtMu  = opts.txtMuted||'#666';
+  var cardBR = opts.cardBR || '12px';
+  var btnBR  = opts.btnBR  || '9px';
+  var shadow = opts.shadow || '0 4px 14px rgba(0,0,0,.08)';
+  var headF  = opts.headFont||'Syne';
+  var bodyF  = opts.bodyFont||'DM Sans';
+  var bizWa  = opts.bizWa  || '';
+  var bizName= opts.bizName|| 'Business';
+  var bizUpi = opts.bizUpi || '';
+  var type   = opts.type   || 'products'; // products|services|menu
+  var cols   = parseInt(opts.cols)  || 3;
+  var incCart= opts.incCart !== false;
+  var incQty = opts.incQty  !== false;
+  var incTotal=opts.incTotal!== false;
+  var incWaOrd=opts.incWaOrd!== false;
+  var incUpi = opts.incUpi  || false;
+  var incSearch=opts.incSearch!==false;
+  var incFilter=opts.incFilter!==false;
+  var incImg = opts.incImg  !== false;
+  var dark   = opts.dark    || false;
+
+  // Titles based on type
+  var titles = {
+    products:  '🛍 Our Products',
+    services:  '⚡ Our Services',
+    menu:      '🍽 Our Menu',
+    inventory: '📦 Catalog',
+    'portfolio-items': '🎨 Portfolio'
+  };
+  var title = titles[type] || '🛍 Products';
+
+  // Get unique categories
+  var cats = [];
+  items.forEach(function(item) {
+    var c = item.category || item.cat || item.type || '';
+    if(c && cats.indexOf(c) === -1) cats.push(c);
+  });
+
+  // Check if item has discount
+  function getDiscount(item) {
+    var d = parseFloat(item.discount || item['discount%'] || item.offer || 0);
+    return isNaN(d) ? 0 : d;
+  }
+  function getPrice(item) {
+    return parseFloat(item.price || item.rate || item.cost || item.mrp || 0);
+  }
+  function getDiscountedPrice(item) {
+    var p = getPrice(item);
+    var d = getDiscount(item);
+    return d > 0 ? p * (1 - d/100) : p;
+  }
+  function getStock(item) {
+    var s = item.stock || item.qty || item.quantity || item.available || '';
+    if(s.toLowerCase() === 'no' || s === '0') return 0;
+    var n = parseInt(s);
+    return isNaN(n) ? 999 : n;
+  }
+  function isVeg(item) {
+    var v = (item.veg || item.vegetarian || item.type || '').toLowerCase();
+    return v === 'yes' || v === 'veg' || v === 'true' || v === '1';
+  }
+  function getDuration(item) {
+    return item.duration || item.time || item.hours || '';
+  }
+
+  // Cart & Payment JS (inline in generated site)
+  var cartJs = '';
+  if(incCart) {
+    cartJs = 'var _cart={};var _currency="'+'\u20b9'+'";'
+      +'function _addCart(n,p,max){'
+      +'  if(max===0){_toast("Out of Stock!","#DC2626");return;}'
+      +'  if(!_cart[n])_cart[n]={name:n,price:p,qty:0,max:max||999};'
+      +'  if(_cart[n].qty>=_cart[n].max){_toast("Max stock reached!","#D97706");return;}'
+      +'  _cart[n].qty++;_updCart();_toast(n+" added! \u2713","#059669");}'
+      +'function _setQty(n,p,v,max){'
+      +'  var q=parseInt(v)||0;if(q<0)q=0;if(max&&q>max)q=max;'
+      +'  if(q===0){delete _cart[n];}else{'
+      +'    if(!_cart[n])_cart[n]={name:n,price:p,qty:0,max:max||999};'
+      +'    _cart[n].qty=q;}'
+      +'  _updCart();}'
+      +'function _rmCart(n){delete _cart[n];_updCart();}'
+      +'function _updCart(){'
+      +'  var items=Object.values(_cart).filter(function(x){return x.qty>0;});'
+      +'  var total=items.reduce(function(s,x){return s+x.price*x.qty;},0);'
+      +'  var count=items.reduce(function(s,x){return s+x.qty;},0);'
+      +'  var b=document.getElementById("_cartBadge");'
+      +'  if(b){b.textContent=count;b.style.display=count?"flex":"none";}'
+      +'  var tv=document.getElementById("_cartTotal");'
+      +'  if(tv)tv.textContent=_currency+total.toFixed(2);'
+      +'  var cl=document.getElementById("_cartList");'
+      +'  if(cl){'
+      +'    if(!items.length){cl.innerHTML="<div style=\\"text-align:center;padding:20px;color:#999;\\">Cart khali hai</div>";return;}'
+      +'    cl.innerHTML=items.map(function(x){'
+      +'      return "<div style=\\"display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f0f0f0;\\">"'
+      +'        +"<div><div style=\\"font-weight:600;font-size:.85rem;\\">"+x.name+"</div><div style=\\"font-size:.75rem;color:#666;\\">"+_currency+x.price.toFixed(2)+" x "+x.qty+"</div></div>"'
+      +'        +"<div style=\\"display:flex;align-items:center;gap:6px;\\">"'
+      +'        +"<span style=\\"font-weight:700;color:'+pc+';\\">"+_currency+(x.price*x.qty).toFixed(2)+"</span>"'
+      +'        +"<button onclick=\\"_rmCart(\'"+x.name+"\')\\" style=\\"background:#DC2626;color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:.75rem;\\">×</button>"'
+      +'        +"</div></div>";}).join("")'
+      +'    +"<div style=\\"display:flex;justify-content:space-between;padding:12px 0;font-weight:800;font-size:1rem;border-top:2px solid #f0f0f0;margin-top:4px;\\">"'
+      +'    +"<span>Total:</span><span style=\\"color:'+pc+';\\">" + _currency+total.toFixed(2)+"</span></div>";}'
+      +'}'
+      // Cart sidebar toggle
+      +'function _openCart(){'
+      +'  var s=document.getElementById("_cartSidebar");'
+      +'  if(s){s.style.transform="translateX(0)";_updCart();}'
+      +'  var ov=document.getElementById("_cartOv");'
+      +'  if(ov)ov.style.display="block";}'
+      +'function _closeCart(){'
+      +'  var s=document.getElementById("_cartSidebar");'
+      +'  if(s)s.style.transform="translateX(100%)";'
+      +'  var ov=document.getElementById("_cartOv");'
+      +'  if(ov)ov.style.display="none";}'
+      // Place order via WA
+      +(incWaOrd && bizWa ? 'function _waOrder(){'
+      +'  var items=Object.values(_cart).filter(function(x){return x.qty>0;});'
+      +'  if(!items.length){_toast("Cart mein kuch daalo pehle!","#DC2626");return;}'
+      +'  var total=items.reduce(function(s,x){return s+x.price*x.qty;},0);'
+      +'  var msg="*Order from '+bizName+'*\n\n"'
+      +'    +items.map(function(x){return "• "+x.name+" × "+x.qty+" = '+'\u20b9'+'"+( x.price*x.qty).toFixed(0);}).join("\n")'
+      +'    +"\n\n*Total: '+'\u20b9'+'"+total.toFixed(0)+"*\n\nKindly confirm this order. Thank you!";'
+      +'  window.open("https://wa.me/91'+bizWa+'?text="+encodeURIComponent(msg),"_blank");'
+      +'  _closeCart();}' : '')
+      // UPI Payment
+      +(incUpi && bizUpi ? 'function _upiPay(){'
+      +'  var items=Object.values(_cart).filter(function(x){return x.qty>0;});'
+      +'  if(!items.length){_toast("Cart mein kuch daalo!","#DC2626");return;}'
+      +'  var total=items.reduce(function(s,x){return s+x.price*x.qty;},0);'
+      +'  var upiUrl="upi://pay?pa='+bizUpi+'&pn='+bizName.replace(/ /g,'%20')+'&am="+total.toFixed(2)+"&cu=INR&tn=Order+Payment";'
+      +'  window.location.href=upiUrl;}' : '')
+      +'function _toast(m,c){var t=document.createElement("div");t.style.cssText="position:fixed;top:70px;left:50%;transform:translateX(-50%);background:"+(c||"#333")+";color:#fff;padding:9px 18px;border-radius:20px;font-size:.8rem;font-weight:700;z-index:9999;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.2);";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove();},2200);}';
+  }
+
+  // Category filter bar
+  var filterBar = '';
+  if(incFilter && cats.length > 0) {
+    filterBar = '<div id="_catFilter" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;padding:0 4px;">'
+      + '<button onclick="_filterCat(\'all\',this)" class="_catBtn" style="background:'+pc+';color:#fff;border:none;padding:7px 16px;border-radius:20px;cursor:pointer;font-size:.78rem;font-weight:700;">All</button>'
+      + cats.map(function(c) {
+          return '<button onclick="_filterCat(\''+c+'\',this)" class="_catBtn" style="background:'+pc+'18;color:'+pc+';border:none;padding:7px 14px;border-radius:20px;cursor:pointer;font-size:.78rem;font-weight:600;">'+c+'</button>';
+        }).join('')
+      + '</div>'
+      + '<style>._catBtn.active{background:'+pc+'!important;color:#fff!important;}</style>';
+  }
+
+  // Search bar
+  var searchBar = '';
+  if(incSearch) {
+    searchBar = '<div style="margin-bottom:16px;">'
+      + '<div style="position:relative;max-width:400px;">'
+      + '<input id="_prodSearch" type="text" placeholder="🔍 Search '+(type==='menu'?'dishes':type==='services'?'services':'products')+'..." '
+      + 'oninput="_searchItems(this.value)" '
+      + 'style="width:100%;padding:10px 14px 10px 38px;border:1.5px solid rgba(0,0,0,.12);border-radius:'+btnBR+';font-size:.85rem;outline:none;">'
+      + '<div style="position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#999;font-size:.9rem;">🔍</div>'
+      + '</div></div>';
+  }
+
+  // Grid CSS
+  var gridCss = cols === 'list'
+    ? 'display:flex;flex-direction:column;gap:12px;'
+    : 'display:grid;grid-template-columns:repeat(auto-fill,minmax('+
+      (cols===1?'320':cols===2?'220':'180')+'px,1fr));gap:16px;';
+
+  // Generate item cards
+  var itemCards = items.map(function(item, i) {
+    var name = item.name || item['item name'] || item.title || item.product || 'Item '+(i+1);
+    var price = getPrice(item);
+    var discountedPrice = getDiscountedPrice(item);
+    var disc = getDiscount(item);
+    var desc = item.description || item.desc || item.details || '';
+    var img  = item['image url'] || item.image || item.img || item.photo || '';
+    var stock = getStock(item);
+    var cat  = item.category || item.cat || '';
+    var dur  = getDuration(item);
+    var veg  = type === 'menu' ? isVeg(item) : null;
+    var avail= stock > 0;
+
+    if(cols === 'list') {
+      // List view — horizontal card
+      return '<div class="_pitem" data-cat="'+cat+'" data-name="'+name.toLowerCase()+'" '
+        + 'style="background:'+(dark?'rgba(255,255,255,.05)':surf)+';border:1.5px solid rgba(0,0,0,.07);border-radius:'+cardBR+';padding:12px;display:flex;align-items:center;gap:14px;'+(avail?'':'opacity:.55;')+'box-shadow:'+shadow+';">'
+        + (incImg && img ? '<img src="'+img+'" style="width:80px;height:80px;object-fit:cover;border-radius:8px;flex-shrink:0;" loading="lazy" onerror="this.style.display=\'none\'">' : (incImg ? '<div style="width:80px;height:80px;background:linear-gradient(135deg,'+pc+','+pc2+');border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;flex-shrink:0;">'+(type==='menu'?'🍽':type==='services'?'⚡':'🛍')+'</div>' : ''))
+        + '<div style="flex:1;min-width:0;">'
+        + '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">'
+        + (veg !== null ? '<span style="color:'+(veg?'#059669':'#DC2626')+';font-size:.8rem;">'+(veg?'🟢':'🔴')+'</span>' : '')
+        + '<div style="font-weight:700;font-size:.9rem;color:'+txtM+';font-family:\''+headF+'\',sans-serif;">'+name+'</div>'
+        + (cat ? '<span style="background:'+pc+'15;color:'+pc+';font-size:.6rem;padding:2px 7px;border-radius:10px;">'+cat+'</span>' : '')
+        + '</div>'
+        + (desc ? '<div style="font-size:.75rem;color:'+txtMu+';margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+desc+'</div>' : '')
+        + (dur ? '<div style="font-size:.7rem;color:'+pc+';margin-top:2px;">⏱ '+dur+'</div>' : '')
+        + '</div>'
+        + '<div style="text-align:right;flex-shrink:0;">'
+        + (disc > 0 ? '<div style="font-size:.7rem;color:#DC2626;font-weight:700;text-decoration:line-through;">\u20b9'+price.toFixed(0)+'</div>' : '')
+        + '<div style="font-weight:800;font-size:1.05rem;color:'+pc+';">\u20b9'+discountedPrice.toFixed(0)+'</div>'
+        + (disc > 0 ? '<div style="background:#DC2626;color:#fff;font-size:.58rem;padding:2px 6px;border-radius:8px;font-weight:700;">'+disc+'% OFF</div>' : '')
+        + (avail && incCart ? '<button onclick="_addCart(\''+name+'\','+discountedPrice+','+stock+')" style="background:linear-gradient(135deg,'+pc+','+pc2+');color:#fff;border:none;padding:7px 14px;border-radius:'+btnBR+';cursor:pointer;font-size:.75rem;font-weight:700;margin-top:6px;white-space:nowrap;">Add+</button>' : '')
+        + (!avail ? '<div style="color:#DC2626;font-size:.7rem;font-weight:700;margin-top:4px;">Out of Stock</div>' : '')
+        + '</div></div>';
+    }
+
+    // Grid card view
+    return '<div class="_pitem" data-cat="'+cat+'" data-name="'+name.toLowerCase()+'" '
+      + 'style="background:'+(dark?'rgba(255,255,255,.05)':surf)+';border:1.5px solid rgba(0,0,0,.07);border-radius:'+cardBR+';overflow:hidden;box-shadow:'+shadow+';transition:all .2s;position:relative;'+(avail?'':'opacity:.6;')+';" '
+      + 'onmouseover="this.style.transform=\'translateY(-4px)\';this.style.boxShadow=\'0 8px 24px rgba(0,0,0,.12)\'" '
+      + 'onmouseout="this.style.transform=\'none\';this.style.boxShadow=\''+shadow+'\'">'
+      + (disc > 0 ? '<div style="position:absolute;top:8px;left:8px;background:#DC2626;color:#fff;font-size:.6rem;padding:3px 8px;border-radius:12px;font-weight:700;z-index:2;">'+disc+'% OFF</div>' : '')
+      + (!avail ? '<div style="position:absolute;top:8px;right:8px;background:#666;color:#fff;font-size:.6rem;padding:3px 8px;border-radius:12px;z-index:2;">Out of Stock</div>' : '')
+      + (incImg ? (img
+          ? '<img src="'+img+'" style="width:100%;height:160px;object-fit:cover;" loading="lazy" onerror="this.style.background=\''+pc+'22\';this.src=\'\'">'
+          : '<div style="background:linear-gradient(135deg,'+pc+'22,'+pc2+'22);height:120px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;">'+(type==='menu'?'🍽':type==='services'?'⚡':'🛍')+'</div>') : '')
+      + '<div style="padding:12px;">'
+      + '<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;margin-bottom:5px;">'
+      + '<div style="font-weight:700;font-size:.88rem;color:'+txtM+';font-family:\''+headF+'\',sans-serif;line-height:1.3;">'+name+'</div>'
+      + (veg !== null ? '<span style="font-size:1rem;flex-shrink:0;">'+(veg?'🟢':'🔴')+'</span>' : '')
+      + '</div>'
+      + (cat ? '<span style="background:'+pc+'15;color:'+pc+';font-size:.58rem;padding:2px 7px;border-radius:10px;font-weight:600;">'+cat+'</span>' : '')
+      + (desc ? '<div style="font-size:.72rem;color:'+txtMu+';margin-top:5px;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">'+desc+'</div>' : '')
+      + (dur ? '<div style="font-size:.7rem;color:'+pc+';margin-top:4px;font-weight:600;">⏱ '+dur+'</div>' : '')
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">'
+      + '<div>'
+      + (disc > 0 ? '<div style="font-size:.7rem;color:#999;text-decoration:line-through;">\u20b9'+price.toFixed(0)+'</div>' : '')
+      + '<div style="font-weight:800;font-size:1rem;color:'+pc+';">\u20b9'+discountedPrice.toFixed(0)+'</div>'
+      + '</div>'
+      + (avail && incCart ? (incQty
+          ? '<div style="display:flex;align-items:center;gap:5px;">'
+            + '<button onclick="_setQty(\''+name+'\','+discountedPrice+',Math.max(0,(_cart[\''+name+'\']?_cart[\''+name+'\'].qty:0)-1),'+stock+')" style="background:'+pc+'20;color:'+pc+';border:none;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;">−</button>'
+            + '<input type="number" min="0" max="'+stock+'" value="0" id="_qty_'+i+'" onchange="_setQty(\''+name+'\','+discountedPrice+',this.value,'+stock+')" style="width:36px;text-align:center;border:1.5px solid rgba(0,0,0,.12);border-radius:6px;font-size:.82rem;font-weight:700;padding:3px;">'
+            + '<button onclick="_setQty(\''+name+'\','+discountedPrice+',(_cart[\''+name+'\']?_cart[\''+name+'\'].qty:0)+1,'+stock+')" style="background:linear-gradient(135deg,'+pc+','+pc2+');color:#fff;border:none;width:26px;height:26px;border-radius:50%;cursor:pointer;font-size:1rem;font-weight:700;display:flex;align-items:center;justify-content:center;">+</button>'
+            + '</div>'
+          : '<button onclick="_addCart(\''+name+'\','+discountedPrice+','+stock+')" style="background:linear-gradient(135deg,'+pc+','+pc2+');color:#fff;border:none;padding:8px 14px;border-radius:'+btnBR+';cursor:pointer;font-size:.78rem;font-weight:700;">Add+</button>')
+        : (!avail ? '<span style="color:#DC2626;font-size:.72rem;font-weight:700;">Sold Out</span>' : ''))
+      + '</div></div></div>';
+  }).join('');
+
+  // Cart sidebar HTML
+  var cartSidebar = '';
+  if(incCart) {
+    cartSidebar = '<div id="_cartOv" onclick="_closeCart()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9989;"></div>'
+      + '<div id="_cartSidebar" style="position:fixed;top:0;right:0;bottom:0;width:320px;max-width:92vw;background:#fff;z-index:9990;transform:translateX(100%);transition:transform .3s;box-shadow:-4px 0 24px rgba(0,0,0,.15);display:flex;flex-direction:column;">'
+      + '<div style="background:linear-gradient(135deg,'+pc+','+pc2+');color:#fff;padding:16px;display:flex;justify-content:space-between;align-items:center;">'
+      + '<div style="font-weight:800;font-size:1rem;">🛒 Your Cart</div>'
+      + '<button onclick="_closeCart()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;">×</button>'
+      + '</div>'
+      + '<div id="_cartList" style="flex:1;overflow-y:auto;padding:14px;"></div>'
+      + '<div style="padding:14px;border-top:2px solid #f0f0f0;">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">'
+      + '<span style="font-weight:700;font-size:1rem;">Grand Total:</span>'
+      + '<span id="_cartTotal" style="font-weight:800;font-size:1.2rem;color:'+pc+'">\u20b90.00</span>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;gap:8px;">'
+      + (incWaOrd && bizWa ? '<button onclick="_waOrder()" style="background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;border:none;padding:13px;border-radius:'+btnBR+';cursor:pointer;font-weight:700;font-size:.9rem;">💬 Order via WhatsApp</button>' : '')
+      + (incUpi && bizUpi ? '<button onclick="_upiPay()" style="background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;border:none;padding:13px;border-radius:'+btnBR+';cursor:pointer;font-weight:700;font-size:.9rem;">💳 Pay via UPI</button>' : '')
+      + '</div></div></div>';
+  }
+
+  // Filter & search JS
+  var filterJs = '';
+  if(incFilter || incSearch) {
+    filterJs = 'function _filterCat(cat,btn){'
+      + 'document.querySelectorAll("._catBtn").forEach(function(b){b.style.background="'+pc+'18";b.style.color="'+pc+'";});'
+      + 'if(btn){btn.style.background="'+pc+'";btn.style.color="#fff";}'
+      + 'document.querySelectorAll("._pitem").forEach(function(el){'
+      + 'el.style.display=(cat==="all"||el.dataset.cat===cat)?"":"none";});}'
+      + 'function _searchItems(q){'
+      + 'var t=q.toLowerCase().trim();'
+      + 'document.querySelectorAll("._pitem").forEach(function(el){'
+      + 'el.style.display=(!t||el.dataset.name.includes(t))?"":"none";});}';
+  }
+
+  // Floating cart button
+  var cartFloatBtn = incCart ? '<button onclick="_openCart()" style="position:fixed;bottom:80px;right:16px;z-index:988;background:linear-gradient(135deg,'+pc+','+pc2+');color:#fff;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;font-size:1.5rem;box-shadow:0 4px 18px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;"><span>🛒</span><div id="_cartBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;width:20px;height:20px;border-radius:50%;font-size:.65rem;font-weight:800;align-items:center;justify-content:center;">0</div></button>' : '';
+
+  // Summary stats bar
+  var statsBar = (type === 'products' || type === 'menu')
+    ? '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">'
+      + '<div style="background:'+pc+'15;color:'+pc+';padding:6px 14px;border-radius:20px;font-size:.75rem;font-weight:700;">'+items.length+' Items</div>'
+      + (cats.length > 0 ? '<div style="background:'+pc+'15;color:'+pc+';padding:6px 14px;border-radius:20px;font-size:.75rem;font-weight:700;">'+cats.length+' Categories</div>' : '')
+      + '</div>' : '';
+
+  var sectionHTML = '<section style="padding:50px 20px;background:'+(dark?'rgba(255,255,255,.03)':surf)+';" id="products-section">'
+    + '<div style="max-width:1100px;margin:0 auto;">'
+    + '<h2 style="font-size:1.7rem;font-weight:800;margin-bottom:8px;font-family:\''+headF+'\',sans-serif;color:'+txtM+';">'+title+'</h2>'
+    + '<div style="width:50px;height:3px;background:linear-gradient(90deg,'+pc+','+pc2+');margin-bottom:20px;border-radius:3px;"></div>'
+    + statsBar
+    + searchBar
+    + filterBar
+    + '<div style="'+gridCss+'">'+itemCards+'</div>'
+    + '</div>'
+    + cartSidebar
+    + cartFloatBtn
+    + '</section>'
+    + '\u003cscript>'+cartJs+filterJs+'\u003c/script>';
+
+  return sectionHTML;
+}
+
+// ================================================================
+// LIVE SHEET LOADER — generates script that fetches data on page load
+// This script is embedded in the generated website/app HTML
+// ================================================================
+function buildLiveSheetLoaderScript(opts) {
+  var csvUrl     = gsUrlToCsv(opts.sheetUrl);
+  var type       = opts.type       || 'products';
+  var maxRows    = opts.maxRows    || 12;
+  var cols       = opts.cols       || 3;
+  var pc         = opts.pc         || '#FF6B00';
+  var pc2        = opts.pc2        || '#FF3D00';
+  var surf       = opts.surf       || '#fff';
+  var txtMain    = opts.txtMain    || '#1a1a2e';
+  var txtMuted   = opts.txtMuted   || '#666';
+  var headFont   = opts.headFont   || 'Syne';
+  var bodyFont   = opts.bodyFont   || 'DM Sans';
+  var cardBR     = opts.cardBR     || '12px';
+  var btnBR      = opts.btnBR      || '9px';
+  var bizWa      = opts.bizWa      || '';
+  var bizName    = opts.bizName    || 'Business';
+  var bizUpi     = opts.bizUpi     || '';
+  var incCart    = opts.incCart    !== false;
+  var incQty     = opts.incQty     !== false;
+  var incTotal   = opts.incTotal   !== false;
+  var incWaOrd   = opts.incWaOrd   !== false;
+  var incUpi     = opts.incUpi     || false;
+  var incSearch  = opts.incSearch  !== false;
+  var incFilter  = opts.incFilter  !== false;
+  var incImg     = opts.incImg     !== false;
+  var dark       = opts.dark       || false;
+  var containerId= opts.containerId|| '_sheetContainer';
+  var targetId   = opts.targetId   || 'products-section';
+
+  // Build a compact inline version of buildProductStoreHTML logic
+  // that runs in the browser when the page loads
+  var script = '\u003cscript>\n'
+    + '(function(){\n'
+    + 'var _csvUrl="'+csvUrl+'";\n'
+    + 'var _type="'+type+'";\n'
+    + 'var _maxRows='+maxRows+';\n'
+    + 'var _cols='+JSON.stringify(cols)+';\n'
+    + 'var _pc="'+pc+'";\n'
+    + 'var _pc2="'+pc2+'";\n'
+    + 'var _surf="'+surf+'";\n'
+    + 'var _txtM="'+txtMain+'";\n'
+    + 'var _txtMu="'+txtMuted+'";\n'
+    + 'var _headF="'+headFont+'";\n'
+    + 'var _bodyF="'+bodyFont+'";\n'
+    + 'var _cardBR="'+cardBR+'";\n'
+    + 'var _btnBR="'+btnBR+'";\n'
+    + 'var _bizWa="'+bizWa+'";\n'
+    + 'var _bizName="'+bizName.replace(/"/g,"'")+'";\n'
+    + 'var _bizUpi="'+bizUpi+'";\n'
+    + 'var _incCart='+incCart+';\n'
+    + 'var _incQty='+incQty+';\n'
+    + 'var _incTotal='+incTotal+';\n'
+    + 'var _incWaOrd='+incWaOrd+';\n'
+    + 'var _incUpi='+incUpi+';\n'
+    + 'var _incSearch='+incSearch+';\n'
+    + 'var _incFilter='+incFilter+';\n'
+    + 'var _incImg='+incImg+';\n'
+    + 'var _dark='+dark+';\n'
+    + 'var _cur="\u20b9";\n'
+
+    // CSV parser
+    + 'function _pCsv(txt){\n'
+    + '  var lines=txt.trim().split("\\n");\n'
+    + '  if(!lines.length)return [];\n'
+    + '  var hdr=lines[0].split(",").map(function(h){return h.replace(/"/g,"").toLowerCase().trim();});\n'
+    + '  var data=[];\n'
+    + '  for(var i=1;i<Math.min(lines.length,_maxRows+1);i++){\n'
+    + '    var cols2=[];\n'
+    + '    var cur="",inQ=false;\n'
+    + '    for(var j=0;j<lines[i].length;j++){\n'
+    + '      var ch=lines[i][j];\n'
+    + '      if(ch===\'"\'){inQ=!inQ;continue;}\n'
+    + '      if(ch===","&&!inQ){cols2.push(cur.trim());cur="";continue;}\n'
+    + '      cur+=ch;\n'
+    + '    }\n'
+    + '    cols2.push(cur.trim());\n'
+    + '    var obj={};\n'
+    + '    hdr.forEach(function(h,k){obj[h]=cols2[k]||"";});\n'
+    + '    data.push(obj);\n'
+    + '  }\n'
+    + '  return data;\n'
+    + '}\n'
+
+    // Helpers
+    + 'function _gP(it){return parseFloat(it.price||it.rate||it.cost||it.mrp||0)||0;}\n'
+    + 'function _gD(it){return parseFloat(it.discount||it["discount%"]||it.offer||0)||0;}\n'
+    + 'function _gFP(it){var p=_gP(it),d=_gD(it);return d>0?p*(1-d/100):p;}\n'
+    + 'function _gS(it){var s=it.stock||it.qty||it.quantity||it.available||"999";if(s.toLowerCase()==="no"||s==="0")return 0;var n=parseInt(s);return isNaN(n)?999:n;}\n'
+    + 'function _isVeg(it){var v=(it.veg||it.vegetarian||"").toLowerCase();return v==="yes"||v==="veg"||v==="true";}\n'
+
+    // Cart state
+    + 'var _cart={};\n'
+    + 'function _addCart(n,p,max){if(!max){_toast("Out of Stock","#DC2626");return;}if(!_cart[n])_cart[n]={name:n,price:p,qty:0,max:max};if(_cart[n].qty>=_cart[n].max){_toast("Max stock!","#D97706");return;}_cart[n].qty++;_updCart();_toast(n+" \u2713","#059669");}\n'
+    + 'function _setQty(n,p,v,max){var q=parseInt(v)||0;if(q<0)q=0;if(max&&q>max)q=max;if(q===0)delete _cart[n];else{if(!_cart[n])_cart[n]={name:n,price:p,qty:0,max:max||999};_cart[n].qty=q;}var inp=document.getElementById("_qin_"+n.replace(/\\s/g,"_"));if(inp)inp.value=_cart[n]?_cart[n].qty:0;_updCart();}\n'
+    + 'function _rmCart(n){delete _cart[n];_updCart();}\n'
+    + 'function _updCart(){\n'
+    + '  var items2=Object.values(_cart).filter(function(x){return x.qty>0;});\n'
+    + '  var total=items2.reduce(function(s,x){return s+x.price*x.qty;},0);\n'
+    + '  var count=items2.reduce(function(s,x){return s+x.qty;},0);\n'
+    + '  var b=document.getElementById("_cBadge");if(b){b.textContent=count;b.style.display=count?"flex":"none";}\n'
+    + '  var tv=document.getElementById("_cTotal");if(tv)tv.textContent=_cur+total.toFixed(2);\n'
+    + '  var cl=document.getElementById("_cList");\n'
+    + '  if(cl){\n'
+    + '    if(!items2.length){cl.innerHTML="<div style=\'text-align:center;padding:20px;color:#999;\'>Cart khali hai \uD83D\uDED2</div>";return;}\n'
+    + '    cl.innerHTML=items2.map(function(x){\n'
+    + '      return "<div style=\'display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f5f5f5;\'>"\n'
+    + '        +"<div style=\'flex:1;\'>"\n'
+    + '        +"<div style=\'font-weight:700;font-size:.88rem;\'>"+x.name+"</div>"\n'
+    + '        +"<div style=\'font-size:.75rem;color:#666;\'>"+_cur+x.price.toFixed(0)+" \xD7 "+x.qty+"</div></div>"\n'
+    + '        +"<div style=\'display:flex;align-items:center;gap:8px;\'>"\n'
+    + '        +"<span style=\'font-weight:800;color:"+_pc+";\'>"+_cur+(x.price*x.qty).toFixed(0)+"</span>"\n'
+    + '        +"<button onclick=\'_rmCart(\\\""+x.name+"\\\")\' style=\'background:#DC2626;color:#fff;border:none;width:22px;height:22px;border-radius:50%;cursor:pointer;font-size:.8rem;\'>\xD7</button>"\n'
+    + '        +"</div></div>";\n'
+    + '    }).join("")\n'
+    + '    +"<div style=\'display:flex;justify-content:space-between;padding:12px 0;font-weight:800;font-size:1.05rem;border-top:2px solid #f0f0f0;margin-top:6px;\'>"\n'
+    + '    +"<span>Total:</span><span style=\'color:"+_pc+";\'>"+_cur+total.toFixed(2)+"</span></div>";\n'
+    + '  }\n'
+    + '}\n'
+
+    // WA order
+    + (_incWaOrd && bizWa
+        ? 'function _waOrder(){var items2=Object.values(_cart).filter(function(x){return x.qty>0;});if(!items2.length){_toast("Cart mein daalo!","#DC2626");return;}var total=items2.reduce(function(s,x){return s+x.price*x.qty;},0);var msg="*Order - "+_bizName+"*\\n\\n"+items2.map(function(x){return "\u2022 "+x.name+" \xD7"+x.qty+" = \u20b9"+(x.price*x.qty).toFixed(0);}).join("\\n")+"\\n\\n*Total: \u20b9"+total.toFixed(0)+"*\\n\\nPlease confirm.";window.open("https://wa.me/91"+_bizWa+"?text="+encodeURIComponent(msg),"_blank");_closeCart();}\n'
+        : '')
+
+    // UPI pay
+    + (_incUpi && bizUpi
+        ? 'function _upiPay(){var items2=Object.values(_cart).filter(function(x){return x.qty>0;});if(!items2.length){_toast("Cart mein daalo!","#DC2626");return;}var total=items2.reduce(function(s,x){return s+x.price*x.qty;},0);var u="upi://pay?pa='+bizUpi+'&pn="+encodeURIComponent(_bizName)+"&am="+total.toFixed(2)+"&cu=INR&tn=Order";window.location.href=u;}\n'
+        : '')
+
+    // Cart sidebar open/close
+    + 'function _openCart(){var s=document.getElementById("_cSide");if(s)s.style.transform="translateX(0)";var o=document.getElementById("_cOv");if(o)o.style.display="block";_updCart();}\n'
+    + 'function _closeCart(){var s=document.getElementById("_cSide");if(s)s.style.transform="translateX(100%)";var o=document.getElementById("_cOv");if(o)o.style.display="none";}\n'
+
+    // Filter & Search
+    + (_incFilter ? 'function _filterCat(cat,btn){document.querySelectorAll("._cBtn").forEach(function(b){b.classList.remove("_active");});if(btn)btn.classList.add("_active");document.querySelectorAll("._pItem").forEach(function(el){el.style.display=(cat==="all"||el.dataset.cat===cat)?"":"none";});}\n' : '')
+    + (_incSearch ? 'function _searchProd(q){var t=q.toLowerCase();document.querySelectorAll("._pItem").forEach(function(el){el.style.display=(!t||el.dataset.nm.includes(t))?"":"none";});}\n' : '')
+
+    // Toast
+    + 'function _toast(m,c){var t=document.createElement("div");t.style.cssText="position:fixed;top:68px;left:50%;transform:translateX(-50%);background:"+(c||"#333")+";color:#fff;padding:9px 20px;border-radius:22px;font-size:.82rem;font-weight:700;z-index:9999;white-space:nowrap;box-shadow:0 4px 16px rgba(0,0,0,.2);";t.textContent=m;document.body.appendChild(t);setTimeout(function(){t.remove();},2200);}\n'
+
+    // Main render function
+    + 'function _render(items){\n'
+    + '  var wrap=document.getElementById("_pdataWrap");\n'
+    + '  if(!wrap)return;\n'
+    + '  if(!items||!items.length){wrap.innerHTML="<div style=\'text-align:center;padding:30px;color:#999;\'>No data found. Sheet check karo.</div>";return;}\n'
+    + '  var cats=[];\n'
+    + '  items.forEach(function(it){var c=it.category||it.cat||it.type||"";if(c&&cats.indexOf(c)===-1)cats.push(c);});\n'
+    + '  var colCss=_cols==="list"?"display:flex;flex-direction:column;gap:10px;":"display:grid;grid-template-columns:repeat(auto-fill,minmax("+(_cols===1?"320":_cols===2?"220":"175")+"px,1fr));gap:14px;";\n'
+
+    // Search bar
+    + '  var html="";\n'
+    + (_incSearch ? '  html+=\'<div style="margin-bottom:14px;"><div style="position:relative;max-width:380px;"><input id="_srch" type="text" placeholder="\uD83D\uDD0D Search..." oninput="_searchProd(this.value)" style="width:100%;padding:10px 14px 10px 36px;border:1.5px solid rgba(0,0,0,.12);border-radius:\'+_btnBR+\';font-size:.84rem;outline:none;"><div style="position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#999;">\uD83D\uDD0D</div></div></div>\';\n' : '')
+
+    // Filter bar
+    + (_incFilter ? '  if(cats.length){html+=\'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;"><button onclick="_filterCat(\\\'all\\\',this)" class="_cBtn _active" style="background:\'+_pc+\';color:#fff;border:none;padding:7px 14px;border-radius:20px;cursor:pointer;font-size:.76rem;font-weight:700;">All</button>\'+(cats.map(function(c){return \'<button onclick="_filterCat(\\\'\'+c+\'\\\',this)" class="_cBtn" style="background:\'+_pc+\'18;color:\'+_pc+\';border:none;padding:7px 12px;border-radius:20px;cursor:pointer;font-size:.76rem;font-weight:600;">\'+c+\'</button>\';}).join(\'\'))+\'</div>\';document.head.insertAdjacentHTML("beforeend","<style>._cBtn._active{background:"+_pc+"!important;color:#fff!important;}</style>");}\n' : '')
+
+    // Items grid
+    + '  html+=\'<div style="\'+colCss+\'">\'+items.map(function(it,i){\n'
+    + '    var name2=it.name||it["item name"]||it.title||it.product||"Item "+(i+1);\n'
+    + '    var price2=_gP(it),fp=_gFP(it),disc2=_gD(it),stock2=_gS(it);\n'
+    + '    var desc2=it.description||it.desc||it.details||"";\n'
+    + '    var img2=it["image url"]||it.image||it.img||it.photo||"";\n'
+    + '    var cat2=it.category||it.cat||"";\n'
+    + '    var dur2=it.duration||it.time||"";\n'
+    + '    var veg2=_type==="menu"?_isVeg(it):null;\n'
+    + '    var avail2=stock2>0;\n'
+    + '    var nm2=name2.toLowerCase();\n'
+    + '    if(_cols==="list"){\n'
+    + '      return \'<div class="_pItem" data-cat="\'+cat2+\'" data-nm="\'+nm2+\'" style="background:\'+_surf+\';border:1.5px solid rgba(0,0,0,.07);border-radius:\'+_cardBR+\';padding:12px;display:flex;align-items:center;gap:12px;"\'+(!avail2?" opacity:0.55":"")+\'>\'+((_incImg&&img2)?\'<img src="\'+img2+\'" style="width:75px;height:75px;object-fit:cover;border-radius:8px;flex-shrink:0;" loading="lazy">\':(_incImg?\'<div style="width:75px;height:75px;background:linear-gradient(135deg,\'+_pc+\',\'+_pc2+\');border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;">\'+ (_type==="menu"?"🍽":_type==="services"?"⚡":"🛍")+\'</div>\':\'\'  ))+\'<div style="flex:1;min-width:0;"><div style="font-weight:700;font-size:.9rem;color:\'+_txtM+\';">\'+name2+\'</div>\'+  (desc2?\'<div style="font-size:.73rem;color:\'+_txtMu+\';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">\'+desc2+\'</div>\':\'\')+(dur2?\'<div style="font-size:.7rem;color:\'+_pc+\';">\u23F1 \'+dur2+\'</div>\':\'\')+\'</div><div style="text-align:right;flex-shrink:0;">\'+( disc2>0?\'<div style="font-size:.7rem;color:#DC2626;text-decoration:line-through;">\u20b9\'+price2.toFixed(0)+\'</div>\':\'\')+\'<div style="font-weight:800;font-size:1rem;color:\'+_pc+\'">\u20b9\'+fp.toFixed(0)+\'</div>\'+(avail2&&_incCart?\'<button onclick="_addCart(\\\'\'+name2+\'\\\',\'+fp+\',\'+stock2+\')" style="background:linear-gradient(135deg,\'+_pc+\',\'+_pc2+\');color:#fff;border:none;padding:6px 12px;border-radius:\'+_btnBR+\';cursor:pointer;font-size:.75rem;font-weight:700;margin-top:5px;">Add+</button>\':(!avail2?\'<div style="color:#DC2626;font-size:.7rem;font-weight:700;">Sold Out</div>\':\'\'))+\'</div></div>\';\n'
+    + '    }\n'
+    + '    return \'<div class="_pItem" data-cat="\'+cat2+\'" data-nm="\'+nm2+\'" style="background:\'+_surf+\';border:1.5px solid rgba(0,0,0,.07);border-radius:\'+_cardBR+\';overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.07);position:relative;transition:all .2s;"\'+(!avail2?" opacity:0.58":"")+\' onmouseover="this.style.transform=\\\'translateY(-3px)\\\'" onmouseout="this.style.transform=\\\'none\\\'">\'+( disc2>0?\'<div style="position:absolute;top:7px;left:7px;background:#DC2626;color:#fff;font-size:.58rem;padding:2px 7px;border-radius:10px;font-weight:700;z-index:1;">\'+disc2+\'% OFF</div>\':\'\')+(!avail2?\'<div style="position:absolute;top:7px;right:7px;background:#666;color:#fff;font-size:.58rem;padding:2px 7px;border-radius:10px;z-index:1;">Sold Out</div>\':\'\')+  (veg2!==null?\'<div style="position:absolute;top:8px;right:8px;font-size:.85rem;">\'+  (veg2?"🟢":"🔴")+\'</div>\':\'\')+(_incImg?(img2?\'<img src="\'+img2+\'" style="width:100%;height:150px;object-fit:cover;" loading="lazy" onerror="this.style.background=\\\'\'+_pc+\'22\\\'">\':(\'<div style="background:linear-gradient(135deg,\'+_pc+\'22,\'+_pc2+\'22);height:110px;display:flex;align-items:center;justify-content:center;font-size:2.2rem;">\'+ (_type==="menu"?"🍽":_type==="services"?"⚡":"🛍")+\'</div>\')):\'\')+ \'<div style="padding:11px;"><div style="font-weight:700;font-size:.87rem;color:\'+_txtM+\';font-family:\\\'\'+_headF+\'\\\',sans-serif;line-height:1.3;margin-bottom:4px;">\'+name2+\'</div>\'+(cat2?\'<span style="background:\'+_pc+\'15;color:\'+_pc+\';font-size:.58rem;padding:2px 7px;border-radius:10px;font-weight:600;">\'+cat2+\'</span>\':\'\')+(desc2?\'<div style="font-size:.72rem;color:\'+_txtMu+\';margin-top:4px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">\'+desc2+\'</div>\':\'\')+( dur2?\'<div style="font-size:.68rem;color:\'+_pc+\';margin-top:3px;">\u23F1 \'+dur2+\'</div>\':\'\')+ \'<div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">\'+( disc2>0?\'<div><div style="font-size:.68rem;color:#999;text-decoration:line-through;">\u20b9\'+price2.toFixed(0)+\'</div><div style="font-weight:800;font-size:1rem;color:\'+_pc+\'">\u20b9\'+fp.toFixed(0)+\'</div></div>\':\'<div style="font-weight:800;font-size:1rem;color:\'+_pc+\'">\u20b9\'+fp.toFixed(0)+\'</div>\')+( avail2&&_incCart?(_incQty?\'<div style="display:flex;align-items:center;gap:4px;"><button onclick="_setQty(\\\'\'+name2+\'\\\',\'+fp+\',Math.max(0,(_cart[\\\'\'+name2+\'\\\']?_cart[\\\'\'+name2+\'\\\'].qty:0)-1),\'+stock2+\')" style="background:\'+_pc+\'20;color:\'+_pc+\';border:none;width:25px;height:25px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">−</button><input type="number" min="0" max="\'+stock2+\'" value="0" id="_qin_\'+name2.replace(/\\\\s/g,"_")+\'" onchange="_setQty(\\\'\'+name2+\'\\\',\'+fp+\',this.value,\'+stock2+\')" style="width:35px;text-align:center;border:1.5px solid rgba(0,0,0,.12);border-radius:6px;font-size:.82rem;padding:2px;"><button onclick="_setQty(\\\'\'+name2+\'\\\',\'+fp+\',(_cart[\\\'\'+name2+\'\\\']?_cart[\\\'\'+name2+\'\\\'].qty:0)+1,\'+stock2+\')" style="background:linear-gradient(135deg,\'+_pc+\',\'+_pc2+\');color:#fff;border:none;width:25px;height:25px;border-radius:50%;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;">+</button></div>\':\'<button onclick="_addCart(\\\'\'+name2+\'\\\',\'+fp+\',\'+stock2+\')" style="background:linear-gradient(135deg,\'+_pc+\',\'+_pc2+\');color:#fff;border:none;padding:7px 12px;border-radius:\'+_btnBR+\';cursor:pointer;font-size:.76rem;font-weight:700;">Add+</button>\')  :(!avail2?\'\':\'\'))+\'</div></div></div>\';\n'
+    + '  }).join(""))+"</div>";\n'
+
+    // Cart sidebar
+    + '  if(_incCart){\n'
+    + '    html+=\'<div id="_cOv" onclick="_closeCart()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9989;"></div>\';\n'
+    + '    html+=\'<div id="_cSide" style="position:fixed;top:0;right:0;bottom:0;width:310px;max-width:92vw;background:#fff;z-index:9990;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1);box-shadow:-4px 0 28px rgba(0,0,0,.15);display:flex;flex-direction:column;">\';\n'
+    + '    html+=\'<div style="background:linear-gradient(135deg,\'+_pc+\',\'+_pc2+\');color:#fff;padding:15px 16px;display:flex;justify-content:space-between;align-items:center;"><div style="font-weight:800;font-size:1rem;">\uD83D\uDED2 Your Cart</div><button onclick="_closeCart()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:1rem;">\xD7</button></div>\';\n'
+    + '    html+=\'<div id="_cList" style="flex:1;overflow-y:auto;padding:14px;"></div>\';\n'
+    + '    html+=\'<div style="padding:14px;border-top:2px solid #f0f0f0;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;"><span style="font-weight:700;font-size:1rem;">Grand Total:</span><span id="_cTotal" style="font-weight:800;font-size:1.2rem;color:\'+_pc+\';">\u20b90.00</span></div>\';\n'
+    + '    html+=\'<div style="display:flex;flex-direction:column;gap:8px;">\';\n'
+    + '    if(_incWaOrd&&_bizWa) html+=\'<button onclick="_waOrder()" style="background:linear-gradient(135deg,#25d366,#128c7e);color:#fff;border:none;padding:13px;border-radius:\'+_btnBR+\';cursor:pointer;font-weight:700;font-size:.9rem;">\uD83D\uDCAC Order via WhatsApp</button>\';\n'
+    + '    if(_incUpi&&_bizUpi) html+=\'<button onclick="_upiPay()" style="background:linear-gradient(135deg,#5B21B6,#7C3AED);color:#fff;border:none;padding:13px;border-radius:\'+_btnBR+\';cursor:pointer;font-weight:700;font-size:.9rem;">\uD83D\uDCB3 Pay via UPI</button>\';\n'
+    + '    html+=\'</div></div></div>\';\n'
+    + '  }\n'
+    + '  wrap.innerHTML=html;\n'
+    + '  if(_incCart){\n'
+    + '    var floatBtn=document.createElement("button");\n'
+    + '    floatBtn.innerHTML=\'\uD83D\uDED2<div id="_cBadge" style="display:none;position:absolute;top:-4px;right:-4px;background:#DC2626;color:#fff;width:20px;height:20px;border-radius:50%;font-size:.65rem;font-weight:800;align-items:center;justify-content:center;">0</div>\';\n'
+    + '    floatBtn.style.cssText="position:fixed;bottom:80px;right:16px;z-index:988;background:linear-gradient(135deg,"+_pc+","+_pc2+");color:#fff;width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;font-size:1.5rem;box-shadow:0 4px 18px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;";\n'
+    + '    floatBtn.onclick=_openCart;\n'
+    + '    document.body.appendChild(floatBtn);\n'
+    + '  }\n'
+    + '}\n'
+
+    // Fetch and render
+    + 'fetch(_csvUrl+"&t="+Date.now())\n'
+    + '  .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.text();})\n'
+    + '  .then(function(t){_render(_pCsv(t));})\n'
+    + '  .catch(function(e){'
+    + '    var w=document.getElementById("_pdataWrap");'
+    + '    if(w)w.innerHTML="<div style=\'text-align:center;padding:24px;color:#DC2626;\'>\u26A0\uFE0F Sheet load failed: "+e.message+".<br><small>Sheet publicly published hai? (File \u2192 Share \u2192 Publish to web)</small></div>";'
+    + '  });\n'
+    + '})();\n'
+    + '\u003c/script>\n';
+
+  return script;
+}
+
+// ================================================================
+// UPDATE _enhanceGeneratedSite to include product data sheet
+// ================================================================
+async function _enhanceGeneratedSite() {
+  if(typeof previewHTML === 'undefined' || !previewHTML) return;
+
+  var blogSheetUrl  = (document.getElementById('wb-blog-sheet')  ||{value:''}).value;
+  var promoSheetUrl = (document.getElementById('wb-promo-sheet') ||{value:''}).value;
+  var pdataSheetUrl = (document.getElementById('wb-pdata-sheet') ||{value:''}).value;
+  var pdataType     = (document.getElementById('wb-pdata-type')  ||{value:'products'}).value;
+  var pdataCols     = (document.getElementById('wb-pdata-cols')  ||{value:'3'}).value;
+  var pdataMaxRows  = (document.getElementById('wb-pdata-maxrows')||{value:'12'}).value;
+  var pdataCart     = (document.getElementById('wb-pdata-cart')  ||{checked:true}).checked;
+  var pdataQty      = (document.getElementById('wb-pdata-qty')   ||{checked:true}).checked;
+  var pdataTotal    = (document.getElementById('wb-pdata-total') ||{checked:true}).checked;
+  var pdataWaOrd    = (document.getElementById('wb-pdata-wa-order')||{checked:true}).checked;
+  var pdataUpiPay   = (document.getElementById('wb-pdata-upi-pay')||{checked:false}).checked;
+  var pdataSearch   = (document.getElementById('wb-pdata-search')||{checked:true}).checked;
+  var pdataFilter   = (document.getElementById('wb-pdata-filter')||{checked:true}).checked;
+  var pdataImg      = (document.getElementById('wb-pdata-img')   ||{checked:true}).checked;
+
+  var promoPos      = (document.getElementById('wb-promo-pos')   ||{value:'popup'}).value;
+  var promoDelay    = (document.getElementById('wb-promo-delay') ||{value:'3'}).value;
+  var promoWa       = (document.getElementById('wb-promo-wa')    ||{checked:true}).checked;
+  var siteApiKey    = (document.getElementById('wb-site-api-key')||{value:''}).value;
+  var aiContact     = (document.getElementById('wb-ai-contact')  ||{checked:false}).checked;
+  var aiChat        = (document.getElementById('wb-ai-chat')     ||{checked:false}).checked;
+  var aiFaq         = (document.getElementById('wb-ai-faq')      ||{checked:false}).checked;
+  var aiQuote       = (document.getElementById('wb-ai-quote')    ||{checked:false}).checked;
+
+  var b = getBizData();
+  var T = WB_TEMPLATES[wbCurrentTmpl] || WB_TEMPLATES.vibrant;
+  var pc  = S.websiteColor  || T.c1;
+  var pc2 = S.websiteColor2 || T.c2;
+  var btnBR   = (document.getElementById('wb-btn-radius')   ||{value:'9'}).value+'px';
+  var cardBR  = (document.getElementById('wb-border-radius')||{value:'12'}).value+'px';
+  var headFont= (document.getElementById('wb-font-head')    ||{value:'Syne'}).value;
+  var bodyFont= (document.getElementById('wb-font-body')    ||{value:'DM Sans'}).value;
+  var shadow  = wbGetShadow((document.getElementById('wb-shadow')||{value:'md'}).value, pc);
+  var surf    = T.surfBg;
+  var txtMain = T.txtMain;
+  var txtMuted= T.txtMuted;
+  var dark    = T.dark;
+
+  var extras = '';
+
+  // 1. Product/Service/Menu live sheet section
+  if(pdataSheetUrl) {
+    var csvUrl = gsUrlToCsv(pdataSheetUrl);
+    // Add container in HTML + script to fetch & render
+    var pdataSection = '\n<section style="padding:50px 20px;background:'+(dark?'rgba(255,255,255,.03)':surf)+';" id="products-section">'
+      + '<div style="max-width:1100px;margin:0 auto;">'
+      + '<h2 style="font-size:1.7rem;font-weight:800;margin-bottom:8px;font-family:\''+headFont+'\',sans-serif;color:'+txtMain+';">'
+      + (pdataType==='menu'?'🍽 Our Menu':pdataType==='services'?'⚡ Our Services':pdataType==='portfolio-items'?'🎨 Portfolio':'🛍 Our Products')
+      + '</h2>'
+      + '<div style="width:50px;height:3px;background:linear-gradient(90deg,'+pc+','+pc2+');margin-bottom:20px;border-radius:3px;"></div>'
+      + '<div id="_pdataWrap">'
+      + '<div style="display:flex;align-items:center;gap:10px;padding:20px;color:'+txtMuted+';">'
+      + '<div style="width:18px;height:18px;border:2px solid '+pc+';border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite;flex-shrink:0;"></div>'
+      + '<span>Google Sheet se data load ho raha hai...</span>'
+      + '</div></div>'
+      + '</div></section>';
+
+    var pdataScript = buildLiveSheetLoaderScript({
+      sheetUrl: pdataSheetUrl,
+      type: pdataType,
+      maxRows: parseInt(pdataMaxRows)||12,
+      cols: pdataCols,
+      pc: pc, pc2: pc2,
+      surf: surf, txtMain: txtMain, txtMuted: txtMuted,
+      headFont: headFont, bodyFont: bodyFont,
+      cardBR: cardBR, btnBR: btnBR, shadow: shadow,
+      bizWa: b.wa, bizName: b.name, bizUpi: b.upiId,
+      incCart: pdataCart, incQty: pdataQty,
+      incTotal: pdataTotal, incWaOrd: pdataWaOrd,
+      incUpi: pdataUpiPay, incSearch: pdataSearch,
+      incFilter: pdataFilter, incImg: pdataImg,
+      dark: dark
+    });
+
+    // Insert before contact section or before </footer>
+    if(previewHTML.includes('id="contact"')) {
+      previewHTML = previewHTML.replace('id="contact"', pdataSection+'\n<section id="contact"');
+    } else {
+      previewHTML = previewHTML.replace('</footer>', pdataSection+'\n</footer>');
+    }
+    extras += pdataScript;
+  }
+
+  // 2. Blog from Google Sheet
+  if(blogSheetUrl) {
+    var bCsvUrl = gsUrlToCsv(blogSheetUrl);
+    var blogMaxRows = parseInt((document.getElementById('wb-blog-maxrows')||{value:'6'}).value)||6;
+    var blogLines = [
+      '\u003cscript>',
+      '(function(){',
+      'var _bUrl="'+bCsvUrl+'";',
+      'fetch(_bUrl+"&t="+Date.now()).then(function(r){return r.text();})',
+      '.then(function(t){',
+      '  var rows=t.trim().split("\\n");',
+      '  var h=(rows[0]||"").split(",").map(function(x){return x.replace(/"/g,"").toLowerCase().trim();});',
+      '  var posts=[];',
+      '  for(var i=1;i<Math.min(rows.length,'+blogMaxRows+'+1);i++){',
+      '    var cs=rows[i].split(",").map(function(x){return x.replace(/"/g,"").trim();});',
+      '    var obj={};h.forEach(function(k,j){obj[k]=cs[j]||"";});posts.push(obj);',
+      '  }',
+      '  if(!posts.length)return;',
+      '  var wrap=document.createElement("section");',
+      '  wrap.id="blog-live";',
+      '  wrap.style.cssText="padding:50px 20px;background:'+surf+';";',
+      '  var html="<h2 style=\\"font-size:1.6rem;font-weight:800;margin-bottom:24px;font-family:Syne,sans-serif;color:'+txtMain+';text-align:center;\\">\\u{1F4F0} Latest Updates</h2>";',
+      '  html+="<div style=\\"display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;max-width:960px;margin:0 auto;\\">";',
+      '  posts.forEach(function(p){',
+      '    var img2=p["image url"]||p.image||"";',
+      '    var t2=p.title||p.headline||"";',
+      '    var b2=p.content||p.description||p.body||"";',
+      '    var d2=p.date||"";',
+      '    var c2=p.category||"";',
+      '    html+="<div style=\\"background:#fff;border:1.5px solid rgba(0,0,0,.08);border-radius:'+cardBR+';overflow:hidden;box-shadow:'+shadow+';transition:all .2s;\\" onmouseover=\\"this.style.transform=\'translateY(-3px)\'\\" onmouseout=\\"this.style.transform=\'none\'\\">";',
+      '    if(img2)html+="<img src=\'"+img2+"\' style=\\"width:100%;height:140px;object-fit:cover;\\" loading=\\"lazy\\">";',
+      '    else html+="<div style=\\"background:linear-gradient(135deg,'+pc+','+pc2+');height:100px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;\\">\u{1F4F0}</div>";',
+      '    html+="<div style=\\"padding:13px;\\">";',
+      '    if(c2)html+="<span style=\\"background:'+pc+'18;color:'+pc+';font-size:.6rem;padding:2px 7px;border-radius:10px;font-weight:600;\\">"+c2+"</span>";',
+      '    html+="<h3 style=\\"font-size:.9rem;font-weight:700;color:'+txtMain+';margin:7px 0 5px;line-height:1.3;\\">"+t2+"</h3>";',
+      '    html+="<p style=\\"font-size:.76rem;color:'+txtMuted+';line-height:1.6;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;\\">"+b2+"</p>";',
+      '    if(d2)html+="<span style=\\"font-size:.62rem;color:'+txtMuted+';\\">\\u{1F4C5} "+d2+"</span>";',
+      '    html+="</div></div>";',
+      '  });',
+      '  html+="</div>";',
+      '  wrap.innerHTML=html;',
+      '  var ftr=document.querySelector("footer");',
+      '  if(ftr)ftr.parentNode.insertBefore(wrap,ftr);',
+      '}).catch(function(){});',
+      '})();',
+      '\u003c/script>'
+    ];
+    var blogScript = blogLines.join('\n');
+    extras += blogScript;
+  }
+
+  // 3. Promo popup
+  if(promoSheetUrl) {
+    extras += buildPromoScript({
+      sheetUrl: promoSheetUrl, position: promoPos,
+      delay: promoDelay, addWa: promoWa,
+      bizWa: b.wa, bizName: b.name,
+      pc: pc, pc2: pc2, btnBR: btnBR
+    });
+  }
+
+  // 4. AI features
+  if(siteApiKey || aiContact || aiChat || aiFaq || aiQuote) {
+    extras += buildSiteAiFeatures({
+      apiKey: siteApiKey, aiContact: aiContact,
+      aiChat: aiChat, aiFaq: aiFaq, aiQuote: aiQuote,
+      bizName: b.name, bizType: b.type,
+      pc: pc, pc2: pc2, surf: surf,
+      txtMain: txtMain, btnBR: btnBR
+    });
+  }
+
+  if(extras) {
+    previewHTML = previewHTML.replace('</body>', extras+'\n</body>');
+    var frame = document.getElementById('previewFrame');
+    if(frame) frame.srcdoc = previewHTML;
+  }
 }
 
 // ── TOAST ──
