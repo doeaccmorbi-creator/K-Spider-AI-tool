@@ -90,6 +90,26 @@ body{
 }
 @supports (height: 100dvh) { body { height: 100dvh; } }
 
+
+
+@media(min-width:600px){
+  #provider-badge{ display:inline !important; }
+}
+/* ── App desktop wrap (mobile: block, desktop: flex row) ── */
+#app-desktop-wrap{
+  display:flex;
+  flex-direction:column;
+  flex:1;
+  min-height:0;
+  overflow:hidden;
+}
+@media(min-width:1024px){
+  #app-desktop-wrap{
+    flex-direction:row;
+    height:calc(100vh - var(--hh));
+  }
+}
+
 /* animated grid bg */
 body::before{
   content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
@@ -950,6 +970,203 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 :root[data-theme="light"] .chip{background:rgba(0,130,180,.08);border-color:rgba(0,130,180,.3);}
 
 /* ── Responsive: ensure all screens work ── */
+
+/* ════════════════════════════════════════════
+   WORLD-CLASS NEW FEATURES CSS
+════════════════════════════════════════════ */
+
+/* ── Desktop Sidebar Toggle ── */
+#sidebar-toggle{
+  display:none;
+  position:fixed;
+  top:calc(var(--hh) + 8px);
+  left:8px;
+  z-index:300;
+  width:32px;height:32px;
+  background:var(--card);
+  border:1px solid var(--b);
+  border-radius:8px;
+  color:var(--cy);
+  font-size:14px;
+  cursor:pointer;
+  align-items:center;
+  justify-content:center;
+  transition:all .2s;
+}
+@media(min-width:1024px){
+  #sidebar-toggle{ display:flex; }
+  body.sidebar-collapsed #nav{ flex:0 0 52px; width:52px; }
+  body.sidebar-collapsed #nav .tbtn{ justify-content:center; padding:0; }
+  body.sidebar-collapsed #nav .tbtn span:not(.ti){ display:none; }
+  body.sidebar-collapsed #nav::after{ display:none; }
+  body.sidebar-collapsed #site-footer{ left:52px; }
+}
+
+/* ── Chat action buttons ── */
+#chat-actions{
+  display:flex;gap:6px;padding:4px 12px;flex-shrink:0;
+  border-bottom:1px solid var(--b);
+}
+.chat-act-btn{
+  padding:4px 10px;
+  background:var(--card);
+  border:1px solid var(--b);
+  border-radius:7px;
+  color:var(--tx2);
+  font-size:10px;
+  font-family:var(--fh);
+  cursor:pointer;
+  transition:all .2s;
+  letter-spacing:.04em;
+}
+.chat-act-btn:hover{ border-color:var(--cy); color:var(--cy); }
+
+/* ── Auto-scroll toggle ── */
+#autoscroll-btn{ color:var(--gr); border-color:rgba(0,232,150,.3); }
+#autoscroll-btn.off{ color:var(--mu); border-color:var(--b); }
+
+/* ── Session timer in header ── */
+#session-timer{
+  font-family:var(--fh);
+  font-size:9px;
+  color:var(--mu);
+  letter-spacing:.08em;
+  display:none;
+}
+@media(min-width:600px){ #session-timer{ display:inline; } }
+
+/* ── Voice quick controls ── */
+#voice-quick-ctrl{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 14px;
+  background:var(--panel);
+  border-bottom:1px solid var(--b);
+  flex-shrink:0;
+  overflow-x:auto;
+  scrollbar-width:none;
+}
+#voice-quick-ctrl::-webkit-scrollbar{ display:none; }
+.vqc-item{
+  display:flex;align-items:center;gap:5px;flex-shrink:0;
+}
+.vqc-label{
+  font-size:9px;color:var(--mu);font-family:var(--fh);letter-spacing:.06em;white-space:nowrap;
+}
+.vqc-slider{
+  width:70px;height:3px;accent-color:var(--cy);cursor:pointer;
+}
+.vqc-val{
+  font-size:10px;color:var(--cy);font-family:var(--fh);min-width:22px;
+}
+.vqc-btn{
+  padding:3px 9px;background:var(--card);border:1px solid var(--b);
+  border-radius:6px;color:var(--tx2);font-size:10px;cursor:pointer;
+  font-family:var(--fh);transition:all .2s;white-space:nowrap;
+}
+.vqc-btn:hover,.vqc-btn.on{ border-color:var(--cy);color:var(--cy); }
+
+/* ── Share button ── */
+#native-share-btn{
+  padding:4px 10px;
+  background:rgba(0,232,150,.08);
+  border:1px solid var(--gr);
+  border-radius:7px;
+  color:var(--gr);
+  font-size:10px;
+  font-family:var(--fh);
+  cursor:pointer;
+}
+
+/* ── Desktop tooltip ── */
+@media(min-width:1024px){
+  [title]:hover::after{
+    content:attr(title);
+    position:absolute;
+    bottom:calc(100% + 6px);
+    left:50%;
+    transform:translateX(-50%);
+    background:var(--panel);
+    border:1px solid var(--b);
+    color:var(--tx2);
+    font-size:10px;
+    padding:3px 8px;
+    border-radius:5px;
+    white-space:nowrap;
+    font-family:var(--fh);
+    pointer-events:none;
+    z-index:9999;
+  }
+  .hdr-btn{ position:relative; }
+}
+
+/* ── Improved message bubbles for desktop ── */
+@media(min-width:1024px){
+  .msg{ max-width:60%; }
+  .mbbl{
+    font-size:14px;
+    line-height:1.75;
+    padding:11px 15px;
+  }
+  .msg-react{ opacity:1; }
+}
+
+/* ── Gen page two-col on desktop ── */
+@media(min-width:1024px){
+  #gen-two-col-wrap{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    align-items:start;
+  }
+  #gen-left-col,#gen-right-col{ display:flex;flex-direction:column;gap:14px; }
+}
+
+/* ── Stats page enhanced for desktop ── */
+@media(min-width:1024px){
+  #stats-two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+  }
+}
+
+/* ── Config page two-col for desktop ── */
+@media(min-width:1024px){
+  #cfg-two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    align-items:start;
+  }
+}
+
+/* ── Smooth page transitions ── */
+.pg{ transition:opacity .15s ease; }
+.pg.on{ animation:pgFadeIn .2s ease; }
+@keyframes pgFadeIn{
+  from{ opacity:0; transform:translateY(4px); }
+  to{ opacity:1; transform:translateY(0); }
+}
+
+/* ── Better focus states for accessibility ── */
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible{
+  outline:2px solid var(--cy);
+  outline-offset:2px;
+}
+
+/* ── Print styles ── */
+@media print{
+  #hdr,#nav,#input-bar,#fab-wrap,#site-footer,#voice-quick-ctrl,#chat-actions{ display:none !important; }
+  body{ background:#fff; color:#000; }
+  #chat-area{ overflow:visible; height:auto; }
+  .msg{ page-break-inside:avoid; }
+}
+
 /* ── SMALL phones (≤360px) ── */
 @media(max-width:360px){
   :root{--hh:46px;--nh:40px;}
@@ -966,7 +1183,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 }
 
 /* ── Tablets (481–768px) ── */
-@media(min-width:481px) and (max-width:768px){
+@media(min-width:481px) and (max-width:599px){
   body{max-width:540px;margin:0 auto;}
   #site-footer{max-width:540px;left:50%;transform:translateX(-50%) translateY(calc(100% - 42px));}
   #site-footer.drawer-open{transform:translateX(-50%) translateY(0);}
@@ -974,12 +1191,203 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 }
 
 /* ── Desktop (>768px) ── */
-@media(min-width:769px){
-  body{max-width:480px;margin:0 auto;border-left:1px solid var(--b);border-right:1px solid var(--b);}
-  #site-footer{max-width:480px;left:50%;transform:translateX(-50%) translateY(calc(100% - 42px));}
-  #site-footer.drawer-open{transform:translateX(-50%) translateY(0);}
-  #footer-backdrop{background:rgba(0,0,0,.3);}
-  .fpanel{font-size:13px;}
+/* ═══════════════════════════════════════
+   TABLET (600px – 1023px)
+═══════════════════════════════════════ */
+@media(min-width:600px) and (max-width:1023px){
+  body{ max-width:680px; margin:0 auto; }
+  #hdr{ padding:0 20px; }
+  .brand-txt{ font-size:22px; }
+  .tbtn{ font-size:11px; min-width:80px; }
+  .card{ padding:16px; }
+  .mgrid{ grid-template-columns:repeat(3,1fr); }
+  .agrid{ grid-template-columns:repeat(3,1fr); }
+  .msg{ max-width:75%; }
+  #site-footer{ max-width:680px; left:50%; transform:translateX(-50%) translateY(calc(100% - 42px)); }
+  #site-footer.drawer-open{ transform:translateX(-50%) translateY(0); }
+}
+
+/* ═══════════════════════════════════════
+   DESKTOP (≥1024px) — FULL 2-COLUMN LAYOUT
+═══════════════════════════════════════ */
+@media(min-width:1024px){
+  :root{
+    --hh:60px;
+    --nh:50px;
+    --sidebar:220px;
+  }
+
+  /* Body fills viewport */
+  body{
+    max-width:100%;
+    margin:0;
+    border:none;
+    overflow:hidden;
+  }
+
+  /* Header full width, bigger */
+  #hdr{
+    padding:0 28px;
+    border-radius:0;
+  }
+  .brand-ico{ width:40px;height:40px;font-size:22px; }
+  .brand-txt{ font-size:24px; }
+  .brand-badge{ font-size:10px;padding:3px 9px; }
+  .hdr-btn{ width:36px;height:36px;font-size:16px; }
+  #hst{ font-size:11px; }
+
+  /* Desktop layout: sidebar + content side by side */
+  #app-desktop-wrap{
+    display:flex;
+    width:100%;
+    height:calc(100vh - var(--hh));
+    overflow:hidden;
+  }
+
+  /* LEFT SIDEBAR NAV */
+  #nav{
+    flex:0 0 var(--sidebar);
+    width:var(--sidebar);
+    height:100%;
+    flex-direction:column;
+    overflow-y:auto;
+    overflow-x:hidden;
+    border-bottom:none;
+    border-right:1px solid var(--b);
+    padding:12px 8px;
+    gap:4px;
+    align-items:stretch;
+  }
+  .tbtn{
+    width:100%;
+    height:48px;
+    min-width:unset;
+    border-radius:10px;
+    justify-content:flex-start;
+    padding:0 14px;
+    gap:10px;
+    font-size:11px;
+    flex:0 0 48px;
+    border-bottom:none !important;
+    border-left:3px solid transparent;
+    margin-bottom:2px;
+  }
+  .tbtn.on{
+    background:rgba(0,212,255,.1) !important;
+    border-left:3px solid var(--cy) !important;
+    border-bottom:none !important;
+  }
+  .tbtn:hover{
+    background:rgba(0,212,255,.06);
+    border-left:3px solid rgba(0,212,255,.4);
+  }
+  .tbtn .ti{ font-size:18px; flex-shrink:0; }
+
+  /* Sidebar footer info */
+  #nav::after{
+    content:'K Spider AI\A www.kspiderai.in';
+    white-space:pre;
+    display:block;
+    margin-top:auto;
+    padding:12px 14px;
+    font-size:9px;
+    color:var(--mu);
+    font-family:var(--fh);
+    letter-spacing:.08em;
+    border-top:1px solid var(--b);
+    line-height:1.8;
+  }
+
+  /* MAIN CONTENT AREA */
+  #wrap{
+    flex:1;
+    min-width:0;
+    height:100%;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+  }
+
+  /* Pages get more space */
+  .pg.on{ display:flex; }
+  .pscroll{ padding:20px 24px; gap:16px; }
+
+  /* Chat area wider */
+  #chat-area{ padding:16px 20px; }
+  .msg{ max-width:65%; }
+  .mbbl{ font-size:14px; }
+
+  /* Cards wider */
+  .card{ padding:18px 20px; }
+  .ctitle{ font-size:11px; }
+
+  /* Stats grid 4 columns */
+  .mgrid{ grid-template-columns:repeat(4,1fr); gap:12px; }
+  .mcard{ padding:16px; }
+  .mval{ font-size:32px; }
+
+  /* Agents grid 4 columns */
+  .agrid{ grid-template-columns:repeat(4,1fr); }
+
+  /* Input bar bigger */
+  #input-bar{ padding:14px 20px; gap:12px; }
+  #txtin{ font-size:14px; padding:12px 16px; }
+
+  /* Footer drawer - full bottom */
+  #site-footer{
+    max-width:calc(100% - var(--sidebar));
+    left:var(--sidebar);
+    right:0;
+    transform:translateY(calc(100% - 42px));
+    border-radius:12px 12px 0 0;
+  }
+  #site-footer.drawer-open{ transform:translateY(0); }
+  #footer-backdrop{ display:none !important; }
+  .fpanel{ font-size:13px; max-height:50vh; }
+  .footer-tabs .ftab{ font-size:11px; padding:10px; }
+
+  /* FAB position */
+  #fab-wrap{ bottom:60px; right:24px; }
+
+  /* Waveform bigger */
+  #waveform-bar{ height:50px; }
+
+  /* Generate page 2-column on large screens */
+  .gen-two-col{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:16px;
+    align-items:start;
+  }
+  .gen-two-col > .card{ height:100%; }
+
+  /* Config page wider inputs */
+  .lsel{ font-size:14px; padding:10px 14px; }
+
+  /* Keyboard shortcuts modal wider */
+  #kb-box{ max-width:500px; }
+
+  /* Scrollbar styling for desktop */
+  ::-webkit-scrollbar{ width:5px; height:5px; }
+  ::-webkit-scrollbar-track{ background:var(--bg); }
+  ::-webkit-scrollbar-thumb{ background:var(--b); border-radius:3px; }
+  ::-webkit-scrollbar-thumb:hover{ background:var(--bh); }
+
+  /* Provider badge bigger */
+  #proxy-status-badge{ font-size:12px; padding:5px 14px; }
+}
+
+/* ═══════════════════════════════════════
+   LARGE DESKTOP (≥1440px)
+═══════════════════════════════════════ */
+@media(min-width:1440px){
+  :root{ --sidebar:260px; }
+  .tbtn{ font-size:12px; height:52px; }
+  .pscroll{ padding:24px 32px; }
+  .mgrid{ grid-template-columns:repeat(4,1fr); gap:16px; }
+  .agrid{ grid-template-columns:repeat(4,1fr); }
+  .msg{ max-width:60%; }
+  .mbbl{ font-size:15px; line-height:1.7; }
 }
 
 /* ── Landscape phones ── */
@@ -1007,10 +1415,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
   .mgrid{grid-template-columns:repeat(4,1fr)}
   .msg{max-width:70%}
 }
-@media(min-width:768px){
-  #wrap{flex-direction:row}
-  .pg{height:100%}
-}
+/* 768px handled by full responsive system above */
 </style>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"HowTo","name":"How to Use VOXAI Pro AI Voice Agent","description":"Step-by-step guide to use VOXAI Pro free AI voice agent for Hindi, Gujarati and English.","step":[{"@type":"HowToStep","name":"Open VOXAI Pro","text":"Visit www.kspiderai.in and open VOXAI Pro tool."},{"@type":"HowToStep","name":"Choose Language","text":"Select your preferred language — Hindi, Gujarati, English or any of 20+ Indian languages."},{"@type":"HowToStep","name":"Start Voice Chat","text":"Tap the microphone button and speak, or type your message in the text box."},{"@type":"HowToStep","name":"Get AI Response","text":"The AI responds in your chosen language with voice output automatically."},{"@type":"HowToStep","name":"Generate Content","text":"Switch to Generate tab to create emails, stories, social posts and more using AI."}]}</script>
 <!-- ── GOOGLE ANALYTICS ── -->
@@ -1124,6 +1529,9 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
     <div class="kb-row"><span>Search chat</span><span class="kb-key">Ctrl+F</span></div>
     <div class="kb-row"><span>Summarize</span><span class="kb-key">Ctrl+S</span></div>
     <div class="kb-row"><span>Export chat</span><span class="kb-key">Ctrl+E</span></div>
+    <div class="kb-row"><span>Copy all chat</span><span class="kb-key">Ctrl+A</span></div>
+    <div class="kb-row"><span>Share tool</span><span class="kb-key">Ctrl+Shift+S</span></div>
+    <div class="kb-row"><span>Toggle sidebar</span><span class="kb-key">Ctrl+B</span></div>
     <div class="kb-row"><span>Switch tab</span><span class="kb-key">Ctrl+1-5</span></div>
     <div class="kb-row"><span>Close modal</span><span class="kb-key">Esc</span></div>
     <button onclick="toggleKB()" style="margin-top:14px;width:100%;padding:9px;background:var(--cy);color:#000;border:none;border-radius:8px;font-family:var(--fh);cursor:pointer;font-weight:700;">Close</button>
@@ -1169,7 +1577,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
     <div class="brand-badge">PRO 2.0</div>
   </div>
   <div class="hdr-mid">
-    <div class="spill"><div class="sdot"></div><span id="hst">ONLINE</span></div>
+    <div class="spill"><div class="sdot"></div><span id="hst">SETUP</span></div>
+    <span id="provider-badge" style="display:none;font-size:9px;font-family:var(--fh);color:var(--mu);letter-spacing:.05em;padding:0 6px"></span>
     <div class="cpill" id="cpill">📞 <span id="cdurh">0:00</span></div>
   </div>
   <div class="hdr-btns">
@@ -1181,6 +1590,12 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
   </div>
 </header>
 
+<!-- Desktop sidebar toggle -->
+<button id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle Sidebar">◀</button>
+
+<!-- ════════ APP WRAP (desktop: flex row) ════════ -->
+<div id="app-desktop-wrap">
+
 <!-- ════════ TAB NAV ════════ -->
 <nav id="nav">
   <button class="tbtn on" onclick="goTab(this,'voice')"><span class="ti">🎙️</span>VOICE</button>
@@ -1188,6 +1603,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
   <button class="tbtn" onclick="goTab(this,'gen')"><span class="ti">✨</span>GENERATE</button>
   <button class="tbtn" onclick="goTab(this,'stats')"><span class="ti">📊</span>STATS</button>
   <button class="tbtn" onclick="goTab(this,'cfg')"><span class="ti">⚙️</span>CONFIG</button>
+  <button class="tbtn" onclick="goTab(this,'hist')"><span class="ti">🗂️</span>HISTORY</button>
 </nav>
 
 <!-- ════════ MAIN CONTENT ════════ -->
@@ -1199,6 +1615,15 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
     <input id="chat-search-input" type="search" placeholder="🔍 Messages search karo..." oninput="searchChat(this.value)" autocomplete="off">
     <button onclick="toggleSearch()" style="background:none;border:none;color:var(--mu);font-size:16px;cursor:pointer;">✕</button>
   </div>
+  <!-- Chat action bar -->
+  <div id="chat-actions">
+    <button class="chat-act-btn" onclick="summarizeChat()" title="AI Summary">📋 Summary</button>
+    <button class="chat-act-btn" onclick="exportChatHTML()" title="Export HTML">📄 Export</button>
+    <button class="chat-act-btn" id="autoscroll-btn" onclick="toggleAutoScroll()" title="Auto Scroll">⬇ Auto</button>
+    <button class="chat-act-btn" onclick="copyAllChat()" title="Copy All">📋 Copy All</button>
+    <button class="native-share-btn chat-act-btn" id="native-share-btn" onclick="nativeShare()" title="Share">📤 Share</button>
+  </div>
+
   <div id="chat-area">
       <div id="welcome">
         <div class="w-orb">🎙️</div>
@@ -1733,7 +2158,42 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
     </div>
   </div>
 
+  <!-- ── PAGE: HISTORY ── -->
+  <div class="pg" id="pg-hist">
+    <div class="pscroll">
+
+      <div class="card">
+        <div class="ctitle">🗂️ Chat History</div>
+        <p style="font-size:12px;color:var(--mu);margin-bottom:12px">Aapki recent AI conversations (is device pe saved)</p>
+        <div id="history-list">
+          <div style="text-align:center;padding:24px;color:var(--mu);font-size:12px">
+            ⏳ Loading history...
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">📊 Usage Statistics</div>
+        <div class="mgrid" style="margin-bottom:12px">
+          <div class="mcard"><div class="mval" id="h-total-sessions">0</div><div class="mlbl">Sessions</div></div>
+          <div class="mcard"><div class="mval" id="h-total-msgs">0</div><div class="mlbl">Total Msgs</div></div>
+          <div class="mcard"><div class="mval" id="h-fav-agent">Nova</div><div class="mlbl">Fav Agent</div></div>
+          <div class="mcard"><div class="mval" id="h-streak">1</div><div class="mlbl">Day Streak</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="ctitle">💡 Quick Notes</div>
+        <textarea class="gtx" id="user-notes" style="min-height:100px" placeholder="Apne notes yahan likho... (auto-saved)"></textarea>
+        <button class="btn cy" onclick="saveNotes()" style="margin-top:8px">💾 Save Notes</button>
+      </div>
+
+    </div>
+  </div>
+
 </div><!-- /#wrap -->
+
+</div><!-- /#app-desktop-wrap -->
 
 <script>
 
@@ -3211,10 +3671,13 @@ document.addEventListener('keydown', e => {
     if(e.key==='f'){e.preventDefault();toggleSearch();}
     if(e.key==='s'&&!e.shiftKey){e.preventDefault();summarizeChat();}
     if(e.key==='e'){e.preventDefault();exportChat();}
+    if(e.key==='b'){e.preventDefault();toggleSidebar();}
+    if(e.key==='S'&&e.shiftKey){e.preventDefault();nativeShare();}
+    if(e.key==='a'&&!e.shiftKey){e.preventDefault();copyAllChat();}
     if(e.key==='/'||e.key==='k'){e.preventDefault();toggleKB();}
     if(e.key>='1'&&e.key<='5'){
       e.preventDefault();
-      const pgs=['pg-voice','pg-call','pg-gen','pg-stats','pg-cfg'];
+      const pgs=['pg-voice','pg-call','pg-gen','pg-stats','pg-cfg','pg-hist'];
       goTab(pgs[+e.key-1]);
     }
   }
@@ -3817,6 +4280,298 @@ self.addEventListener('fetch',e=>e.respondWith(
 }
 
 window.addEventListener('load',()=>{setTimeout(checkAPIStatus,1500);});
+</script>
+<script>
+// ════════════════════════════════════════════
+//  WORLD-CLASS NEW FEATURES JS
+// ════════════════════════════════════════════
+
+// ── Desktop Sidebar Toggle ──
+let sidebarCollapsed = false;
+function toggleSidebar(){
+  sidebarCollapsed = !sidebarCollapsed;
+  document.body.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+  const btn = document.getElementById('sidebar-toggle');
+  if(btn) btn.textContent = sidebarCollapsed ? '▶' : '◀';
+  localStorage.setItem('ks_sidebar', sidebarCollapsed ? '1' : '0');
+}
+
+// ── Auto-scroll ──
+let autoScrollEnabled = true;
+function toggleAutoScroll(){
+  autoScrollEnabled = !autoScrollEnabled;
+  const btn = document.getElementById('autoscroll-btn');
+  if(btn) btn.classList.toggle('off', !autoScrollEnabled);
+  toast(autoScrollEnabled ? '⬇ Auto-scroll ON' : '⬇ Auto-scroll OFF');
+  haptic('light');
+}
+// Override scrollC to respect toggle
+const _origScrollC = scrollC;
+function scrollC(){
+  if(autoScrollEnabled) try{ _origScrollC(); }catch(e){}
+}
+
+// ── Voice Quick Controls ──
+function vqcSpeedChange(val){
+  ttsRate = parseFloat(val);
+  const el = document.getElementById('vqc-speed-val');
+  if(el) el.textContent = parseFloat(val).toFixed(1) + 'x';
+  // Also sync with TTS sliders if they exist
+  const ttsRateEl = document.getElementById('tts-rate');
+  if(ttsRateEl){ ttsRateEl.value = val; upd('ss-rate', parseFloat(val).toFixed(1)); }
+}
+function vqcPitchChange(val){
+  ttsPitch = parseFloat(val);
+  const el = document.getElementById('vqc-pitch-val');
+  if(el) el.textContent = parseFloat(val).toFixed(1) + 'x';
+  const ttsPitchEl = document.getElementById('tts-pitch');
+  if(ttsPitchEl){ ttsPitchEl.value = val; upd('ss-pitch', parseFloat(val).toFixed(1)); }
+}
+function toggleAutoSpk(){
+  autoSpeak = !autoSpeak;
+  const btn = document.getElementById('vqc-auto');
+  if(btn) btn.classList.toggle('on', autoSpeak);
+  if(btn) btn.textContent = autoSpeak ? '🔊 Auto' : '🔇 Auto';
+  toast(autoSpeak ? '🔊 Auto-speak ON' : '🔇 Auto-speak OFF');
+  haptic('light');
+}
+
+// ── Session Timer ──
+let sessionStart = Date.now();
+let sessionTimerInterval = null;
+function startSessionTimer(){
+  sessionTimerInterval = setInterval(()=>{
+    const el = document.getElementById('session-timer');
+    if(!el) return;
+    const secs = Math.floor((Date.now() - sessionStart) / 1000);
+    const m = Math.floor(secs/60).toString().padStart(2,'0');
+    const s = (secs%60).toString().padStart(2,'0');
+    el.textContent = m + ':' + s;
+  }, 1000);
+}
+
+// ── Copy All Chat ──
+function copyAllChat(){
+  const msgs = document.querySelectorAll('#msglist .msg');
+  if(!msgs.length){ toast('⚠️ Chat empty hai'); return; }
+  const lines = Array.from(msgs).map(m => {
+    const isAI = m.classList.contains('ai');
+    const body = m.querySelector('.mbbl');
+    const txt = body ? body.textContent : m.textContent;
+    return (isAI ? '🤖 AI: ' : '👤 Aap: ') + txt.trim();
+  });
+  const text = lines.join('\n\n') + '\n\n— VOXAI Pro | www.kspiderai.in';
+  navigator.clipboard.writeText(text)
+    .then(()=>{ toast('📋 Poori chat copied!'); haptic('success'); })
+    .catch(()=>toast('⚠️ Copy failed'));
+}
+
+// ── Native Web Share API ──
+async function nativeShare(){
+  const provider = getProvider();
+  const shareData = {
+    title: 'VOXAI Pro — Free AI Voice Agent',
+    text: '🎙️ India\'s #1 Free AI Voice Agent! Hindi, Gujarati, English & 30+ languages. 7 AI Agents. 100% FREE!\n👉 www.kspiderai.in',
+    url: 'https://www.kspiderai.in'
+  };
+  try{
+    if(navigator.share && navigator.canShare && navigator.canShare(shareData)){
+      await navigator.share(shareData);
+      toast('✅ Shared!'); haptic('success');
+    } else {
+      // Fallback: copy to clipboard
+      navigator.clipboard.writeText(shareData.text + '\n' + shareData.url)
+        .then(()=>toast('📋 Share text copied! Paste karo aur share karo 🚀'));
+    }
+  }catch(e){
+    if(e.name !== 'AbortError') toast('⚠️ Share failed: ' + e.message);
+  }
+}
+
+// ── IndexedDB Chat History Persistence ──
+const DBNAME = 'VoxaiDB';
+const STORE = 'chats';
+let db = null;
+
+function initDB(){
+  return new Promise((res, rej)=>{
+    const req = indexedDB.open(DBNAME, 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if(!db.objectStoreNames.contains(STORE)){
+        db.createObjectStore(STORE, {keyPath:'id', autoIncrement:true});
+      }
+    };
+    req.onsuccess = e => { db = e.target.result; res(db); };
+    req.onerror = () => rej(req.error);
+  });
+}
+
+function saveSessionToDB(){
+  if(!db || !chatHist.length) return;
+  const tx = db.transaction(STORE,'readwrite');
+  const store = tx.objectStore(STORE);
+  store.put({
+    ts: Date.now(),
+    agent: agent.name,
+    messages: chatHist.slice(),
+    summary: chatHist.length + ' messages'
+  });
+}
+
+function loadRecentSessions(callback){
+  if(!db){ callback([]); return; }
+  const tx = db.transaction(STORE,'readonly');
+  const store = tx.objectStore(STORE);
+  const req = store.getAll();
+  req.onsuccess = () => {
+    const all = req.result || [];
+    callback(all.slice(-10).reverse()); // last 10 sessions
+  };
+  req.onerror = () => callback([]);
+}
+
+// ── Keyboard nav improvements ──
+document.addEventListener('keydown', e => {
+  // Tab key to focus input from anywhere
+  if(e.key === 'Tab' && !e.shiftKey && document.activeElement === document.body){
+    e.preventDefault();
+    const inp = document.getElementById('txtin');
+    if(inp) inp.focus();
+  }
+});
+
+// ── Page visibility API — pause when tab hidden ──
+document.addEventListener('visibilitychange', ()=>{
+  if(document.hidden){
+    // Pause voice recognition if running
+    if(typeof stopMic === 'function') try{ stopMic(); }catch(e){}
+  }
+});
+
+// ── Responsive nav label toggle (hide text on very small screens) ──
+function adjustNavLabels(){
+  const w = window.innerWidth;
+  document.querySelectorAll('.tbtn').forEach(btn => {
+    const textNode = Array.from(btn.childNodes).find(n=>n.nodeType===3);
+    // Labels handled via CSS, just add title for accessibility
+  });
+}
+
+// ── Desktop sidebar init ──
+function initDesktop(){
+  const saved = localStorage.getItem('ks_sidebar');
+  if(saved === '1'){
+    document.body.classList.add('sidebar-collapsed');
+    const btn = document.getElementById('sidebar-toggle');
+    if(btn) btn.textContent = '▶';
+  }
+  // Show native share if supported
+  const shareBtn = document.getElementById('native-share-btn');
+  if(shareBtn) shareBtn.style.display = navigator.share ? 'inline-block' : 'none';
+}
+
+// ── Smooth tab switching with animation ──
+const _origGoTab = goTab;
+function goTab(btn, pg){
+  try{ _origGoTab(btn, pg); }catch(e){}
+  // Add page transition
+  const pgEl = document.getElementById('pg-'+pg);
+  if(pgEl){
+    pgEl.style.opacity = '0';
+    setTimeout(()=>{ pgEl.style.opacity = '1'; }, 50);
+  }
+  // Close FAB on tab switch
+  try{ closeFAB(); }catch(e){}
+  // Close footer drawer on mobile
+  if(window.innerWidth < 600) try{ closeFooterDrawer(); }catch(e){}
+  haptic('light');
+}
+
+// ── Enhanced toast for desktop ──
+const _origToast = toast;
+function toast(msg, duration=2500){
+  try{ _origToast(msg, duration); }catch(e){}
+}
+
+// ── Init all on load ──
+window.addEventListener('load', ()=>{
+  try{ initDB().then(()=>{ loadRecentSessions(sessions=>{ if(sessions.length) console.log('Sessions loaded:', sessions.length); }); }).catch(()=>{}); }catch(e){}
+  try{ startSessionTimer(); }catch(e){}
+  try{ initDesktop(); }catch(e){}
+  try{ adjustNavLabels(); }catch(e){}
+  // Auto-save chat every 60 seconds
+  setInterval(()=>{ try{ saveSessionToDB(); }catch(e){}; }, 60000);
+  // Window resize handler
+  window.addEventListener('resize', ()=>{
+    try{ adjustNavLabels(); }catch(e){}
+  });
+});
+</script>
+
+<script>
+// ── History Page ──
+function loadHistoryPage(){
+  loadRecentSessions(sessions => {
+    const list = document.getElementById('history-list');
+    const totalMsgs = document.getElementById('h-total-msgs');
+    const totalSessions = document.getElementById('h-total-sessions');
+    if(!list) return;
+    if(!sessions.length){
+      list.innerHTML = '<div style="text-align:center;padding:24px;color:var(--mu);font-size:12px">📭 Abhi koi history nahi hai.<br>Voice Chat use karo — automatically save hoga!</div>';
+      return;
+    }
+    if(totalSessions) totalSessions.textContent = sessions.length;
+    let allMsgs = 0;
+    list.innerHTML = sessions.map((s,i) => {
+      const d = new Date(s.ts);
+      const dateStr = d.toLocaleDateString('en-IN') + ' ' + d.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+      const msgCount = s.messages ? s.messages.length : 0;
+      allMsgs += msgCount;
+      const preview = s.messages && s.messages.length ? s.messages[s.messages.length-1].content.substring(0,60)+'...' : 'Empty session';
+      return `<div style="padding:10px 12px;background:var(--card);border:1px solid var(--b);border-radius:10px;margin-bottom:8px;cursor:pointer" onclick="restoreSession(${s.id})">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:11px;color:var(--cy);font-family:var(--fh)">${s.agent||'Nova'} — ${msgCount} messages</span>
+          <span style="font-size:10px;color:var(--mu)">${dateStr}</span>
+        </div>
+        <div style="font-size:12px;color:var(--tx2);line-height:1.5">${preview}</div>
+        <div style="font-size:10px;color:var(--mu);margin-top:4px">Tap to restore this conversation</div>
+      </div>`;
+    }).join('');
+    if(totalMsgs) totalMsgs.textContent = allMsgs;
+  });
+}
+
+function restoreSession(id){
+  if(!db) return;
+  const tx = db.transaction(STORE,'readonly');
+  const store = tx.objectStore(STORE);
+  const req = store.get(id);
+  req.onsuccess = () => {
+    const session = req.result;
+    if(!session) return;
+    chatHist = session.messages || [];
+    // Re-render messages
+    const msglist = document.getElementById('msglist');
+    if(msglist){
+      msglist.innerHTML = '';
+      chatHist.forEach(m => {
+        if(m.role==='user') addMsg('u', m.content, '👤');
+        else addMsg('ai', m.content, agent.emoji);
+      });
+    }
+    goTab(document.querySelector('.tbtn'), 'voice');
+    toast('✅ Session restored! ' + chatHist.length + ' messages loaded');
+    haptic('success');
+  };
+}
+
+// Hook loadHistoryPage to tab switch
+const _goTabOrig2 = goTab;
+function goTab(btn, pg){
+  try{ _goTabOrig2(btn, pg); }catch(e){}
+  if(pg === 'hist') try{ loadHistoryPage(); }catch(e){}
+}
 </script>
 
 <script>
