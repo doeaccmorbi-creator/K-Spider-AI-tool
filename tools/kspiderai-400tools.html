@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="/tool-guard.js"></script>
-  <script src="../ks-guard.js"></script>
 <!-- ═══════════════════════════════════════════════════════
      K SPIDER AI — 400+ Free AI Tools Collection
      Full SEO + Security | www.kspiderai.in
@@ -23,6 +21,10 @@
   gtag('js', new Date());
   gtag('config', 'G-PLBHWMHEC1');
 </script>
+
+<!-- ── DUAL SECURITY GUARD SCRIPTS ── -->
+<script src="/tool-guard.js"></script>
+<script src="../ks-guard.js"></script>
 
 <!-- ── PRIMARY TITLE & SEO ── -->
 <title>K Spider AI — 400+ Free AI Tools India | Resume Builder, Doctor AI, Legal Docs, Image Tools | kspiderai.in</title>
@@ -114,8 +116,8 @@
 
 <!-- ── TWITTER CARD ── -->
 <meta name="twitter:card" content="summary_large_image"/>
-<meta name="twitter:site" content="@KSpider4Kreaction"/>
-<meta name="twitter:creator" content="@KSpider4Kreaction"/>
+<meta name="twitter:site" content="@KSpider4Kreation"/>
+<meta name="twitter:creator" content="@KSpider4Kreation"/>
 <meta name="twitter:title" content="K Spider AI — 400+ Free AI Tools India | Resume Builder, Doctor AI & More"/>
 <meta name="twitter:description" content="India's largest collection of 400+ free AI tools. Resume Builder, Doctor AI, Legal Docs, Image Tools & more. 100% Free Forever. Made for India."/>
 <meta name="twitter:image" content="https://www.kspiderai.in/assets/og-image.png"/>
@@ -168,10 +170,40 @@
       {"@type": "Person", "name": "Khush Raval"}
     ],
     "sameAs": [
-      "https://www.youtube.com/@KSpider4Kreaction",
+      "https://www.youtube.com/@KSpider4Kreation",
       "https://www.instagram.com/gaurang.m.raval",
       "https://t.me/+jPVF39C2yCQ3ZDhl"
     ]
+  }
+}
+</script>
+
+<!-- ── STRUCTURED DATA: WebApplication ── -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "K Spider AI — 400+ Free AI Tools India",
+  "url": "https://www.kspiderai.in/tools/kspiderai-400tools_html.html",
+  "description": "India's largest collection of 400+ free AI tools. Resume Builder, Doctor AI, Legal Documents, Image Tools, WhatsApp Marketing, Business Consultant and more. 100% Free Forever.",
+  "applicationCategory": "UtilitiesApplication",
+  "operatingSystem": "All",
+  "browserRequirements": "Requires JavaScript. Works on Chrome, Firefox, Safari, Edge.",
+  "offers": {
+    "@type": "Offer",
+    "price": "0",
+    "priceCurrency": "INR"
+  },
+  "featureList": ["Resume Builder AI", "Doctor AI", "Legal Document Generator", "Image Tools", "WhatsApp Marketing", "Business Plan Generator", "22 Language Support", "Code Generator", "Social Media Tools"],
+  "screenshot": "https://www.kspiderai.in/assets/og-image.png",
+  "author": [
+    {"@type": "Person", "name": "Gaurang Raval"},
+    {"@type": "Person", "name": "Khush Raval"}
+  ],
+  "creator": {
+    "@type": "Organization",
+    "name": "K Spider for Kreation",
+    "url": "https://www.kspiderai.in"
   }
 }
 </script>
@@ -239,7 +271,7 @@
     "availableLanguage": ["English", "Hindi", "Gujarati"]
   },
   "sameAs": [
-    "https://www.youtube.com/@KSpider4Kreaction",
+    "https://www.youtube.com/@KSpider4Kreation",
     "https://www.instagram.com/gaurang.m.raval",
     "https://t.me/+jPVF39C2yCQ3ZDhl",
     "https://twitter.com/kspider4kreation",
@@ -3377,61 +3409,65 @@ function buildToolPage(t){
 /* ═══ GENERATE WITH LANGUAGE ═══ */
 async function generate(){
   const t=curTool; if(!t) return;
-  const lang=document.getElementById("tLang")?.value||gLang;
+  const vals={};
+  let missing=[];
+  t.inputs.forEach(inp=>{
+    const el=document.getElementById('inp_'+inp.id);
+    const v=(el?el.value:'').trim();
+    vals[inp.id]=v;
+    if(!v&&inp.req!==false) missing.push(inp.l);
+  });
+  if(missing.length>2){showToast('Fill: '+missing.slice(0,2).join(', ')+'…','te');return;}
+  const gBtn=document.getElementById('gBtn'),gBtnTxt=document.getElementById('gBtnTxt');
+  const rBox=document.getElementById('rBox'),rc=document.getElementById('rc'),wc=document.getElementById('wc');
+  gBtn.disabled=true; gBtnTxt.textContent='⏳ AI Generating…';
+  rBox.style.display='block'; rc.innerHTML='<div class="ld"><div class="sp"></div><span>Claude AI generating your complete content…</span></div>';
+  resetCompressCache();
+  // XSS sanitization: strip HTML tags from all user inputs before building prompt
+  function sanitizeInput(s){return(s||'').replace(/<[^>]*>/g,'').replace(/[<>"'\u0060]/g,'').trim();}
+  t.inputs.forEach(inp=>{vals[inp.id]=sanitizeInput(vals[inp.id]);});
   let prompt=t.prompt;
-  for(const inp of t.inputs){
-    const el=document.getElementById("inp_"+inp.id);
-    const val=el?el.value.trim():"";
-    prompt=prompt.replace(new RegExp("{"+inp.id+"}","g"),val||`[${inp.l} not provided]`);
-  }
-  const langNote=lang==="English"?"":
-    `\n\n🌐 IMPORTANT LANGUAGE INSTRUCTION: Write your ENTIRE response in ${lang}. Every word, every heading, every sentence must be in ${lang} language only. Do not use English except for code, brand names, URLs, and technical terms that don't translate.`;
-  const fullPrompt=`${prompt}${langNote}\n\n${B.tag}`;
+  t.inputs.forEach(inp=>{ prompt=prompt.replaceAll('{'+inp.id+'}', vals[inp.id]||'Not specified'); });
+  const langStr=gLang&&gLang!=='English'?`
 
-  const btn=document.getElementById("gBtn"), btxt=document.getElementById("gBtnTxt");
-  btn.disabled=true; btxt.innerHTML=`<span class="sp"></span> Generating in ${lang}…`;
-  document.getElementById("rBox").classList.remove("show");
-
-  // Key check — prompt user if not set
-  const activeKey=getActiveKey();
-  if(!activeKey||!activeKey.startsWith('sk-ant-')){
-    // Show inline prompt to enter key
-    const keyInput = prompt('🔑 Anthropic API Key Enter Karo:\n\nFree key: console.anthropic.com\n(sk-ant-api03- se shuru hoti hai)');
-    if(keyInput && keyInput.trim().startsWith('sk-')){
-      saveApiKey(keyInput.trim());
-      const inp=document.getElementById('anthropicKey');
-      if(inp)inp.value=keyInput.trim();
-      showToast('API key saved! Generating...','ts');
-    } else {
-      document.getElementById("rc").textContent="⚠️ API Key Required\n\nKSpider AI use karne ke liye:\n1. Menu mein '🚀 AI Power' click karo\n2. 🔑 section mein apni key daalo\n3. Free key: console.anthropic.com\n\nYa Ctrl+Shift+K shortcut try karo.";
-      document.getElementById("rBox").classList.add("show");
-      btn.disabled=false; btxt.textContent="✦ Generate Complete Output";
-      showToast("API Key chahiye — AI Power section check karo","te");
-      return;
+IMPORTANT: Generate the COMPLETE output in ${gLang} language.`:'';
+  const fullPrompt=prompt+langStr;
+  // Retry logic for zero-failure guarantee
+  let lastErr=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const result=await callClaude([{role:'user',content:fullPrompt}],null,3000);
+      const txt=result||'';
+      if(!txt) throw new Error('Empty response from AI. Please try again.');
+      rc.innerHTML=(function(t){
+        return t.split('\n').join('<br>')
+          .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+          .replace(/^## (.*?)(<br>|$)/gm,'<h3 style="margin:14px 0 5px;font-size:.92rem;font-weight:800;color:var(--t)">$1</h3>')
+          .replace(/^# (.*?)(<br>|$)/gm,'<h2 style="margin:16px 0 6px;font-size:1.05rem;font-weight:800;color:var(--p)">$1</h2>');
+      })(txt);
+      const words=txt.split(/\s+/).filter(Boolean).length;
+      wc.textContent=words+' words';
+      rBox.classList.add('show');
+      refreshWA();
+      lastErr=null;
+      break; // success
+    } catch(e){
+      lastErr=e;
+      if(attempt<3){
+        rc.innerHTML=`<div class="ld"><div class="sp"></div><span>Attempt ${attempt} failed — Retrying (${attempt}/3)…</span></div>`;
+        await new Promise(r=>setTimeout(r,1200*attempt));
+      }
     }
   }
-  try{
-    const text = await askClaude(fullPrompt, 2000);
-    const out=text+"\n\n"+B.tag;
-    document.getElementById("rc").textContent=out;
-    const wc=out.trim().split(/\s+/).length;
-    document.getElementById("wc").textContent=wc+" words";
-    document.getElementById("rBox").classList.add("show");
-    buildPromoChips();
-    refreshWA();
-    resetCompressCache();
-    showToast("✦ Complete output generated in "+lang+"!","ts");
-  }catch(err){
-    const em=err.message||String(err);
-    const isKeyErr = em.includes('401')||em.includes('403')||em.includes('auth');
-    const msg = isKeyErr
-      ? "⚠️ Invalid API Key\n\nKripya valid Anthropic API key daalo:\n• AI Power Suite → 🔑 dropdown → apni key enter karo\n• Free key: console.anthropic.com"
-      : "⚠️ Error: "+em+"\n\nPlease retry. Agar baar baar ho raha hai to page refresh karo.";
-    document.getElementById("rc").textContent=msg+"\n\n"+B.tag;
-    document.getElementById("rBox").classList.add("show");
-    showToast(isKeyErr?"Invalid API Key — check AI Power section":"Error — please retry","te");
+  if(lastErr){
+    let errMsg=lastErr.message||'Something went wrong.';
+    let helpTip='';
+    if(errMsg.includes('429')||errMsg.toLowerCase().includes('rate limit')) helpTip='<br><small>Too many requests. Please wait 30 seconds and try again.</small>';
+    else if(errMsg.includes('401')||errMsg.includes('403')) helpTip='<br><small>API key issue. The free proxy will be used automatically.</small>';
+    else if(errMsg.includes('network')||errMsg.includes('fetch')) helpTip='<br><small>Please check your internet connection and try again.</small>';
+    rc.innerHTML=`<div style="color:var(--r);padding:16px;background:var(--rl);border-radius:10px;line-height:1.6"><strong>⚠️ Generation failed after 3 attempts</strong><br><small>${errMsg}</small>${helpTip}<br><br><button onclick="generate()" style="margin-top:8px;padding:8px 18px;background:var(--p);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:13px">🔄 Try Again</button></div>`;
   }
-  btn.disabled=false; btxt.textContent="✦ Generate Complete Output";
+  gBtn.disabled=false; gBtnTxt.textContent='✦ Generate Complete Output';
 }
 
 /* ═══ COPY / DOWNLOAD ═══ */
@@ -4245,7 +4281,12 @@ async function callClaude(messages,sys,maxTok){
   if(isProxy){hdrs['x-ks-tool']='400tools';}
   else{hdrs['x-api-key']=userKey;hdrs['anthropic-dangerous-direct-browser-access']='true';}
   var r=await fetch(endpoint,{method:'POST',headers:hdrs,body:JSON.stringify(body)});
-  if(!r.ok){var t=await r.text();throw new Error('API '+r.status+': '+t.slice(0,200));}
+  if(!r.ok){
+    var t=await r.text();
+    var errData={};try{errData=JSON.parse(t);}catch(e){}
+    var errMsg=(errData&&errData.error&&errData.error.message)||t.slice(0,200)||'Request failed';
+    throw new Error('API '+r.status+': '+errMsg);
+  }
   var d=await r.json();return d.content&&d.content[0]?d.content[0].text:'';
 }
 async function askClaude(p,maxTok){return callClaude([{role:'user',content:p}],null,maxTok||1200);}
@@ -4333,12 +4374,11 @@ async function genIMG(){
     const pMdl=toPollinationsModel(typeof _IM!=="undefined"?_IM:(typeof _imgModel!=="undefined"?_imgModel:"flux"));
     const imgUrl=pollinationsImgUrl(_IP||document.getElementById('iPrompt')||'AI art',pMdl);
     // Using Pollinations.ai for image generation
-    const canvas=document.createElement('canvas'),img=new Image();img.crossOrigin='anonymous';
-    await new Promise((res)=>{img.onload=res;img.onerror=res;img.src=imgEl.src;});
-    canvas.width=img.naturalWidth||1024;canvas.height=img.naturalHeight||1024;
-    canvas.getContext('2d').drawImage(img,0,0);
-    _IS=canvas.toDataURL('image/png');
-    document.getElementById('genImg').src=_IS;
+    const pMdl2=toPollinationsModel(_IM||'flux');
+    const finalUrl=pollinationsImgUrl(_IP||raw,pMdl2);
+    const genImgEl=document.getElementById('genImg');
+    if(genImgEl){genImgEl.src=finalUrl;genImgEl.crossOrigin='anonymous';}
+    _IS=finalUrl;
     document.getElementById('imgOut').classList.add('on');
     st.innerHTML='';showToast('🎨 Image ready!','ts');
   }catch(e){
@@ -4504,7 +4544,7 @@ async function testM2(){
       <a href="https://pin.it/tR3P9VFfc" target="_blank" rel="noopener" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#fff;transition:all .2s">
         <span style="font-size:24px">📌</span><span style="font-size:11px;font-weight:800">Pinterest</span>
       </a>
-      <a href="/cdn-cgi/l/email-protection#5e352d2e373a3b2c6c6c6f6c6e681e39333f3732703d3133" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#fff;transition:all .2s">
+      <a href="mailto:kspider221206@gmail.com" style="background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;text-decoration:none;color:#fff;transition:all .2s">
         <span style="font-size:24px">📧</span><span style="font-size:11px;font-weight:800">Email Us</span>
       </a>
     </div>
@@ -4595,7 +4635,7 @@ async function testM2(){
       </details>
       <details style="background:#fff;border:1.5px solid #E4E7F4;border-radius:12px;padding:14px 16px;cursor:pointer">
         <summary style="font-weight:700;font-size:.87rem;color:#1a1d2e;list-style:none;display:flex;justify-content:space-between;align-items:center">How can I suggest a new tool? <span style="color:#2563EB">+</span></summary>
-        <p style="font-size:12.5px;color:#4a5078;margin-top:10px;line-height:1.7">You can suggest tools by emailing us at <a href="/cdn-cgi/l/email-protection#5e352d2e373a3b2c6c6c6f6c6e681e39333f3732703d3133" style="color:#2563EB;font-weight:700"><span class="__cf_email__" data-cfemail="8ae1f9fae3eeeff8b8b8bbb8babccaede7ebe3e6a4e9e5e7">[email&#160;protected]</span></a> or through our WhatsApp Group and Telegram Channel.</p>
+        <p style="font-size:12.5px;color:#4a5078;margin-top:10px;line-height:1.7">You can suggest tools by emailing us at <a href="mailto:kspider221206@gmail.com" style="color:#2563EB;font-weight:700">kspider221206@gmail.com</a> or through our WhatsApp Group and Telegram Channel.</p>
       </details>
     </div>
 
@@ -5033,5 +5073,178 @@ function ksShareDirect(){
 input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-user-select:text!important;-ms-user-select:text!important;user-select:text!important}
 </style>
 
+
+<!-- ═══════════════════════════════════════════════════════════════
+     15 VIRAL WHATSAPP MARKETING MESSAGES — K Spider AI
+═══════════════════════════════════════════════════════════════ -->
+<section id="waMsgSec" style="background:linear-gradient(135deg,#064e3b,#059669 60%,#0d9488);padding:52px 24px">
+  <div style="max-width:900px;margin:0 auto">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="display:inline-block;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:5px 18px;font-size:11px;font-weight:800;color:#fff;margin-bottom:12px;letter-spacing:.1em;text-transform:uppercase">💬 Viral Marketing</div>
+      <h2 style="font-size:clamp(1.5rem,3vw,2.1rem);font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-.03em">15 Viral WhatsApp Messages</h2>
+      <p style="color:rgba(255,255,255,.8);font-size:13px;line-height:1.6">Ready-to-send promotional messages for K Spider AI. Click any to copy instantly!</p>
+    </div>
+    <div id="waMsgGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px"></div>
+  </div>
+</section>
+<script>
+(function(){
+  var n = "\n";
+  var msgs = [
+    "\u{1F577}\uFE0F *KSpider AI \u2014 India ka #1 FREE AI Tool!*" + n + n + "400+ tools bilkul FREE!" + n + "\u2705 Resume Banana" + n + "\u2705 Doctor AI" + n + "\u2705 Legal Documents" + n + "\u2705 Image Tools" + n + "\u2705 Business Plans" + n + "\u2705 Coding Help" + n + n + "\uD83D\uDCA1 No subscription, No hidden fees!" + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + "\uD83D\uDCFA youtube.com/@KSpider4Kreation" + n + n + "\uD83D\uDC49 Share karo aur sab ko batao! \uD83D\uDE80",
+    "\uD83D\uDD25 *FREE AI Tools jo Paise Bachate Hain!*" + n + n + "Mahine ka \u20B950,000+ bachao!" + n + "Ab kisi ko paise mat do:" + n + "\u274C Content Writer \u2014 AI karega FREE" + n + "\u274C Legal Lawyer \u2014 AI Document FREE" + n + "\u274C Resume Writer \u2014 FREE" + n + "\u274C Doctor Consultation \u2014 AI FREE" + n + n + "\uD83D\uDD77 *kspiderai.in* \u2014 Sab kuch FREE!" + n + "\uD83D\uDC68\u200D\uD83D\uDCBB By Gaurang Raval & Khush Raval" + n + n + "#KSpiderAI #FreeAITools",
+    "\uD83D\uDCB0 *AI se Paise Kamao \u2014 \u20B920,000 to \u20B92 Lakh/Month!*" + n + n + "K Spider AI ke through:" + n + "\u2022 Freelancing projects le" + n + "\u2022 YouTube channel grow karo" + n + "\u2022 Social media manage karo" + n + "\u2022 Digital products banaao" + n + "\u2022 Blogging shuru karo" + n + n + "\uD83D\uDCF2 FREE tools: https://www.kspiderai.in" + n + "\uD83D\uDCFA Guide: youtube.com/@KSpider4Kreation" + n + n + "Share karo aur doston ki help karo! \uD83D\uDE4F",
+    "\uD83C\uDFAF *Students ke liye GAME CHANGER!*" + n + n + "K Spider AI se:" + n + "\u270F\uFE0F Assignment likhao FREE" + n + "\uD83D\uDCC4 Resume banao in 30 sec" + n + "\uD83E\uDDEE Problems solve karo" + n + "\uD83D\uDCDA Any language mein padho" + n + "\uD83C\uDFA4 Presentations banao" + n + n + "100% FREE, No Login Needed!" + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + n + "\uD83D\uDCF2 Friends ko bhi bhejo!",
+    "\u2696\uFE0F *Legal Documents \u2014 Lawyer ki Zaroorat Nahi!*" + n + n + "K Spider AI pe FREE banao:" + n + "\u2022 Rent Agreement" + n + "\u2022 NDA Agreement" + n + "\u2022 Employment Contract" + n + "\u2022 Privacy Policy" + n + "\u2022 Terms & Conditions" + n + "\u2022 Business Partnership Deed" + n + n + "\u2705 Ready in 60 seconds!" + n + "\uD83C\uDF10 kspiderai.in \u2014 TOTALLY FREE" + n + n + "\uD83D\uDCAC Group mein share karo!",
+    "\uD83C\uDFE5 *Doctor AI Tool \u2014 FREE Medical Help 24/7!*" + n + n + "K Spider AI ke Doctor AI se:" + n + "\uD83E\uDE7A Symptoms analyze karo" + n + "\uD83D\uDC8A Drug information lo" + n + "\uD83D\uDCCB Medical reports samjho" + n + "\uD83C\uDFE8 Specialist recommendations" + n + n + "\u26A0\uFE0F Educational purpose \u2014 Consult real doctor for treatment" + n + n + "\uD83D\uDD77 https://www.kspiderai.in \u2014 FREE FOREVER!" + n + n + "#DoctorAI #FreeHealthTools",
+    "\uD83D\uDCF1 *Business Owners ke liye MUST HAVE!*" + n + n + "K Spider AI se apna business badhaao:" + n + "\uD83D\uDCCA Business Plan \u2014 FREE" + n + "\uD83D\uDCE7 Professional Emails \u2014 FREE" + n + "\uD83D\uDCE3 Marketing Content \u2014 FREE" + n + "\uD83D\uDCBC Proposals \u2014 FREE" + n + "\uD83C\uDFF7\uFE0F Product Descriptions \u2014 FREE" + n + n + "22 Languages mein generate karo!" + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + n + "Share karo! \uD83D\uDE80 #KSpiderAI",
+    "\uD83C\uDFA8 *Content Creators \u2014 Ye Tool Dekh Lo!*" + n + n + "K Spider AI se:" + n + "\u25B6\uFE0F YouTube scripts likhao" + n + "\uD83D\uDCF8 Instagram captions banao" + n + "\uD83D\uDCF1 Reels ideas lo" + n + "\uD83C\uDFB5 Trending hooks create karo" + n + "\uD83D\uDCCA Analytics-backed content" + n + n + "*All 100% FREE!*" + n + "\uD83C\uDF10 kspiderai.in" + n + "\uD83D\uDCFA youtube.com/@KSpider4Kreation" + n + n + "\uD83D\uDCAC Share NOW! \uD83D\uDD25",
+    "\uD83C\uDF0D *22 Languages mein AI \u2014 Only at KSpider!*" + n + n + "Hindi, Gujarati, Marathi, Tamil," + n + "Telugu, Bengali, Kannada +15 more!" + n + n + "Koi bhi language, koi bhi content:" + n + "\u2705 Resume" + n + "\u2705 Business Docs" + n + "\u2705 Legal Papers" + n + "\u2705 Creative Writing" + n + n + "\uD83C\uDDEE\uD83C\uDDF3 Made for India!" + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + n + "#AIIndia #FreeAITools2025",
+    "\uD83D\uDCBB *Developers ke liye \u2014 FREE Coding Tools!*" + n + n + "K Spider AI pe milega:" + n + "\uD83D\uDD27 Code Generator (Python, JS, Java...)" + n + "\uD83D\uDC1B Bug Fixer" + n + "\uD83D\uDCAC Code Explainer" + n + "\uD83D\uDCC4 API Documentation" + n + "\uD83E\uDDEA Test Cases Generator" + n + n + "*Totally FREE!*" + n + "\uD83C\uDF10 kspiderai.in" + n + n + "Tech community mein share karo! \uD83D\uDC68\u200D\uD83D\uDCBB",
+    "\uD83C\uDFE0 *Real Estate Professionals ke liye!*" + n + n + "AI tools jo helpful hain:" + n + "\uD83C\uDFD7\uFE0F Property descriptions" + n + "\uD83D\uDCCB Rent agreements FREE" + n + "\uD83D\uDCBC Client proposals" + n + "\uD83D\uDCCA Market analysis content" + n + "\uD83D\uDCE7 Follow-up emails" + n + n + "\u26A1 400+ tools \u2014 ALL FREE!" + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + n + "Share karo agents ke saath! \uD83D\uDE4F",
+    "\uD83C\uDF93 *Teachers & Educators \u2014 FREE AI Suite!*" + n + n + "K Spider AI se banao:" + n + "\uD83D\uDCDD Lesson Plans" + n + "\u2753 Quiz Questions" + n + "\uD83D\uDCCA Study Material" + n + "\uD83C\uDFA4 Presentation Scripts" + n + "\uD83D\uDCCB Assignment Questions" + n + n + "100% Free, No Signup!" + n + "\uD83C\uDF10 kspiderai.in" + n + "\uD83D\uDCFA youtube.com/@KSpider4Kreation" + n + n + "#TeachersOfIndia #EduTech",
+    "\uD83D\uDE80 *Startup Founders \u2014 Ye Dekho Zaroor!*" + n + n + "KSpider AI se FREE mein:" + n + "\uD83D\uDCA1 Business Plan Generator" + n + "\uD83D\uDCCA Pitch Deck Content" + n + "\uD83D\uDCC8 Investor Proposal" + n + "\u2696\uFE0F Legal Documents" + n + "\uD83D\uDCBC HR Policies" + n + "\uD83D\uDCE7 Cold Email Templates" + n + n + "Funding pitch ke liye bhi!" + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + n + "Share with founder community! \uD83D\uDCAA",
+    "\uD83D\uDCAC *WhatsApp Marketing Karein \u2014 FREE Tool!*" + n + n + "K Spider AI ka WhatsApp Tool:" + n + "\uD83D\uDCE4 Send to any number (saved/unsaved)" + n + "\uD83D\uDCDD AI-written promo messages" + n + "\uD83D\uDD04 Bulk message templates" + n + "\uD83D\uDCCA Business broadcast content" + n + n + "*No software needed \u2014 runs in browser!*" + n + "\uD83C\uDF10 kspiderai.in" + n + n + "\uD83D\uDCAC Forward karo! #WhatsAppMarketing",
+    "\u2B50 *400+ FREE AI Tools \u2014 India ka Sabse Bada Collection!*" + n + n + "K Spider AI \u2014 Made by Indians, For Indians!" + n + "\uD83D\uDC68\u200D\uD83D\uDCBB By Gaurang Raval & Khush Raval" + n + "\uD83C\uDFC6 India's #1 Free AI Platform" + n + "\uD83C\uDF0D 22+ Languages" + n + "\u26A1 10 Lakh+ Generations Done" + n + "\uD83D\uDCB0 Completely FREE Forever" + n + n + "\uD83C\uDF10 https://www.kspiderai.in" + n + "\uD83D\uDCFA youtube.com/@KSpider4Kreation" + n + n + "Sabko share karo \u2014 FREE tools sab ke liye! \uD83D\uDD77\uFE0F\u2764\uFE0F"
+  ];
+
+  var grid = document.getElementById('waMsgGrid');
+  if (!grid) return;
+
+  function escH(s) {
+    return (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
+  }
+
+  grid.innerHTML = msgs.map(function(m, i) {
+    return '<div style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);border-radius:16px;padding:16px;cursor:pointer;transition:all .2s;position:relative" onclick="copyWAMsg(' + i + ',this)" title="Click to copy">'
+      + '<div style="font-size:9.5px;font-weight:800;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px">Message ' + (i + 1) + ' of 15 \u00B7 Click to Copy</div>'
+      + '<div style="font-size:11.5px;color:#fff;line-height:1.65;max-height:120px;overflow:hidden;-webkit-mask-image:linear-gradient(to bottom,#fff 60%,transparent)">' + escH(m) + '</div>'
+      + '<div style="position:absolute;top:10px;right:10px;background:rgba(255,255,255,.2);border-radius:6px;padding:3px 8px;font-size:10px;font-weight:700;color:#fff">\uD83D\uDCCB Copy</div>'
+      + '</div>';
+  }).join('');
+
+  window._waMsgs = msgs;
+})();
+
+function copyWAMsg(i, el) {
+  var msg = window._waMsgs && window._waMsgs[i];
+  if (!msg) return;
+  navigator.clipboard.writeText(msg).then(function() {
+    el.style.background = 'rgba(255,255,255,.3)';
+    if (typeof showToast === 'function') showToast('Message ' + (i + 1) + ' copied! Paste in WhatsApp.', 'ts');
+    setTimeout(function() { el.style.background = 'rgba(255,255,255,.13)'; }, 1200);
+  }).catch(function() {
+    if (typeof showToast === 'function') showToast('Copy failed — try again.', 'te');
+  });
+}
+</script>
+
+<!-- ════════════════════════════════════════════════════
+     PREMIUM KNOWLEDGE BASE FOOTER
+════════════════════════════════════════════════════ -->
+<section id="knowledgeBase" style="background:#0f172a;padding:60px 24px 40px;border-top:1px solid rgba(37,99,235,.2)">
+  <div style="max-width:1100px;margin:0 auto">
+
+    <!-- TOOL DESCRIPTION -->
+    <div style="margin-bottom:48px">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(37,99,235,.15);border:1px solid rgba(37,99,235,.3);border-radius:999px;padding:5px 16px;font-size:11px;font-weight:800;color:#60a5fa;margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em">🕷️ Tool Description</div>
+      <h2 style="font-size:clamp(1.4rem,3vw,2rem);font-weight:900;color:#fff;margin-bottom:14px;letter-spacing:-.03em">What is K Spider AI Tools?</h2>
+      <p style="color:rgba(255,255,255,.7);font-size:13.5px;line-height:1.85;max-width:820px;margin-bottom:14px">K Spider AI Tools is <strong style="color:#60a5fa">India's largest collection of 400+ free AI tools</strong>, developed by Gaurang Raval &amp; Khush Raval from Surat, Gujarat. Powered by Anthropic's Claude AI, our platform offers zero-cost access to professional-grade tools across 17+ categories — Resume Builder, Doctor AI, Legal Document Generator, Image Tools, Business Consultant, WhatsApp Marketing, Coding Tools, and much more.</p>
+      <p style="color:rgba(255,255,255,.6);font-size:13px;line-height:1.75;max-width:820px">Every tool supports <strong style="color:#34d399">22 languages</strong> including Hindi, Gujarati, Marathi, Tamil, Telugu, Bengali, Kannada, Malayalam, Punjabi and more — making professional AI accessible to every Indian regardless of their preferred language. No subscription, no login, no credit card — 100% free forever at <a href="https://www.kspiderai.in" style="color:#60a5fa;font-weight:700">kspiderai.in</a>.</p>
+    </div>
+
+    <!-- USER GUIDE -->
+    <div style="margin-bottom:48px">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(5,150,105,.15);border:1px solid rgba(5,150,105,.3);border-radius:999px;padding:5px 16px;font-size:11px;font-weight:800;color:#34d399;margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em">📖 Step-by-Step User Guide</div>
+      <h2 style="font-size:clamp(1.2rem,2.5vw,1.6rem);font-weight:900;color:#fff;margin-bottom:20px;letter-spacing:-.02em">How to Use K Spider AI Tools in 5 Easy Steps</h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px">
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(37,99,235,.3);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.95rem;color:#60a5fa;margin-bottom:10px">1</div>
+          <div style="font-weight:800;font-size:.87rem;color:#fff;margin-bottom:4px">Open kspiderai.in</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.6">Visit on any device — mobile, tablet, or desktop. No app download needed.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(5,150,105,.3);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.95rem;color:#34d399;margin-bottom:10px">2</div>
+          <div style="font-weight:800;font-size:.87rem;color:#fff;margin-bottom:4px">Search or Browse</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.6">Use the search bar or browse 17+ categories to find the exact tool you need.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(245,158,11,.25);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.95rem;color:#fbbf24;margin-bottom:10px">3</div>
+          <div style="font-weight:800;font-size:.87rem;color:#fff;margin-bottom:4px">Fill the Form</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.6">Enter your details in the smart input fields. More details = better AI output.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(124,58,237,.3);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.95rem;color:#c4b5fd;margin-bottom:10px">4</div>
+          <div style="font-weight:800;font-size:.87rem;color:#fff;margin-bottom:4px">Generate with AI</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.6">Click Generate — Claude AI creates complete, professional content in seconds.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:18px">
+          <div style="width:36px;height:36px;border-radius:10px;background:rgba(8,145,178,.3);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:.95rem;color:#22d3ee;margin-bottom:10px">5</div>
+          <div style="font-weight:800;font-size:.87rem;color:#fff;margin-bottom:4px">Share Everywhere</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.55);line-height:1.6">Copy, download as .txt, or share directly to 12+ platforms including WhatsApp.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EARNING POTENTIAL -->
+    <div style="margin-bottom:48px">
+      <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,158,11,.15);border:1px solid rgba(245,158,11,.3);border-radius:999px;padding:5px 16px;font-size:11px;font-weight:800;color:#fbbf24;margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em">💰 Earning Potential</div>
+      <h2 style="font-size:clamp(1.2rem,2.5vw,1.6rem);font-weight:900;color:#fff;margin-bottom:8px;letter-spacing:-.02em">How to Earn Money Using K Spider AI Tools</h2>
+      <p style="color:rgba(255,255,255,.6);font-size:13px;margin-bottom:22px">Real earning methods — from ₹20,000 to ₹2 Lakh+ per month. No experience required.</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(245,158,11,.2);border-radius:16px;padding:18px">
+          <div style="font-size:22px;margin-bottom:8px">💼</div>
+          <div style="font-weight:800;font-size:.9rem;color:#fbbf24;margin-bottom:5px">Freelancing — ₹30K–₹1.5L/month</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7">Offer AI-powered services on Upwork, Fiverr, Internshala. Content writing (₹2/word), Resume writing (₹500–₹3000/resume), Legal drafting (₹1000–₹5000/doc), Social media management (₹8000–₹25000/client). K Spider AI does the work — you collect the money.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(220,38,38,.2);border-radius:16px;padding:18px">
+          <div style="font-size:22px;margin-bottom:8px">▶️</div>
+          <div style="font-weight:800;font-size:.9rem;color:#f87171;margin-bottom:5px">YouTube Monetization — ₹15K–₹80K/month</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7">Create AI Tips channels, Tool Review videos, or "AI ne banaya" content series. Use K Spider's YouTube Monetization Guide tool to plan your channel. AdSense RPM in AI niche: ₹150–₹400 per 1000 views. Combine with sponsorships for 3x revenue.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(37,99,235,.2);border-radius:16px;padding:18px">
+          <div style="font-size:22px;margin-bottom:8px">📢</div>
+          <div style="font-weight:800;font-size:.9rem;color:#60a5fa;margin-bottom:5px">Digital Agency — ₹50K–₹2L/month</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7">Start a local digital agency. Offer businesses AI-powered content writing, SEO, social media, and marketing. Use K Spider's Business Plan, Social Media tools to deliver client work. Charge ₹8000–₹30000 per client monthly.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(5,150,105,.2);border-radius:16px;padding:18px">
+          <div style="font-size:22px;margin-bottom:8px">🎯</div>
+          <div style="font-weight:800;font-size:.9rem;color:#34d399;margin-bottom:5px">Affiliate Marketing — ₹10K–₹50K/month</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7">Promote AI tools, SaaS products, and online courses with AI-generated content. Use K Spider's Affiliate Marketing Guide tool to build a strategy. Content marketing + affiliate = passive income that scales without extra work.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(124,58,237,.2);border-radius:16px;padding:18px">
+          <div style="font-size:22px;margin-bottom:8px">📦</div>
+          <div style="font-weight:800;font-size:.9rem;color:#c4b5fd;margin-bottom:5px">Digital Products — ₹20K–₹1L/month</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7">Create and sell eBooks, templates, courses, and digital planners generated with K Spider AI. Sell on Gumroad, Instamojo, or your own website. One product can earn repeatedly with zero delivery cost.</div>
+        </div>
+        <div style="background:rgba(255,255,255,.06);border:1px solid rgba(8,145,178,.2);border-radius:16px;padding:18px">
+          <div style="font-size:22px;margin-bottom:8px">✍️</div>
+          <div style="font-weight:800;font-size:.9rem;color:#22d3ee;margin-bottom:5px">Blogging + AdSense — ₹15K–₹75K/month</div>
+          <div style="font-size:11.5px;color:rgba(255,255,255,.6);line-height:1.7">Use K Spider's Blog Writer, SEO Optimizer, and Content Calendar tools to publish 3–5 articles/day. AI-generated SEO content ranks faster. Monetize with AdSense, affiliate links, and sponsored content for compounding monthly income.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEGAL LINKS -->
+    <div style="border-top:1px solid rgba(255,255,255,.1);padding-top:32px">
+      <div style="display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:20px">
+        <a href="https://kspiderai.in/privacy" target="_blank" style="color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;transition:all .2s">🔒 Privacy Policy</a>
+        <a href="https://kspiderai.in/terms" target="_blank" style="color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;transition:all .2s">📋 Terms of Service</a>
+        <a href="https://kspiderai.in/disclaimer" target="_blank" style="color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;transition:all .2s">⚠️ Disclaimer</a>
+        <a href="https://kspiderai.in/contact" target="_blank" style="color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;transition:all .2s">📧 Contact Us</a>
+        <a href="https://kspiderai.in/about" target="_blank" style="color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;transition:all .2s">👤 About</a>
+        <a href="https://kspiderai.in/sitemap.xml" target="_blank" style="color:rgba(255,255,255,.55);font-size:11.5px;font-weight:600;text-decoration:none;padding:5px 12px;border:1px solid rgba(255,255,255,.12);border-radius:999px;transition:all .2s">🗺️ Sitemap</a>
+      </div>
+      <div style="text-align:center">
+        <div style="color:rgba(255,255,255,.35);font-size:11px;line-height:1.8">
+          <strong style="color:rgba(255,255,255,.6)">Disclaimer:</strong> Doctor AI tools are for educational purposes only — always consult a qualified medical professional. Legal document tools generate templates — consult a lawyer for legal advice. K Spider AI is not liable for decisions made based on AI-generated content.
+        </div>
+        <div style="margin-top:14px;color:rgba(255,255,255,.25);font-size:10px">
+          © 2025–2026 K Spider for Kreation · Developed by Gaurang Raval &amp; Khush Raval · Surat, Gujarat, India · <a href="https://www.kspiderai.in" style="color:rgba(255,255,255,.4)">kspiderai.in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
 </body>
 </html>
