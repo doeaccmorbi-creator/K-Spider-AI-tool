@@ -118,6 +118,7 @@
   var FILE_TO_SLOT = {
     /* WhatsApp tool — file: whatsapp-bulk-sender-tool.html → admin value: tool-whatsapp-bulk-sender */
     'whatsapp-bulk-sender-tool':    'tool-whatsapp-bulk-sender',
+    'whatsapp-bulk-sender':         'tool-whatsapp-bulk-sender', /* live URL without -tool */
     /* Learn Smarter — file: Learn_Smarter_with.html → admin value: tool-ai-teacher */
     'Learn_Smarter_with':           'tool-ai-teacher',
     'learn_smarter_with':           'tool-ai-teacher',
@@ -163,6 +164,8 @@
     /* WA Broadcast Pro */
     'wa-broadcast-pro-tool':        'tool-wa-broadcast-pro',
     'wa-broadcast-pro':             'tool-wa-broadcast-pro',
+    'whatsapp-broadcast-tool':      'tool-wa-broadcast-pro',
+    'whatsapp-broadcast':           'tool-wa-broadcast-pro',
     /* Free AI Video Generator */
     'free-ai-video-generator-tool': 'tool-free-ai-video-generator',
     'free-ai-video-generator':      'tool-free-ai-video-generator',
@@ -538,7 +541,13 @@
 
           // Check: kya is slot ka ad mila?
           // Also check 'all-tools' aur tool-specific
-          var adsForThisEl = bySlot[slotName] || bySlot['all-tools'] || bySlot[toolSlug] || null;
+          // Priority: exact slot match → all-tools → tool-specific slug → any available slot
+          var adsForThisEl = bySlot[slotName] || bySlot['all-tools'] || (toolSlug ? bySlot[toolSlug] : null) || null;
+          // Last resort: pick first available slot's ads
+          if (!adsForThisEl) {
+            var keys = Object.keys(bySlot);
+            if (keys.length) adsForThisEl = bySlot[keys[0]];
+          }
 
           if (!adsForThisEl || !adsForThisEl.length) {
             el.style.display = 'none'; // koi ad nahi → hide
