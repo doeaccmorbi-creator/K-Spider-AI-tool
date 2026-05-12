@@ -6397,10 +6397,10 @@ function renderAgentsTable(data) {
       var exp = new Date(agent._expireDate);
       var now = new Date();
       var daysLeft = Math.ceil((exp - now) / 86400000);
-      var color = daysLeft < 7 ? '#dc2626' : daysLeft < 14 ? '#d97706' : '#16a34a';
-      badge += '<br><span style="font-size:.62rem;color:' + color + ';display:block;margin-top:2px">\uD83D\uDCC5 Exp: ' + agent._expireDate + ' (' + daysLeft + 'd)</span>';
+      var col = daysLeft < 7 ? '#dc2626' : daysLeft < 14 ? '#d97706' : '#16a34a';
+      badge += '<br><span style="font-size:.62rem;color:' + col + ';display:block;margin-top:2px">\uD83D\uDCC5 Exp: ' + agent._expireDate + ' (' + daysLeft + 'd)</span>';
     } else if (!agent._expireDate && s === 'approved') {
-      badge += '<br><span style="font-size:.62rem;color:#6b7280;display:block;margin-top:2px">No expiry set</span>';
+      badge += '<br><span style="font-size:.62rem;color:#6b7280;display:block;margin-top:2px">No expiry</span>';
     }
     return badge;
   };
@@ -6436,7 +6436,7 @@ function renderAgentsTable(data) {
           '<button class="btn btn-sm" style="background:#2563eb;color:#fff;font-size:.7rem;padding:5px 9px" onclick="viewAgentDetails(\'' + agent.refId + '\')">\uD83D\uDC41\uFE0F View</button>' +
           approveBtn + rejectBtn +
           (agent.status === 'approved' ?
-            '<button class="btn btn-sm" style="background:' + (agent._suspended ? '#16a34a' : '#f59e0b') + ';color:#fff;font-size:.7rem;padding:5px 9px" onclick="suspendAgent(\'' + agent.refId + '\')">' + (agent._suspended ? '\u25B6\uFE0F Unsuspend' : '\u23F8\uFE0F Suspend') + '</button>' +
+            '<button class="btn btn-sm" style="background:' + (agent._suspended ? '#16a34a' : '#f59e0b') + ';color:#fff;font-size:.7rem;padding:5px 9px" onclick="suspendAgent(\'' + agent.refId + '\')">' + (agent._suspended ? '\u25B6\uFE0F Resume' : '\u23F8\uFE0F Suspend') + '</button>' +
             '<button class="btn btn-sm" style="background:#7c3aed;color:#fff;font-size:.7rem;padding:5px 9px" onclick="setAgentExpiry(\'' + agent.refId + '\')">\uD83D\uDCC5 Expiry</button>'
           : '') +
           '<button class="btn btn-sm btn-gh" style="font-size:.7rem;padding:5px 9px" onclick="deleteAgent(\'' + agent.refId + '\')">\uD83D\uDDD1\uFE0F</button>' +
@@ -6446,52 +6446,176 @@ function renderAgentsTable(data) {
   }).join('');
 }
 
+function closeAgentModal() {
+  var m = document.getElementById('ag-modal-overlay');
+  if (m) m.remove();
+}
+
+function adminCopyLink() {
+  var el = document.getElementById('admin-agent-link-input');
+  if (!el) return;
+  el.select();
+  try { document.execCommand('copy'); } catch(e) {
+    if (navigator.clipboard) navigator.clipboard.writeText(el.value);
+  }
+  var btn = document.getElementById('admin-copy-btn');
+  if (btn) { btn.textContent = '\u2705 Copied!'; setTimeout(function(){ btn.textContent = '\uD83D\uDCCB Copy Link'; }, 2000); }
+}
+
 function viewAgentDetails(refId) {
   var agent = allAgentData.find(function(a){ return a.refId === refId; });
   if (!agent) return;
+
   var socialKeys = ['website','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps'];
   var socials = socialKeys.filter(function(k){ return !!agent[k]; }).map(function(k){ return k + ': ' + agent[k]; }).join('\n');
-  /* Generate cross-browser base64 promo link */
+
+  /* Generate clean ?k=SHORTCODE link */
   var toolURL = 'https://www.kspiderai.in/tools/RTO-Exam-Pro-Tool-KSpider.html';
-  var agentLink = '(Not generated yet — approve first)';
+  var agentLink = '(Not generated yet)';
   if (agent.status === 'approved' && !agent._suspended && !agent._expired) {
+    if (!agent._shortCode) {
+      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      var code = '';
+      for (var ci = 0; ci < 6; ci++) code += chars[Math.floor(Math.random() * chars.length)];
+      agent._shortCode = code;
+      var agIdx = allAgentData.findIndex(function(x){ return x.refId === agent.refId; });
+      if (agIdx >= 0) allAgentData[agIdx]._shortCode = code;
+      saveAgentsToStorage();
+    }
     try {
-      var payload = JSON.stringify({
+      var db = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
+      db[agent._shortCode] = {
         name: agent.name, company: agent.company, mobile: agent.mobile,
         email: agent.email||'', city: agent.city||'', website: agent.website||'',
         logo: agent.logo||'', whatsapp: agent.whatsapp||'', facebook: agent.facebook||'',
         instagram: agent.instagram||'', youtube: agent.youtube||'', telegram: agent.telegram||'',
         linkedin: agent.linkedin||'', twitter: agent.twitter||'', gmaps: agent.gmaps||'',
         address: agent.address||'', services: agent.services||'',
-        _expireDate: agent._expireDate || null
-      });
-      var encoded = btoa(unescape(encodeURIComponent(payload)));
-      agentLink = toolURL + '#agent:' + encoded;
-    } catch(e) { agentLink = toolURL; }
+        _expireDate: agent._expireDate||null, _suspended: false, _expired: false
+      };
+      localStorage.setItem('rto_agents_db', JSON.stringify(db));
+    } catch(e) {}
+    agentLink = toolURL + '?k=' + agent._shortCode;
   } else if (agent._suspended) {
-    agentLink = '(Link SUSPENDED by admin)';
+    agentLink = '(SUSPENDED)';
   } else if (agent._expired) {
-    agentLink = '(Link EXPIRED — update expiry date to reactivate)';
+    agentLink = '(EXPIRED)';
   }
-  alert(
-    '\uD83C\uDFE2 AGENT DETAILS\n\n' +
-    'Name: ' + agent.name + '\n' +
-    'Company: ' + agent.company + '\n' +
-    'Mobile: ' + agent.mobile + '\n' +
-    'Email: ' + (agent.email||'\u2014') + '\n' +
-    'City: ' + (agent.city||'\u2014') + '\n' +
-    'Address: ' + (agent.address||'\u2014') + '\n\n' +
-    'Services: ' + (agent.services||'\u2014') + '\n' +
-    'Status: ' + agent.status + '\n' +
-    'Ref ID: ' + agent.refId + '\n' +
-    'Submitted: ' + (agent.submittedAt ? new Date(agent.submittedAt).toLocaleString('en-IN') : '\u2014') + '\n\n' +
-    'Socials:\n' + (socials || '\u2014') + '\n\n' +
-    'Status Info:\n' +
-    'Expire Date: ' + (agent._expireDate || 'None') + '\n' +
-    'Suspended: ' + (agent._suspended ? 'YES \uD83D\uDD34' : 'No') + '\n' +
-    'Expired: ' + (agent._expired ? 'YES \u23F0' : 'No') + '\n\n' +
-    'Promo Link (copy & send to agent):\n' + agentLink
-  );
+
+  closeAgentModal();
+
+  /* Build modal using DOM — no string concatenation = no quote issues */
+  var overlay = document.createElement('div');
+  overlay.id = 'ag-modal-overlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:16px;backdrop-filter:blur(4px)';
+  overlay.addEventListener('click', function(e){ if (e.target === overlay) closeAgentModal(); });
+
+  var box = document.createElement('div');
+  box.style.cssText = 'background:#fff;border-radius:18px;padding:28px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.35)';
+
+  function makeRow(label, val, bg) {
+    var d = document.createElement('div');
+    d.style.cssText = 'background:' + (bg||'#f8fafc') + ';border-radius:10px;padding:10px';
+    d.innerHTML = '<div style="font-size:.65rem;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:3px">' + label + '</div>' +
+      '<div style="font-weight:700;color:#1e293b;font-size:.86rem">' + (val||'\u2014') + '</div>';
+    return d;
+  }
+
+  /* Header */
+  var hdr = document.createElement('div');
+  hdr.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin-bottom:20px';
+  var title = document.createElement('h3');
+  title.style.cssText = 'font-size:1.1rem;font-weight:800;color:#1e3a8a;margin:0';
+  title.textContent = '\uD83C\uDFE2 Agent Details';
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'background:#f1f5f9;border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:1rem';
+  closeBtn.textContent = '\u2715';
+  closeBtn.onclick = closeAgentModal;
+  hdr.appendChild(title); hdr.appendChild(closeBtn);
+  box.appendChild(hdr);
+
+  /* Info grid */
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px';
+  grid.appendChild(makeRow('Name', agent.name));
+  grid.appendChild(makeRow('Company', agent.company));
+  grid.appendChild(makeRow('Mobile', agent.mobile));
+  grid.appendChild(makeRow('City', agent.city));
+  box.appendChild(grid);
+
+  box.appendChild(makeRow('Email', agent.email));
+  box.children[box.children.length-1].style.marginBottom = '8px';
+  box.appendChild(makeRow('Services', agent.services));
+  box.children[box.children.length-1].style.marginBottom = '12px';
+
+  /* Status row */
+  var statusStr = agent.status.toUpperCase() + (agent._suspended ? ' \uD83D\uDD34 SUSPENDED' : agent._expired ? ' \u23F0 EXPIRED' : ' \u2705');
+  var sGrid = document.createElement('div');
+  sGrid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px';
+  [['Status', statusStr], ['Expiry', agent._expireDate||'No expiry'], ['Ref ID', agent.refId]].forEach(function(pair) {
+    sGrid.appendChild(makeRow(pair[0], pair[1], '#eff6ff'));
+  });
+  box.appendChild(sGrid);
+
+  /* Socials */
+  if (socials) {
+    var soc = document.createElement('div');
+    soc.style.cssText = 'background:#f8fafc;border-radius:10px;padding:12px;margin-bottom:14px';
+    soc.innerHTML = '<div style="font-size:.65rem;color:#64748b;font-weight:700;text-transform:uppercase;margin-bottom:6px">Social Links</div>' +
+      '<div style="font-size:.78rem;color:#1e293b;white-space:pre-line;line-height:1.8">' + socials + '</div>';
+    box.appendChild(soc);
+  }
+
+  /* Link box */
+  var isActive = (agent.status === 'approved' && !agent._suspended && !agent._expired);
+  var linkBox = document.createElement('div');
+  linkBox.style.cssText = 'background:' + (isActive ? '#f0fdf4' : '#fef2f2') + ';border:1.5px solid ' + (isActive ? '#86efac' : '#fca5a5') + ';border-radius:12px;padding:14px;margin-bottom:14px';
+
+  var linkLabel = document.createElement('div');
+  linkLabel.style.cssText = 'font-size:.68rem;font-weight:700;color:#374151;text-transform:uppercase;margin-bottom:8px';
+  linkLabel.textContent = '\uD83D\uDCF2 Promo Link (Send to Agent)';
+
+  var linkInput = document.createElement('input');
+  linkInput.type = 'text';
+  linkInput.id = 'admin-agent-link-input';
+  linkInput.readOnly = true;
+  linkInput.value = agentLink;
+  linkInput.style.cssText = 'width:100%;padding:9px 12px;border-radius:8px;border:1px solid #d1d5db;font-size:.76rem;font-family:monospace;background:#fff;color:#1e293b;box-sizing:border-box;margin-bottom:8px';
+
+  var btnRow = document.createElement('div');
+  btnRow.style.cssText = 'display:flex;gap:8px';
+
+  var copyBtn = document.createElement('button');
+  copyBtn.id = 'admin-copy-btn';
+  copyBtn.style.cssText = 'flex:1;background:#2563eb;color:#fff;border:none;padding:9px;border-radius:8px;font-weight:700;cursor:pointer;font-size:.82rem';
+  copyBtn.textContent = '\uD83D\uDCCB Copy Link';
+  copyBtn.onclick = adminCopyLink;
+
+  btnRow.appendChild(copyBtn);
+
+  if (isActive) {
+    var prevLink = document.createElement('a');
+    prevLink.href = agentLink;
+    prevLink.target = '_blank';
+    prevLink.style.cssText = 'flex:1;background:#16a34a;color:#fff;text-decoration:none;padding:9px;border-radius:8px;font-weight:700;font-size:.82rem;text-align:center;display:inline-flex;align-items:center;justify-content:center';
+    prevLink.textContent = '\uD83D\uDD17 Preview';
+    btnRow.appendChild(prevLink);
+  }
+
+  linkBox.appendChild(linkLabel);
+  linkBox.appendChild(linkInput);
+  linkBox.appendChild(btnRow);
+  box.appendChild(linkBox);
+
+  /* Footer close */
+  var footerBtn = document.createElement('button');
+  footerBtn.style.cssText = 'width:100%;background:#f1f5f9;border:none;padding:11px;border-radius:10px;font-weight:700;cursor:pointer;color:#64748b;font-size:.85rem';
+  footerBtn.textContent = 'Close';
+  footerBtn.onclick = closeAgentModal;
+  box.appendChild(footerBtn);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
 }
 
 /* ── APPROVE with expiry date prompt (default = 1 month) ── */
@@ -6511,40 +6635,52 @@ function approveAgent(refId) {
     '\u2022 Leave blank = default 1 month',
     defaultExpireStr
   );
-  if (expireInput === null) return; // cancelled
+  if (expireInput === null) return;
   var expireDate = null;
   var trimmed = (expireInput || '').trim().toLowerCase();
-  if (trimmed === 'never')                          { expireDate = null; }
-  else if (trimmed === '')                          { expireDate = defaultExpireStr; }
+  if (trimmed === 'never')                        { expireDate = null; }
+  else if (trimmed === '')                        { expireDate = defaultExpireStr; }
   else if (trimmed.match(/^\d{4}-\d{2}-\d{2}$/)) { expireDate = trimmed; }
-  else                                              { expireDate = defaultExpireStr; }
-  allAgentData[idx].status     = 'approved';
-  allAgentData[idx].approvedAt = new Date().toISOString();
+  else                                            { expireDate = defaultExpireStr; }
+  allAgentData[idx].status      = 'approved';
+  allAgentData[idx].approvedAt  = new Date().toISOString();
   allAgentData[idx]._expireDate = expireDate;
   allAgentData[idx]._suspended  = false;
   allAgentData[idx]._expired    = false;
+  allAgentData[idx]._shortCode  = ''; // force fresh code with new expiry
   saveAgentsToStorage();
   syncAgentFieldsToLocal(refId);
+  /* Update rto_agents_db with new payload + expiry */
+  generateAndStoreAgentCode(allAgentData[idx]);
   filterAgents();
   updateAgentStats(allAgentData);
   showAdminToast('Agent approved \u2705 | Expires: ' + (expireDate || 'Never'), 'success');
 }
 
-/* ── SUSPEND / UNSUSPEND — pause link without deleting ── */
+/* ── SUSPEND / UNSUSPEND ── */
 function suspendAgent(refId) {
   var idx = allAgentData.findIndex(function(a){ return a.refId === refId; });
   if (idx < 0) return;
   var agent = allAgentData[idx];
   var isSuspended = !!agent._suspended;
   if (isSuspended) {
-    if (!confirm('Unsuspend agent ' + agent.name + '?\nTheir promotional link will become active again.')) return;
+    if (!confirm('Unsuspend agent ' + agent.name + '?\nTheir link will become active again.')) return;
     allAgentData[idx]._suspended = false;
-    saveAgentsToStorage(); syncAgentFieldsToLocal(refId); filterAgents();
+    saveAgentsToStorage(); syncAgentFieldsToLocal(refId);
+    generateAndStoreAgentCode(allAgentData[idx]);
+    filterAgents();
     showAdminToast('Agent UNSUSPENDED \u2705 — link is now active', 'success');
   } else {
-    if (!confirm('Suspend agent ' + agent.name + '?\nTheir promotional link will stop working immediately.')) return;
+    if (!confirm('Suspend agent ' + agent.name + '?\nTheir link will stop working immediately.')) return;
     allAgentData[idx]._suspended = true;
-    saveAgentsToStorage(); syncAgentFieldsToLocal(refId); filterAgents();
+    saveAgentsToStorage(); syncAgentFieldsToLocal(refId);
+    /* Mark suspended in db too */
+    try {
+      var db = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
+      var code = agent._shortCode;
+      if (code && db[code]) { db[code]._suspended = true; localStorage.setItem('rto_agents_db', JSON.stringify(db)); }
+    } catch(e) {}
+    filterAgents();
     showAdminToast('Agent SUSPENDED \uD83D\uDD34 — link is now inactive', 'info');
   }
 }
@@ -6564,16 +6700,48 @@ function setAgentExpiry(refId) {
   if (input === null) return;
   input = input.trim().toLowerCase();
   var newExpiry = null;
-  if (input === 'never' || input === '')             { newExpiry = null; }
+  if (input === 'never' || input === '')           { newExpiry = null; }
   else if (input.match(/^\d{4}-\d{2}-\d{2}$/))    { newExpiry = input; }
-  else { showAdminToast('Invalid date format — use YYYY-MM-DD', 'error'); return; }
+  else { showAdminToast('Invalid date — use YYYY-MM-DD', 'error'); return; }
   allAgentData[idx]._expireDate = newExpiry;
   allAgentData[idx]._expired    = false;
-  saveAgentsToStorage(); syncAgentFieldsToLocal(refId); filterAgents();
+  saveAgentsToStorage(); syncAgentFieldsToLocal(refId);
+  generateAndStoreAgentCode(allAgentData[idx]);
+  filterAgents();
   showAdminToast('Expiry updated: ' + (newExpiry || 'No expiry'), 'success');
 }
 
-/* ── Sync expiry/suspend fields to agent localStorage (same-device admin) ── */
+/* ── Generate/update short code and store in rto_agents_db ── */
+function generateAndStoreAgentCode(agent) {
+  if (agent.status !== 'approved') return;
+  try {
+    var db = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
+    /* Reuse or generate code */
+    if (!agent._shortCode) {
+      var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      var code = '';
+      for (var i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      while (db[code]) { code = ''; for (var j=0;j<6;j++) code+=chars[Math.floor(Math.random()*chars.length)]; }
+      var agIdx = allAgentData.findIndex(function(x){ return x.refId === agent.refId; });
+      if (agIdx >= 0) { allAgentData[agIdx]._shortCode = code; agent._shortCode = code; }
+      saveAgentsToStorage();
+    }
+    db[agent._shortCode] = {
+      name: agent.name, company: agent.company, mobile: agent.mobile,
+      email: agent.email||'', city: agent.city||'', website: agent.website||'',
+      logo: agent.logo||'', whatsapp: agent.whatsapp||'', facebook: agent.facebook||'',
+      instagram: agent.instagram||'', youtube: agent.youtube||'', telegram: agent.telegram||'',
+      linkedin: agent.linkedin||'', twitter: agent.twitter||'', gmaps: agent.gmaps||'',
+      address: agent.address||'', services: agent.services||'',
+      _expireDate: agent._expireDate||null,
+      _suspended: agent._suspended||false,
+      _expired: agent._expired||false
+    };
+    localStorage.setItem('rto_agents_db', JSON.stringify(db));
+  } catch(e) {}
+}
+
+/* ── Sync fields to agent localStorage (same device) ── */
 function syncAgentFieldsToLocal(refId) {
   try {
     var ad = JSON.parse(localStorage.getItem('rto_agent_data') || 'null');
@@ -6582,21 +6750,25 @@ function syncAgentFieldsToLocal(refId) {
       ad._expireDate = agent._expireDate || null;
       ad._suspended  = agent._suspended  || false;
       ad._expired    = agent._expired    || false;
+      ad._shortCode  = agent._shortCode  || '';
       localStorage.setItem('rto_agent_data', JSON.stringify(ad));
     }
   } catch(e) {}
 }
 
-/* ── Auto-mark expired agents when admin panel loads ── */
+/* ── Auto-mark expired agents on panel load ── */
 function autoMarkExpired() {
-  var changed = false;
-  var now = new Date();
+  var changed = false; var now = new Date();
   allAgentData.forEach(function(a, i) {
     if (a._expireDate && a.status === 'approved' && !a._suspended) {
       var exp = new Date(a._expireDate);
       if (!isNaN(exp) && now > exp && !a._expired) {
-        allAgentData[i]._expired = true;
-        changed = true;
+        allAgentData[i]._expired = true; changed = true;
+        /* Mark in rto_agents_db too */
+        try {
+          var db = JSON.parse(localStorage.getItem('rto_agents_db')||'{}');
+          if (a._shortCode && db[a._shortCode]) { db[a._shortCode]._expired = true; localStorage.setItem('rto_agents_db', JSON.stringify(db)); }
+        } catch(e) {}
       }
     }
   });
@@ -6606,14 +6778,12 @@ function autoMarkExpired() {
 function rejectAgent(refId) {
   var idx = allAgentData.findIndex(function(a){ return a.refId === refId; });
   if (idx < 0) return;
-  var reason = prompt('Reason for rejecting ' + allAgentData[idx].name + '?\n(Optional — leave blank to reject without reason)');
+  var reason = prompt('Reason for rejecting ' + allAgentData[idx].name + '?\n(Optional)');
   if (reason === null) return;
   allAgentData[idx].status = 'rejected';
   allAgentData[idx].rejectedAt = new Date().toISOString();
   allAgentData[idx].rejectReason = reason || '';
-  saveAgentsToStorage();
-  filterAgents();
-  updateAgentStats(allAgentData);
+  saveAgentsToStorage(); filterAgents(); updateAgentStats(allAgentData);
   showAdminToast('Agent rejected \u274C', 'info');
 }
 
@@ -6621,10 +6791,13 @@ function deleteAgent(refId) {
   var agent = allAgentData.find(function(a){ return a.refId === refId; });
   if (!agent) return;
   if (!confirm('Permanently DELETE ' + agent.name + ' (' + agent.company + ')?\n\nNOTE: Old links they shared will now open the original tool without any banner.\n\nThis cannot be undone.')) return;
+  /* Remove from rto_agents_db */
+  try {
+    var db = JSON.parse(localStorage.getItem('rto_agents_db')||'{}');
+    if (agent._shortCode && db[agent._shortCode]) { delete db[agent._shortCode]; localStorage.setItem('rto_agents_db', JSON.stringify(db)); }
+  } catch(e) {}
   allAgentData = allAgentData.filter(function(a){ return a.refId !== refId; });
-  saveAgentsToStorage();
-  filterAgents();
-  updateAgentStats(allAgentData);
+  saveAgentsToStorage(); filterAgents(); updateAgentStats(allAgentData);
   showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
 }
 
