@@ -3563,7 +3563,6 @@ async function loadFeed(reset=true){
   const box=$('feedBox');
   if(!window._fb){box.innerHTML=demoPosts();return;}
   if(reset){
-    // Unsubscribe previous listener
     if(_feedUnsub){_feedUnsub();_feedUnsub=null;}
     box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 10px;"></div><div style="font-size:12px;">Loading live feed…</div></div>';
     _feedLastDoc=null;_feedDone=false;
@@ -3575,23 +3574,59 @@ async function loadFeed(reset=true){
       window._fb.orderBy('createdAt','desc'),
       window._fb.limit(FEED_PAGE_SIZE)
     );
-    _feedUnsub=window._fb.onSnapshot(q,snap=>{
-      if(snap.empty){box.innerHTML=demoPosts();return;}
-      box.innerHTML='';
-      let cnt=0;
-      snap.forEach(d=>{
-        const post={id:d.id,...d.data()};
-        // Near-me badge logic
-        if(_userGeo && post.geoLat && post.geoLng){
-          const dist=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
-          post._nearbyKm=dist;
-        }
-        box.insertAdjacentHTML('beforeend',renderPost(post));
-        cnt++;
-        if(cnt%3===0) box.appendChild(inFeedAd());
+    _feedUnsub=window._fb.onSnapshot(q,{includeMetadataChanges:false},snap=>{
+      if(snap.empty){
+        // Keep any optimistically inserted posts, only show demo if truly empty
+        if(!box.querySelector('.pc')) box.innerHTML=demoPosts();
+        return;
+      }
+
+      // Build set of real doc IDs in snapshot
+      const realIds=new Set();
+      snap.forEach(d=>realIds.add(d.id));
+
+      // Remove stale temp/local posts that now have real counterparts
+      box.querySelectorAll('.pc[data-temp]').forEach(el=>{
+        if(el.dataset.temp) el.remove();
       });
+
+      // Check which real posts are already rendered
+      const renderedIds=new Set();
+      box.querySelectorAll('.pc[data-id]').forEach(el=>renderedIds.add(el.dataset.id));
+
+      // Add only NEW posts (not already in DOM) at the top
+      const newDocs=[];
+      snap.docChanges().forEach(change=>{
+        if(change.type==='added' && !renderedIds.has(change.doc.id)){
+          newDocs.push({id:change.doc.id,...change.doc.data()});
+        }
+      });
+
+      // If this is the first load (box had spinner/demo), render all
+      const isFirstLoad=!box.querySelector('.pc[data-id]');
+      if(isFirstLoad){
+        box.innerHTML='';
+        let cnt=0;
+        snap.forEach(d=>{
+          const post={id:d.id,...d.data()};
+          if(_userGeo&&post.geoLat&&post.geoLng){
+            post._nearbyKm=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
+          }
+          box.insertAdjacentHTML('beforeend',renderPost(post));
+          cnt++;
+          if(cnt%3===0) box.appendChild(inFeedAd());
+        });
+      } else if(newDocs.length>0){
+        // Prepend only truly new posts
+        newDocs.reverse().forEach(post=>{
+          if(_userGeo&&post.geoLat&&post.geoLng){
+            post._nearbyKm=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
+          }
+          box.insertAdjacentHTML('afterbegin',renderPost(post));
+        });
+      }
+
       _feedLastDoc=snap.docs[snap.docs.length-1];
-      // Load More if full page
       const oldBtn=document.getElementById('feedLoadMoreBtn');
       if(oldBtn) oldBtn.remove();
       if(snap.size===FEED_PAGE_SIZE){
@@ -3599,7 +3634,7 @@ async function loadFeed(reset=true){
           <button onclick="loadMoreFeed()" style="padding:10px 28px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-weight:700;font-size:13px;cursor:pointer;">Load More Posts</button>
         </div>`);
       }
-    },err=>{console.warn('Feed snapshot error:',err);box.innerHTML=demoPosts();});
+    },err=>{console.warn('Feed snapshot error:',err);if(!box.querySelector('.pc'))box.innerHTML=demoPosts();});
   }catch(e){console.warn('loadFeed error:',e);box.innerHTML=demoPosts();}
   _feedLoading=false;
 }
@@ -3724,18 +3759,18 @@ function renderPost(p){
   const ht=(p.hashtags||'').split(',').filter(Boolean).map(h=>`<span class="ht">${validateInput(h.trim())}</span>`).join(' ');
   const tm=p.createdAt?timeAgo(p.createdAt.toDate()):'Just now';
   const sp=p.sponsored?`<div style="background:linear-gradient(90deg,var(--gol),#FFF);padding:5px 14px;border-bottom:1px solid rgba(245,158,11,.2);display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;color:var(--gold);"><span class="boost-status"><span class="bpulse"></span>SPONSORED</span><span class="featured-badge" style="margin-left:auto;">⭐ FEATURED</span></div>`:'';
-  // Near-me badge
   let nearBadge='';
   if(p._nearbyKm!==undefined){
     if(p._nearbyKm<5) nearBadge='<span style="font-size:10px;font-weight:700;color:#10B981;background:#10B98115;border:1px solid #10B98130;padding:2px 7px;border-radius:99px;margin-left:6px;">📍 Near You</span>';
     else if(p._nearbyKm<30) nearBadge=`<span style="font-size:10px;color:var(--t3);background:var(--s2);border:1px solid var(--border);padding:2px 7px;border-radius:99px;margin-left:6px;">📍 ${Math.round(p._nearbyKm)} km away</span>`;
   }
-  // User type badge
   const roleBadge=p.userRole==='recruiter'?'<span style="font-size:9px;font-weight:700;background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED30;padding:1px 6px;border-radius:99px;margin-left:4px;">RECRUITER</span>':
     p.userRole==='jobseeker'?'<span style="font-size:9px;font-weight:700;background:#0A84FF18;color:#0A84FF;border:1px solid #0A84FF30;padding:1px 6px;border-radius:99px;margin-left:4px;">JOB SEEKER</span>':'';
-  // Location line
   const locLine=p.locationCity?`<span style="font-size:11px;color:var(--t3);">📍 ${validateInput(p.locationCity)}</span> · `:'';
-  return `<div class="pc${p.sponsored?' sponsored':''}" style="animation:fu .3s ease;">
+  // isTemp = true for optimistically inserted posts (before Firebase confirms)
+  const isTemp=p.id&&p.id.startsWith('temp_')||p.id&&p.id.startsWith('local_');
+  const dataAttrs=`data-id="${p.id}" ${isTemp?'data-temp="'+p.id+'"':''}`;
+  return `<div class="pc${p.sponsored?' sponsored':''}" ${dataAttrs} style="animation:fu .3s ease;">
     ${sp}
     <div class="ph">
       <div class="pav"><img src="${ph}" alt="" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(nm)}&background=0A84FF&color=fff'"><div class="vb" style="display:${p.verified?'flex':'none'}">✓</div></div>
@@ -3775,26 +3810,42 @@ async function loadJobs(){
       window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
-    _jobsUnsub=window._fb.onSnapshot(q,snap=>{
-      if(snap.empty){box.innerHTML=demoJobs();return;}
+    _jobsUnsub=window._fb.onSnapshot(q,{includeMetadataChanges:false},snap=>{
+      if(snap.empty){if(!box.querySelector('.pc'))box.innerHTML=demoJobs();return;}
       let jobs=[];
       snap.forEach(d=>jobs.push({id:d.id,...d.data()}));
-      _allJobsCache=[...jobs]; // cache for live filter
-      // Geo-sort: near-me jobs first if location available
+      _allJobsCache=[...jobs];
+      // Geo-sort
       if(_userGeo){
         jobs.forEach(j=>{
           if(j.geoLat&&j.geoLng) j._dist=geoDistKm(_userGeo.lat,_userGeo.lng,j.geoLat,j.geoLng);
           else j._dist=99999;
         });
         jobs.sort((a,b)=>{
-          // Sponsored always first
           if(b.sponsored!==a.sponsored) return (b.sponsored?1:0)-(a.sponsored?1:0);
           return a._dist-b._dist;
         });
       }
-      box.innerHTML='';
-      jobs.forEach(j=>box.insertAdjacentHTML('beforeend',renderJobCard(j)));
-    },err=>{console.warn('Jobs snapshot error:',err);box.innerHTML=demoJobs();});
+      // Remove temp optimistic cards
+      box.querySelectorAll('.pc[data-temp]').forEach(el=>el.remove());
+      // Full re-render only on first load; incremental after
+      const isFirstLoad=!box.querySelector('.pc[data-id]');
+      if(isFirstLoad){
+        box.innerHTML='';
+        jobs.forEach(j=>box.insertAdjacentHTML('beforeend',renderJobCard(j)));
+      } else {
+        // Add only new jobs at top
+        snap.docChanges().forEach(change=>{
+          if(change.type==='added'){
+            const exists=box.querySelector('[data-id="'+change.doc.id+'"]');
+            if(!exists){
+              const j={id:change.doc.id,...change.doc.data()};
+              box.insertAdjacentHTML('afterbegin',renderJobCard(j));
+            }
+          }
+        });
+      }
+    },err=>{console.warn('Jobs snapshot error:',err);if(!box.querySelector('.pc'))box.innerHTML=demoJobs();});
   }catch(e){console.warn('loadJobs error:',e);box.innerHTML=demoJobs();}
 }
 
@@ -3847,7 +3898,8 @@ function renderJobCard(j){
   const desc=validateInput((j.description||'').slice(0,150))+(j.description&&j.description.length>150?'…':'');
   const logoUrl=j.logoUrl||`https://ui-avatars.com/api/?name=${encodeURIComponent(j.company||'C')}&background=0A84FF&color=fff&size=48&bold=true`;
   const t=validateInput(j.title||''),co=validateInput(j.company||''),sal=validateInput(j.salary||''),exp=validateInput(j.experience||''),typ=validateInput(j.type||'');
-  return `<div class="pc${j.sponsored?' sponsored':''}" style="animation:fu .3s ease;">
+  const isTemp=j.id&&(j.id.startsWith('temp_')||j.id.startsWith('local_'));
+  return `<div class="pc${j.sponsored?' sponsored':''}" data-id="${j.id}" ${isTemp?'data-temp="'+j.id+'"':''} style="animation:fu .3s ease;">
     ${sp}
     <div style="padding:14px;">
       <div class="je">
@@ -3981,8 +4033,11 @@ async function submitPost(){
   const txt=$('ptxt').value.trim();
   if(!txt)return showToast('⚠️ Write something first!');
   const vis=$('pvis').value;
-  const tags=$('phtags').value;
-  // Build post data with geo
+  const tags=$('phtags').value.trim();
+
+  // Use client-side Date so orderBy('createdAt') works INSTANTLY
+  // serverTimestamp() is null on client until confirmed → causes ordering skip
+  const nowMs=Date.now();
   const postData={
     text:validateInput(txt),
     hashtags:tags,
@@ -3994,36 +4049,87 @@ async function submitPost(){
     userRole:_up?.role||'',
     likes:[],
     sponsored:false,
-    createdAt:window._fb?window._fb.serverTimestamp():new Date()
+    createdAt:{toDate:()=>new Date(nowMs),seconds:Math.floor(nowMs/1000)} // client-side timestamp
   };
-  // Attach geo if available
   if(_userGeo){
     postData.geoLat=_userGeo.lat;
     postData.geoLng=_userGeo.lng;
     postData.locationCity=_userGeo.city||'';
   }
+
+  // ── DEMO MODE (no Firebase) ──
   if(!window._fb||!_user){
     closeModal('postModal');
-    showToast('✅ Post published!');
-    $('feedBox').insertAdjacentHTML('afterbegin',renderPost({id:'local',...postData}));
     $('ptxt').value='';$('phtags').value='';
+    const box=$('feedBox');
+    // Remove demo posts placeholder if present
+    const demo=box.querySelector('.demo-placeholder');
+    if(demo) demo.remove();
+    box.insertAdjacentHTML('afterbegin',renderPost({id:'local_'+nowMs,...postData}));
+    showToast('✅ Post published!');
+    showPage('feed',null);
     return;
   }
+
   const btn=$('submitPostBtn');
   if(btn){btn.disabled=true;btn.textContent='Publishing…';}
+
+  // ── OPTIMISTIC INSERT — show post immediately before Firebase confirms ──
+  closeModal('postModal');
+  $('ptxt').value='';$('phtags').value='';
+  showPage('feed',null);
+
+  // Insert optimistically at top of feed right now
+  const box=$('feedBox');
+  const tempId='temp_'+nowMs;
+  const tempHTML=renderPost({id:tempId,...postData});
+  if(box.firstChild){
+    box.insertAdjacentHTML('afterbegin',tempHTML);
+  } else {
+    box.innerHTML=tempHTML;
+  }
+  showToast('✅ Post published! Live for everyone 🌍');
+
+  // ── SAVE TO FIREBASE in background ──
   try{
-    await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),postData);
-    $('ptxt').value='';$('phtags').value='';
-    closeModal('postModal');
-    showToast('✅ Post published! Visible to everyone 🌍');
-    showPage('feed',null);
-  }catch(e){showToast('⚠️ '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent='Post';}}
+    // Save with serverTimestamp for server-side consistency
+    const fbData={...postData,
+      createdAt:window._fb.serverTimestamp() // real server timestamp for storage
+    };
+    delete fbData.likes; // will be set below
+    fbData.likes=[];
+    const ref=await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),fbData);
+
+    // Replace temp post with real ID post (onSnapshot will handle this)
+    const tempEl=document.getElementById('pc_'+tempId)||box.querySelector('[data-id="'+tempId+'"]');
+    // onSnapshot will re-render with real doc — remove temp to avoid duplicate
+    setTimeout(()=>{
+      const t=box.querySelector('[data-temp="'+tempId+'"]');
+      if(t) t.remove();
+    },3000);
+
+    // Update user post count
+    try{
+      await window._fb.updateDoc(
+        window._fb.doc(window._fb.db,'users',_user.uid),
+        {posts:window._fb.increment(1)}
+      );
+    }catch(e2){console.warn('Post count update failed:',e2);}
+
+  }catch(e){
+    showToast('⚠️ Save failed: '+e.message+' — Post shown locally only.');
+    console.warn('submitPost Firebase error:',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Post';}
+  }
 }
 
 async function submitJob(){
-  const t=$('jt').value.trim(),c=$('jc').value.trim(),l=$('jl').value.trim(),d=$('jdesc').value.trim();
-  if(!t||!c||!l||!d)return showToast('⚠️ Fill all required fields!');
+  const t=$('jt').value.trim(),c=$('jc').value.trim(),
+        l=$('jl').value.trim(),d=$('jdesc').value.trim();
+  if(!t||!c||!l||!d)return showToast('⚠️ Fill Title, Company, Location & Description!');
+
+  const nowMs=Date.now();
   const jobData={
     title:validateInput(t),
     company:validateInput(c),
@@ -4032,40 +4138,68 @@ async function submitJob(){
     type:$('jty').value,
     salary:$('jsal').value,
     experience:$('jexp').value,
-    workMode:$('jwm').value,
-    industry:$('jind').value,
+    workMode:$('jwm')?$('jwm').value:'',
+    industry:$('jind')?$('jind').value:'',
     skills:$('jsk').value,
     recruiterId:_user?_user.uid:'',
     recruiterName:_up?.name||'',
     applications:0,
     sponsored:false,
     verified:false,
-    createdAt:window._fb?window._fb.serverTimestamp():new Date()
+    createdAt:{toDate:()=>new Date(nowMs),seconds:Math.floor(nowMs/1000)}
   };
-  // Attach geo for near-me sorting
   if(_userGeo){
     jobData.geoLat=_userGeo.lat;
     jobData.geoLng=_userGeo.lng;
     jobData.locationCity=_userGeo.city||l;
   }
+
+  // ── DEMO MODE ──
   if(!window._fb||!_user){
     closeModal('postJobModal');
-    showToast('✅ Job posted! Configure Firebase to save.');
+    ['jt','jc','jl','jdesc','jsal','jsk'].forEach(id=>{if($(id))$(id).value='';});
+    showPage('jobs',null);
+    const box=$('jobsBox');
+    box.insertAdjacentHTML('afterbegin',renderJobCard({id:'local_'+nowMs,...jobData}));
+    showToast('✅ Job posted! Configure Firebase to save permanently.');
     return;
   }
+
   const btn=$('submitJobBtn');
   if(btn){btn.disabled=true;btn.textContent='Posting…';}
+
+  // ── OPTIMISTIC INSERT — show job immediately ──
+  closeModal('postJobModal');
+  ['jt','jc','jl','jdesc','jsal','jsk'].forEach(id=>{if($(id))$(id).value='';});
+  showPage('jobs',null);
+
+  const box=$('jobsBox');
+  box.insertAdjacentHTML('afterbegin',renderJobCard({id:'temp_'+nowMs,...jobData}));
+  showToast('✅ Job posted! Now live for all job seekers 🌍');
+  setTimeout(()=>showBoostNudge(t),3000);
+
+  // ── SAVE TO FIREBASE in background ──
   try{
-    await window._fb.addDoc(window._fb.collection(window._fb.db,'jobs'),jobData);
-    await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{jobs:window._fb.increment(1)});
-    ['jt','jc','jl','jdesc','jsal','jsk'].forEach(id=>$(id).value='');
-    closeModal('postJobModal');
-    showPage('jobs',null); // Show jobs feed immediately so user sees their post live
-    showToast('✅ Job posted! Now live & visible to all job seekers worldwide 🌍');
-    // Non-blocking soft boost nudge after 3 seconds (no confirm, no block)
-    setTimeout(()=>showBoostNudge(t),3000);
-  }catch(e){showToast('⚠️ '+e.message);}
-  finally{if(btn){btn.disabled=false;btn.textContent='Post Job';}}
+    const fbData={...jobData,
+      createdAt:window._fb.serverTimestamp()
+    };
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'jobs'),fbData);
+
+    // Update recruiter job count
+    try{
+      await window._fb.updateDoc(
+        window._fb.doc(window._fb.db,'users',_user.uid),
+        {jobs:window._fb.increment(1)}
+      );
+    }catch(e2){console.warn('Job count update failed:',e2);}
+
+    // onSnapshot will replace temp card with real one automatically
+  }catch(e){
+    showToast('⚠️ Save failed: '+e.message+' — Job shown locally only.');
+    console.warn('submitJob Firebase error:',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Post Job';}
+  }
 }
 
 // ── NON-BLOCKING BOOST NUDGE ─────────────────────────────────
