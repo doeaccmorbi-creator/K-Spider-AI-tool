@@ -113,6 +113,31 @@
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  /* ══════════════════════════════════════════════════════
+     OFFLINE CACHE — localStorage mein ads save/load karna
+     Cache key: ks_ads_cache_v1
+     Cache TTL: 24 hours (online hone par auto-refresh)
+  ══════════════════════════════════════════════════════ */
+  var CACHE_KEY = 'ks_ads_cache_v1';
+  var CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours in ms
+
+  function saveCache(adsArray) {
+    try {
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), ads: adsArray }));
+    } catch(e) {}
+  }
+
+  function loadCache() {
+    try {
+      var raw = localStorage.getItem(CACHE_KEY);
+      if (!raw) return null;
+      var payload = JSON.parse(raw);
+      if (!payload || !Array.isArray(payload.ads) || !payload.ads.length) return null;
+      if (Date.now() - payload.ts > CACHE_TTL) return null; // expired
+      return payload.ads;
+    } catch(e) { return null; }
+  }
+
   /* ── Filename → Admin checkbox value mapping ── */
   /* Admin mein jo checkbox value hai, wahi yahan likhni hai */
   var FILE_TO_SLOT = {
@@ -164,8 +189,6 @@
     /* WA Broadcast Pro */
     'wa-broadcast-pro-tool':        'tool-wa-broadcast-pro',
     'wa-broadcast-pro':             'tool-wa-broadcast-pro',
-    'whatsapp-broadcast-tool':      'tool-wa-broadcast-pro',
-    'whatsapp-broadcast':           'tool-wa-broadcast-pro',
     /* Free AI Video Generator */
     'free-ai-video-generator-tool': 'tool-free-ai-video-generator',
     'free-ai-video-generator':      'tool-free-ai-video-generator',
@@ -480,91 +503,94 @@
     }
   }
 
-  /* ── Main: Firebase se ads load karna ── */
+  /* ── Ads array se bySlot map banana aur slots render karna ── */
+  function processAndRender(adsArray) {
+    var toolSlug = getToolSlug();
+    var now      = new Date();
+    var bySlot   = {};
+
+    adsArray.forEach(function(d) {
+      if (d.expiry && new Date(d.expiry) < now) return;
+      var slots = d.slots || [];
+      slots.forEach(function(slot) {
+        var isGeneric   = ['top-banner','sidebar-left','in-content','after-result','bottom-banner'].indexOf(slot) > -1;
+        var isToolMatch = (slot === toolSlug);
+        var isAllTools  = (slot === 'all-tools');
+        if (isGeneric || isToolMatch || isAllTools) {
+          if (!bySlot[slot]) bySlot[slot] = [];
+          bySlot[slot].push(d);
+        }
+      });
+    });
+
+    Object.keys(bySlot).forEach(function(s) {
+      bySlot[s] = bySlot[s].sort(function() { return Math.random() - 0.5; });
+    });
+
+    _adsBySlot = bySlot;
+
+    var allSlotEls   = document.querySelectorAll('[data-ks-slot]');
+    var slotElements = {};
+
+    allSlotEls.forEach(function(el) {
+      el.style.cssText = 'display:flex;justify-content:center;align-items:center;width:100%;padding:8px 0;min-height:50px;box-sizing:border-box';
+      var slotName = el.getAttribute('data-ks-slot');
+      if (!slotName) return;
+
+      var adsForThisEl = bySlot[slotName] || bySlot['all-tools'] || (toolSlug ? bySlot[toolSlug] : null);
+      if (!adsForThisEl) {
+        var keys = Object.keys(bySlot);
+        if (keys.length) adsForThisEl = bySlot[keys[0]];
+      }
+      if (!adsForThisEl || !adsForThisEl.length) { el.style.display = 'none'; return; }
+
+      var useSlot = bySlot[slotName] ? slotName : (bySlot['all-tools'] ? 'all-tools' : toolSlug);
+      if (!slotElements[useSlot]) slotElements[useSlot] = [];
+      slotElements[useSlot].push(el);
+    });
+
+    Object.keys(slotElements).forEach(function(s) { startSlot(s, slotElements[s]); });
+  }
+
+  /* ── Main: Firebase se ads load karna (with offline cache fallback) ── */
   function loadAds() {
     var db = getDb();
-    if (!db) { setTimeout(loadAds, 2000); return; }
 
-    var toolSlug = getToolSlug(); // e.g. "tool-whatsapp-bulk-sender-tool"
-    var now = new Date();
+    // OFFLINE — Firebase nahi mila, cache se ads show karo
+    if (!db) {
+      var cached = loadCache();
+      if (cached) {
+        console.info('[KsToolAds] Offline — cache se ads chal rahi hain');
+        processAndRender(cached);
+      } else {
+        setTimeout(loadAds, 2000); // retry karo
+      }
+      return;
+    }
+
+    // ONLINE — pehle cache se instant show, phir Firebase se fresh fetch + re-render
+    var cachedFirst = loadCache();
+    if (cachedFirst) {
+      processAndRender(cachedFirst); // instant render
+    }
 
     db.collection('ads').where('status', '==', 'active').get()
       .then(function(snap) {
         if (snap.empty) return;
-
-        var bySlot = {};
-
+        var adsArray = [];
         snap.forEach(function(doc) {
-          var d = doc.data();
-          if (d.expiry && new Date(d.expiry) < now) return; // expired skip
-
-          var slots = d.slots || [];
-          slots.forEach(function(slot) {
-            // Check karo: kya ye ad is page ke liye hai?
-            // Yes agar: slot generic hai (top-banner etc.) ya tool-specific slug match karta hai
-            var isGeneric    = ['top-banner','sidebar-left','in-content','after-result','bottom-banner'].indexOf(slot) > -1;
-            var isToolMatch  = (slot === toolSlug);
-            var isAllTools   = (slot === 'all-tools');
-
-            if (isGeneric || isToolMatch || isAllTools) {
-              if (!bySlot[slot]) bySlot[slot] = [];
-              bySlot[slot].push(Object.assign({}, d, { _id: doc.id }));
-            }
-          });
+          adsArray.push(Object.assign({}, doc.data(), { _id: doc.id }));
         });
-
-        // Shuffle for variety
-        Object.keys(bySlot).forEach(function(s) {
-          bySlot[s] = bySlot[s].sort(function() { return Math.random() - 0.5; });
-        });
-
-        _adsBySlot = bySlot;
-
-        // Sabhi [data-ks-slot] elements dhoondo
-        var allSlotEls = document.querySelectorAll('[data-ks-slot]');
-        var slotElements = {}; // slotName → [el, el, ...]
-
-        allSlotEls.forEach(function(el) {
-          // Styling — slot ko visible banana
-          el.style.cssText = [
-            'display:flex',
-            'justify-content:center',
-            'align-items:center',
-            'width:100%',
-            'padding:8px 0',
-            'min-height:50px',
-            'box-sizing:border-box'
-          ].join(';');
-
-          var slotName = el.getAttribute('data-ks-slot');
-          if (!slotName) return;
-
-          // Check: kya is slot ka ad mila?
-          // Also check 'all-tools' aur tool-specific
-          // Priority: exact slot match → all-tools → tool-specific slug → any available slot
-          var adsForThisEl = bySlot[slotName] || bySlot['all-tools'] || (toolSlug ? bySlot[toolSlug] : null) || null;
-          // Last resort: pick first available slot's ads
-          if (!adsForThisEl) {
-            var keys = Object.keys(bySlot);
-            if (keys.length) adsForThisEl = bySlot[keys[0]];
-          }
-
-          if (!adsForThisEl || !adsForThisEl.length) {
-            el.style.display = 'none'; // koi ad nahi → hide
-            return;
-          }
-
-          var useSlot = bySlot[slotName] ? slotName : (bySlot['all-tools'] ? 'all-tools' : toolSlug);
-          if (!slotElements[useSlot]) slotElements[useSlot] = [];
-          slotElements[useSlot].push(el);
-        });
-
-        // Start rotation for each slot
-        Object.keys(slotElements).forEach(function(s) {
-          startSlot(s, slotElements[s]);
-        });
+        saveCache(adsArray);       // offline ke liye save
+        processAndRender(adsArray); // fresh data se render
       })
-      .catch(function(e) { console.warn('[KsToolAds] Load error:', e.message); });
+      .catch(function(e) {
+        console.warn('[KsToolAds] Firebase error, cache fallback:', e.message);
+        if (!cachedFirst) {
+          var fallback = loadCache();
+          if (fallback) processAndRender(fallback);
+        }
+      });
   }
 
   // Page load ke baad Firebase ensure karo, phir ads load karo
