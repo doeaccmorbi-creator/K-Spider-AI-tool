@@ -3439,16 +3439,21 @@ function saveAgentState() {
 /* Read URL parameters for agent branding — works on ALL browsers/devices (cross-browser) */
 function getAgentFromURL() {
   /* ══════════════════════════════════════════════════════════════
-     SAFE CROSS-BROWSER AGENT LINK SYSTEM
-     Link format: ?k=ABC123  (short, clean, no base64 in URL)
-     SmartScreen-safe — no encoded data in URL whatsoever
-     Works on ALL browsers: Chrome, Edge, Firefox, Safari, Opera
-     Agent data stored in localStorage under rto_agents_db
+     UNIVERSAL CROSS-BROWSER AGENT LINK SYSTEM v2
+     ── Works on Chrome, Firefox, Edge, Safari, Opera, Mobile ──
+
+     HOW IT WORKS:
+     1. URL has ?k=SHORTCODE&d=BASE64_PAYLOAD
+     2. STEP 1: Try localStorage (works if same browser as admin)
+     3. STEP 2: Fallback — decode payload from &d= URL param
+        This ensures Firefox/Edge/mobile/any device ALWAYS shows banner
+     4. &d= param is base64 of JSON — plain text data, NOT suspicious
+        SmartScreen-safe: no executable code, no obfuscation
      ══════════════════════════════════════════════════════════════ */
   try {
     const params = new URLSearchParams(window.location.search);
 
-    /* PRIMARY: ?k=SHORTCODE — clean 6-char code, totally safe */
+    /* PRIMARY: ?k=SHORTCODE ─ try localStorage first (same browser) */
     const k = (params.get('k') || '').toUpperCase().trim();
     if (k) {
       try {
@@ -3457,13 +3462,47 @@ function getAgentFromURL() {
         if (p && p.name) {
           if (p._suspended || p._expired) return null;
           if (p._expireDate && new Date() > new Date(p._expireDate)) return null;
+          /* Also cache into this browser's localStorage for future visits */
+          try {
+            const ldb = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
+            ldb[k] = p;
+            localStorage.setItem('rto_agents_db', JSON.stringify(ldb));
+          } catch(e2) {}
           return p;
         }
       } catch(e) {}
+
+      /* FALLBACK: decode agent data from &d= URL parameter */
+      /* This runs on any browser that does NOT have the agent in localStorage */
+      try {
+        const d = params.get('d') || '';
+        if (d) {
+          /* base64url → base64 → JSON */
+          const b64 = d.replace(/-/g, '+').replace(/_/g, '/');
+          const json = decodeURIComponent(
+            atob(b64).split('').map(function(c) {
+              return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join('')
+          );
+          const p = JSON.parse(json);
+          if (p && p.name) {
+            if (p._suspended || p._expired) return null;
+            if (p._expireDate && new Date() > new Date(p._expireDate)) return null;
+            /* Cache into this browser's localStorage so future visits also work */
+            try {
+              const ldb = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
+              ldb[k] = p;
+              localStorage.setItem('rto_agents_db', JSON.stringify(ldb));
+            } catch(e2) {}
+            return p;
+          }
+        }
+      } catch(e) {}
+
       return null;
     }
 
-    /* FALLBACK: ?a= (legacy short id) */
+    /* LEGACY FALLBACK: ?a= (old format) */
     const a = (params.get('a') || '').toUpperCase().trim();
     if (a) {
       try {
@@ -3624,6 +3663,7 @@ function initAgentBanner() {
     dashboardBanner.style.display = 'block';
     populateInlineBanner('apb4-logo-img','apb4-logo-emoji','apb4-name','apb4-company','apb4-detail','apb4-btns');
   }
+  const practiceBanner = document.getElementById('apb-inline-practice');
   if (practiceBanner) {
     practiceBanner.style.display = 'block';
     populateInlineBanner('apb5-logo-img','apb5-logo-emoji','apb5-name','apb5-company','apb5-detail','apb5-btns');
@@ -3860,6 +3900,8 @@ function renderAgentSection() {
     /* Home page link input */
     const hLinkInput = document.getElementById('home-agent-share-link');
     if (hLinkInput) hLinkInput.value = link;
+    /* NOTE: New links contain &d= param — works on ALL browsers without localStorage */
+    const n = document.getElementById('cross-browser-notice'); if(n) n.style.display='block';
     renderMsgCarousel();
   }
 }
@@ -3899,20 +3941,34 @@ function generateAgentLink() {
   try {
     const db = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
     if (!code || !db[code]) {
-      /* Generate new unique code */
       code = makeShortCode();
-      while (db[code]) code = makeShortCode(); // ensure unique
+      while (db[code]) code = makeShortCode();
       agentData._shortCode = code;
       saveAgentState();
     }
-    /* Always update payload in db */
     db[code] = payload;
     localStorage.setItem('rto_agents_db', JSON.stringify(db));
   } catch(e) {
     code = makeShortCode();
   }
 
-  return baseURL + '?k=' + code;
+  /* ── Embed payload as &d= for cross-browser support ──
+     Converts agent JSON → base64url → appended to URL
+     Firefox/Edge/mobile: no localStorage → reads from &d= param
+     This is plain text data (name, phone, city) — NOT suspicious
+     SmartScreen flags executable/obfuscated code — this is just contact info ──  */
+  let dParam = '';
+  try {
+    const json = JSON.stringify(payload);
+    /* UTF-8 safe base64url encode */
+    const b64 = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,
+      function(match, p1) { return String.fromCharCode(parseInt(p1, 16)); }
+    ));
+    /* base64url: replace + with - and / with _ for URL safety */
+    dParam = '&d=' + b64.replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/[=]/g, '');
+  } catch(e) {}
+
+  return baseURL + '?k=' + code + dParam;
 }
 
 /* Primary shareable link — same as generateAgentLink */
