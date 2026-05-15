@@ -2661,7 +2661,27 @@ img{max-width:100%;display:block;}
           <div class="ppc" style="padding:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:8px;">About</div><div style="font-size:13px;color:var(--t2);" id="ppabout">Add a summary about yourself…</div></div>
           <div class="ppc" style="padding:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:8px;">Skills</div><div class="sktgs" id="ppskills"><span class="sk">React.js</span><span class="sk">Firebase</span><span class="sk">AI/ML</span></div></div>
 
-          <!-- ── RESUME VIEWER ── -->
+          <!-- ── RECRUITER: Applications Received Dashboard ── -->
+          <div class="ppc" style="padding:14px;" id="recruiterDashboard">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:13px;">📬 Applications Received <span id="appCountBadge" style="display:none;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;"></span></div>
+              <button onclick="loadMyApplications()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+            </div>
+            <div id="recruiterAppsBox" style="display:flex;flex-direction:column;gap:8px;">
+              <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to load applications</div>
+            </div>
+          </div>
+
+          <!-- ── JOB SEEKER: My Applications Tracker ── -->
+          <div class="ppc" style="padding:14px;" id="seekerDashboard">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:13px;">📋 My Applications <span id="myAppCountBadge" style="display:none;background:#10B981;color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;"></span></div>
+              <button onclick="loadMySubmittedApps()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+            </div>
+            <div id="seekerAppsBox" style="display:flex;flex-direction:column;gap:8px;">
+              <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to see your applications</div>
+            </div>
+          </div>
           <div class="ppc" style="padding:14px;" id="resumeSection">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div style="font-weight:700;font-size:13px;">📄 My Resume</div>
@@ -2975,24 +2995,76 @@ Frontend Intern | TechNova | June–Aug 2023
 
 <!-- EASY APPLY -->
 <div class="mo" id="applyModal">
-  <div class="md">
+  <div class="md" style="max-width:520px;">
     <div class="mhd"><div class="mht">⚡ Easy Apply</div><button class="mcl" onclick="closeModal('applyModal')">✕</button></div>
     <div class="mbd">
-      <div class="je" style="margin-bottom:12px;">
+      <!-- Job Summary -->
+      <div class="je" style="margin-bottom:14px;background:var(--s2);border-radius:var(--rs);padding:10px;">
         <div class="jcr"><div class="clog" id="ajlog">T</div><div><div class="jtt" id="ajt">Job Title</div><div class="cnm" id="ajc">Company</div></div></div>
         <div class="jtgs"><span class="jtg ts" id="ajsal">💰 Salary</span><span class="jtg te" id="ajex">⭐ Exp</span><span class="jtg tt" id="ajty">🕐 Type</span></div>
       </div>
-      <div class="fg"><label class="fl">Full Name</label><input type="text" class="fc" id="aname"></div>
-      <div class="fg"><label class="fl">Email</label><input type="email" class="fc" id="aemail"></div>
-      <div class="fg"><label class="fl">Phone</label><input type="tel" class="fc" id="aphone" placeholder="+91 XXXXX XXXXX"></div>
-      <div class="fg"><label class="fl">Resume / CV</label><div class="upz" onclick="showToast('📁 File picker…')">📎 Upload Resume (PDF, DOC — max 5MB)</div></div>
-      <div class="fg"><label class="fl">Cover Note</label><textarea class="fc" rows="3" id="acov" placeholder="Brief message to recruiter…"></textarea></div>
+
+      <!-- Section: Personal Info -->
+      <div style="font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.5px;margin-bottom:8px;">👤 PERSONAL INFORMATION</div>
       <div class="fr2">
-        <div class="fg"><label class="fl">Current CTC</label><input type="text" class="fc" id="actc" placeholder="₹ LPA"></div>
-        <div class="fg"><label class="fl">Notice Period</label><select class="fc" id="anot"><option>Immediate</option><option>15 days</option><option>30 days</option><option>60 days</option><option>90 days</option></select></div>
+        <div class="fg"><label class="fl">Full Name *</label><input type="text" class="fc" id="aname" placeholder="As on resume"></div>
+        <div class="fg"><label class="fl">Email *</label><input type="email" class="fc" id="aemail" placeholder="your@email.com"></div>
       </div>
-      <div style="background:var(--gl);border-radius:var(--rs);padding:9px;margin-bottom:12px;font-size:11px;color:var(--green);">🛡️ DPDP Act 2023 Compliant — Your data is secure. Only hiring company sees your application.</div>
-      <button class="bprim" onclick="submitApp()">🚀 Submit Application</button>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Phone *</label><input type="tel" class="fc" id="aphone" placeholder="+91 XXXXX XXXXX"></div>
+        <div class="fg"><label class="fl">Location</label><input type="text" class="fc" id="aloc" placeholder="City, State"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">LinkedIn Profile</label><input type="url" class="fc" id="alinkedin" placeholder="linkedin.com/in/yourname"></div>
+        <div class="fg"><label class="fl">Portfolio / GitHub</label><input type="url" class="fc" id="aportfolio" placeholder="github.com/yourname"></div>
+      </div>
+
+      <!-- Section: Professional Info -->
+      <div style="font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.5px;margin:12px 0 8px;">💼 PROFESSIONAL DETAILS</div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Total Experience</label><select class="fc" id="aexp"><option value="">Select</option><option>Fresher (0-1 yr)</option><option>1-2 years</option><option>2-4 years</option><option>4-7 years</option><option>7-10 years</option><option>10+ years</option></select></div>
+        <div class="fg"><label class="fl">Current CTC</label><input type="text" class="fc" id="actc" placeholder="₹ LPA or Fresher"></div>
+      </div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Expected CTC</label><input type="text" class="fc" id="aectc" placeholder="₹ LPA"></div>
+        <div class="fg"><label class="fl">Notice Period</label><select class="fc" id="anot"><option>Immediate</option><option>15 days</option><option>30 days</option><option>45 days</option><option>60 days</option><option>90 days</option></select></div>
+      </div>
+      <div class="fg"><label class="fl">Current Company / College</label><input type="text" class="fc" id="acurcomp" placeholder="Where do you currently work/study?"></div>
+      <div class="fg"><label class="fl">Highest Qualification</label><select class="fc" id="aqual"><option value="">Select</option><option>10th / SSC</option><option>12th / HSC</option><option>Diploma</option><option>B.Tech / B.E.</option><option>BCA / B.Sc</option><option>BBA / B.Com</option><option>M.Tech / M.E.</option><option>MBA / PGDM</option><option>MCA / M.Sc</option><option>PhD</option><option>Other</option></select></div>
+      <div class="fg"><label class="fl">Key Skills <span style="color:var(--t3);font-weight:400;">(comma separated)</span></label><input type="text" class="fc" id="askills" placeholder="e.g. React, Node.js, Firebase, Python"></div>
+
+      <!-- Section: Resume Upload -->
+      <div style="font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.5px;margin:12px 0 8px;">📎 RESUME / DOCUMENTS <span style="color:var(--t3);font-weight:400;font-size:10px;">(Max 20 KB each)</span></div>
+      <div class="fg">
+        <label class="fl">Resume / CV <span style="color:var(--t3);font-weight:400;">(PDF, DOC, TXT — Max 20 KB)</span></label>
+        <div style="border:2px dashed var(--border);border-radius:var(--rs);padding:12px;text-align:center;background:var(--s2);position:relative;cursor:pointer;" id="resumeDropZone">
+          <input type="file" id="aresumeFile" accept=".pdf,.doc,.docx,.txt" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;" onchange="handleAppFile(event,'resume')">
+          <div id="resumeUploadLabel">📄 Click or drag & drop your resume<br><span style="font-size:10px;color:var(--t3);">PDF / DOC / TXT · Max 20 KB</span></div>
+          <div id="resumeUploadStatus" style="display:none;"></div>
+        </div>
+        <div id="resumeUploadError" style="color:var(--red);font-size:11px;margin-top:4px;display:none;"></div>
+      </div>
+      <div class="fg">
+        <label class="fl">Profile Photo <span style="color:var(--t3);font-weight:400;">(JPG/PNG — Max 20 KB)</span></label>
+        <div style="border:2px dashed var(--border);border-radius:var(--rs);padding:12px;text-align:center;background:var(--s2);position:relative;" id="photoDropZone">
+          <input type="file" id="aphotoFile" accept="image/jpeg,image/png,image/webp" style="position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;" onchange="handleAppFile(event,'photo')">
+          <div id="photoUploadLabel">🖼️ Click to upload profile photo<br><span style="font-size:10px;color:var(--t3);">JPG / PNG · Max 20 KB</span></div>
+          <div id="photoUploadStatus" style="display:none;"></div>
+        </div>
+        <div id="photoUploadError" style="color:var(--red);font-size:11px;margin-top:4px;display:none;"></div>
+      </div>
+
+      <!-- Section: Cover Note -->
+      <div style="font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.5px;margin:12px 0 8px;">✍️ COVER NOTE</div>
+      <div class="fg"><textarea class="fc" rows="4" id="acov" placeholder="Dear Hiring Manager,&#10;&#10;Brief intro about why you're the right fit for this role…&#10;&#10;Why are you interested in this company?"></textarea></div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button onclick="aiGenerateCover()" style="flex:1;padding:8px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);border-radius:var(--rs);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🤖 AI Generate Cover Note</button>
+        <button onclick="$('acov').value=''" style="padding:8px 12px;background:var(--s2);color:var(--t2);border:1px solid var(--border);border-radius:var(--rs);font-size:11px;cursor:pointer;font-family:inherit;">Clear</button>
+      </div>
+
+      <!-- DPDP Compliance -->
+      <div style="background:var(--gl);border-radius:var(--rs);padding:9px;margin-bottom:12px;font-size:11px;color:var(--green);">🛡️ DPDP Act 2023 Compliant — Your data is shared only with the hiring company. Files stored as Base64 text (max 20 KB).</div>
+      <button class="bprim" id="submitAppBtn" onclick="submitApp()">🚀 Submit Application</button>
       <p style="font-size:10px;color:var(--t3);text-align:center;margin-top:8px;">KSpider Connect · <span style="color:var(--primary);cursor:pointer;" onclick="showModal('privacyModal')">Privacy Policy</span></p>
     </div>
   </div>
@@ -3487,7 +3559,7 @@ async function doSignOut(){
 function demoLogin(){
   $('authScreen').style.display='none';$('appScreen').style.display='block';
   _up={name:'Gaurang Raval',headline:'🚀 AI Platform Builder · KSpider AI',photoURL:'https://i.pravatar.cc/150?img=12',posts:187,jobs:12,boostedJobs:2};
-  updateUI();loadFeed();loadJobs();initGeo();
+  updateUI();loadFeed();loadJobs();initGeo();listenNotifications();
 }
 
 // ══════════════════════════════════════
@@ -3499,7 +3571,7 @@ window.initApp=async function(user){
     const s=await window._fb.getDoc(window._fb.doc(window._fb.db,'users',user.uid));
     _up=s.exists()?s.data():{name:user.displayName||'User',headline:'KSpider Member',photoURL:user.photoURL||''};
   }catch{_up={name:user.displayName||'User',headline:'KSpider Member',photoURL:user.photoURL||''};}
-  updateUI();loadFeed();loadJobs();checkExistingSub();initGeo();
+  updateUI();loadFeed();loadJobs();checkExistingSub();initGeo();listenNotifications();
   initReferral();saveReferralCode();initCampus();
 };
 
@@ -4428,26 +4500,429 @@ function filterJobsLive(){
 // ══════════════════════════════════════
 // APPLY
 // ══════════════════════════════════════
+// ── App file upload state ──
+var _appResumeData=null, _appPhotoData=null;
+
+function handleAppFile(event, type){
+  var file=event.target.files[0];
+  var MAX=20480; // 20 KB strict limit
+  var errEl=document.getElementById(type==='resume'?'resumeUploadError':'photoUploadError');
+  var statusEl=document.getElementById(type==='resume'?'resumeUploadStatus':'photoUploadStatus');
+  var labelEl=document.getElementById(type==='resume'?'resumeUploadLabel':'photoUploadLabel');
+
+  errEl.style.display='none'; errEl.textContent='';
+  statusEl.style.display='none';
+
+  if(!file) return;
+
+  if(file.size>MAX){
+    var kb=(file.size/1024).toFixed(1);
+    errEl.innerHTML='❌ File too large: <strong>'+kb+' KB</strong>. Maximum allowed is <strong>20 KB</strong>.<br>'+
+      '<span style="font-size:10px;color:var(--t3);">Compress at <a href="https://smallpdf.com" target="_blank" style="color:var(--primary);">smallpdf.com</a> or save resume as plain .txt</span>';
+    errEl.style.display='block';
+    event.target.value='';
+    if(type==='resume') _appResumeData=null;
+    else _appPhotoData=null;
+    return;
+  }
+
+  var reader=new FileReader();
+  reader.onload=function(e){
+    var data=e.target.result;
+    if(type==='resume'){
+      _appResumeData={name:file.name, size:file.size, type:file.type, data:data};
+    } else {
+      _appPhotoData={name:file.name, size:file.size, type:file.type, data:data};
+    }
+    var kb=(file.size/1024).toFixed(1);
+    labelEl.style.display='none';
+    statusEl.innerHTML='<div style="display:flex;align-items:center;gap:8px;justify-content:center;">'+
+      (type==='photo'?'<img src="'+data+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;border:2px solid var(--primary);">':'📄')+
+      '<div style="text-align:left;"><div style="font-size:11px;font-weight:700;color:var(--green);">✅ '+validateInput(file.name)+'</div>'+
+      '<div style="font-size:10px;color:var(--t3);">'+kb+' KB · Click to change</div></div></div>';
+    statusEl.style.display='block';
+  };
+  if(type==='photo') reader.readAsDataURL(file);
+  else reader.readAsDataURL(file);
+}
+
 function openApply(title,company,salary,exp,type){
-  $('ajt').textContent=title;$('ajc').textContent=company;$('ajlog').textContent=company[0]||'J';
-  $('ajsal').textContent='💰 '+(salary||'Negotiable');$('ajex').textContent='⭐ '+(exp||'Any');$('ajty').textContent='🕐 '+(type||'Full-Time');
-  if(_up){$('aname').value=_up.name||'';if(_user)$('aemail').value=_user.email||'';}
+  // Store job info on modal for submitApp to use
+  $('ajt').textContent=title;
+  $('ajc').textContent=company;
+  $('ajlog').textContent=(company||'J')[0].toUpperCase();
+  $('ajsal').textContent='💰 '+(salary||'Negotiable');
+  $('ajex').textContent='⭐ '+(exp||'Any');
+  $('ajty').textContent='🕐 '+(type||'Full-Time');
+  // Store jobId for recruiter notification
+  $('applyModal').dataset.jobTitle=title;
+  $('applyModal').dataset.jobCompany=company;
+  // Pre-fill from user profile
+  if(_up){
+    $('aname').value=_up.name||'';
+    $('aloc').value=_up.location||'';
+    $('askills').value=_up.skills||'';
+    if(_up.linkedin) $('alinkedin').value=_up.linkedin;
+  }
+  if(_user) $('aemail').value=_user.email||'';
+  // Reset file uploads
+  _appResumeData=null; _appPhotoData=null;
+  ['resumeUploadStatus','photoUploadStatus'].forEach(id=>{$(id).style.display='none';});
+  ['resumeUploadLabel','photoUploadLabel'].forEach(id=>{if($(id))$(id).style.display='';});
+  ['resumeUploadError','photoUploadError'].forEach(id=>{$(id).style.display='none';});
+  ['aresumeFile','aphotoFile'].forEach(id=>{if($(id))$(id).value='';});
   showModal('applyModal');
 }
+
 async function submitApp(){
-  const nm=$('aname').value.trim(),em=$('aemail').value.trim();
-  if(!nm||!em)return showToast('⚠️ Fill name and email!');
-  if(!window._fb||!_user){closeModal('applyModal');return showToast('🎉 Application submitted! Configure Firebase to save.');}
+  const nm=$('aname').value.trim();
+  const em=$('aemail').value.trim();
+  const ph=$('aphone').value.trim();
+  if(!nm) return showToast('⚠️ Full name required!');
+  if(!em||!/^[^@]+@[^@]+\.[^@]+$/.test(em)) return showToast('⚠️ Valid email required!');
+
+  const btn=$('submitAppBtn');
+  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+
+  const nowMs=Date.now();
+  const appData={
+    // Applicant info
+    applicantId:_user?_user.uid:'anonymous',
+    applicantName:nm,
+    applicantEmail:em,
+    applicantPhone:ph,
+    applicantLocation:$('aloc').value.trim(),
+    applicantLinkedIn:$('alinkedin').value.trim(),
+    applicantPortfolio:$('aportfolio').value.trim(),
+    applicantPhoto:_appPhotoData?_appPhotoData.data:(_up?.photoURL||''),
+    // Professional details
+    experience:$('aexp').value,
+    currentCTC:$('actc').value.trim(),
+    expectedCTC:$('aectc').value.trim(),
+    noticePeriod:$('anot').value,
+    currentCompany:$('acurcomp').value.trim(),
+    qualification:$('aqual').value,
+    skills:$('askills').value.trim(),
+    // Resume
+    resumeFileName:_appResumeData?_appResumeData.name:'',
+    resumeData:_appResumeData?_appResumeData.data:'',
+    resumeSize:_appResumeData?_appResumeData.size:0,
+    // Job info
+    jobTitle:$('ajt').textContent,
+    company:$('ajc').textContent,
+    // Cover note
+    coverNote:$('acov').value.trim(),
+    // Status
+    status:'Applied',
+    statusHistory:[{status:'Applied',at:nowMs}],
+    appliedAt:nowMs,
+    createdAt:{toDate:()=>new Date(nowMs),seconds:Math.floor(nowMs/1000)},
+    // Seeker profile snapshot
+    seekerHeadline:_up?.headline||'',
+    seekerRole:_up?.role||''
+  };
+
+  if(!window._fb||!_user){
+    closeModal('applyModal');
+    showToast('🎉 Application submitted! Configure Firebase to save permanently.');
+    if(btn){btn.disabled=false;btn.textContent='🚀 Submit Application';}
+    return;
+  }
+
   try{
-    await window._fb.addDoc(window._fb.collection(window._fb.db,'applications'),{
-      applicantId:_user.uid,applicantName:nm,applicantEmail:em,applicantPhone:$('aphone').value,
-      jobTitle:$('ajt').textContent,company:$('ajc').textContent,
-      coverNote:$('acov').value,currentCTC:$('actc').value,noticePeriod:$('anot').value,
-      status:'Applied',createdAt:window._fb.serverTimestamp()
+    // Save application
+    const fbApp={...appData, createdAt:window._fb.serverTimestamp()};
+    const appRef=await window._fb.addDoc(
+      window._fb.collection(window._fb.db,'applications'), fbApp
+    );
+
+    // ── RECRUITER NOTIFICATION ──
+    // Find the job to get recruiterId
+    try{
+      const jobsQ=window._fb.query(
+        window._fb.collection(window._fb.db,'jobs'),
+        window._fb.where('title','==',appData.jobTitle),
+        window._fb.where('company','==',appData.company),
+        window._fb.limit(1)
+      );
+      const jobSnap=await window._fb.getDocs(jobsQ);
+      if(!jobSnap.empty){
+        const jobDoc=jobSnap.docs[0];
+        const recruiterId=jobDoc.data().recruiterId;
+        if(recruiterId){
+          // Save notification for recruiter
+          await window._fb.addDoc(
+            window._fb.collection(window._fb.db,'notifications'),{
+              toUid:recruiterId,
+              type:'new_application',
+              title:'New Application — '+appData.jobTitle,
+              body:nm+' applied for '+appData.jobTitle+' at '+appData.company,
+              applicantName:nm,
+              applicantEmail:em,
+              applicantPhone:ph,
+              applicationId:appRef.id,
+              jobTitle:appData.jobTitle,
+              company:appData.company,
+              skills:appData.skills,
+              experience:appData.experience,
+              noticePeriod:appData.noticePeriod,
+              resumeFileName:appData.resumeFileName,
+              hasResume:!!_appResumeData,
+              read:false,
+              createdAt:window._fb.serverTimestamp()
+            }
+          );
+          // Increment job applications count
+          await window._fb.updateDoc(
+            window._fb.doc(window._fb.db,'jobs',jobDoc.id),
+            {applications:window._fb.increment(1)}
+          );
+        }
+      }
+    }catch(ne){console.warn('Notification save failed:',ne);}
+
+    // ── REAL-TIME NOTIFICATION BELL UPDATE ──
+    updateNotifBell(true);
+    closeModal('applyModal');
+    showToast('🎉 Application submitted! Recruiter has been notified 📬');
+
+    // Clear form
+    ['aname','aemail','aphone','aloc','alinkedin','aportfolio',
+     'actc','aectc','acurcomp','askills','acov'].forEach(id=>{if($(id))$(id).value='';});
+    _appResumeData=null; _appPhotoData=null;
+
+  }catch(e){
+    showToast('⚠️ Submit failed: '+e.message);
+    console.warn('submitApp error:',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='🚀 Submit Application';}
+  }
+}
+
+async function aiGenerateCover(){
+  const role=$('ajt').textContent||'this role';
+  const company=$('ajc').textContent||'your company';
+  const skills=$('askills').value||(_up?.skills||'');
+  const exp=$('aexp').value||'';
+  const prompt='Write a professional 3-paragraph cover note for: Role='+role+', Company='+company+
+    ', Skills='+skills+', Experience='+exp+'. Start with Dear Hiring Manager. Be concise, confident, specific. Max 120 words.';
+  $('acov').value='✨ Generating with KSpider AI…';
+  try{
+    const text=await ksAI(prompt,'You are an expert career coach. Write compelling, natural cover notes.');
+    $('acov').value=text;
+    showToast('✅ AI cover note generated!');
+  }catch(e){
+    $('acov').value='';
+    showToast('⚠️ AI unavailable. Write your cover note manually.');
+  }
+}
+
+// ── RECRUITER: Load applications received ──
+async function loadMyApplications(){
+  const box=$('recruiterAppsBox');
+  if(!box) return;
+  if(!window._fb||!_user){
+    box.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:var(--t3);">Configure Firebase to see applications.</div>';
+    return;
+  }
+  box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div><div style="font-size:12px;">Loading…</div></div>';
+  try{
+    // Get all jobs by this recruiter
+    const jobsQ=window._fb.query(
+      window._fb.collection(window._fb.db,'jobs'),
+      window._fb.where('recruiterId','==',_user.uid),
+      window._fb.limit(20)
+    );
+    const jobsSnap=await window._fb.getDocs(jobsQ);
+    if(jobsSnap.empty){
+      box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">📭 No jobs posted yet. Post a job to receive applications!</div>';
+      return;
+    }
+    // Get notifications (applications) for this recruiter
+    const notifsQ=window._fb.query(
+      window._fb.collection(window._fb.db,'notifications'),
+      window._fb.where('toUid','==',_user.uid),
+      window._fb.where('type','==','new_application'),
+      window._fb.orderBy('createdAt','desc'),
+      window._fb.limit(50)
+    );
+    const notifsSnap=await window._fb.getDocs(notifsQ);
+    if(notifsSnap.empty){
+      box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">📭 No applications received yet.<br>Share your job posts to attract candidates!</div>';
+      return;
+    }
+    box.innerHTML='';
+    let unread=0;
+    notifsSnap.forEach(d=>{
+      const n=d.data();
+      if(!n.read) unread++;
+      box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,n,false));
     });
-    closeModal('applyModal');showToast('🎉 Application submitted! Good luck!');
+    // Update badge
+    const badge=$('appCountBadge');
+    if(badge){badge.textContent=notifsSnap.size;badge.style.display='inline';}
+    const unreadBadge=document.getElementById('nBadge');
+    if(unreadBadge&&unread>0){unreadBadge.textContent=unread;unreadBadge.style.display='flex';}
+  }catch(e){
+    box.innerHTML='<div style="padding:12px;font-size:12px;color:var(--red);">⚠️ Error: '+validateInput(e.message)+'</div>';
+    console.warn('loadMyApplications error:',e);
+  }
+}
+
+function renderApplicationCard(id, n, isSeeker){
+  const tm=n.createdAt?timeAgo(n.createdAt.toDate()):'Just now';
+  const statusColors={Applied:'#0A84FF',Shortlisted:'#F59E0B',Interview:'#7C3AED',
+                      Offered:'#10B981',Rejected:'#EF4444',Hired:'#10B981'};
+  const st=n.status||'Applied';
+  const sc=statusColors[st]||'#0A84FF';
+  if(isSeeker){
+    return `<div style="background:var(--s2);border:1.5px solid var(--border);border-radius:var(--rs);padding:12px;animation:fu .3s ease;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+        <div style="font-size:12px;font-weight:700;color:var(--text);">${validateInput(n.jobTitle||'')} @ ${validateInput(n.company||'')}</div>
+        <span style="font-size:10px;font-weight:700;color:${sc};background:${sc}18;border:1px solid ${sc}30;padding:2px 8px;border-radius:99px;">${st}</span>
+      </div>
+      <div style="font-size:11px;color:var(--t3);">Applied ${tm}</div>
+      ${n.noticePeriod?`<div style="font-size:11px;color:var(--t2);margin-top:3px;">Notice: ${validateInput(n.noticePeriod)}</div>`:''}
+    </div>`;
+  }
+  // Recruiter view — full application card
+  return `<div style="background:var(--s2);border:1.5px solid ${n.read?'var(--border)':'var(--primary)'};border-radius:var(--rs);padding:14px;animation:fu .3s ease;position:relative;">
+    ${!n.read?'<div style="position:absolute;top:10px;right:10px;width:8px;height:8px;border-radius:50%;background:var(--primary);"></div>':''}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+      <div style="width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--primary),#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0;">
+        ${(n.applicantName||'?')[0].toUpperCase()}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:var(--text);">${validateInput(n.applicantName||'')}</div>
+        <div style="font-size:11px;color:var(--t2);">Applied for <strong>${validateInput(n.jobTitle||'')}</strong> · ${tm}</div>
+      </div>
+      <span style="font-size:10px;font-weight:700;color:#0A84FF;background:#0A84FF18;border:1px solid #0A84FF30;padding:2px 8px;border-radius:99px;flex-shrink:0;">NEW</span>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:11px;color:var(--t2);">
+      ${n.applicantEmail?`<div>📧 <a href="mailto:${validateInput(n.applicantEmail)}" style="color:var(--primary);">${validateInput(n.applicantEmail)}</a></div>`:''}
+      ${n.applicantPhone?`<div>📞 <a href="tel:${validateInput(n.applicantPhone)}" style="color:var(--primary);">${validateInput(n.applicantPhone)}</a></div>`:''}
+      ${n.experience?`<div>⭐ ${validateInput(n.experience)}</div>`:''}
+      ${n.noticePeriod?`<div>📅 ${validateInput(n.noticePeriod)}</div>`:''}
+      ${n.skills?`<div style="grid-column:1/-1;">🛠 ${validateInput(n.skills)}</div>`:''}
+    </div>
+    ${n.hasResume?`<div style="font-size:11px;color:#10B981;background:#10B98112;border:1px solid #10B98130;border-radius:6px;padding:5px 10px;margin-bottom:8px;">📎 Resume attached</div>`:''}
+    <div style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${n.applicantEmail?`<a href="mailto:${validateInput(n.applicantEmail)}?subject=Re: Your application for ${encodeURIComponent(n.jobTitle||'')}" style="flex:1;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;min-width:80px;">✉️ Reply</a>`:''}
+      ${n.applicantPhone?`<a href="tel:${validateInput(n.applicantPhone)}" style="padding:7px 12px;background:#10B98118;color:#10B981;border:1px solid #10B98130;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">📞 Call</a>`:''}
+      <button onclick="updateAppStatus('${id}','Shortlisted')" style="padding:7px 10px;background:#F59E0B18;color:#F59E0B;border:1px solid #F59E0B30;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">⭐ Shortlist</button>
+      <button onclick="updateAppStatus('${id}','Rejected')" style="padding:7px 10px;background:#EF444418;color:#EF4444;border:1px solid #EF444430;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Reject</button>
+    </div>
+  </div>`;
+}
+
+async function updateAppStatus(notifId, status){
+  if(!window._fb||!_user) return showToast('⚠️ Firebase not configured!');
+  try{
+    await window._fb.updateDoc(
+      window._fb.doc(window._fb.db,'notifications',notifId),
+      {status:status, read:true, updatedAt:window._fb.serverTimestamp()}
+    );
+    showToast('✅ Application marked as '+status);
+    loadMyApplications();
   }catch(e){showToast('⚠️ '+e.message);}
 }
+
+// ── JOB SEEKER: Load my submitted applications ──
+async function loadMySubmittedApps(){
+  const box=$('seekerAppsBox');
+  if(!box) return;
+  if(!window._fb||!_user){
+    box.innerHTML='<div style="text-align:center;padding:20px;font-size:12px;color:var(--t3);">Login to see your applications.</div>';
+    return;
+  }
+  box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div><div style="font-size:12px;">Loading…</div></div>';
+  try{
+    const q=window._fb.query(
+      window._fb.collection(window._fb.db,'applications'),
+      window._fb.where('applicantId','==',_user.uid),
+      window._fb.orderBy('createdAt','desc'),
+      window._fb.limit(20)
+    );
+    const snap=await window._fb.getDocs(q);
+    if(snap.empty){
+      box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">📭 No applications yet.<br>Browse jobs and click ⚡ Easy Apply!</div>';
+      return;
+    }
+    box.innerHTML='';
+    const badge=$('myAppCountBadge');
+    if(badge){badge.textContent=snap.size;badge.style.display='inline';}
+    snap.forEach(d=>{
+      const a=d.data();
+      box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,{
+        jobTitle:a.jobTitle,company:a.company,
+        status:a.status||'Applied',
+        createdAt:a.createdAt,
+        noticePeriod:a.noticePeriod
+      },true));
+    });
+  }catch(e){
+    box.innerHTML='<div style="padding:12px;font-size:12px;color:var(--red);">⚠️ '+validateInput(e.message)+'</div>';
+  }
+}
+
+// ── NOTIFICATION BELL: real-time unread count ──
+function listenNotifications(){
+  if(!window._fb||!_user) return;
+  try{
+    const q=window._fb.query(
+      window._fb.collection(window._fb.db,'notifications'),
+      window._fb.where('toUid','==',_user.uid),
+      window._fb.where('read','==',false),
+      window._fb.limit(99)
+    );
+    window._fb.onSnapshot(q,snap=>{
+      const cnt=snap.size;
+      const badge=document.getElementById('nBadge');
+      if(badge){
+        badge.textContent=cnt>99?'99+':cnt;
+        badge.style.display=cnt>0?'flex':'none';
+      }
+      // Show toast for brand new notifications
+      snap.docChanges().forEach(change=>{
+        if(change.type==='added'){
+          const n=change.doc.data();
+          if(n.type==='new_application'){
+            showToast('📬 New application: '+validateInput(n.applicantName||'Someone')+' applied for '+validateInput(n.jobTitle||'your job'));
+          }
+        }
+      });
+    },err=>console.warn('Notifications listener error:',err));
+  }catch(e){console.warn('listenNotifications error:',e);}
+}
+
+function updateNotifBell(forceShow){
+  // Called after submit to show new notif count
+  if(forceShow){
+    const badge=document.getElementById('nBadge');
+    if(badge){
+      var cur=parseInt(badge.textContent)||0;
+      badge.textContent=cur+1;
+      badge.style.display='flex';
+    }
+  }
+}
+
+// Auto-load applications + listen notifications when profile opens or user logs in
+document.addEventListener('DOMContentLoaded',function(){
+  // Patch showPage to auto-load applications on profile visit
+  var origSP=window.showPage;
+  window.showPage=function(pg,btn){
+    origSP(pg,btn);
+    if(pg==='profile'){
+      setTimeout(function(){
+        loadMyApplications();
+        loadMySubmittedApps();
+      },200);
+    }
+    if(pg==='viral') setTimeout(vmInit,50);
+  };
+});
+
 
 // ══════════════════════════════════════
 // PROFILE SAVE
