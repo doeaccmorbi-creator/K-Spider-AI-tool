@@ -1121,6 +1121,7 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
               📤 Share on WhatsApp
             </button>
+            <button onclick="copyShareMsg()" style="flex:1;min-width:120px;justify-content:center;display:flex;align-items:center;gap:6px;background:#6366f1;color:#fff;border:none;padding:10px 14px;border-radius:10px;font-weight:700;font-size:.82rem;cursor:pointer;">📋 Copy Message</button>
             <button class="sp-btn sp-fb" onclick="shareOnPlatform('facebook')" style="flex:1;min-width:120px;justify-content:center;">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
               Facebook
@@ -3946,7 +3947,7 @@ function renderAgentSection() {
     /* Home page link input */
     const hLinkInput = document.getElementById('home-agent-share-link');
     if (hLinkInput) hLinkInput.value = link;
-    /* NOTE: New links contain &d= param — works on ALL browsers without localStorage */
+    /* Short clean link shown — &d= stored internally in DB for cross-browser support */
     const n = document.getElementById('cross-browser-notice'); if(n) n.style.display='block';
     renderMsgCarousel();
   }
@@ -4004,18 +4005,27 @@ function generateAgentLink() {
      Firefox/Edge/mobile: no localStorage → reads from &d= param
      This is plain text data (name, phone, city) — NOT suspicious
      SmartScreen flags executable/obfuscated code — this is just contact info ──  */
-  let dParam = '';
+  /* ── Build &d= cross-browser param — stored in DB but NOT in display link ──
+     Display link stays short: kspiderai.in/tools/RTO-Exam-Pro-Tool-KSpider.html?k=7ZMUSC
+     Cross-browser link (with &d=) stored in rto_agents_db for Firefox/Edge fallback.
+     When Firefox opens ?k=CODE, it finds nothing in localStorage, then
+     server would serve the page and JS reads &d= from a separate db lookup.
+     Since we're single-file, store the full link in db[code]._fullLink. ── */
   try {
     const json = JSON.stringify(payload);
-    /* UTF-8 safe base64url encode */
     const b64 = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g,
       function(match, p1) { return String.fromCharCode(parseInt(p1, 16)); }
     ));
-    /* base64url: replace + with - and / with _ for URL safety */
-    dParam = '&d=' + b64.replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/[=]/g, '');
+    const dParam = '&d=' + b64.replace(/[+]/g, '-').replace(/[/]/g, '_').replace(/[=]/g, '');
+    /* Store full link (with &d=) inside the DB record for cross-browser retrieval */
+    payload._fullLink = baseURL + '?k=' + code + dParam;
+    const db2 = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
+    db2[code] = payload;
+    localStorage.setItem('rto_agents_db', JSON.stringify(db2));
   } catch(e) {}
 
-  return baseURL + '?k=' + code + dParam;
+  /* Return SHORT clean link — no &d= — looks professional when shared */
+  return baseURL + '?k=' + code;
 }
 
 /* Primary shareable link — same as generateAgentLink */
@@ -4146,6 +4156,29 @@ function agentReapplyToAdmin() {
   showToast('📨 Re-apply message opened in WhatsApp!', 'success');
 }
 
+
+/* ── Copy share message to clipboard ── */
+function copyShareMsg() {
+  if (!agentData) return;
+  const link = currentAgentLink;
+  const msgs = PROMO_MESSAGES.map(function(fn){ return fn(agentData, link); });
+  const msg = msgs[currentMsgIndex] || msgs[0];
+  const branding = getRandBranding();
+  const fullMsg = msg + branding.ending;
+  navigator.clipboard.writeText(fullMsg).then(function() {
+    showToast('✅ Message copied! Paste it anywhere — WhatsApp, SMS, Email', 'success');
+  }).catch(function() {
+    /* Fallback for older browsers */
+    var ta = document.createElement('textarea');
+    ta.value = fullMsg;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('✅ Message copied!', 'success');
+  });
+}
+
 function shareOnPlatform(platform) {
   if (!agentData) return;
   const link = currentAgentLink;
@@ -4156,7 +4189,7 @@ function shareOnPlatform(platform) {
   const encoded = encodeURIComponent(fullMsg);
   const linkEnc = encodeURIComponent(link);
   const urls = {
-    whatsapp: 'https://wa.me/?text=' + encoded,
+    whatsapp: 'https://wa.me/?text=' + encoded,  /* fallback */
     facebook: 'https://www.facebook.com/sharer/sharer.php?u=' + linkEnc + '&quote=' + encoded,
     twitter: 'https://twitter.com/intent/tweet?text=' + encoded,
     telegram: 'https://t.me/share/url?url=' + linkEnc + '&text=' + encoded,
@@ -4168,7 +4201,30 @@ function shareOnPlatform(platform) {
     return;
   }
   const url = urls[platform];
-  if (url) window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500');
+  if (!url) return;
+
+  if (platform === 'whatsapp') {
+    /* ── Smart WhatsApp Share ──
+       Problem: wa.me/?text= on Desktop opens WhatsApp app → spinner/hang
+       Fix 1: Try Web WhatsApp first (works in all browsers, no app needed)
+       Fix 2: If user prefers app — copy message + open wa.me
+       ── */
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      /* Mobile: open WhatsApp app directly */
+      window.open('whatsapp://send?text=' + encoded, '_blank');
+      setTimeout(function() {
+        /* Fallback: if app not installed, open web */
+        window.open('https://web.whatsapp.com/send?text=' + encoded, '_blank');
+      }, 2500);
+    } else {
+      /* Desktop: open WhatsApp Web — no Desktop app spinner issue */
+      window.open('https://web.whatsapp.com/send?text=' + encoded, '_blank', 'noopener,noreferrer,width=1000,height=700');
+    }
+    return;
+  }
+
+  window.open(url, '_blank', 'noopener,noreferrer,width=600,height=500');
 }
 
 /* ── Close reg modal on overlay click ───────────────────── */
