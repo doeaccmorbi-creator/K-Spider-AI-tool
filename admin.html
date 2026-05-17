@@ -6523,6 +6523,7 @@ function approveAgent(refId) {
   allAgentData[idx]._expireDate = expireDate;
   allAgentData[idx]._suspended  = false;
   allAgentData[idx]._expired    = false;
+  unrevokeAgentCode(allAgentData[idx]);
   saveAgentsToStorage();
   syncAgentFieldsToLocal(refId);
   filterAgents();
@@ -6539,11 +6540,13 @@ function suspendAgent(refId) {
   if (isSuspended) {
     if (!confirm('Unsuspend agent ' + agent.name + '?\nTheir promotional link will become active again.')) return;
     allAgentData[idx]._suspended = false;
+    unrevokeAgentCode(allAgentData[idx]);
     saveAgentsToStorage(); syncAgentFieldsToLocal(refId); filterAgents();
     showAdminToast('Agent UNSUSPENDED \u2705 — link is now active', 'success');
   } else {
     if (!confirm('Suspend agent ' + agent.name + '?\nTheir promotional link will stop working immediately.')) return;
     allAgentData[idx]._suspended = true;
+    revokeAgentCode(allAgentData[idx]);
     saveAgentsToStorage(); syncAgentFieldsToLocal(refId); filterAgents();
     showAdminToast('Agent SUSPENDED \uD83D\uDD34 — link is now inactive', 'info');
   }
@@ -6600,7 +6603,11 @@ function autoMarkExpired() {
       }
     }
   });
-  if (changed) { saveAgentsToStorage(); renderAgentsTable(allAgentData); updateAgentStats(allAgentData); }
+  if (changed) {
+    /* Revoke all newly-expired agent codes */
+    allAgentData.forEach(function(a) { if (a._expired) revokeAgentCode(a); });
+    saveAgentsToStorage(); renderAgentsTable(allAgentData); updateAgentStats(allAgentData);
+  }
 }
 
 function rejectAgent(refId) {
@@ -6611,6 +6618,7 @@ function rejectAgent(refId) {
   allAgentData[idx].status = 'rejected';
   allAgentData[idx].rejectedAt = new Date().toISOString();
   allAgentData[idx].rejectReason = reason || '';
+  revokeAgentCode(allAgentData[idx]);
   saveAgentsToStorage();
   filterAgents();
   updateAgentStats(allAgentData);
@@ -6621,11 +6629,41 @@ function deleteAgent(refId) {
   var agent = allAgentData.find(function(a){ return a.refId === refId; });
   if (!agent) return;
   if (!confirm('Permanently DELETE ' + agent.name + ' (' + agent.company + ')?\n\nNOTE: Old links they shared will now open the original tool without any banner.\n\nThis cannot be undone.')) return;
+  var toDelete = allAgentData.find(function(a){ return a.refId === refId; });
+  if (toDelete) revokeAgentCode(toDelete);
   allAgentData = allAgentData.filter(function(a){ return a.refId !== refId; });
   saveAgentsToStorage();
   filterAgents();
   updateAgentStats(allAgentData);
   showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   AGENT LINK REVOCATION — Permanent cross-browser blocklist
+   Stores short codes in rto_revoked_codes[] localStorage
+   RTO tool checks this list FIRST before showing any banner
+   Works even for links agent saved months ago
+══════════════════════════════════════════════════════════════════ */
+function revokeAgentCode(agent) {
+  try {
+    var codes = JSON.parse(localStorage.getItem('rto_revoked_codes') || '[]');
+    /* Add shortCode from agent record */
+    var code = agent._shortCode || agent.refId || '';
+    if (code && codes.indexOf(code) === -1) codes.push(code);
+    /* Also add refId as backup identifier */
+    if (agent.refId && codes.indexOf(agent.refId) === -1) codes.push(agent.refId);
+    localStorage.setItem('rto_revoked_codes', JSON.stringify(codes));
+  } catch(e) {}
+}
+
+function unrevokeAgentCode(agent) {
+  try {
+    var codes = JSON.parse(localStorage.getItem('rto_revoked_codes') || '[]');
+    var code = agent._shortCode || agent.refId || '';
+    codes = codes.filter(function(c){ return c !== code && c !== agent.refId; });
+    localStorage.setItem('rto_revoked_codes', JSON.stringify(codes));
+  } catch(e) {}
 }
 
 function saveAgentsToStorage() {
