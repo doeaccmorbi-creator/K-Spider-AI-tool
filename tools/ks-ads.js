@@ -113,7 +113,7 @@
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* ── Offline Cache ── */
+  /* ── Offline Cache (localStorage) ── */
   var CACHE_KEY = 'ks_ads_cache_v1';
   var CACHE_TTL = 24 * 60 * 60 * 1000;
   function saveCache(arr) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(),ads:arr})); } catch(e){} }
@@ -526,21 +526,25 @@
         var slotElements = {}; // slotName → [el, el, ...]
 
         allSlotEls.forEach(function(el) {
-          // Default: hidden — sirf tab dikhao jab ad actually render ho
+          // Styling — slot ko visible banana
           el.style.cssText = 'display:none;width:100%;text-align:center;box-sizing:border-box;margin:0 auto;';
 
           var slotName = el.getAttribute('data-ks-slot');
           if (!slotName) return;
 
-          // Priority: exact slot match → all-tools → tool-specific slug → any available
+          // Check: kya is slot ka ad mila?
+          // Also check 'all-tools' aur tool-specific
+          // Priority: exact slot match → all-tools → tool-specific slug → any available slot
           var adsForThisEl = bySlot[slotName] || bySlot['all-tools'] || (toolSlug ? bySlot[toolSlug] : null) || null;
+          // Last resort: pick first available slot's ads
           if (!adsForThisEl) {
             var keys = Object.keys(bySlot);
             if (keys.length) adsForThisEl = bySlot[keys[0]];
           }
 
           if (!adsForThisEl || !adsForThisEl.length) {
-            return; // koi ad nahi — hidden raho, zero space
+            el.style.display = 'none'; // koi ad nahi → hide
+            return;
           }
 
           var useSlot = bySlot[slotName] ? slotName : (bySlot['all-tools'] ? 'all-tools' : toolSlug);
