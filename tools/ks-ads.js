@@ -113,12 +113,6 @@
     return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* ── Offline Cache (localStorage) ── */
-  var CACHE_KEY = 'ks_ads_cache_v1';
-  var CACHE_TTL = 24 * 60 * 60 * 1000;
-  function saveCache(arr) { try { localStorage.setItem(CACHE_KEY, JSON.stringify({ts:Date.now(),ads:arr})); } catch(e){} }
-  function loadCache() { try { var r=JSON.parse(localStorage.getItem(CACHE_KEY)||'null'); if(!r||!r.ads||!r.ads.length) return null; if(Date.now()-r.ts>CACHE_TTL) return null; return r.ads; } catch(e){ return null; } }
-
   /* ── Filename → Admin checkbox value mapping ── */
   /* Admin mein jo checkbox value hai, wahi yahan likhni hai */
   var FILE_TO_SLOT = {
