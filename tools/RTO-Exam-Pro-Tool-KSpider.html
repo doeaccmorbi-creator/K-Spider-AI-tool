@@ -899,7 +899,7 @@
 </div>
 
 <!-- ══════════════════════════════════════════ OFFLINE BANNER ══ -->
-<div class="offline-banner" id="offline-banner">⚠️ You are offline. Using saved data.</div>
+<div class="offline-banner" id="offline-banner">📶 Offline Mode — 300 questions available in English. Pre-download translations (Dashboard → Languages) for offline multilingual practice.</div>
 
 <!-- ══════════════════════════════════════════ PWA BANNER ══ -->
 <div class="pwa-banner" id="pwa-banner">
@@ -2323,10 +2323,16 @@ async function translateText(text, targetLang) {
 async function translateQuestion(q, lang) {
   if (lang === 'en') return q;
   if (!translCache[lang]) translCache[lang] = {};
+
+  // 1. Return from cache if already translated
   if (translCache[lang][q.id]) return translCache[lang][q.id];
 
+  // 2. If offline — return English with flag so UI shows notice
+  if (!navigator.onLine) {
+    return { ...q, _offlineFallback: true, _targetLang: lang };
+  }
+
   try {
-    // Translate all parts in parallel for speed
     const [tQuestion, ...tRest] = await Promise.all([
       translateText(q.question, lang),
       ...q.options.map(opt => translateText(opt, lang)),
@@ -2336,14 +2342,9 @@ async function translateQuestion(q, lang) {
     const tOptions = tRest.slice(0, q.options.length);
     const tExplanation = tRest[q.options.length] || q.explanation;
 
-    const translated = {
-      ...q,
-      question: tQuestion,
-      options: tOptions,
-      explanation: tExplanation
-    };
+    const translated = { ...q, question: tQuestion, options: tOptions, explanation: tExplanation };
 
-    // Cache result in localStorage for offline reuse
+    // Cache in memory + localStorage for future offline use
     translCache[lang][q.id] = translated;
     try {
       const cacheKey = `rto_trcache_${lang}`;
@@ -2354,7 +2355,8 @@ async function translateQuestion(q, lang) {
 
     return translated;
   } catch(e) {
-    return q;
+    // API failed — English fallback
+    return { ...q, _offlineFallback: true, _targetLang: lang };
   }
 }
 
@@ -2429,16 +2431,18 @@ const EMBEDDED_TRANSLATIONS = {
 // ── Pre-translate ALL questions for a single language ──
 async function preTranslateLang(lang) {
   if (!navigator.onLine) {
-    showToast('❌ Internet needed to download translations!', 'error');
+    showToast('❌ Internet zaruri hai translations download karne ke liye!', 'error');
     return;
   }
   const langName = LANG_NAMES[lang];
-  showToast(`⬇️ Downloading ${langName} translations...`, 'info');
+  showToast(`⬇️ ${langName} translations download ho rahi hain...`, 'info');
   const btn = document.querySelector(`button[onclick="preTranslateLang('${lang}')"]`);
-  if (btn) { btn.disabled = true; btn.textContent = `⏳ ${langName}...`; }
+  if (btn) { btn.disabled = true; btn.textContent = `⏳ ${langName} 0%...`; }
 
   const toTranslate = QUESTIONS.filter(q => !(translCache[lang] && translCache[lang][q.id]));
   let done = 0;
+  const total = toTranslate.length;
+  const BATCH = 3;  /* translate 3 at a time — avoids MyMemory rate limit */
   const statusEl = document.getElementById('offline-cached-count');
 
   for (const q of toTranslate) {
@@ -2627,8 +2631,8 @@ function renderPractice() {
   const qOrig = filtered[idx];
   const pct = Math.round(((idx + 1) / filtered.length) * 100);
 
-  // Show loading state if non-English and not cached
-  if (lang !== 'en' && !(translCache[lang] && translCache[lang][qOrig.id])) {
+  // Show loading state if non-English, not cached, AND online (offline skips spinner — shows English directly)
+  if (lang !== 'en' && !(translCache[lang] && translCache[lang][qOrig.id]) && navigator.onLine) {
     document.getElementById('practice-container').innerHTML = `
       <div class="q-card">
         <div class="q-meta">
@@ -2644,6 +2648,7 @@ function renderPractice() {
       </div>`;
   }
 
+  /* Offline: skip spinner — translateQuestion returns English with _offlineFallback flag */
   // Translate then render (works for all languages incl. English)
   translateQuestion(qOrig, lang).then(q => {
     const letters = ['A','B','C','D'];
@@ -2657,7 +2662,12 @@ function renderPractice() {
           <span class="q-cat">${tCat(q.category, lang)}</span>
         </div>
         <div class="q-progress"><div class="q-progress-fill" style="width:${pct}%"></div></div>
-        ${lang !== 'en' ? `<div><span class="trans-badge">🌐 ${LANG_NAMES[lang]}</span></div>` : ''}
+        ${lang !== 'en' && q._offlineFallback
+          ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.78rem;color:#92400e;display:flex;align-items:center;gap:8px">
+              <span>📶</span>
+              <span><strong>Offline Mode:</strong> ${LANG_NAMES[lang]} translation not available — showing English. <a href="#" onclick="preTranslateLang('${lang}');return false;" style="color:#1d4ed8;font-weight:700">Download ${LANG_NAMES[lang]} →</a></span>
+             </div>`
+          : lang !== 'en' ? `<div><span class="trans-badge">🌐 ${LANG_NAMES[lang]}</span></div>` : ''}
         <div class="question-text">${q.question}</div>
         <div class="options-list">
           ${q.options.map((opt, i) => {
@@ -2802,7 +2812,12 @@ function renderTestQ() {
           <span class="q-num">Question ${idx+1}</span>
           <span class="q-cat">${tCat(q.category, lang)}</span>
         </div>
-        ${lang !== 'en' ? `<div><span class="trans-badge">🌐 ${LANG_NAMES[lang]}</span></div>` : ''}
+        ${lang !== 'en' && q._offlineFallback
+          ? `<div style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:0.78rem;color:#92400e;display:flex;align-items:center;gap:8px">
+              <span>📶</span>
+              <span><strong>Offline Mode:</strong> ${LANG_NAMES[lang]} translation not available — showing English. <a href="#" onclick="preTranslateLang('${lang}');return false;" style="color:#1d4ed8;font-weight:700">Download ${LANG_NAMES[lang]} →</a></span>
+             </div>`
+          : lang !== 'en' ? `<div><span class="trans-badge">🌐 ${LANG_NAMES[lang]}</span></div>` : ''}
         <div class="question-text">${q.question}</div>
         <div class="options-list">
           ${q.options.map((opt, i) => {
@@ -3456,6 +3471,11 @@ function getAgentFromURL() {
     /* PRIMARY: ?k=SHORTCODE ─ try localStorage first (same browser) */
     const k = (params.get('k') || '').toUpperCase().trim();
     if (k) {
+      /* ── REVOCATION BLOCKLIST: any code in rto_revoked_codes is permanently blocked ── */
+      try {
+        var revoked = JSON.parse(localStorage.getItem('rto_revoked_codes') || '[]');
+        if (revoked.indexOf(k) !== -1) return null;
+      } catch(e) {}
       try {
         const db = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
         const p = db[k];
@@ -3509,6 +3529,14 @@ function getAgentFromURL() {
         const db = JSON.parse(localStorage.getItem('rto_agents_db') || '{}');
         const p = db[a];
         if (p && p.name) {
+          /* Re-check admin DB status — ensures any action instantly blocks old links */
+          try {
+            var adminDB2 = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
+            var adminRec = adminDB2.find(function(a){ return a.refId === p.refId || a.mobile === p.mobile; });
+            if (adminRec && (adminRec._suspended || adminRec._expired || adminRec.status === 'rejected')) return null;
+            if (adminRec && adminRec._expireDate && new Date() > new Date(adminRec._expireDate)) return null;
+            if (adminRec && adminRec.status && adminRec.status !== 'approved') return null;
+          } catch(e2) {}
           if (p._suspended || p._expired) return null;
           if (p._expireDate && new Date() > new Date(p._expireDate)) return null;
           return p;
@@ -3891,6 +3919,24 @@ function renderAgentSection() {
     const hPname = document.getElementById('home-pending-agent-name');
     if (hPname) hPname.textContent = agentData.name + ' — ' + agentData.company;
   } else if (agentData.status === 'approved') {
+    /* Check if agent has been suspended/expired/deleted by admin */
+    var adminStatusMsg = '';
+    if (agentData._suspended) {
+      adminStatusMsg = '🔴 Your promotional link has been *SUSPENDED* by admin. Your banner is currently hidden. Please contact admin to reactivate.';
+    } else if (agentData._expired) {
+      adminStatusMsg = '⏰ Your promotional link has *EXPIRED*. Please contact admin to renew your approval.';
+    } else if (agentData._expireDate && new Date() > new Date(agentData._expireDate)) {
+      adminStatusMsg = '⏰ Your link *expired* on ' + new Date(agentData._expireDate).toLocaleDateString('en-IN') + '. Contact admin to renew.';
+    }
+    var statusEl = document.getElementById('agent-admin-status');
+    if (statusEl) {
+      if (adminStatusMsg) {
+        statusEl.innerHTML = '⚠️ <strong>Admin Action:</strong> ' + adminStatusMsg +
+          '<br><button onclick="agentReapplyToAdmin()" style="margin-top:8px;padding:6px 16px;background:#2563eb;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.8rem;">'
+          + '📨 Re-apply to Admin</button>';
+        statusEl.style.display = 'block';
+      } else { statusEl.style.display = 'none'; }
+    }
     setStates('approved');
     const link = generateShortAgentLink();
     currentAgentLink = link;
@@ -3931,6 +3977,7 @@ function generateAgentLink() {
     telegram: agentData.telegram || '', linkedin: agentData.linkedin || '',
     twitter: agentData.twitter || '', gmaps: agentData.gmaps || '',
     address: agentData.address || '', services: agentData.services || '',
+    refId: agentData.refId || '',
     _expireDate: agentData._expireDate || null,
     _suspended: agentData._suspended || false,
     _expired: agentData._expired || false
@@ -4066,24 +4113,37 @@ function prevMsg() {
 }
 
 /* ── Platform Sharing with KSpider Branding ──────────────── */
-const SOCIAL_INTROS = [
-  '\uD83D\uDE80 India\u0AA8\u0AC0 \u0AB8\u0AB0\u0AB5\u0AB6\u0ACD\u0AB0\u0AC7\u0AB7\u0ACD\u0AA0 FREE RTO Practice Tool \u0B9A\u0BC7\u0BAE\u0BBF\u0BA4\u0BCD\u0BA4 \u0A95\u0AB0\u0AC0!',
-  '\uD83C\uDF1F \u0AA4\u0AAE\u0ABE\u0AB0\u0ABE \u0A98\u0AB0\u0AA8\u0AC7 \u0AB5\u0ACB\u0AA8\u0AC7 Share \u0A95\u0AB0\u0AC0 \u2014 RTO Exam Prep FREE \u0A9B\u0AC7!',
-  '\uD83D\uDCE3 Driving Licence \u0AAE\u0AC7\u0AB3\u0AB5\u0AC7\u0AB2\u0AC7 FREE Tool \u0AB6\u0AC7\u0A93\u0AB0 \u0A95\u0AB0\u0AC0!',
-  '\u2764\uFE0F Community \u0AAE\u0ABE\u0A9F\u0AC7 \u0AA6\u0AB0\u0AC7\u0A95\u0AA8\u0AC7 Share \u0A95\u0AB0\u0AC0!',
-  '\uD83C\uDFC6 \u0AA4\u0AAE\u0ABE\u0AB0\u0ABE \u0A98\u0AB0\u0AA8\u0AC7\u0A93\u0AA8\u0AC7 RTO Test PASS \u0A95\u0AB0\u0AB5\u0ABE\u0A86\u0AC7 \u0AAE\u0AA6\u0AA6 \u0A95\u0AB0\u0AC0!'
-];
+const SOCIAL_INTROS = [];  /* No random intro prefix — message selected by agent is shown as-is */
 const KSPIDER_ENDINGS = [
-  '\n\n\uD83D\uDD77\uFE0F *KSpider AI* \u2014 India\u0AA8\u0AC1\u0A82 \u0AB8\u0AB0\u0AB5\u0AB6\u0ACD\u0AB0\u0AC7\u0AB7\u0ACD\u0AA0 AI Platform\n\uD83C\uDF10 www.kspiderai.in | \uD83D\uDCDE 9099928877',
-  '\n\n\u2728 *Powered by KSpider AI* \u2014 \u0AB8\u0AAE\u0A97\u0ACD\u0AB0 India\u0AAE\u0ABE\u0A82 Trusted AI Tools\n\uD83C\uDF10 www.kspiderai.in',
-  '\n\n\uD83E\uDD16 *KSpider AI Platform* \u2014 Smart Tools for Smart India\n\uD83D\uDCF1 \uD83C\uDF10 www.kspiderai.in | #KSpiderAI #RTOExamPro',
-  '\n\n\uD83D\uDD77\uFE0F www.kspiderai.in \u2014 *KSpider AI* \u2014 India\u0AA8\u0AC7 Best AI Services!\n\uD83D\uDCF1 \uD83D\uDE80 #RTOExamPro #KSpiderAI #DrivingLicence',
-  '\n\n\u2014 *KSpider AI*, India \uD83C\uDDEE\uD83C\uDDF3\n\uD83C\uDF10 www.kspiderai.in | Best AI Tools for Every Indian!'
+  '\n\n🌐 *www.kspiderai.in* | Free RTO Exam Prep 🇮🇳\n▶️ youtube.com/@KSpider4Kreation',
+  '\n\n🕷️ *KSpider AI* — India ka Trusted AI Tools Platform\n🌐 www.kspiderai.in | ▶️ @KSpider4Kreation',
+  '\n\n✨ *Powered by KSpider AI* | Smart Tools for Smart India\n🌐 www.kspiderai.in | youtube.com/@KSpider4Kreation',
+  '\n\n🤖 *KSpider AI* — Free Tools for Every Indian\n🌐 www.kspiderai.in | ▶️ KSpider4Kreation',
+  '\n\n🇮🇳 *Made in India* | KSpider AI Tools\n🌐 www.kspiderai.in | youtube.com/@KSpider4Kreation',
 ];
+
 function getRandBranding() {
   const intro = SOCIAL_INTROS[Math.floor(Math.random() * SOCIAL_INTROS.length)];
   const ending = KSPIDER_ENDINGS[Math.floor(Math.random() * KSPIDER_ENDINGS.length)];
   return { intro: intro, ending: ending };
+}
+
+
+/* ── Agent Re-apply to Admin ── */
+function agentReapplyToAdmin() {
+  if (!agentData) return;
+  var msg = 'Dear KSpider Admin,\n\nI am writing to request reactivation of my RTO Agent promotional link.' +
+    '\n\nAgent Details:' +
+    '\nName: ' + (agentData.name || '') +
+    '\nCompany: ' + (agentData.company || '') +
+    '\nMobile: ' + (agentData.mobile || '') +
+    '\nRef ID: ' + (agentData.refId || '') +
+    '\n\nStatus: ' + (agentData._suspended ? 'SUSPENDED' : agentData._expired ? 'EXPIRED' : 'Inactive') +
+    '\n\nKindly review and reactivate my account. Thank you.' +
+    '\n\nRegards,\n' + (agentData.name || '');
+  var waLink = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(waLink, '_blank', 'noopener');
+  showToast('📨 Re-apply message opened in WhatsApp!', 'success');
 }
 
 function shareOnPlatform(platform) {
@@ -4092,7 +4152,7 @@ function shareOnPlatform(platform) {
   const msgs = PROMO_MESSAGES.map(function(fn){ return fn(agentData, link); });
   const msg = msgs[currentMsgIndex] || msgs[0];
   const branding = getRandBranding();
-  const fullMsg = branding.intro + '\n\n' + msg + branding.ending;
+  const fullMsg = msg + branding.ending;  /* Selected message + website/YT branding only */
   const encoded = encodeURIComponent(fullMsg);
   const linkEnc = encodeURIComponent(link);
   const urls = {
