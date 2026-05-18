@@ -1125,7 +1125,6 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
     </div>
 
     <!-- AD: In-Content -->
-    <!-- KSpider Admin Ad — in-content -->
     <div data-ks-slot="in-content" style="display:none;width:100%;text-align:center;margin-bottom:16px;"></div>
 
     <div class="seo-grid">
@@ -2149,6 +2148,35 @@ window.nativeShareTool = nativeShareTool;
 </script>
 <style>*,*::before,*::after{-webkit-user-select:none!important;-moz-user-select:none!important;-ms-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-user-select:text!important;-ms-user-select:text!important;user-select:text!important}</style>
 <div data-ks-slot="bottom-banner" style="width:100%;display:flex;justify-content:center;align-items:center;padding:10px 0;min-height:50px;box-sizing:border-box;"></div>
+<!-- Firebase SDK — load before ks-ads.js -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  var FB_CFG = {
+    apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+    authDomain:"kspideraimain.firebaseapp.com",
+    projectId:"kspideraimain",
+    storageBucket:"kspideraimain.firebasestorage.app",
+    messagingSenderId:"940003391760",
+    appId:"1:940003391760:web:8617000465b6991d348d95"
+  };
+  if(!window.firebase || !firebase.apps || !firebase.apps.length){
+    firebase.initializeApp(FB_CFG);
+  }
+  var _bsDb = firebase.firestore();
+  var _bsCache = null, _bsCacheTs = 0;
+  window.ksGetAdminKeys = function() {
+    return new Promise(function(resolve) {
+      if (_bsCache && (Date.now()-_bsCacheTs < 300000)) { resolve(_bsCache); return; }
+      _bsDb.collection('admin').doc('api_keys').get().then(function(doc) {
+        if (doc && doc.exists) { _bsCache = doc.data(); _bsCacheTs = Date.now(); resolve(_bsCache); }
+        else resolve(null);
+      }).catch(function(){ resolve(null); });
+    });
+  };
+})();
+</script>
 <script src="ks-ads.js"></script>
 </body>
 </html>
