@@ -799,7 +799,31 @@
     /* Msg dot in carousel */
     .msg-dot { width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.3);cursor:pointer;transition:.2s; display:inline-block; }
     .msg-dot.active { background:#f59e0b; transform:scale(1.3); }
-  </style>
+  
+    /* ── Exam mode: test-bar overrides + page-header hide ── */
+    body.exam-mode .test-bar {
+      position: sticky !important;
+      top: 0 !important;
+      z-index: 200 !important;
+      background: #fff !important;
+      border-radius: 0 !important;
+      margin: 0 0 14px 0 !important;
+      border-left: none !important;
+      border-right: none !important;
+      border-top: none !important;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12) !important;
+    }
+    body.exam-mode .page-header { display: none !important; }
+    body.exam-mode #page-test-active { padding-top: 0 !important; }
+
+body.exam-mode .site-header { display: none !important; }
+    body.exam-mode .apb-top-banner { display: none !important; }
+    body.exam-mode .offline-banner { display: none !important; }
+    body.exam-mode .pwa-banner { display: none !important; }
+    
+    /* Practice mode — hide top banner, inline banner is shown instead */
+    body.practice-mode .apb-top-banner { display: none !important; }
+</style>
 </head>
 <body>
 
@@ -2564,6 +2588,18 @@ function showPage(id) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
   if (id === 'practice') renderPractice();
   if (id === 'dashboard') renderDashboard();
+
+  /* ── Hide top agent banner during exam/practice — inline banner is shown instead ── */
+  if (id === 'test-active') {
+    document.body.classList.add('exam-mode');
+  } else {
+    document.body.classList.remove('exam-mode');
+  }
+  if (id === 'practice') {
+    document.body.classList.add('practice-mode');
+  } else {
+    document.body.classList.remove('practice-mode');
+  }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -2747,6 +2783,9 @@ function updateTestInfo() {
 }
 
 function startTest() {
+  /* ── Enter exam mode: hide header + top banner to prevent overlap ── */
+  document.body.classList.add('exam-mode');
+
   const count = parseInt(document.getElementById('test-count').value) || 20;
   const cat   = document.getElementById('test-cat').value;
 
@@ -2881,6 +2920,8 @@ function confirmEnd() {
 }
 
 function submitTest() {
+  /* ── Exit exam mode: restore header + banners ── */
+  document.body.classList.remove('exam-mode');
   clearInterval(appState.timerInterval);
   /* Use dynamic start time stored in appState — fallback to TEST_DURATION for old sessions */
   const startSecs = appState.testStartSecs || TEST_DURATION;
@@ -4263,3 +4304,10 @@ updateTestInfo();
 </script>
 </body>
 </html>
+    /* ═══ EXAM MODE — Header + Agent Banner hidden during active test ═══
+       This prevents overlap of timer/controls by sticky header + promo banner.
+       Only applies when body has .exam-mode class (set by startTest, removed by submitTest/confirmEnd). */
+    
+
+    /* Exam test-bar — sticky at very top when header is hidden */
+    
