@@ -294,6 +294,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
 
 <style>
 /* ============================================================
@@ -3111,6 +3112,10 @@ ul { list-style: none; }
         </div>
 
         <!-- Posts Feed -->
+        <div id="nearby-feed-banner" style="display:none;margin-bottom:10px;padding:8px 14px;background:rgba(0,212,255,0.07);border:1px solid rgba(0,212,255,0.2);border-radius:12px;font-size:0.8rem;color:var(--text-secondary);display:flex;align-items:center;gap:8px;">
+          <i class="fas fa-map-marker-alt" style="color:var(--accent2)"></i>
+          <span>Posts from your <strong style="color:var(--primary)">nearby area, school & college</strong> appear first</span>
+        </div>
         <div id="posts-container"></div>
 
         <!-- Mid-Feed AdSense Unit (AdSense compliant placement) -->
@@ -3158,6 +3163,7 @@ ul { list-style: none; }
               <div class="profile-name" id="profile-display-name">K Spider User</div>
               <div class="profile-profession" id="profile-profession-display"><i class="fas fa-code"></i> Web Developer & AI Enthusiast</div>
               <div class="profile-bio" id="profile-bio-display">🚀 Building the future with K Spider AI | Creative mind at work | kspiderai.in</div>
+              <div id="profile-info-tags" style="display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;"></div>
 
               <div class="profile-stats-row">
                 <div class="profile-stat" onclick="showFollowers()">
@@ -3209,13 +3215,76 @@ ul { list-style: none; }
                 <input class="form-input" id="edit-name" placeholder="Your name">
               </div>
               <div class="form-group">
-                <label class="form-label">Profession</label>
+                <label class="form-label">Profession / Title</label>
                 <input class="form-input" id="edit-profession" placeholder="e.g. Web Developer">
               </div>
             </div>
             <div class="form-group">
               <label class="form-label">Bio</label>
               <textarea class="form-textarea" id="edit-bio" placeholder="Write something about yourself..."></textarea>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Gender</label>
+                <select class="form-input" id="edit-gender" style="appearance:auto">
+                  <option value="">Select gender</option>
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                  <option value="Non-binary">Non-binary</option>
+                  <option value="Prefer not to say">Prefer not to say</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Date of Birth</label>
+                <input class="form-input" id="edit-dob" type="date">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Relationship Status</label>
+                <select class="form-input" id="edit-relationship" style="appearance:auto">
+                  <option value="">Select status</option>
+                  <option value="Single">Single</option>
+                  <option value="In a relationship">In a relationship</option>
+                  <option value="Married">Married</option>
+                  <option value="Engaged">Engaged</option>
+                  <option value="It's complicated">It's complicated</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Phone (private)</label>
+                <input class="form-input" id="edit-phone" type="tel" placeholder="+91 00000 00000">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-map-marker-alt" style="color:var(--accent2)"></i> Current City</label>
+                <input class="form-input" id="edit-city" placeholder="e.g. Ahmedabad">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-home" style="color:var(--accent2)"></i> Hometown</label>
+                <input class="form-input" id="edit-hometown" placeholder="e.g. Surat">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-graduation-cap" style="color:var(--primary)"></i> School</label>
+                <input class="form-input" id="edit-school" placeholder="School name">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-university" style="color:var(--primary)"></i> College / University</label>
+                <input class="form-input" id="edit-college" placeholder="College name">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-briefcase" style="color:var(--secondary)"></i> Works At</label>
+                <input class="form-input" id="edit-works" placeholder="Company / Organization">
+              </div>
+              <div class="form-group">
+                <label class="form-label"><i class="fas fa-language" style="color:var(--secondary)"></i> Languages</label>
+                <input class="form-input" id="edit-languages" placeholder="e.g. Hindi, Gujarati, English">
+              </div>
             </div>
             <div class="form-group">
               <label class="form-label">Website</label>
@@ -3229,6 +3298,16 @@ ul { list-style: none; }
               <div class="form-group">
                 <label class="form-label">Instagram</label>
                 <input class="form-input" id="edit-instagram" placeholder="Instagram URL">
+              </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+              <div class="form-group">
+                <label class="form-label">Twitter / X</label>
+                <input class="form-input" id="edit-twitter" placeholder="Twitter/X URL">
+              </div>
+              <div class="form-group">
+                <label class="form-label">LinkedIn</label>
+                <input class="form-input" id="edit-linkedin" placeholder="LinkedIn URL">
               </div>
             </div>
             <div class="form-group">
@@ -4442,10 +4521,23 @@ function applyUserProfile() {
   const pbio = document.getElementById('profile-bio-display');
   if(pbio) pbio.textContent = u.bio;
   const pprof = document.getElementById('profile-profession-display');
-  if(pprof) pprof.innerHTML = `<i class="fas fa-code"></i> ${u.profession}`;
+  if(pprof) pprof.innerHTML = `<i class="fas fa-briefcase"></i> ${u.profession || 'K Spider AI User'}`;
   const pcover = document.getElementById('profile-cover-img');
-  if(pcover) pcover.src = u.cover;
+  if(pcover && u.cover) pcover.src = u.cover;
   if(u.themeColor) applyThemeColor(u.themeColor);
+
+  // Render profile info tags (city, school, college, relationship, works)
+  const tagsEl = document.getElementById('profile-info-tags');
+  if (tagsEl) {
+    const tags = [];
+    if (u.city) tags.push(`<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.3);color:var(--text-secondary)"><i class="fas fa-map-marker-alt" style="color:var(--accent2);margin-right:4px"></i>${u.city}</span>`);
+    if (u.college) tags.push(`<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:rgba(139,92,246,0.1);border:1px solid rgba(139,92,246,0.3);color:var(--text-secondary)"><i class="fas fa-university" style="color:#8B5CF6;margin-right:4px"></i>${u.college}</span>`);
+    if (u.school) tags.push(`<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.3);color:var(--text-secondary)"><i class="fas fa-graduation-cap" style="color:var(--accent2);margin-right:4px"></i>${u.school}</span>`);
+    if (u.worksAt) tags.push(`<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:var(--text-secondary)"><i class="fas fa-briefcase" style="color:#F59E0B;margin-right:4px"></i>${u.worksAt}</span>`);
+    if (u.relationship) tags.push(`<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:var(--text-secondary)"><i class="fas fa-heart" style="color:#EF4444;margin-right:4px"></i>${u.relationship}</span>`);
+    if (u.languages) tags.push(`<span style="font-size:0.72rem;padding:3px 10px;border-radius:20px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);color:var(--text-secondary)"><i class="fas fa-language" style="color:#6366F1;margin-right:4px"></i>${u.languages}</span>`);
+    tagsEl.innerHTML = tags.join('');
+  }
 }
 
 /* ============================================================
@@ -4709,24 +4801,45 @@ function handleStoryUpload(e) {
 /* ============================================================
    POST CREATION
 ============================================================ */
-function handleMediaUpload(e) {
+async function handleMediaUpload(e) {
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = (ev) => {
-    STATE.currentPostMedia = ev.target.result;
-    STATE.currentPostMediaType = file.type.startsWith('video') ? 'video' : 'image';
-    const preview = document.getElementById('post-media-preview');
-    preview.style.display = 'block';
-    if(STATE.currentPostMediaType === 'video') {
+  
+  if (file.type.startsWith('image/')) {
+    // Compress to ≤100KB
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      showToast('⏳ Processing image...', 'info');
+      const compressed = await compressImageTo100KB(ev.target.result, 100);
+      STATE.currentPostMedia = compressed;
+      STATE.currentPostMediaType = 'image';
+      const preview = document.getElementById('post-media-preview');
+      preview.style.display = 'block';
+      const sizeKB = Math.round(compressed.length * 0.75 / 1024);
+      preview.innerHTML = `<div class="remove-media" onclick="removeMedia()"><i class="fas fa-times"></i></div>
+        <img src="${compressed}" style="width:100%; max-height:300px; object-fit:cover; border-radius:var(--radius-sm);" alt="Upload">
+        <div style="font-size:0.7rem;color:var(--text-muted);padding:4px 8px;">✅ Image compressed: ~${sizeKB}KB</div>`;
+      showToast(`✅ Image ready (${sizeKB}KB)`, 'success');
+    };
+    reader.readAsDataURL(file);
+  } else if (file.type.startsWith('video/')) {
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('❌ Video must be under 10MB', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      STATE.currentPostMedia = ev.target.result;
+      STATE.currentPostMediaType = 'video';
+      const preview = document.getElementById('post-media-preview');
+      preview.style.display = 'block';
       preview.innerHTML = `<div class="remove-media" onclick="removeMedia()"><i class="fas fa-times"></i></div>
         <video src="${ev.target.result}" controls style="width:100%; max-height:300px; border-radius:var(--radius-sm);"></video>`;
-    } else {
-      preview.innerHTML = `<div class="remove-media" onclick="removeMedia()"><i class="fas fa-times"></i></div>
-        <img src="${ev.target.result}" style="width:100%; max-height:300px; object-fit:cover; border-radius:var(--radius-sm);" alt="Upload">`;
-    }
-  };
-  reader.readAsDataURL(file);
+    };
+    reader.readAsDataURL(file);
+  } else {
+    showToast('❌ Only images and videos allowed', 'error');
+  }
 }
 
 function removeMedia() {
@@ -4872,11 +4985,56 @@ function submitPost() {
 /* ============================================================
    POST RENDERING
 ============================================================ */
+/* ── NEARBY SCORE: higher = show first ── */
+function getNearbyScore(post) {
+  const u = STATE.currentUser;
+  if (!u) return 0;
+  let score = 0;
+  // Same city
+  if (u.city && post.userCity && u.city.trim().toLowerCase() === post.userCity.trim().toLowerCase()) score += 100;
+  // Same school
+  if (u.school && post.userSchool && u.school.trim().toLowerCase() === post.userSchool.trim().toLowerCase()) score += 80;
+  // Same college
+  if (u.college && post.userCollege && u.college.trim().toLowerCase() === post.userCollege.trim().toLowerCase()) score += 80;
+  // GPS proximity (within ~50km)
+  if (u.geo && post.geo) {
+    const R = 6371;
+    const dLat = (post.geo.lat - u.geo.lat) * Math.PI / 180;
+    const dLng = (post.geo.lng - u.geo.lng) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(u.geo.lat*Math.PI/180)*Math.cos(post.geo.lat*Math.PI/180)*Math.sin(dLng/2)**2;
+    const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    if (dist < 5)   score += 90;
+    else if (dist < 20)  score += 60;
+    else if (dist < 50)  score += 30;
+    else if (dist < 200) score += 10;
+  }
+  // Own post always top
+  if (post.authorId === u.id) score += 200;
+  return score;
+}
+
+function sortPostsForFeed(posts) {
+  return [...posts].sort((a, b) => {
+    const sa = getNearbyScore(a), sb = getNearbyScore(b);
+    if (sa !== sb) return sb - sa;
+    // Fallback: newest first
+    const ta = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.timestamp || 0);
+    const tb = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.timestamp || 0);
+    return tb - ta;
+  });
+}
+
 function renderPosts(container = 'posts-container', posts = STATE.posts) {
   const c = document.getElementById(container);
   if(!c) return;
+
+  // Apply nearby sorting only on main feed
+  let displayPosts = posts;
+  if (container === 'posts-container') {
+    displayPosts = sortPostsForFeed(posts);
+  }
   
-  if(!posts.length) {
+  if(!displayPosts.length) {
     c.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">
       <i class="fas fa-inbox" style="font-size:2rem; margin-bottom:10px; display:block; opacity:0.3;"></i>
       No posts yet. Be the first to share something!
@@ -4884,7 +5042,7 @@ function renderPosts(container = 'posts-container', posts = STATE.posts) {
     return;
   }
   
-  c.innerHTML = posts.map((post, idx) => createPostHTML(post, idx)).join('');
+  c.innerHTML = displayPosts.map((post, idx) => createPostHTML(post, idx)).join('');
 }
 
 function createPostHTML(post, idx = 0) {
@@ -4902,6 +5060,18 @@ function createPostHTML(post, idx = 0) {
     <i class="fas fa-robot ai-insight-icon"></i>
     <span>K Spider AI: This post has high engagement potential. Best time to boost: 6-9 PM IST. Suggested hashtags: #Trending #Viral</span>
   </div>` : '';
+
+  // Nearby badge logic
+  const u = STATE.currentUser;
+  let nearbyBadge = '';
+  if (u && post.authorId !== u.id) {
+    const sameCity = u.city && post.userCity && u.city.trim().toLowerCase() === post.userCity.trim().toLowerCase();
+    const sameSchool = u.school && post.userSchool && u.school.trim().toLowerCase() === post.userSchool.trim().toLowerCase();
+    const sameCollege = u.college && post.userCollege && u.college.trim().toLowerCase() === post.userCollege.trim().toLowerCase();
+    if (sameCity) nearbyBadge = `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(16,185,129,0.15);color:var(--accent2);border:1px solid rgba(16,185,129,0.3);margin-left:4px"><i class="fas fa-map-marker-alt"></i> Nearby</span>`;
+    else if (sameSchool) nearbyBadge = `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(0,212,255,0.12);color:var(--primary);border:1px solid rgba(0,212,255,0.3);margin-left:4px"><i class="fas fa-graduation-cap"></i> Same School</span>`;
+    else if (sameCollege) nearbyBadge = `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(139,92,246,0.12);color:#8B5CF6;border:1px solid rgba(139,92,246,0.3);margin-left:4px"><i class="fas fa-university"></i> Same College</span>`;
+  }
   
   return `<div class="post-card" id="post-${post.id}" style="animation-delay:${idx * 0.05}s">
     <div class="post-header">
@@ -4909,7 +5079,7 @@ function createPostHTML(post, idx = 0) {
         <img src="${post.authorAvatar}" alt="${post.authorName}" loading="lazy">
       </div>
       <div class="post-meta">
-        <div class="post-author" onclick="navigateTo('profile')">${post.authorName}</div>
+        <div class="post-author" onclick="navigateTo('profile')">${post.authorName}${nearbyBadge}</div>
         <div class="post-detail">
           <span>${timeAgo}</span>
           <i class="fas ${visIcon} post-visibility-icon"></i>
@@ -5287,30 +5457,77 @@ function toggleEditProfile() {
   form.classList.toggle('open');
   if(form.classList.contains('open')) {
     const u = STATE.currentUser;
-    document.getElementById('edit-name').value = u.name;
+    if (!u) return;
+    document.getElementById('edit-name').value = u.name || '';
     document.getElementById('edit-profession').value = u.profession || '';
     document.getElementById('edit-bio').value = u.bio || '';
     document.getElementById('edit-website').value = u.website || '';
     document.getElementById('edit-youtube').value = u.youtube || '';
     document.getElementById('edit-instagram').value = u.instagram || '';
     document.getElementById('edit-theme-color').value = u.themeColor || '#00d4ff';
+    // New fields
+    if (document.getElementById('edit-phone')) document.getElementById('edit-phone').value = u.phone || '';
+    if (document.getElementById('edit-dob')) document.getElementById('edit-dob').value = u.dob || '';
+    if (document.getElementById('edit-gender')) document.getElementById('edit-gender').value = u.gender || '';
+    if (document.getElementById('edit-relationship')) document.getElementById('edit-relationship').value = u.relationship || '';
+    if (document.getElementById('edit-city')) document.getElementById('edit-city').value = u.city || '';
+    if (document.getElementById('edit-hometown')) document.getElementById('edit-hometown').value = u.hometown || '';
+    if (document.getElementById('edit-school')) document.getElementById('edit-school').value = u.school || '';
+    if (document.getElementById('edit-college')) document.getElementById('edit-college').value = u.college || '';
+    if (document.getElementById('edit-works')) document.getElementById('edit-works').value = u.worksAt || '';
+    if (document.getElementById('edit-languages')) document.getElementById('edit-languages').value = u.languages || '';
+    if (document.getElementById('edit-twitter')) document.getElementById('edit-twitter').value = u.twitter || '';
+    if (document.getElementById('edit-linkedin')) document.getElementById('edit-linkedin').value = u.linkedin || '';
   }
 }
 
-function saveProfile(e) {
+async function saveProfile(e) {
   e.preventDefault();
   const u = STATE.currentUser;
-  u.name = document.getElementById('edit-name').value.trim() || u.name;
-  u.profession = document.getElementById('edit-profession').value.trim();
-  u.bio = document.getElementById('edit-bio').value.trim();
-  u.website = document.getElementById('edit-website').value.trim();
-  u.youtube = document.getElementById('edit-youtube').value.trim();
-  u.instagram = document.getElementById('edit-instagram').value.trim();
-  u.themeColor = document.getElementById('edit-theme-color').value;
-  
+  if (!u) return;
+  u.name = document.getElementById('edit-name')?.value?.trim() || u.name;
+  u.profession = document.getElementById('edit-profession')?.value?.trim() || u.profession;
+  u.bio = document.getElementById('edit-bio')?.value?.trim() || u.bio;
+  u.website = document.getElementById('edit-website')?.value?.trim() || u.website;
+  u.youtube = document.getElementById('edit-youtube')?.value?.trim() || u.youtube;
+  u.instagram = document.getElementById('edit-instagram')?.value?.trim() || u.instagram;
+  u.themeColor = document.getElementById('edit-theme-color')?.value || u.themeColor;
+  // New fields
+  u.phone = document.getElementById('edit-phone')?.value?.trim() || u.phone;
+  u.dob = document.getElementById('edit-dob')?.value || u.dob;
+  u.gender = document.getElementById('edit-gender')?.value || u.gender;
+  u.relationship = document.getElementById('edit-relationship')?.value || u.relationship;
+  u.city = document.getElementById('edit-city')?.value?.trim() || u.city;
+  u.school = document.getElementById('edit-school')?.value?.trim() || u.school;
+  u.college = document.getElementById('edit-college')?.value?.trim() || u.college;
+  u.worksAt = document.getElementById('edit-works')?.value?.trim() || u.worksAt;
+  u.hometown = document.getElementById('edit-hometown')?.value?.trim() || u.hometown;
+  u.languages = document.getElementById('edit-languages')?.value?.trim() || u.languages;
+  u.twitter = document.getElementById('edit-twitter')?.value?.trim() || u.twitter;
+  u.linkedin = document.getElementById('edit-linkedin')?.value?.trim() || u.linkedin;
+
+  // Save to Firestore if logged in
+  if (FB_READY && u.isFirebase && u.id) {
+    try {
+      await DB.collection('users').doc(u.id).update({
+        name: u.name, profession: u.profession, bio: u.bio,
+        website: u.website, youtube: u.youtube, instagram: u.instagram,
+        phone: u.phone || null, dob: u.dob || null, gender: u.gender || null,
+        relationship: u.relationship || null, city: u.city || null,
+        school: u.school || null, college: u.college || null,
+        worksAt: u.worksAt || null, hometown: u.hometown || null,
+        languages: u.languages || null, twitter: u.twitter || null,
+        linkedin: u.linkedin || null,
+      });
+    } catch(err) {
+      console.warn('Profile save to Firestore failed:', err);
+    }
+  }
+
   saveState();
   applyUserProfile();
-  document.getElementById('edit-profile-form').classList.remove('open');
+  const form = document.getElementById('edit-profile-form');
+  if (form) form.classList.remove('open');
   showToast('Profile saved! ✨', 'success');
 }
 
@@ -5318,15 +5535,31 @@ function triggerCoverUpload() {
   document.getElementById('cover-upload').click();
 }
 
-function handleCoverUpload(e) {
+async function handleCoverUpload(e) {
   const file = e.target.files[0];
   if(!file) return;
+  if (!file.type.startsWith('image/')) { showToast('❌ Please select an image', 'error'); return; }
+  showToast('⏳ Uploading cover photo...', 'info');
   const reader = new FileReader();
-  reader.onload = (ev) => {
-    STATE.currentUser.cover = ev.target.result;
-    document.getElementById('profile-cover-img').src = ev.target.result;
+  reader.onload = async (ev) => {
+    const compressed = await compressImageTo100KB(ev.target.result, 100);
+    STATE.currentUser.cover = compressed;
+    document.getElementById('profile-cover-img').src = compressed;
     saveState();
-    showToast('Cover photo updated!', 'success');
+    // Save to Firebase Storage if available
+    if (FB_READY && STATE.currentUser?.isFirebase && STORAGE) {
+      try {
+        const coverURL = await uploadImageToStorage(compressed, `covers/${STATE.currentUser.id}_${Date.now()}.jpg`);
+        STATE.currentUser.cover = coverURL;
+        document.getElementById('profile-cover-img').src = coverURL;
+        await DB.collection('users').doc(STATE.currentUser.id).update({ cover: coverURL });
+        saveState();
+      } catch(err) {
+        // Use base64 fallback
+        await DB.collection('users').doc(STATE.currentUser.id).update({ cover: compressed }).catch(()=>{});
+      }
+    }
+    showToast('✅ Cover photo updated!', 'success');
   };
   reader.readAsDataURL(file);
 }
@@ -5374,15 +5607,24 @@ async function handleAvatarUpload(e) {
       throw new Error('Cloudinary upload failed');
     }
   } catch(err) {
-    // Fallback to base64 local if Cloudinary not set up
-    console.warn('Cloudinary failed, using local:', err);
+    // Fallback: compress to 100KB and use Firebase Storage or base64
+    console.warn('Cloudinary failed, using Firebase Storage fallback:', err);
     const reader = new FileReader();
     reader.onload = async (ev) => {
-      STATE.currentUser.avatar = ev.target.result;
+      const compressed = await compressImageTo100KB(ev.target.result, 100);
+      let finalURL = compressed;
+      // Try Firebase Storage upload
+      if (STORAGE && FB_READY && STATE.currentUser?.id) {
+        try {
+          finalURL = await uploadImageToStorage(compressed, `avatars/${STATE.currentUser.id}_${Date.now()}.jpg`);
+        } catch(se) { finalURL = compressed; }
+      }
+      STATE.currentUser.avatar = finalURL;
       applyUserProfile();
       updateNavUserChip();
       if (FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
-        try { await DB.collection('users').doc(STATE.currentUser.id).update({ avatar: ev.target.result }); } catch(e) {}
+        try { await DB.collection('users').doc(STATE.currentUser.id).update({ avatar: finalURL }); } catch(e) {}
+        if (_myPresenceRef) { try { await _myPresenceRef.update({ avatar: finalURL }); } catch(e) {} }
       }
       saveState();
       showToast('✅ Profile photo updated!', 'success');
@@ -6591,7 +6833,7 @@ const FB_CONFIG = {
 };
 
 /* ── FIREBASE STATE ── */
-let FB = null, DB = null, RTDB = null, AUTH = null;
+let FB = null, DB = null, RTDB = null, AUTH = null, STORAGE = null;
 let FB_READY = false;
 let _postsListener = null;
 let _onlineListener = null;
@@ -6606,6 +6848,7 @@ function initFirebase() {
     AUTH  = firebase.auth();
     DB    = firebase.firestore();
     RTDB  = firebase.database();
+    STORAGE = firebase.storage();
     FB_READY = true;
     console.log('✅ Firebase connected');
     listenAuthState();
@@ -6695,6 +6938,16 @@ async function setupFirebaseUser(firebaseUser) {
   updateNavUserChip();
   checkAdminAccess();
 
+  // Capture GPS location for nearby feed
+  if (navigator.geolocation && !STATE.currentUser.geo) {
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+      const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      STATE.currentUser.geo = geo;
+      saveState();
+      try { await DB.collection('users').doc(uid).update({ geo }); } catch(e) {}
+    }, () => {}, { timeout: 5000 });
+  }
+
   // Check if user is banned
   const banned = await checkIfBanned(uid);
   if (banned) {
@@ -6725,6 +6978,12 @@ function updateNavUserChip() {
 function subscribeToPostsRT() {
   if (!FB_READY) return;
   if (_postsListener) _postsListener(); // unsubscribe old
+  // Show nearby banner if user has location-based data
+  const u = STATE.currentUser;
+  const banner = document.getElementById('nearby-feed-banner');
+  if (banner && u && (u.city || u.school || u.college || u.geo)) {
+    banner.style.display = 'flex';
+  }
   let firstLoad = true;
   _postsListener = DB.collection('posts')
     .orderBy('timestamp', 'desc')
@@ -6852,6 +7111,44 @@ function toggleOnlinePanel() {
   }
 }
 
+/* ── IMAGE COMPRESS UTILITY (compress to ≤100KB) ── */
+async function compressImageTo100KB(dataURL, maxKB = 100) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      let w = img.width, h = img.height;
+      // Max dimension 1200px
+      if (w > 1200) { h = Math.round(h * 1200 / w); w = 1200; }
+      if (h > 1200) { w = Math.round(w * 1200 / h); h = 1200; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      let quality = 0.85;
+      const tryCompress = () => {
+        const result = canvas.toDataURL('image/jpeg', quality);
+        const sizeKB = Math.round(result.length * 0.75 / 1024);
+        if (sizeKB <= maxKB || quality <= 0.1) {
+          resolve(result);
+        } else {
+          quality = Math.max(0.1, quality - 0.1);
+          tryCompress();
+        }
+      };
+      tryCompress();
+    };
+    img.src = dataURL;
+  });
+}
+
+/* ── UPLOAD IMAGE TO FIREBASE STORAGE ── */
+async function uploadImageToStorage(dataURL, path) {
+  if (!STORAGE) throw new Error('Storage not ready');
+  const blob = await (await fetch(dataURL)).blob();
+  const ref = STORAGE.ref(path);
+  await ref.put(blob, { contentType: 'image/jpeg' });
+  return await ref.getDownloadURL();
+}
+
 /* ── FIREBASE POST SAVE (override submitPost) ── */
 const _origSubmitPost = submitPost;
 window.submitPost = async function() {
@@ -6859,37 +7156,78 @@ window.submitPost = async function() {
     _origSubmitPost();
     return;
   }
-  const text = document.getElementById('post-text-input')?.value?.trim();
+  const rawText = document.getElementById('post-text-input')?.value?.trim();
+  const text = rawText ? sanitizeInput(rawText) : '';
   if (!text && !STATE.currentPostMedia) {
     showToast('Please write something or add media!', 'error');
     return;
   }
-  const post = {
-    authorId: STATE.currentUser.id,
-    authorName: STATE.currentUser.name,
-    authorAvatar: STATE.currentUser.avatar,
-    text: text || '',
-    image: STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
-    video: STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
-    feeling: STATE.activeTags.feeling || null,
-    location: STATE.activeTags.location || null,
-    visibility: document.getElementById('post-visibility')?.value || 'public',
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-    likes: 0, comments: [], shares: 0, views: 0,
-  };
+  const btn = document.querySelector('.create-post-submit-btn') || document.getElementById('post-submit-btn');
   try {
-    const btn = document.querySelector('.create-post-submit-btn');
     if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
-    await DB.collection('posts').add(post);
+
+    let imageURL = null, videoURL = null;
+
+    if (STATE.currentPostMedia) {
+      if (STATE.currentPostMediaType === 'image') {
+        showToast('⏳ Compressing & uploading image...', 'info');
+        const compressed = await compressImageTo100KB(STATE.currentPostMedia, 100);
+        const fname = `posts/${STATE.currentUser.id}_${Date.now()}.jpg`;
+        try {
+          imageURL = await uploadImageToStorage(compressed, fname);
+        } catch(uploadErr) {
+          // Fallback: store compressed base64 (≤100KB, safe for Firestore)
+          imageURL = compressed;
+        }
+      } else {
+        // Video: store as base64 (user's responsibility for size)
+        videoURL = STATE.currentPostMedia;
+      }
+    }
+
+    // Get user location for nearby feed
+    let geoData = STATE.currentUser.geo || null;
+    if (!geoData && navigator.geolocation) {
+      try {
+        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:3000}));
+        geoData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      } catch(e) {}
+    }
+
+    const post = {
+      authorId: STATE.currentUser.id,
+      authorName: STATE.currentUser.name,
+      authorAvatar: STATE.currentUser.avatar,
+      authorHandle: STATE.currentUser.handle || '',
+      text: text + (STATE.activeTags.hashtags?.length ? ' ' + STATE.activeTags.hashtags.map(h=>'#'+h).join(' ') : ''),
+      image: imageURL,
+      video: videoURL,
+      feeling: STATE.activeTags.feeling || null,
+      location: STATE.activeTags.location || STATE.currentUser.city || null,
+      visibility: document.getElementById('post-visibility')?.value || 'public',
+      timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+      likes: 0, comments: [], shares: 0, views: 0,
+      // Nearby/location data
+      geo: geoData,
+      userCity: STATE.currentUser.city || null,
+      userSchool: STATE.currentUser.school || null,
+      userCollege: STATE.currentUser.college || null,
+    };
+
+    const docRef = await DB.collection('posts').add(post);
+    // Add to local state immediately
+    STATE.posts.unshift({ id: docRef.id, ...post, timestamp: Date.now() });
+    renderPosts();
     document.getElementById('post-text-input').value = '';
     if (typeof removeMedia === 'function') removeMedia();
     STATE.activeTags = { feeling: null, hashtags: [], location: null };
     if (typeof updateActiveTags === 'function') updateActiveTags();
     showToast('✅ Post shared with everyone!', 'success');
-    if (btn) { btn.disabled = false; btn.textContent = 'Post'; }
   } catch(e) {
-    showToast('❌ Failed to post: ' + e.message, 'error');
-    console.error(e);
+    showToast('❌ Failed to post: ' + (e.message || 'Permission denied. Please login again.'), 'error');
+    console.error('Post error:', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Post'; }
   }
 };
 
@@ -7029,12 +7367,13 @@ async function fbLogout() {
   if (!confirm('Logout from K Spider Social AI?')) return;
   try {
     // Remove presence
-    if (_myPresenceRef) await _myPresenceRef.remove();
+    if (_myPresenceRef) { try { await _myPresenceRef.remove(); } catch(e) {} }
     // Unsubscribe listeners
-    if (_postsListener) { _postsListener(); _postsListener = null; }
-    if (_onlineListener) { RTDB.ref('presence').off('value', _onlineListener); _onlineListener = null; }
+    if (_postsListener) { try { _postsListener(); } catch(e) {} _postsListener = null; }
+    if (_onlineListener && RTDB) { try { RTDB.ref('presence').off('value', _onlineListener); } catch(e) {} _onlineListener = null; }
     _isGuest = false;
-    if (AUTH) await AUTH.signOut();
+    _myPresenceRef = null;
+    if (AUTH) { try { await AUTH.signOut(); } catch(e) {} }
     STATE.currentUser = null;
     STATE.posts = [];
     // Hide nav elements
@@ -7042,13 +7381,25 @@ async function fbLogout() {
     const logoutBtn = document.getElementById('logout-btn');
     if (chip) chip.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
-    document.getElementById('online-list').innerHTML = '<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">Connecting...</div>';
-    document.getElementById('online-count-badge').textContent = '0';
+    const onlineList = document.getElementById('online-list');
+    if (onlineList) onlineList.innerHTML = '<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">Connecting...</div>';
+    const badge = document.getElementById('online-count-badge');
+    if (badge) badge.textContent = '0';
     renderPosts();
-    document.getElementById('fb-auth-overlay').classList.remove('hidden');
+    // Navigate to feed
+    navigateTo('feed');
+    // Show login overlay with a slight delay to ensure DOM is ready
+    setTimeout(() => {
+      const overlay = document.getElementById('fb-auth-overlay');
+      if (overlay) overlay.classList.remove('hidden');
+    }, 100);
     showToast('👋 Logged out successfully', 'info');
   } catch(e) {
     console.error('Logout error:', e);
+    // Force show overlay even on error
+    const overlay = document.getElementById('fb-auth-overlay');
+    if (overlay) overlay.classList.remove('hidden');
+    showToast('Logged out', 'info');
   }
 }
 
