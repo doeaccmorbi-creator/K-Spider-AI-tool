@@ -1970,13 +1970,115 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
         </div>
       </div>
 
+      <!-- ══════════════════════════════════════════════════════
+           🧠 INBUILT ANTHROPIC (CLAUDE) SYSTEM
+      ══════════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:20px;border:1.5px solid rgba(251,146,60,.35)">
+        <div class="card-head" style="background:linear-gradient(135deg,rgba(194,65,12,.15),rgba(124,58,237,.12))">
+          <div class="card-title" style="color:#fb923c">🧠 Inbuilt Anthropic Claude System — Lifetime Free</div>
+          <span style="font-size:.68rem;background:rgba(194,65,12,.2);color:#fb923c;border:1px solid rgba(194,65,12,.4);padding:3px 10px;border-radius:20px;font-weight:700">BUILT-IN</span>
+        </div>
+        <div style="padding:16px">
+
+          <!-- Info banner -->
+          <div style="background:rgba(251,146,60,.07);border:1px solid rgba(251,146,60,.2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:.8rem;color:var(--t2);line-height:1.8">
+            <b style="color:#fb923c">Ye system kya karta hai?</b><br>
+            Admin yahan <b>Claude / Anthropic API key</b> add karta hai — woh key Firestore ke <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">admin/api_keys</code> document mein securely save hoti hai.<br>
+            Sab kspiderai.in tools <b>automatically</b> Claude API use karte hain bina user ko key dikhaye.<br>
+            🔑 <b>Priority order:</b> Groq → Gemini → <u>Claude (ye)</u> → Google AI Studio → OpenAI<br>
+            ✅ User ki apni key dalne par uski key hamesha <b>sabse pehle</b> use hoti hai.
+          </div>
+
+          <!-- Live Test Section -->
+          <div style="background:var(--bg3);border-radius:10px;border:1px solid rgba(251,146,60,.2);padding:14px;margin-bottom:16px">
+            <div style="font-size:.78rem;font-weight:700;color:#fb923c;margin-bottom:10px">⚡ Live Test — Anthropic Claude API</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <input id="claude-test-key" type="password" placeholder="Test key (sk-ant-...) — blank = use saved key" style="flex:1;min-width:220px;background:var(--bg1);border:1px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--t1);font-size:.82rem;font-family:monospace">
+              <select id="claude-test-model" style="background:var(--bg1);border:1px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--t1);font-size:.78rem">
+                <option value="claude-sonnet-4-20250514">claude-sonnet-4 (Latest)</option>
+                <option value="claude-haiku-4-5-20251001">claude-haiku-4.5 (Fast)</option>
+                <option value="claude-opus-4-20250514">claude-opus-4 (Max)</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:8px;margin-bottom:10px">
+              <input id="claude-test-prompt" type="text" value="Say hello from KSpider AI in one line." style="flex:1;background:var(--bg1);border:1px solid var(--br);border-radius:7px;padding:7px 10px;color:var(--t1);font-size:.82rem">
+              <button onclick="testClaudeApi()" style="background:linear-gradient(135deg,#c2410c,#7c3aed);color:#fff;border:none;padding:8px 18px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:700;white-space:nowrap">🚀 Test</button>
+            </div>
+            <div id="claude-test-result" style="min-height:36px;background:var(--bg1);border-radius:7px;padding:8px 12px;font-size:.8rem;color:var(--t2);border:1px solid var(--br);font-family:monospace;white-space:pre-wrap;display:none"></div>
+          </div>
+
+          <!-- Usage Stats (from Firestore) -->
+          <div style="background:var(--bg3);border-radius:10px;border:1px solid rgba(255,255,255,.07);padding:14px">
+            <div style="font-size:.78rem;font-weight:700;color:var(--t2);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between">
+              <span>📊 Claude API Usage Log</span>
+              <button onclick="loadClaudeUsageLog()" style="background:transparent;border:1px solid var(--br2);color:var(--t3);padding:3px 10px;border-radius:6px;font-size:.7rem;cursor:pointer">🔄 Refresh</button>
+            </div>
+            <div id="claude-usage-log" style="font-size:.75rem;color:var(--t3);max-height:180px;overflow-y:auto">
+              <div style="text-align:center;padding:14px;color:var(--t4)">Click Refresh to load usage log</div>
+            </div>
+            <div style="display:flex;gap:16px;margin-top:10px;flex-wrap:wrap">
+              <div style="font-size:.72rem;color:var(--t3)">Total Calls: <b id="claude-stat-calls" style="color:#fb923c">—</b></div>
+              <div style="font-size:.72rem;color:var(--t3)">Today: <b id="claude-stat-today" style="color:#34d399">—</b></div>
+              <div style="font-size:.72rem;color:var(--t3)">Last Call: <b id="claude-stat-last" style="color:var(--t2)">—</b></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════════════
+           👤 USER API KEY MANAGER
+      ══════════════════════════════════════════════════════ -->
+      <div class="card" style="margin-bottom:20px;border:1.5px solid rgba(52,211,153,.25)">
+        <div class="card-head" style="background:linear-gradient(135deg,rgba(5,150,105,.12),rgba(59,130,246,.08))">
+          <div class="card-title" style="color:#34d399">👤 User Personal API Keys — Admin View</div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <button onclick="loadUserApiKeys()" style="background:transparent;border:1px solid rgba(52,211,153,.3);color:#34d399;padding:4px 12px;border-radius:6px;font-size:.72rem;cursor:pointer">🔄 Refresh</button>
+            <button onclick="clearOldUserKeys()" style="background:transparent;border:1px solid rgba(220,38,38,.3);color:#f87171;padding:4px 12px;border-radius:6px;font-size:.72rem;cursor:pointer">🗑 Clear Old (30d)</button>
+          </div>
+        </div>
+        <div style="padding:14px">
+          <div style="background:rgba(52,211,153,.06);border:1px solid rgba(52,211,153,.15);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--t2);line-height:1.8">
+            🔑 Jab koi user apni <b>khud ki API key</b> site ke kisi tool mein enter karta hai, uski key <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px">user_api_keys/{userId}</code> mein encrypted store hoti hai.<br>
+            Admin yahan dekh sakta hai ki kitne users ne apni key connect ki hai. Keys <b>masked</b> form mein dikhti hain — last 4 chars only.
+          </div>
+          <!-- Stats row -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+            <div style="background:var(--bg3);border-radius:8px;padding:10px 16px;text-align:center;min-width:100px">
+              <div style="font-size:1.4rem;font-weight:800;color:#34d399" id="ukey-stat-total">—</div>
+              <div style="font-size:.68rem;color:var(--t3)">Total Users</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:8px;padding:10px 16px;text-align:center;min-width:100px">
+              <div style="font-size:1.4rem;font-weight:800;color:#fb923c" id="ukey-stat-claude">—</div>
+              <div style="font-size:.68rem;color:var(--t3)">Claude Keys</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:8px;padding:10px 16px;text-align:center;min-width:100px">
+              <div style="font-size:1.4rem;font-weight:800;color:#a78bfa" id="ukey-stat-groq">—</div>
+              <div style="font-size:.68rem;color:var(--t3)">Groq Keys</div>
+            </div>
+            <div style="background:var(--bg3);border-radius:8px;padding:10px 16px;text-align:center;min-width:100px">
+              <div style="font-size:1.4rem;font-weight:800;color:#60a5fa" id="ukey-stat-gemini">—</div>
+              <div style="font-size:.68rem;color:var(--t3)">Gemini Keys</div>
+            </div>
+          </div>
+          <!-- Table -->
+          <div class="tw">
+            <table>
+              <thead><tr><th>#</th><th>User Email</th><th>Claude Key</th><th>Groq Key</th><th>Gemini Key</th><th>Added On</th><th>Action</th></tr></thead>
+              <tbody id="user-apikeys-body"><tr><td colspan="7" style="text-align:center;color:var(--t4);padding:20px">Click Refresh to load</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-head">ℹ️ Kaise Kaam Karta Hai</div>
         <div style="font-size:.82rem;color:var(--t3);line-height:1.8">
           <p>⚡ <b>Auto Sequence:</b> Tools pehle Groq use karte hain → Gemini → Claude → Google AI Studio.</p>
           <p>🔁 <b>Multiple Keys:</b> Ek key limit ho to next key try hoti hai automatically.</p>
           <p>👤 <b>User Key:</b> User apni khud ki API key enter kar sakta hai — uski key ko hamesha priority milti hai.</p>
-          <p>🔒 <b>Secure:</b> Keys Firestore admin collection mein save hoti hain.</p>
+          <p>🧠 <b>Inbuilt Claude:</b> Admin ka Claude key directly <code>admin/api_keys</code> se use hota hai — user ko kuch karne ki zaroorat nahi.</p>
+          <p>🔒 <b>Secure:</b> Admin keys Firestore <code>admin</code> collection mein save hain. User keys <code>user_api_keys</code> collection mein user-specific masked form mein.</p>
+          <p>🌐 <b>Direct API:</b> Claude API calls <code>https://api.anthropic.com/v1/messages</code> pe directly fetch ke through hoti hain — koi backend nahi chahiye.</p>
           <p style="color:#f59e0b">⚠️ Keys save karne ke baad sab tools me automatically kaam karengi.</p>
         </div>
       </div>
@@ -7224,6 +7326,269 @@ window.ksGetNextApiKey = function(preferredProvider, callback){
     }
     callback(null);
   }).catch(function(){ callback(null); });
+};
+
+/* ════════════════════════════════════════════════════════
+   🧠 INBUILT ANTHROPIC CLAUDE DIRECT API SYSTEM
+   Calls api.anthropic.com/v1/messages directly via fetch
+   No backend required — admin key from Firestore
+════════════════════════════════════════════════════════ */
+
+// Core direct Claude API caller — used by tools & admin test
+window.ksCallClaude = function(opts){
+  /*
+    opts = {
+      apiKey:   string   (optional — falls back to Firestore admin key)
+      model:    string   (default: claude-sonnet-4-20250514)
+      messages: array    [{role:'user',content:'...'}]
+      system:   string   (optional system prompt)
+      maxTokens: number  (default 1000)
+      onSuccess: fn(text)
+      onError:   fn(errMsg)
+    }
+  */
+  var model    = opts.model    || 'claude-sonnet-4-20250514';
+  var maxTok   = opts.maxTokens || 1000;
+  var messages = opts.messages  || [{role:'user',content:'Hello'}];
+  var system   = opts.system   || '';
+
+  function doCall(apiKey){
+    if(!apiKey){
+      if(opts.onError) opts.onError('No API key available.');
+      return;
+    }
+    var body = {model:model, max_tokens:maxTok, messages:messages};
+    if(system) body.system = system;
+
+    fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body)
+    })
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      if(data && data.content && data.content[0] && data.content[0].text){
+        // Log usage to Firestore
+        try{
+          if(db){
+            var today = new Date().toISOString().split('T')[0];
+            db.collection('admin').doc('claude_usage').get().then(function(doc){
+              var d = doc.exists ? doc.data() : {};
+              var totalCalls = (d.totalCalls||0) + 1;
+              var todayCalls = (d.todayDate === today) ? ((d.todayCalls||0)+1) : 1;
+              db.collection('admin').doc('claude_usage').set({
+                totalCalls: totalCalls,
+                todayCalls: todayCalls,
+                todayDate:  today,
+                lastCall:   new Date().toISOString(),
+                lastModel:  model
+              });
+            }).catch(function(){});
+          }
+        }catch(e){}
+        if(opts.onSuccess) opts.onSuccess(data.content[0].text);
+      } else if(data && data.error){
+        if(opts.onError) opts.onError('API Error: ' + (data.error.message||JSON.stringify(data.error)));
+      } else {
+        if(opts.onError) opts.onError('Unexpected response: '+JSON.stringify(data).substring(0,120));
+      }
+    })
+    .catch(function(e){
+      if(opts.onError) opts.onError('Network error: '+e.message);
+    });
+  }
+
+  if(opts.apiKey){
+    doCall(opts.apiKey);
+  } else {
+    // Fetch from Firestore admin key
+    window.ksGetNextApiKey('claude', function(info){
+      if(info && info.key){ doCall(info.key); }
+      else {
+        // Try other providers as fallback
+        window.ksGetNextApiKey(null, function(info2){
+          if(info2 && info2.key){ doCall(info2.key); }
+          else { if(opts.onError) opts.onError('No active API keys found. Please add keys in Admin → API Keys.'); }
+        });
+      }
+    });
+  }
+};
+
+// Admin Live Test function
+function testClaudeApi(){
+  var keyInp  = document.getElementById('claude-test-key');
+  var modelSel= document.getElementById('claude-test-model');
+  var promptEl= document.getElementById('claude-test-prompt');
+  var resEl   = document.getElementById('claude-test-result');
+  if(!resEl) return;
+  resEl.style.display='block';
+  resEl.style.color='var(--t3)';
+  resEl.textContent='⏳ Testing...';
+
+  var key   = (keyInp && keyInp.value.trim()) ? keyInp.value.trim() : null;
+  var model = modelSel ? modelSel.value : 'claude-sonnet-4-20250514';
+  var prompt= (promptEl && promptEl.value.trim()) ? promptEl.value.trim() : 'Say hello from KSpider AI.';
+
+  window.ksCallClaude({
+    apiKey: key,
+    model:  model,
+    messages:[{role:'user',content:prompt}],
+    maxTokens: 200,
+    onSuccess: function(text){
+      resEl.style.color='#34d399';
+      resEl.textContent='✅ SUCCESS\n\n'+text;
+      toast('✅ Claude API working!');
+    },
+    onError: function(err){
+      resEl.style.color='#f87171';
+      resEl.textContent='❌ ERROR\n\n'+err;
+      toast('❌ Claude test failed: '+err.substring(0,60));
+    }
+  });
+}
+
+// Load Claude usage log
+function loadClaudeUsageLog(){
+  var logEl   = document.getElementById('claude-usage-log');
+  var callsEl = document.getElementById('claude-stat-calls');
+  var todayEl = document.getElementById('claude-stat-today');
+  var lastEl  = document.getElementById('claude-stat-last');
+  if(!db || !logEl) return;
+  logEl.innerHTML = '<div style="text-align:center;padding:10px;color:var(--t4)">⏳ Loading...</div>';
+  db.collection('admin').doc('claude_usage').get().then(function(doc){
+    if(!doc || !doc.exists){
+      logEl.innerHTML='<div style="text-align:center;padding:10px;color:var(--t4)">No usage data yet. Test the API above to start logging.</div>';
+      return;
+    }
+    var d = doc.data();
+    if(callsEl) callsEl.textContent = d.totalCalls || 0;
+    if(todayEl) todayEl.textContent = (d.todayDate === new Date().toISOString().split('T')[0]) ? (d.todayCalls||0) : 0;
+    if(lastEl)  lastEl.textContent  = d.lastCall ? new Date(d.lastCall).toLocaleString('en-IN') : '—';
+    logEl.innerHTML = '<div style="font-size:.75rem;color:var(--t2)">'
+      + '<div style="margin-bottom:6px">📊 <b>Total API Calls:</b> <span style="color:#fb923c">'+(d.totalCalls||0)+'</span></div>'
+      + '<div style="margin-bottom:6px">📅 <b>Today\'s Calls:</b> <span style="color:#34d399">'+(((d.todayDate===new Date().toISOString().split('T')[0]))?d.todayCalls:0)+'</span></div>'
+      + '<div style="margin-bottom:6px">🕐 <b>Last Call:</b> <span style="color:var(--t1)">'+(d.lastCall ? new Date(d.lastCall).toLocaleString('en-IN') : '—')+'</span></div>'
+      + '<div style="margin-bottom:6px">🤖 <b>Last Model:</b> <span style="color:#a78bfa">'+(d.lastModel||'—')+'</span></div>'
+      + '</div>';
+  }).catch(function(e){
+    logEl.innerHTML='<div style="color:#f87171;font-size:.75rem">Error: '+e.message+'</div>';
+  });
+}
+
+/* ════════════════════════════════════════════════════════
+   👤 USER API KEYS MANAGER
+   Collection: user_api_keys/{userEmail_sanitized}
+   Fields: claude, groq, gemini, gai, openai, addedAt
+════════════════════════════════════════════════════════ */
+
+function loadUserApiKeys(){
+  if(!db) return;
+  var tbody = document.getElementById('user-apikeys-body');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t4)">⏳ Loading...</td></tr>';
+
+  db.collection('user_api_keys').get().then(function(snap){
+    if(snap.empty){
+      tbody.innerHTML='<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--t4)">No user keys yet.</td></tr>';
+      var t=document.getElementById('ukey-stat-total');
+      var c=document.getElementById('ukey-stat-claude');
+      var g=document.getElementById('ukey-stat-groq');
+      var gm=document.getElementById('ukey-stat-gemini');
+      if(t)t.textContent='0'; if(c)c.textContent='0'; if(g)g.textContent='0'; if(gm)gm.textContent='0';
+      return;
+    }
+    var docs = [];
+    snap.forEach(function(d){ docs.push({id:d.id, data:d.data()}); });
+    var totalClaude=0, totalGroq=0, totalGemini=0;
+    var html = '';
+    docs.forEach(function(item,i){
+      var d = item.data;
+      var maskKey = function(k){ return k ? (k.substring(0,4)+'••••'+k.slice(-4)) : '—'; };
+      if(d.claude) totalClaude++;
+      if(d.groq)   totalGroq++;
+      if(d.gemini) totalGemini++;
+      var addedAt = d.addedAt ? new Date(d.addedAt).toLocaleDateString('en-IN') : '—';
+      html += '<tr>'
+        +'<td>'+(i+1)+'</td>'
+        +'<td style="font-size:.78rem">'+item.id.replace(/_/g,'.')+'</td>'
+        +'<td style="font-family:monospace;font-size:.75rem;color:#fb923c">'+maskKey(d.claude)+'</td>'
+        +'<td style="font-family:monospace;font-size:.75rem;color:#a78bfa">'+maskKey(d.groq)+'</td>'
+        +'<td style="font-family:monospace;font-size:.75rem;color:#60a5fa">'+maskKey(d.gemini)+'</td>'
+        +'<td style="font-size:.75rem">'+addedAt+'</td>'
+        +'<td><button onclick="deleteUserApiKey(\''+item.id+'\')" class="btn btn-r btn-sm">🗑</button></td>'
+        +'</tr>';
+    });
+    tbody.innerHTML = html;
+    var t=document.getElementById('ukey-stat-total');
+    var c=document.getElementById('ukey-stat-claude');
+    var g=document.getElementById('ukey-stat-groq');
+    var gm=document.getElementById('ukey-stat-gemini');
+    if(t)t.textContent=docs.length;
+    if(c)c.textContent=totalClaude;
+    if(g)g.textContent=totalGroq;
+    if(gm)gm.textContent=totalGemini;
+  }).catch(function(e){
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#f87171;padding:16px">Error: '+e.message+'</td></tr>';
+  });
+}
+
+function deleteUserApiKey(docId){
+  if(!confirm('Delete API key for '+docId+'?')) return;
+  if(!db) return;
+  db.collection('user_api_keys').doc(docId).delete().then(function(){
+    toast('🗑 User key deleted.');
+    loadUserApiKeys();
+  }).catch(function(e){ toast('Error: '+e.message); });
+}
+
+function clearOldUserKeys(){
+  if(!confirm('Delete all user API keys older than 30 days?')) return;
+  if(!db) return;
+  var cutoff = new Date(Date.now() - 30*24*60*60*1000).toISOString();
+  db.collection('user_api_keys').get().then(function(snap){
+    var batch = db.batch();
+    var count = 0;
+    snap.forEach(function(doc){
+      var d = doc.data();
+      if(!d.addedAt || d.addedAt < cutoff){ batch.delete(doc.ref); count++; }
+    });
+    if(!count){ toast('No old keys found.'); return; }
+    batch.commit().then(function(){ toast('🗑 Deleted '+count+' old user keys.'); loadUserApiKeys(); });
+  }).catch(function(e){ toast('Error: '+e.message); });
+}
+
+// Expose: tool pages call this to save user's personal API key
+window.ksSaveUserApiKey = function(userEmail, provider, apiKey, callback){
+  if(!db || !userEmail || !provider || !apiKey){ if(callback)callback(false); return; }
+  var safeId = userEmail.replace(/\./g,'_').replace(/@/g,'_at_').replace(/[^a-zA-Z0-9_]/g,'_');
+  var upd = {};
+  upd[provider] = apiKey;
+  upd['addedAt'] = new Date().toISOString();
+  upd['updatedAt'] = new Date().toISOString();
+  db.collection('user_api_keys').doc(safeId).set(upd, {merge:true})
+    .then(function(){ if(callback)callback(true); })
+    .catch(function(e){ console.warn('[UserApiKey] Save error:',e.message); if(callback)callback(false); });
+};
+
+// Tool pages call this to get the user's saved personal key
+window.ksGetUserApiKey = function(userEmail, provider, callback){
+  if(!db || !userEmail){ if(callback)callback(null); return; }
+  var safeId = userEmail.replace(/\./g,'_').replace(/@/g,'_at_').replace(/[^a-zA-Z0-9_]/g,'_');
+  db.collection('user_api_keys').doc(safeId).get()
+    .then(function(doc){
+      if(doc && doc.exists && doc.data()[provider]){
+        callback(doc.data()[provider]);
+      } else {
+        callback(null);
+      }
+    })
+    .catch(function(){ callback(null); });
 };
 
 </script>
