@@ -2833,6 +2833,13 @@ ul { list-style: none; }
     </div>
 
     <div class="fb-auth-divider">OR</div>
+
+    <!-- GOOGLE LOGIN BUTTON -->
+    <button class="fb-auth-btn" id="google-login-btn" onclick="fbGoogleLogin()" style="background:linear-gradient(135deg,#4285F4,#34A853);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px;">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.5 20-21 0-1.4-.2-2.7-.5-4z"/></svg>
+      Continue with Google
+    </button>
+
     <button class="fb-auth-guest" onclick="fbGuest()">👤 Continue as Guest (View Only)</button>
     <div class="fb-auth-note">
       By continuing, you agree to K Spider AI's <strong>Terms of Service</strong>.<br>
@@ -6851,11 +6858,18 @@ function initFirebase() {
     STORAGE = firebase.storage();
     FB_READY = true;
     console.log('✅ Firebase connected');
+    // Handle Google redirect result (mobile fallback)
+    AUTH.getRedirectResult().then(result => {
+      if (result && result.user) {
+        console.log('✅ Google redirect login:', result.user.email);
+      }
+    }).catch(e => {
+      if (e.code !== 'auth/no-current-user') console.warn('Redirect result error:', e.message);
+    });
     listenAuthState();
   } catch(e) {
     console.warn('⚠️ Firebase init failed — running offline:', e.message);
     FB_READY = false;
-    // Show login overlay anyway so user can use guest mode
     document.getElementById('fb-auth-overlay').classList.remove('hidden');
   }
 }
@@ -6888,35 +6902,57 @@ function listenAuthState() {
 /* ── SETUP USER AFTER LOGIN ── */
 async function setupFirebaseUser(firebaseUser) {
   const uid = firebaseUser.uid;
-  // Try to load existing profile from Firestore
+  // Google/social login photo takes priority
+  const googlePhoto = firebaseUser.photoURL || null;
+  const displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'K Spider User';
+  const defaultAvatar = googlePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+
   try {
     const snap = await DB.collection('users').doc(uid).get();
     if (snap.exists) {
       const data = snap.data();
       STATE.currentUser = {
         id: uid,
-        name: data.name || firebaseUser.displayName || 'K Spider User',
-        handle: data.handle || '@' + (data.name||'user').toLowerCase().replace(/\s+/,''),
+        name: data.name || displayName,
+        handle: data.handle || '@' + (data.name || displayName).toLowerCase().replace(/\s+/g,''),
         bio: data.bio || '🚀 K Spider AI User',
-        avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
+        // Always use Google photo if available, fallback to saved, then dicebear
+        avatar: googlePhoto || data.avatar || defaultAvatar,
         cover: data.cover || 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
         profession: data.profession || 'K Spider AI User',
-        website: 'https://www.kspiderai.in',
+        website: data.website || 'https://www.kspiderai.in',
         followers: data.followers || 0,
         following_count: data.following_count || 0,
         likes: data.likes || 0,
         email: firebaseUser.email,
+        phone: data.phone || null,
+        dob: data.dob || null,
+        gender: data.gender || null,
+        relationship: data.relationship || null,
+        city: data.city || null,
+        school: data.school || null,
+        college: data.college || null,
+        worksAt: data.worksAt || null,
+        hometown: data.hometown || null,
+        languages: data.languages || null,
+        twitter: data.twitter || null,
+        linkedin: data.linkedin || null,
+        geo: data.geo || null,
+        themeColor: data.themeColor || null,
         isFirebase: true
       };
+      // Update avatar in Firestore if Google photo changed
+      if (googlePhoto && googlePhoto !== data.avatar) {
+        await DB.collection('users').doc(uid).update({ avatar: googlePhoto }).catch(()=>{});
+      }
     } else {
-      // First login — create profile
-      const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'K Spider User';
+      // First login — create full profile
       STATE.currentUser = {
         id: uid,
-        name: name,
-        handle: '@' + name.toLowerCase().replace(/\s+/g,''),
+        name: displayName,
+        handle: '@' + displayName.toLowerCase().replace(/\s+/g,''),
         bio: '🚀 New to K Spider Social AI!',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
+        avatar: defaultAvatar,
         cover: 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
         profession: 'K Spider AI User',
         website: 'https://www.kspiderai.in',
@@ -6929,8 +6965,10 @@ async function setupFirebaseUser(firebaseUser) {
   } catch(e) {
     console.warn('Firestore user fetch failed:', e);
     STATE.currentUser = {
-      id: uid, name: firebaseUser.displayName || 'User',
-      handle: '@user', bio: '', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
+      id: uid, name: displayName,
+      handle: '@' + displayName.toLowerCase().replace(/\s+/g,''),
+      bio: '', avatar: defaultAvatar,
+      email: firebaseUser.email,
       isFirebase: true
     };
   }
@@ -7150,19 +7188,54 @@ async function uploadImageToStorage(dataURL, path) {
 }
 
 /* ── FIREBASE POST SAVE (override submitPost) ── */
-const _origSubmitPost = submitPost;
 window.submitPost = async function() {
+  // If not firebase user, use local offline mode
   if (!FB_READY || !STATE.currentUser?.isFirebase) {
-    _origSubmitPost();
+    // Local post
+    const rawText = document.getElementById('post-text-input')?.value?.trim();
+    const text = rawText ? rawText.replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#x27;'}[c])) : '';
+    if (!text && !STATE.currentPostMedia) { showToast('Please write something!', 'error'); return; }
+    const post = {
+      id: 'post_' + Date.now(),
+      authorId: STATE.currentUser?.id || 'guest',
+      authorName: STATE.currentUser?.name || 'User',
+      authorAvatar: STATE.currentUser?.avatar || '',
+      text: text,
+      image: STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
+      video: STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
+      feeling: STATE.activeTags?.feeling || null,
+      location: STATE.activeTags?.location || null,
+      visibility: document.getElementById('post-visibility')?.value || 'public',
+      timestamp: Date.now(), likes: 0, comments: [], shares: 0, views: 1, isOwn: true,
+    };
+    STATE.posts.unshift(post);
+    renderPosts();
+    document.getElementById('post-text-input').value = '';
+    if (typeof removeMedia === 'function') removeMedia();
+    STATE.activeTags = {feeling:null, hashtags:[], location:null};
+    if (typeof updateActiveTags === 'function') updateActiveTags();
     return;
   }
+
+  // ── Firebase post ──
+  // Verify auth token is fresh
+  const firebaseUser = AUTH.currentUser;
+  if (!firebaseUser) {
+    showToast('❌ Session expired. Please login again.', 'error');
+    document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+    return;
+  }
+
   const rawText = document.getElementById('post-text-input')?.value?.trim();
   const text = rawText ? sanitizeInput(rawText) : '';
   if (!text && !STATE.currentPostMedia) {
     showToast('Please write something or add media!', 'error');
     return;
   }
-  const btn = document.querySelector('.create-post-submit-btn') || document.getElementById('post-submit-btn');
+
+  const btn = document.querySelector('.create-post-submit-btn') ||
+              document.querySelector('[onclick*="submitPost"]') ||
+              document.getElementById('post-submit-btn');
   try {
     if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
 
@@ -7170,96 +7243,116 @@ window.submitPost = async function() {
 
     if (STATE.currentPostMedia) {
       if (STATE.currentPostMediaType === 'image') {
-        showToast('⏳ Compressing & uploading image...', 'info');
-        const compressed = await compressImageTo100KB(STATE.currentPostMedia, 100);
-        const fname = `posts/${STATE.currentUser.id}_${Date.now()}.jpg`;
-        try {
-          imageURL = await uploadImageToStorage(compressed, fname);
-        } catch(uploadErr) {
-          // Fallback: store compressed base64 (≤100KB, safe for Firestore)
+        showToast('⏳ Compressing image...', 'info');
+        const compressed = await compressImageTo100KB(STATE.currentPostMedia, 95);
+        // Try Firebase Storage, else store compressed base64
+        if (STORAGE) {
+          try {
+            imageURL = await uploadImageToStorage(compressed, `posts/${firebaseUser.uid}_${Date.now()}.jpg`);
+          } catch(se) {
+            console.warn('Storage upload failed, using base64:', se.message);
+            imageURL = compressed;
+          }
+        } else {
           imageURL = compressed;
         }
       } else {
-        // Video: store as base64 (user's responsibility for size)
         videoURL = STATE.currentPostMedia;
       }
     }
 
-    // Get user location for nearby feed
+    // Get geo
     let geoData = STATE.currentUser.geo || null;
     if (!geoData && navigator.geolocation) {
       try {
-        const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:3000}));
+        const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res,rej,{timeout:2000}));
         geoData = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       } catch(e) {}
     }
 
-    const post = {
-      authorId: STATE.currentUser.id,
+    const hashtags = STATE.activeTags?.hashtags || [];
+    const postData = {
+      authorId: firebaseUser.uid,
       authorName: STATE.currentUser.name,
       authorAvatar: STATE.currentUser.avatar,
       authorHandle: STATE.currentUser.handle || '',
-      text: text + (STATE.activeTags.hashtags?.length ? ' ' + STATE.activeTags.hashtags.map(h=>'#'+h).join(' ') : ''),
+      text: text + (hashtags.length ? ' ' + hashtags.map(h=>'#'+h).join(' ') : ''),
       image: imageURL,
       video: videoURL,
-      feeling: STATE.activeTags.feeling || null,
-      location: STATE.activeTags.location || STATE.currentUser.city || null,
+      feeling: STATE.activeTags?.feeling || null,
+      location: STATE.activeTags?.location || STATE.currentUser.city || null,
       visibility: document.getElementById('post-visibility')?.value || 'public',
       timestamp: firebase.firestore.FieldValue.serverTimestamp(),
       likes: 0, comments: [], shares: 0, views: 0,
-      // Nearby/location data
       geo: geoData,
       userCity: STATE.currentUser.city || null,
       userSchool: STATE.currentUser.school || null,
       userCollege: STATE.currentUser.college || null,
     };
 
-    const docRef = await DB.collection('posts').add(post);
-    // Add to local state immediately
-    STATE.posts.unshift({ id: docRef.id, ...post, timestamp: Date.now() });
+    const docRef = await DB.collection('posts').add(postData);
+    // Optimistic local update
+    STATE.posts.unshift({ id: docRef.id, ...postData, timestamp: Date.now(), isOwn: true });
     renderPosts();
     document.getElementById('post-text-input').value = '';
     if (typeof removeMedia === 'function') removeMedia();
     STATE.activeTags = { feeling: null, hashtags: [], location: null };
     if (typeof updateActiveTags === 'function') updateActiveTags();
-    showToast('✅ Post shared with everyone!', 'success');
+    if (typeof closeEmojiPicker === 'function') closeEmojiPicker();
+    showToast('✅ Post shared!', 'success');
   } catch(e) {
-    showToast('❌ Failed to post: ' + (e.message || 'Permission denied. Please login again.'), 'error');
-    console.error('Post error:', e);
+    console.error('Post error:', e.code, e.message);
+    if (e.code === 'permission-denied' || e.code === 'PERMISSION_DENIED') {
+      showToast('❌ Permission denied — session may have expired. Logging out...', 'error');
+      setTimeout(() => fbLogout(), 2000);
+    } else {
+      showToast('❌ Post failed: ' + (e.message || 'Unknown error'), 'error');
+    }
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Post'; }
   }
 };
 
 /* ── FIREBASE LIKE (real-time sync) ── */
-const _origLikePost = likePost;
+const _origLikePost = window.likePost || likePost;
 window.likePost = async function(postId) {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) { _origLikePost(postId); return; }
-  const myId = STATE.currentUser.id;
-  const likeRef = DB.collection('posts').doc(postId).collection('likes').doc(myId);
-  const snap = await likeRef.get();
-  if (snap.exists) {
-    await likeRef.delete();
-    await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
-    STATE.likedPosts.delete(postId);
-  } else {
-    await likeRef.set({ uid: myId, name: STATE.currentUser.name, ts: firebase.firestore.FieldValue.serverTimestamp() });
-    await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(1) });
-    STATE.likedPosts.add(postId);
+  if (!FB_READY || !STATE.currentUser?.isFirebase || !AUTH.currentUser) {
+    if (typeof _origLikePost === 'function') _origLikePost(postId);
+    return;
   }
-  const post = STATE.posts.find(p => p.id === postId);
-  if (post) updatePostStats(postId, post);
+  const myId = AUTH.currentUser.uid;
+  try {
+    const likeRef = DB.collection('posts').doc(postId).collection('likes').doc(myId);
+    const snap = await likeRef.get();
+    if (snap.exists) {
+      await likeRef.delete();
+      await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
+      STATE.likedPosts.delete(postId);
+    } else {
+      await likeRef.set({ uid: myId, name: STATE.currentUser.name, ts: firebase.firestore.FieldValue.serverTimestamp() });
+      await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(1) });
+      STATE.likedPosts.add(postId);
+    }
+    const post = STATE.posts.find(p => p.id === postId);
+    if (post && typeof updatePostStats === 'function') updatePostStats(postId, post);
+  } catch(e) {
+    console.error('Like error:', e);
+  }
 };
 
 /* ── FIREBASE DELETE POST ── */
-const _origDeletePost = deletePost;
+const _origDeletePost = window.deletePost || deletePost;
 window.deletePost = async function(postId) {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) { _origDeletePost(postId); return; }
+  if (!FB_READY || !STATE.currentUser?.isFirebase || !AUTH.currentUser) {
+    if (typeof _origDeletePost === 'function') _origDeletePost(postId);
+    return;
+  }
   if (!confirm('Delete this post for everyone?')) return;
   try {
     await DB.collection('posts').doc(postId).delete();
+    STATE.posts = STATE.posts.filter(p => p.id !== postId);
     document.getElementById('post-' + postId)?.remove();
-    showToast('Post deleted', 'success');
+    showToast('✅ Post deleted', 'success');
   } catch(e) {
     showToast('❌ Delete failed: ' + e.message, 'error');
   }
@@ -7340,8 +7433,31 @@ async function fbRegister() {
   }
 }
 
+/* ── GOOGLE LOGIN ── */
+async function fbGoogleLogin() {
+  if (!FB_READY) { showAuthError('Firebase not ready. Please refresh.'); return; }
+  const btn = document.getElementById('google-login-btn');
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Opening Google...'; }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    provider.addScope('profile');
+    provider.addScope('email');
+    try {
+      await AUTH.signInWithPopup(provider);
+    } catch(popupErr) {
+      if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user') {
+        await AUTH.signInWithRedirect(provider);
+      } else { throw popupErr; }
+    }
+    // onAuthStateChanged will handle the rest automatically
+  } catch(e) {
+    console.error('Google login error:', e);
+    showAuthError('Google login failed: ' + (e.message || e.code));
+    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.5 20-21 0-1.4-.2-2.7-.5-4z"/></svg> Continue with Google'; }
+  }
+}
+
 async function fbGuest() {
-  _isGuest = true;
   document.getElementById('fb-auth-overlay').classList.add('hidden');
   STATE.currentUser = {
     id: 'guest_' + Date.now(),
