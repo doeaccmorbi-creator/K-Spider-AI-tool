@@ -697,6 +697,23 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
 
   <div class="btngrp">
     <button class="btn btn-g" onclick="genMsg()">🤖 Generate Short Message</button>
+<!-- Translation Bar -->
+<div id="ks-translate-bar" style="margin:10px 0;padding:10px 14px;background:#f0f9f0;border-radius:10px;border:1px solid #c6f6d5;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+  <span style="font-size:.8rem;color:#276749;font-weight:600">🌐 Translate Message:</span>
+  <select id="ks-lang-sel" style="background:#fff;border:1px solid #c6f6d5;color:#276749;border-radius:6px;padding:5px 8px;font-size:.78rem;cursor:pointer">
+    <option value="en">English (Original)</option>
+    <option value="hi">हिंदी</option><option value="gu">ગુજરાતી</option>
+    <option value="mr">मराठी</option><option value="pa">ਪੰਜਾਬੀ</option>
+    <option value="bn">বাংলা</option><option value="ta">தமிழ்</option>
+    <option value="te">తెలుగు</option><option value="kn">ಕನ್ನಡ</option>
+    <option value="ml">മലയാളം</option><option value="ur">اردو</option>
+    <option value="ar">العربية</option><option value="zh">中文</option>
+    <option value="es">Español</option><option value="fr">Français</option>
+    <option value="de">Deutsch</option><option value="ru">Русский</option>
+  </select>
+  <button onclick="ksTranslateMsg()" style="background:#25d366;color:#000;border:none;padding:6px 14px;border-radius:6px;font-size:.78rem;font-weight:700;cursor:pointer">Translate</button>
+  <span id="ks-translate-status" style="font-size:.72rem;color:#276749"></span>
+</div>
     <button class="btn btn-o" onclick="genMsg()">🔄 Regenerate</button>
   </div>
 
@@ -2148,12 +2165,41 @@ window.nativeShareTool = nativeShareTool;
 </script>
 <style>*,*::before,*::after{-webkit-user-select:none!important;-moz-user-select:none!important;-ms-user-select:none!important;user-select:none!important;-webkit-touch-callout:none!important}input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-user-select:text!important;-ms-user-select:text!important;user-select:text!important}</style>
 <div data-ks-slot="bottom-banner" style="width:100%;display:flex;justify-content:center;align-items:center;padding:10px 0;min-height:50px;box-sizing:border-box;"></div>
-<!-- Firebase SDK — load before ks-ads.js -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
-  var FB_CFG = {
+  var FB={apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",authDomain:"kspideraimain.firebaseapp.com",
+    projectId:"kspideraimain",storageBucket:"kspideraimain.firebasestorage.app",
+    messagingSenderId:"940003391760",appId:"1:940003391760:web:8617000465b6991d348d95"};
+  if(!firebase.apps.length) firebase.initializeApp(FB);
+  var _bsDb=firebase.firestore(),_bsCache=null,_bsCacheTs=0;
+  window.ksGetAdminKeys=function(){return new Promise(function(resolve){
+    if(_bsCache&&(Date.now()-_bsCacheTs<300000)){resolve(_bsCache);return;}
+    _bsDb.collection('admin').doc('api_keys').get().then(function(doc){
+      if(doc&&doc.exists){_bsCache=doc.data();_bsCacheTs=Date.now();resolve(_bsCache);}
+      else resolve(null);
+    }).catch(function(){resolve(null);});
+  });};
+})();
+</script>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   KS REFERRAL BANNER SYSTEM
+   Collection: wa_referrals
+   Doc: {name, company, mobile, email, city, logo, whatsapp,
+         website, services, shortCode, status, toolId, createdAt}
+   status: pending | approved | suspended
+   On page load: ?ref=CODE → fetch doc → show banner (if approved)
+══════════════════════════════════════════════════════════════ */
+
+var _ksRef = {
+  db: null, data: null, shortCode: null, toolId: 'wa-broadcast-pro'
+};
+
+function ksRefInit(toolId) {
+  _ksRef.toolId = toolId || 'wa-broadcast-pro';
+  // Init Firebase if not already done
+  var FB = {
     apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
     authDomain:"kspideraimain.firebaseapp.com",
     projectId:"kspideraimain",
@@ -2161,20 +2207,225 @@ window.nativeShareTool = nativeShareTool;
     messagingSenderId:"940003391760",
     appId:"1:940003391760:web:8617000465b6991d348d95"
   };
-  if(!window.firebase || !firebase.apps || !firebase.apps.length){
-    firebase.initializeApp(FB_CFG);
+  if(typeof firebase !== 'undefined') {
+    if(!firebase.apps.length) firebase.initializeApp(FB);
+    _ksRef.db = firebase.firestore();
   }
-  var _bsDb = firebase.firestore();
-  var _bsCache = null, _bsCacheTs = 0;
-  window.ksGetAdminKeys = function() {
-    return new Promise(function(resolve) {
-      if (_bsCache && (Date.now()-_bsCacheTs < 300000)) { resolve(_bsCache); return; }
-      _bsDb.collection('admin').doc('api_keys').get().then(function(doc) {
-        if (doc && doc.exists) { _bsCache = doc.data(); _bsCacheTs = Date.now(); resolve(_bsCache); }
-        else resolve(null);
-      }).catch(function(){ resolve(null); });
-    });
+  // Check ?ref= param
+  var ref = new URLSearchParams(window.location.search).get('ref');
+  if(ref) { _ksRef.shortCode = ref.toUpperCase(); ksRefLoadBanner(); }
+}
+
+function ksRefLoadBanner() {
+  if(!_ksRef.db || !_ksRef.shortCode) return;
+  _ksRef.db.collection('wa_referrals').doc(_ksRef.shortCode).get().then(function(doc) {
+    if(!doc || !doc.exists) return;
+    var d = doc.data();
+    if(d.status !== 'approved') return;
+    _ksRef.data = d;
+    ksRefShowBanner(d);
+  }).catch(function(){});
+}
+
+function ksRefShowBanner(d) {
+  var existing = document.getElementById('ks-ref-banner');
+  if(existing) existing.remove();
+  var banner = document.createElement('div');
+  banner.id = 'ks-ref-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#0f172a,#1e293b);border-bottom:2px solid #22c55e;padding:10px 16px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 20px rgba(0,0,0,.5);flex-wrap:wrap;';
+  var logoHtml = d.logo
+    ? '<img src="'+d.logo+'" style="width:40px;height:40px;border-radius:8px;object-fit:cover;flex-shrink:0;" onerror="this.style.display=\'none\'">'
+    : '<div style="width:40px;height:40px;border-radius:8px;background:#22c55e;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;">🏢</div>';
+  var contactBtns = '';
+  if(d.whatsapp) contactBtns += '<a href="https://wa.me/'+d.whatsapp+'" target="_blank" style="background:#25d366;color:#000;padding:4px 10px;border-radius:6px;font-size:.72rem;font-weight:700;text-decoration:none;white-space:nowrap">💬 WhatsApp</a>';
+  if(d.mobile)   contactBtns += '<a href="tel:'+d.mobile+'" style="background:#3b82f6;color:#fff;padding:4px 10px;border-radius:6px;font-size:.72rem;font-weight:700;text-decoration:none;white-space:nowrap">📞 Call</a>';
+  if(d.website)  contactBtns += '<a href="'+d.website+'" target="_blank" style="background:#6366f1;color:#fff;padding:4px 10px;border-radius:6px;font-size:.72rem;font-weight:700;text-decoration:none;white-space:nowrap">🌐 Website</a>';
+  banner.innerHTML =
+    logoHtml +
+    '<div style="flex:1;min-width:140px;">' +
+      '<div style="font-size:.82rem;font-weight:800;color:#f1f5f9;line-height:1.2">'+(d.name||'')+(d.company?'  <span style="font-weight:400;color:#94a3b8;font-size:.74rem">'+d.company+'</span>':'')+'</div>' +
+      '<div style="font-size:.72rem;color:#94a3b8;margin-top:2px">'+(d.city?d.city+' • ':'')+( d.services?d.services.substring(0,60):'')+'</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">' + contactBtns + '</div>' +
+    '<button onclick="ksRefCloseBanner()" style="background:transparent;border:none;color:#64748b;cursor:pointer;font-size:1rem;padding:2px 6px;margin-left:auto;flex-shrink:0" title="Close">✕</button>';
+
+  // Push page content down
+  document.body.style.paddingTop = '68px';
+  document.body.insertBefore(banner, document.body.firstChild);
+
+  // Adjust fixed header if present
+  var header = document.querySelector('header, .header, #header, nav, .nav-bar, .topbar');
+  if(header && (getComputedStyle(header).position === 'fixed' || getComputedStyle(header).position === 'sticky')) {
+    header.style.top = '62px';
+  }
+}
+
+function ksRefCloseBanner() {
+  var b = document.getElementById('ks-ref-banner');
+  if(b) b.remove();
+  document.body.style.paddingTop = '';
+  var header = document.querySelector('header, .header, #header, nav, .nav-bar, .topbar');
+  if(header) header.style.top = '';
+}
+
+/* ── AGENT REGISTRATION MODAL ── */
+function ksRefOpenRegister() {
+  var m = document.getElementById('ks-ref-modal');
+  if(m) { m.style.display = 'flex'; return; }
+  var modal = document.createElement('div');
+  modal.id = 'ks-ref-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+  <div style="background:#1e293b;border-radius:16px;padding:24px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;border:1px solid #334155;position:relative;">
+    <button onclick="ksRefCloseModal()" style="position:absolute;top:12px;right:14px;background:transparent;border:none;color:#94a3b8;font-size:1.2rem;cursor:pointer">✕</button>
+    <div style="font-size:1.1rem;font-weight:800;color:#f1f5f9;margin-bottom:4px">🔗 Create Your Promo Link</div>
+    <div style="font-size:.75rem;color:#94a3b8;margin-bottom:18px">Apni details bhar ke submit karo — admin approve karne ke baad tumhara banner is tool pe dikhega!</div>
+    <div style="display:flex;flex-direction:column;gap:10px" id="ks-ref-form">
+      <input id="rf-name"     placeholder="Full Name *"         style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-company"  placeholder="Company / Brand"     style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-mobile"   placeholder="Mobile (WhatsApp) *" style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-email"    placeholder="Email"               style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-city"     placeholder="City"                style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-website"  placeholder="Website URL"         style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-logo"     placeholder="Logo Image URL (optional)" style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <input id="rf-services" placeholder="Services / Tagline (short)" style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 12px;color:#f1f5f9;font-size:.83rem;width:100%;box-sizing:border-box">
+      <div style="font-size:.72rem;color:#64748b;margin:-4px 0 2px">Tool ye link generate karega — admin approve karne ke baad activate hoga</div>
+      <button onclick="ksRefSubmit()" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:10px;border-radius:8px;font-size:.88rem;font-weight:700;cursor:pointer;width:100%">🚀 Submit for Approval</button>
+      <div id="rf-msg" style="font-size:.78rem;text-align:center;min-height:18px"></div>
+    </div>
+    <div id="ks-ref-result" style="display:none;text-align:center;padding:12px 0">
+      <div style="font-size:1.5rem;margin-bottom:8px">✅</div>
+      <div style="font-size:.88rem;font-weight:700;color:#22c55e;margin-bottom:6px">Submitted! Admin approval pending.</div>
+      <div style="font-size:.75rem;color:#94a3b8;margin-bottom:12px">Approve hone par tumhara promo link activate ho jayega:</div>
+      <div id="rf-link-box" style="background:#0f172a;border:1px solid #22c55e;border-radius:8px;padding:10px;font-size:.78rem;color:#22c55e;font-family:monospace;word-break:break-all;margin-bottom:10px"></div>
+      <button onclick="ksRefCopyLink()" style="background:#22c55e;color:#000;border:none;padding:8px 20px;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer">📋 Copy Link</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+function ksRefCloseModal() {
+  var m = document.getElementById('ks-ref-modal');
+  if(m) m.style.display = 'none';
+}
+
+function ksRefMakeCode() {
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  var code = '';
+  for(var i=0;i<6;i++) code += chars[Math.floor(Math.random()*chars.length)];
+  return code;
+}
+
+function ksRefSubmit() {
+  var name    = (document.getElementById('rf-name')?.value||'').trim();
+  var mobile  = (document.getElementById('rf-mobile')?.value||'').trim();
+  var company = (document.getElementById('rf-company')?.value||'').trim();
+  var email   = (document.getElementById('rf-email')?.value||'').trim();
+  var city    = (document.getElementById('rf-city')?.value||'').trim();
+  var website = (document.getElementById('rf-website')?.value||'').trim();
+  var logo    = (document.getElementById('rf-logo')?.value||'').trim();
+  var services= (document.getElementById('rf-services')?.value||'').trim();
+  var msgEl   = document.getElementById('rf-msg');
+
+  if(!name)   { if(msgEl) { msgEl.textContent='Name required!'; msgEl.style.color='#ef4444'; } return; }
+  if(!mobile) { if(msgEl) { msgEl.textContent='Mobile required!'; msgEl.style.color='#ef4444'; } return; }
+
+  if(!_ksRef.db) { if(msgEl) { msgEl.textContent='DB error — try again'; msgEl.style.color='#ef4444'; } return; }
+
+  if(msgEl) { msgEl.textContent='Submitting...'; msgEl.style.color='#94a3b8'; }
+
+  var code = ksRefMakeCode();
+  var baseUrl = window.location.href.split('?')[0];
+  var promoLink = baseUrl + '?ref=' + code;
+
+  var data = {
+    name:name, company:company, mobile:mobile, email:email,
+    city:city, website:website, logo:logo, services:services,
+    shortCode:code, toolId:_ksRef.toolId,
+    status:'pending',
+    promoLink:promoLink,
+    createdAt: new Date().toISOString()
   };
+
+  _ksRef.db.collection('wa_referrals').doc(code).set(data).then(function() {
+    var form = document.getElementById('ks-ref-form');
+    var result = document.getElementById('ks-ref-result');
+    var linkBox = document.getElementById('rf-link-box');
+    if(form) form.style.display = 'none';
+    if(result) result.style.display = 'block';
+    if(linkBox) { linkBox.textContent = promoLink; linkBox.dataset.link = promoLink; }
+  }).catch(function(e) {
+    if(msgEl) { msgEl.textContent='Error: '+e.message; msgEl.style.color='#ef4444'; }
+  });
+}
+
+function ksRefCopyLink() {
+  var box = document.getElementById('rf-link-box');
+  if(!box) return;
+  var link = box.dataset.link || box.textContent;
+  navigator.clipboard && navigator.clipboard.writeText(link).then(function() {
+    box.style.color = '#4ade80';
+    setTimeout(function(){ box.style.color = '#22c55e'; }, 1500);
+  });
+}
+
+/* ── MyMemory Translation ── */
+async function ksTranslate(text, targetLang) {
+  if(!text || !targetLang || targetLang === 'en') return text;
+  try {
+    var r = await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair=en|'+targetLang+'&de=kspider221206@gmail.com');
+    var d = await r.json();
+    if(d && d.responseData && d.responseData.translatedText) return d.responseData.translatedText;
+  } catch(e) {}
+  return text;
+}
+
+var _ksLangs = [
+  {code:'en',name:'English'},{code:'hi',name:'हिंदी'},{code:'gu',name:'ગુજરાતી'},
+  {code:'mr',name:'मराठी'},{code:'pa',name:'ਪੰਜਾਬੀ'},{code:'bn',name:'বাংলা'},
+  {code:'ta',name:'தமிழ்'},{code:'te',name:'తెలుగు'},{code:'kn',name:'ಕನ್ನಡ'},
+  {code:'ml',name:'മലയാളം'},{code:'ur',name:'اردو'},{code:'ar',name:'العربية'},
+  {code:'zh',name:'中文'},{code:'es',name:'Español'},{code:'fr',name:'Français'},
+  {code:'de',name:'Deutsch'},{code:'pt',name:'Português'},{code:'ru',name:'Русский'},
+  {code:'ja',name:'日本語'},{code:'ko',name:'한국어'}
+];
+
+document.addEventListener("DOMContentLoaded",function(){ksRefInit("wa-bulk-sender");});
+</script>
+
+<script>
+async function ksTranslate(text,targetLang){
+  if(!text||!targetLang||targetLang==='en')return text;
+  try{var r=await fetch('https://api.mymemory.translated.net/get?q='+encodeURIComponent(text)+'&langpair=en|'+targetLang+'&de=kspider221206@gmail.com');
+    var d=await r.json();if(d&&d.responseData&&d.responseData.translatedText)return d.responseData.translatedText;
+  }catch(e){}return text;
+}
+async function ksTranslateMsg(){
+  var lang=document.getElementById('ks-lang-sel')?.value||'en';
+  var statusEl=document.getElementById('ks-translate-status');
+  if(lang==='en'){if(statusEl)statusEl.textContent='';return;}
+  var msgEl=document.getElementById('msgOut')||document.getElementById('msg-output')||document.getElementById('generatedMsg');
+  if(!msgEl){if(statusEl){statusEl.textContent='No message found';statusEl.style.color='#e53e3e';}return;}
+  if(statusEl){statusEl.textContent='Translating...';statusEl.style.color='#276749';}
+  var original=msgEl.dataset.original||msgEl.textContent||msgEl.value||'';
+  if(!msgEl.dataset.original)msgEl.dataset.original=original;
+  var translated=await ksTranslate(original.trim(),lang);
+  if(msgEl.tagName==='TEXTAREA'||msgEl.tagName==='INPUT')msgEl.value=translated;
+  else msgEl.textContent=translated;
+  if(statusEl){statusEl.textContent='Translated ✓';statusEl.style.color='#25d366';}
+}
+</script>
+
+
+<!-- Firebase SDK — loads before ks-ads.js -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  var FB={apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",authDomain:"kspideraimain.firebaseapp.com",
+    projectId:"kspideraimain",storageBucket:"kspideraimain.firebasestorage.app",
+    messagingSenderId:"940003391760",appId:"1:940003391760:web:8617000465b6991d348d95"};
+  if(!firebase.apps.length) firebase.initializeApp(FB);
 })();
 </script>
 <script src="ks-ads.js"></script>
