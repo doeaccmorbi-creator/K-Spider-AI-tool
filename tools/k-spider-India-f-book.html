@@ -4433,7 +4433,8 @@ const STATE = {
 function saveState() {
   try {
     localStorage.setItem('kspider_posts', JSON.stringify(STATE.posts));
-    localStorage.setItem('kspider_user', JSON.stringify(STATE.currentUser));
+    // Do NOT save currentUser — Firebase auth always provides fresh user
+    // localStorage.setItem('kspider_user', JSON.stringify(STATE.currentUser));
     localStorage.setItem('kspider_saved', JSON.stringify([...STATE.savedPosts]));
     localStorage.setItem('kspider_liked', JSON.stringify([...STATE.likedPosts]));
     localStorage.setItem('kspider_reactions', JSON.stringify(STATE.reactions));
@@ -4441,13 +4442,16 @@ function saveState() {
     localStorage.setItem('kspider_theme', document.documentElement.getAttribute('data-theme'));
   } catch(e) {}
 }
-
 function loadState() {
   try {
+    // NOTE: currentUser is intentionally NOT loaded from localStorage
+    // Firebase onAuthStateChanged always sets the correct user
+    // Loading stale user from localStorage causes permission errors
     const posts = localStorage.getItem('kspider_posts');
     if(posts) STATE.posts = JSON.parse(posts);
-    const user = localStorage.getItem('kspider_user');
-    if(user) STATE.currentUser = JSON.parse(user);
+    // Don't load user from localStorage — Firebase auth handles this
+    // const user = localStorage.getItem('kspider_user');
+    // if(user) STATE.currentUser = JSON.parse(user);
     const saved = localStorage.getItem('kspider_saved');
     if(saved) STATE.savedPosts = new Set(JSON.parse(saved));
     const liked = localStorage.getItem('kspider_liked');
@@ -6879,22 +6883,28 @@ function listenAuthState() {
   AUTH.onAuthStateChanged(async (user) => {
     if (user && !_isGuest) {
       // Logged in — hide overlay, set up user, subscribe to data
-      document.getElementById('fb-auth-overlay').classList.add('hidden');
+      const overlay = document.getElementById('fb-auth-overlay');
+      if (overlay) overlay.classList.add('hidden');
       await setupFirebaseUser(user);
       subscribeToPostsRT();
-      // Use multiple fallbacks to prevent "undefined"
-      const presenceName = STATE.currentUser?.name || 
-                           user.displayName || 
-                           user.email?.split('@')[0] || 
+      const presenceName = STATE.currentUser?.name ||
+                           user.displayName ||
+                           user.email?.split('@')[0] ||
                            'K Spider User';
-      const presenceAvatar = STATE.currentUser?.avatar || 
+      const presenceAvatar = STATE.currentUser?.avatar ||
+                             user.photoURL ||
                              `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`;
       setupPresence(user.uid, presenceName, presenceAvatar);
       subscribeToOnlineUsers();
-      showToast(`✅ Welcome back, ${presenceName}!`, 'success');
+      showToast(`✅ Welcome, ${presenceName}!`, 'success');
     } else if (!_isGuest) {
-      // Not logged in and not guest — show login
-      document.getElementById('fb-auth-overlay').classList.remove('hidden');
+      // Signed out — clear stale data and show login
+      STATE.currentUser = null;
+      STATE.posts = [];
+      localStorage.removeItem('kspider_user');
+      const overlay = document.getElementById('fb-auth-overlay');
+      if (overlay) overlay.classList.remove('hidden');
+      renderPosts();
     }
   });
 }
@@ -7272,7 +7282,7 @@ window.submitPost = async function() {
 
     const hashtags = STATE.activeTags?.hashtags || [];
     const postData = {
-      authorId: firebaseUser.uid,
+      authorId: firebaseUser.uid,  // ALWAYS use direct Firebase UID — never STATE.currentUser.id
       authorName: STATE.currentUser.name,
       authorAvatar: STATE.currentUser.avatar,
       authorHandle: STATE.currentUser.handle || '',
@@ -7482,17 +7492,22 @@ async function fbGuest() {
 async function fbLogout() {
   if (!confirm('Logout from K Spider Social AI?')) return;
   try {
-    // Remove presence
+    // 1. Remove RTDB presence
     if (_myPresenceRef) { try { await _myPresenceRef.remove(); } catch(e) {} }
-    // Unsubscribe listeners
+    // 2. Unsubscribe real-time listeners
     if (_postsListener) { try { _postsListener(); } catch(e) {} _postsListener = null; }
     if (_onlineListener && RTDB) { try { RTDB.ref('presence').off('value', _onlineListener); } catch(e) {} _onlineListener = null; }
+    // 3. Clear all state
     _isGuest = false;
     _myPresenceRef = null;
-    if (AUTH) { try { await AUTH.signOut(); } catch(e) {} }
     STATE.currentUser = null;
     STATE.posts = [];
-    // Hide nav elements
+    // 4. Clear localStorage completely (stale user causes permission errors on reload)
+    localStorage.removeItem('kspider_user');
+    localStorage.removeItem('kspider_posts');
+    // 5. Firebase signOut — this triggers onAuthStateChanged(null) → shows overlay
+    if (AUTH) { try { await AUTH.signOut(); } catch(e) {} }
+    // 6. Hide nav UI elements
     const chip = document.getElementById('nav-user-chip');
     const logoutBtn = document.getElementById('logout-btn');
     if (chip) chip.style.display = 'none';
@@ -7502,20 +7517,20 @@ async function fbLogout() {
     const badge = document.getElementById('online-count-badge');
     if (badge) badge.textContent = '0';
     renderPosts();
-    // Navigate to feed
     navigateTo('feed');
-    // Show login overlay with a slight delay to ensure DOM is ready
+    // 7. Show login overlay (onAuthStateChanged also does this, belt+suspenders)
     setTimeout(() => {
       const overlay = document.getElementById('fb-auth-overlay');
       if (overlay) overlay.classList.remove('hidden');
-    }, 100);
+    }, 200);
     showToast('👋 Logged out successfully', 'info');
   } catch(e) {
     console.error('Logout error:', e);
     // Force show overlay even on error
+    localStorage.removeItem('kspider_user');
     const overlay = document.getElementById('fb-auth-overlay');
     if (overlay) overlay.classList.remove('hidden');
-    showToast('Logged out', 'info');
+    showToast('👋 Logged out', 'info');
   }
 }
 
