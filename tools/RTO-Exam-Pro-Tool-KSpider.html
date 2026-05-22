@@ -823,6 +823,10 @@ body.exam-mode .site-header { display: none !important; }
     
     /* Practice mode — hide top banner, inline banner is shown instead */
     body.practice-mode .apb-top-banner { display: none !important; }
+
+    /* Exam + Practice mode: hide bottom sticky agent banner */
+    body.exam-mode .apb-bottom-banner { display: none !important; }
+    body.practice-mode .apb-bottom-banner { display: none !important; }
 </style>
 </head>
 <body>
@@ -3881,34 +3885,66 @@ function submitAgentReg() {
 
 /* ── Poll for admin approval every 30s ───────────────────── */
 function pollForApproval() {
-  if (!agentData || agentData.status === 'approved') return;
+  if (!agentData) return;
   try {
     const pending = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
     const match = pending.find(function(p){ return p.refId === agentData.refId; });
-    if (match && match.status === 'approved') {
-      agentData.status = 'approved';
-      agentData.approvedAt = match.approvedAt || new Date().toISOString();
-      agentData._expireDate = match._expireDate || null;
-      agentData._suspended  = match._suspended  || false;
-      agentData._expired    = match._expired    || false;
-      /* Regenerate short code link with updated payload */
-      agentData._shortCode = ''; // force fresh code with new expiry
-      generateAgentLink();       // saves updated payload to rto_agents_db
-      saveAgentState();
-      renderAgentSection();
-      initAgentBanner();
-      if (agentData._suspended) {
-        showToast('⚠️ Tamari link admin dwara suspend kari chhe.', 'error');
-      } else if (agentData._expired) {
-        showToast('⚠️ Tamari promotional link expire thai gai chhe.', 'error');
+    if (!match) return;
+
+    if (match.status === 'approved') {
+      /* Detect RE-APPROVAL: admin edited data or changed expiry and re-approved.
+         Compare approvedAt timestamps — any new approval stamp triggers notification. */
+      const prevApprovedAt  = agentData._lastApprovedAt || agentData.approvedAt || '';
+      const newApprovedAt   = match.approvedAt || '';
+      const isFirstApproval = agentData.status !== 'approved';
+      const isReApproval    = agentData.status === 'approved'
+                              && newApprovedAt && newApprovedAt !== prevApprovedAt;
+      const isReactivation  = agentData.status === 'approved'
+                              && (agentData._suspended || agentData._expired)
+                              && !match._suspended && !match._expired;
+
+      if (isFirstApproval || isReApproval || isReactivation) {
+        agentData._lastApprovedAt = newApprovedAt || new Date().toISOString();
+        agentData.status      = 'approved';
+        agentData.approvedAt  = newApprovedAt || new Date().toISOString();
+        agentData._expireDate = match._expireDate || null;
+        agentData._suspended  = match._suspended  || false;
+        agentData._expired    = match._expired    || false;
+        agentData._shortCode  = '';  /* Force fresh link with updated data */
+        generateAgentLink();
+        saveAgentState();
+        renderAgentSection();
+        initAgentBanner();
+        if (match._suspended) {
+          showToast('⚠️ Tamari link suspend chhe. Admin no contact karo.', 'error');
+        } else if (match._expired) {
+          showToast('⚠️ Tamari promotional link expire thai gai chhe.', 'error');
+        } else if (isReApproval || isReactivation) {
+          showToast('🔄 Admin e tamaro link UPDATE karyo! Navi link generate thay chhe...', 'success');
+        } else {
+          showToast('🎉 Congratulations! Tamaro RTO Agent link ACTIVE thai gayo!', 'success');
+        }
       } else {
-        showToast('🎉 Congratulations! Tamaro RTO Agent link ACTIVE thai gayo!', 'success');
+        /* Already approved — sync field changes silently */
+        var changed = false;
+        if ((match._expireDate || null) !== agentData._expireDate) { agentData._expireDate = match._expireDate || null; changed = true; }
+        if (!!match._suspended !== !!agentData._suspended) { agentData._suspended = match._suspended || false; changed = true; }
+        if (!!match._expired   !== !!agentData._expired)   { agentData._expired   = match._expired   || false; changed = true; }
+        if (changed) { saveAgentState(); renderAgentSection(); initAgentBanner(); }
       }
-    } else if (match && match.status === 'rejected') {
-      agentData.status = 'rejected';
-      agentData.rejectReason = match.rejectReason || '';
+    } else if (match.status === 'rejected') {
+      if (agentData.status !== 'rejected') {
+        agentData.status = 'rejected';
+        agentData.rejectReason = match.rejectReason || '';
+        saveAgentState();
+        renderAgentSection();
+        showToast('❌ Tamari RTO Agent request reject thai chhe.', 'error');
+      }
+    } else if (match.status === 'pending' && agentData.status === 'approved') {
+      agentData.status = 'pending';
       saveAgentState();
       renderAgentSection();
+      showToast('🔴 Tamari link revoke thai chhe. Admin no contact karo.', 'error');
     }
   } catch(e) {}
 }
@@ -4304,10 +4340,3 @@ updateTestInfo();
 </script>
 </body>
 </html>
-    /* ═══ EXAM MODE — Header + Agent Banner hidden during active test ═══
-       This prevents overlap of timer/controls by sticky header + promo banner.
-       Only applies when body has .exam-mode class (set by startTest, removed by submitTest/confirmEnd). */
-    
-
-    /* Exam test-bar — sticky at very top when header is hidden */
-    
