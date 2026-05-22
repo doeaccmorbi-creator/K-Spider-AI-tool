@@ -490,7 +490,7 @@ tbody tr:last-child td{border-bottom:none;}
 .footer a{color:var(--g2);text-decoration:none;}
 
 /* ── ADSENSE PLACEHOLDERS ── */
-.ad-slot{display:none;width:100%;text-align:center;max-width:970px;margin:0 auto;}
+.ad-slot{display:none;}
 .ad-slot::before{display:none;}
 
 /* ── CONNECT SECTION ── */
@@ -722,7 +722,7 @@ input[type=checkbox]{accent-color:#e85d00;}
 /* Force light background always */
 html,body{background-color:#faf9f6 !important;color:#111111;}
 /* AdSense placeholder styling */
-.ad-slot{background:transparent!important;border:none!important;}
+
 /* Orange stat number */
 .stat-n{color:#c44d00 !important;}
 /* Orange links in legal */
@@ -901,10 +901,7 @@ tbody tr{transition:background .15s;}
 tbody tr:hover{background:rgba(232,93,0,.025);}
 
 /* In-article ad spacing */
-.ad-slot{
-  overflow:visible;
-  transition:opacity .3s;
-}
+.ad-slot{ overflow:visible; transition:opacity .3s; }
 
 </style>
 </head>
@@ -955,6 +952,9 @@ tbody tr:hover{background:rgba(232,93,0,.025);}
     <span class="pill gold">📱 QR Code Generator</span>
     <span class="pill g">📧 Email Extractor</span>
     <span class="pill gold">🌙 Dark Mode</span>
+  </div>
+  <div style="margin:12px auto 4px;display:flex;justify-content:center;">
+    <button onclick="ksRefOpenRegister()" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:11px 28px;border-radius:10px;cursor:pointer;font-size:.9rem;font-weight:800;letter-spacing:.03em;box-shadow:0 0 18px rgba(34,197,94,.55);animation:ksPulse 2s infinite;display:inline-flex;align-items:center;gap:8px;">🔗 Create Your Promo Link — Get Featured Here!</button>
   </div>
   <div style="margin-top:14px;padding:12px 20px;background:#fff7f0;border:1.5px solid rgba(232,93,0,.25);border-radius:10px;font-size:.72rem;color:#3d3d3d;line-height:1.75;max-width:680px;margin-left:auto;margin-right:auto;text-align:left;">
     ⚠️ <strong style="color:#c44d00;">Important Disclaimer &amp; Responsible Use:</strong> This tool is for <strong>individual, consent-based, personal communication only.</strong> All data processing happens entirely in your browser — no data is stored on any server. Do NOT use for spam, bulk unsolicited messaging, or any illegal purpose. By using this tool you agree to comply with WhatsApp&#39;s Terms of Service, India&#39;s IT Act 2000 &amp; TRAI regulations, and all applicable laws. K Spider AI is not affiliated with WhatsApp Inc., Meta Platforms, or Anthropic. Misuse is solely the user&#39;s responsibility.
@@ -1095,16 +1095,13 @@ tbody tr:hover{background:rgba(232,93,0,.025);}
   </div>
 
   <!-- API Key Bar -->
-  <div class="api-key-bar" id="api-key-bar" style="flex-wrap:wrap;gap:6px;">
-    <span style="display:flex;align-items:center;gap:6px;font-size:.8rem;font-weight:700;color:#4ade80;">🤖 Inbuilt AI Active <span style="font-size:.7rem;color:#94a3b8;font-weight:400">(Groq→Gemini→Claude auto)</span></span>
-    <div style="display:flex;align-items:center;gap:6px;flex:1;min-width:220px;">
-      <span style="font-size:.74rem;color:#94a3b8;white-space:nowrap">Own Key (optional):</span>
-      <input class="api-key-inp" type="password" id="api-key-inp" placeholder="sk-ant-... / gsk_... / AIza..." onchange="saveApiKey(this.value)" oninput="saveApiKey(this.value)" style="flex:1;min-width:120px;">
-      <button class="btn btn-ghost btn-sm" onclick="toggleKeyVis()">👁</button>
-    </div>
-    <div class="api-key-hint" style="width:100%;font-size:.7rem;">
-      ✅ Free: <a href="https://console.groq.com" target="_blank">Groq</a> · <a href="https://aistudio.google.com" target="_blank">Gemini</a> · <a href="https://console.anthropic.com/keys" target="_blank">Claude</a>
-      &nbsp;|&nbsp; <a href="#" onclick="ksRefOpenRegister();return false" style="color:#22c55e;font-weight:700">🔗 Create Promo Link</a>
+  <div class="api-key-bar" id="api-key-bar">
+    <span class="api-key-lbl">🔑 Anthropic API Key:</span>
+    <input class="api-key-inp" type="password" id="api-key-inp" placeholder="sk-ant-api03-..." onchange="saveApiKey(this.value)" oninput="saveApiKey(this.value)">
+    <button class="btn btn-ghost btn-sm" onclick="toggleKeyVis()">👁</button>
+    <div class="api-key-hint">
+      Free API key lo: <a href="https://console.anthropic.com/keys" target="_blank">console.anthropic.com/keys</a> &nbsp;|&nbsp; 
+      Key sirf aapke browser mein save hogi — koi server nahi 🔒
     </div>
   </div>
 
@@ -1273,6 +1270,7 @@ tbody tr:hover{background:rgba(232,93,0,.025);}
     <div class="btn-row">
       <button class="btn btn-gold" style="flex:1;padding:13px;" id="gen-main-btn" onclick="genMsgSmart()">⚡ Generate Messages</button>
       <button class="btn btn-ghost" onclick="regenMsg()">🔄 Regen</button>
+      <button onclick="ksRefOpenRegister()" style="background:linear-gradient(135deg,#22c55e,#16a34a);color:#fff;border:none;padding:10px 16px;border-radius:8px;cursor:pointer;font-size:.78rem;font-weight:800;box-shadow:0 0 12px rgba(34,197,94,.4);animation:ksPulse 2s infinite;white-space:nowrap;">🔗 Promo Link</button>
     </div>
     <div class="shimmer-bar" id="gen-shimmer"><div class="shimmer-fill"></div></div>
     <div style="font-size:.75rem;color:var(--t2);min-height:18px;text-align:center;margin-top:4px;" id="gen-status"></div>
@@ -3176,7 +3174,15 @@ function toggleKeyVis(){
   var inp = document.getElementById('api-key-inp');
   if(inp) inp.type = inp.type==='password'?'text':'password';
 }
-function checkApiKey(){ return true; }
+function checkApiKey(){
+  var k = getApiKey();
+  if(!k || !k.startsWith('sk-ant')){
+    toast('⚠️ Pehle Anthropic API Key enter karo!','warn',5000);
+    document.getElementById('api-key-inp').focus();
+    return false;
+  }
+  return true;
+}
 // Load saved key on page load
 window.addEventListener('DOMContentLoaded', function(){
   var saved = localStorage.getItem('ks_api_key');
@@ -3254,59 +3260,22 @@ function detectUrlType(val){
 
 // ── Extract URL with Claude API ──
 // ── CORS-safe fetch wrapper ──
-var _ksProvCache=null,_ksProvCacheTs=0;
-async function ksGetAdminKeys(){
-  if(_ksProvCache&&(Date.now()-_ksProvCacheTs<300000))return _ksProvCache;
-  try{if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length)return null;
-    var d=await firebase.firestore().collection('admin').doc('api_keys').get();
-    if(d&&d.exists){_ksProvCache=d.data();_ksProvCacheTs=Date.now();return _ksProvCache;}
-  }catch(e){console.warn('[KsAI]',e.message);}return null;
-}
 async function ksFetch(body){
-  var uk=getApiKey();
-  if(uk&&uk.startsWith('sk-ant'))return await _ksClaude(uk,body);
-  if(uk&&uk.startsWith('gsk_'))return await _ksGroq(uk,body);
-  if(uk&&uk.startsWith('AIza'))return await _ksGemini(uk,body);
-  var adm=await ksGetAdminKeys();
-  if(adm){for(var pi=0,order=['groq','gemini','claude','gai'];pi<order.length;pi++){
-    var prov=order[pi],keys=(adm[prov]||[]).filter(function(k){return k.active!==false&&k.key;});
-    for(var ki=0;ki<keys.length;ki++){try{
-      if(prov==='groq')return await _ksGroq(keys[ki].key,body);
-      if(prov==='gemini'||prov==='gai')return await _ksGemini(keys[ki].key,body);
-      if(prov==='claude')return await _ksClaude(keys[ki].key,body);
-    }catch(e){console.warn('[KsAI]',prov,ki,e.message);}}}}
-  return await _ksProxy(body);
-}
-async function _ksGroq(key,body){
-  var msgs=[];if(body.system)msgs.push({role:'system',content:body.system});
-  (body.messages||[]).forEach(function(m){msgs.push(m);});
-  var r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
-    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
-    body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:body.max_tokens||1024,messages:msgs})});
-  if(!r.ok){var e=await r.json().catch(function(){return{};});throw new Error('Groq '+r.status+':'+(e.error&&e.error.message||''));}
-  var d=await r.json();return{content:[{type:'text',text:(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||''}]};
-}
-async function _ksGemini(key,body){
-  var prompt=(body.system?body.system+'\n\n':'')+(body.messages||[]).map(function(m){return m.content;}).join('\n');
-  var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+key,{method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:body.max_tokens||1024}})});
-  if(!r.ok){var e=await r.json().catch(function(){return{};});throw new Error('Gemini '+r.status+':'+(e.error&&e.error.message||''));}
-  var d=await r.json();var txt=(d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text)||'';
-  return{content:[{type:'text',text:txt}]};
-}
-async function _ksClaude(key,body){
-  var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
-    headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-api-key':key,'anthropic-dangerous-direct-browser-access':'true'},
-    body:JSON.stringify(body)});
-  if(!r.ok){var e=await r.json().catch(function(){return{};});throw new Error('Claude '+r.status+':'+(e.error&&e.error.message||''));}
+  var apiKey = getApiKey();
+  var isProxy = !apiKey || !apiKey.startsWith('sk-ant');
+  var KS_PROXY_URL = 'https://ks-api-proxy.kspiderai.workers.dev/v1/messages';
+  var endpoint = isProxy ? KS_PROXY_URL : 'https://api.anthropic.com/v1/messages';
+  var headers = {'Content-Type':'application/json','anthropic-version':'2023-06-01'};
+  if(isProxy){
+    headers['x-ks-tool'] = 'wa-broadcast-pro';
+  } else {
+    headers['x-api-key'] = apiKey;
+    headers['anthropic-dangerous-direct-browser-access'] = 'true';
+  }
+  var r = await fetch(endpoint, {method:'POST', headers:headers, body:JSON.stringify(body)});
+  if(r.status===400){var errData=await r.json().catch(function(){return{};});throw new Error('API 400: '+(errData.error&&errData.error.message||'Bad request'));}
+  if(!r.ok) throw new Error('API Error: HTTP '+r.status);
   return await r.json();
-}
-async function _ksProxy(body){
-  var r=await fetch('https://ks-api-proxy.kspiderai.workers.dev/v1/messages',{method:'POST',
-    headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-ks-tool':'wa-broadcast-pro'},
-    body:JSON.stringify(body)});
-  if(!r.ok)throw new Error('Proxy HTTP '+r.status);return await r.json();
 }
 function showExtracted(d){
   var el = document.getElementById('ext-result');
@@ -5520,7 +5489,7 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
   if(!firebase.apps.length) firebase.initializeApp(FB);
 })();
 </script>
-
+<script src="ks-ads.js"></script>
 <script>
 /* ══════════════════════════════════════════════════════════════
    KS REFERRAL BANNER SYSTEM
@@ -5731,33 +5700,62 @@ var _ksLangs = [
 
 document.addEventListener("DOMContentLoaded",function(){ksRefInit("wa-broadcast-pro");});
 </script>
-<script src="ks-ads.js">
-/* ── KS Translate Output ── */
-async function ksTranslateOutput() {
-  var lang = document.getElementById('ks-lang-sel')?.value || 'en';
-  var statusEl = document.getElementById('ks-translate-status');
-  if(lang === 'en') { if(statusEl) statusEl.textContent = ''; return; }
-  
-  // Find all message text areas in output
-  var msgCards = document.querySelectorAll('#msg-output .msg-text, #msg-output .msg-card-body, #msg-output p, #msg-output .msg-body');
-  if(!msgCards.length) { if(statusEl) { statusEl.textContent='No messages to translate'; statusEl.style.color='#f59e0b'; } return; }
-  
-  if(statusEl) { statusEl.textContent='Translating...'; statusEl.style.color='#94a3b8'; }
-  
-  var count = 0;
-  for(var i=0; i<msgCards.length; i++) {
-    var el = msgCards[i];
-    var original = el.dataset.original || el.textContent;
-    if(!el.dataset.original) el.dataset.original = original;
-    if(original.trim()) {
-      var translated = await ksTranslate(original.trim(), lang);
-      el.textContent = translated;
-      count++;
-    }
-  }
-  if(statusEl) { statusEl.textContent = count + ' messages translated ✓'; statusEl.style.color='#22c55e'; }
-}
 
+<script>
+/* Multi-Provider AI: Groq → Gemini → Claude → Proxy */
+var _ksProvCache=null,_ksProvCacheTs=0;
+async function ksGetAdminKeys(){
+  if(_ksProvCache&&(Date.now()-_ksProvCacheTs<300000))return _ksProvCache;
+  try{if(typeof firebase==='undefined'||!firebase.apps||!firebase.apps.length)return null;
+    var d=await firebase.firestore().collection('admin').doc('api_keys').get();
+    if(d&&d.exists){_ksProvCache=d.data();_ksProvCacheTs=Date.now();return _ksProvCache;}
+  }catch(e){}return null;
+}
+async function ksFetch(body){
+  var uk=typeof getApiKey==='function'?getApiKey():'';
+  if(uk&&uk.startsWith('sk-ant'))return await _ksClaude(uk,body);
+  if(uk&&uk.startsWith('gsk_'))return await _ksGroq(uk,body);
+  if(uk&&uk.startsWith('AIza'))return await _ksGemini(uk,body);
+  var adm=await ksGetAdminKeys();
+  if(adm){var order=['groq','gemini','claude','gai'];
+    for(var pi=0;pi<order.length;pi++){var prov=order[pi];
+      var keys=(adm[prov]||[]).filter(function(k){return k.active!==false&&k.key;});
+      for(var ki=0;ki<keys.length;ki++){try{
+        if(prov==='groq')return await _ksGroq(keys[ki].key,body);
+        if(prov==='gemini'||prov==='gai')return await _ksGemini(keys[ki].key,body);
+        if(prov==='claude')return await _ksClaude(keys[ki].key,body);
+      }catch(e){console.warn('[KsAI]',prov,e.message);}}}}
+  return await _ksProxy(body);
+}
+async function _ksGroq(key,body){
+  var msgs=[];if(body.system)msgs.push({role:'system',content:body.system});
+  (body.messages||[]).forEach(function(m){msgs.push(m);});
+  var r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+key},
+    body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:body.max_tokens||1024,messages:msgs})});
+  if(!r.ok){var e=await r.json().catch(function(){return{};});throw new Error('Groq '+r.status);}
+  var d=await r.json();return{content:[{type:'text',text:(d.choices&&d.choices[0]&&d.choices[0].message&&d.choices[0].message.content)||''}]};
+}
+async function _ksGemini(key,body){
+  var prompt=(body.system?body.system+'\n\n':'')+(body.messages||[]).map(function(m){return m.content;}).join('\n');
+  var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key='+key,{method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{maxOutputTokens:body.max_tokens||1024}})});
+  if(!r.ok)throw new Error('Gemini '+r.status);
+  var d=await r.json();return{content:[{type:'text',text:(d.candidates&&d.candidates[0]&&d.candidates[0].content&&d.candidates[0].content.parts&&d.candidates[0].content.parts[0]&&d.candidates[0].content.parts[0].text)||''}]};
+}
+async function _ksClaude(key,body){
+  var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+    headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-api-key':key,'anthropic-dangerous-direct-browser-access':'true'},
+    body:JSON.stringify(body)});
+  if(!r.ok)throw new Error('Claude '+r.status);return await r.json();
+}
+async function _ksProxy(body){
+  var r=await fetch('https://ks-api-proxy.kspiderai.workers.dev/v1/messages',{method:'POST',
+    headers:{'Content-Type':'application/json','anthropic-version':'2023-06-01','x-ks-tool':'wa-broadcast-pro'},
+    body:JSON.stringify(body)});
+  if(!r.ok)throw new Error('Proxy '+r.status);return await r.json();
+}
 </script>
 </body>
 </html>
