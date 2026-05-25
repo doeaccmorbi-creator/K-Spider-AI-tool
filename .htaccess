@@ -8,9 +8,9 @@ RewriteEngine On
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# Force WWW (Optional - uncomment if you want www)
-# RewriteCond %{HTTP_HOST} !^www\.
-# RewriteRule ^(.*)$ https://www.%{HTTP_HOST}/$1 [R=301,L]
+# Force WWW — fixes CORS error (kspiderai.in → www.kspiderai.in)
+RewriteCond %{HTTP_HOST} ^kspiderai\.in$ [NC]
+RewriteRule ^(.*)$ https://www.kspiderai.in/$1 [R=301,L]
 
 # Remove .html extension from URLs
 RewriteCond %{REQUEST_FILENAME} !-d
@@ -39,6 +39,11 @@ ErrorDocument 500 /index.html
     # Content Security Policy (adjust as needed)
     Header set Content-Security-Policy "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:;"
 </IfModule>
+
+# CORS fix for manifest.json (required for PWA on non-www origin)
+<FilesMatch "manifest\.json$">
+    Header set Access-Control-Allow-Origin "*"
+</FilesMatch>
 
 # Browser Caching
 <IfModule mod_expires.c>
