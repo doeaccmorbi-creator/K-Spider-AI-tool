@@ -882,7 +882,7 @@ img{max-width:100%;display:block;}
       <button class="nb" onclick="showPage('aitools',this)"><span class="ni">🤖</span><span class="nl">AI Tools</span></button>
     </nav>
     <div class="hact">
-      <div class="ib" onclick="toggleNotif()">🔔<span class="ibb" id="ncount">4</span></div>
+      <div class="ib" onclick="toggleNotif()" style="position:relative;">🔔<span class="ibb" id="nBadge" style="display:none;">0</span></div>
       <div class="ib" onclick="showModal('postJobModal')">➕</div>
       <img id="hav" src="https://i.pravatar.cc/150?img=12" class="hav" onclick="toggleDrop()">
     </div>
@@ -2911,11 +2911,25 @@ Frontend Intern | TechNova | June–Aug 2023
      NOTIFICATION PANEL
 ══════════════════════════════════════ -->
 <div class="npp" id="notifPanel">
-  <div class="nphd">Notifications <span class="npm" onclick="clearNotifs()">Mark all read</span></div>
-  <div class="npi unr"><img src="https://i.pravatar.cc/150?img=5" alt=""><div style="flex:1"><div class="npt"><strong>Priya Sharma</strong> sent a connection request</div><div class="nptm">2 min ago</div></div><div class="npd"></div></div>
-  <div class="npi unr"><img src="https://i.pravatar.cc/150?img=22" alt=""><div style="flex:1"><div class="npt"><strong>TechNova Solutions</strong> viewed your profile!</div><div class="nptm">15 min ago</div></div><div class="npd"></div></div>
-  <div class="npi unr"><img src="https://i.pravatar.cc/150?img=8" alt=""><div style="flex:1"><div class="npt"><strong>Rahul Mehta</strong> liked your post 🔥</div><div class="nptm">1h ago</div></div><div class="npd"></div></div>
-  <div class="npi unr"><img src="https://i.pravatar.cc/150?img=33" alt=""><div style="flex:1"><div class="npt"><strong>KSpider AI:</strong> 12 new AI job matches!</div><div class="nptm">3h ago</div></div><div class="npd"></div></div>
+  <div class="nphd">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span>🔔 Notifications</span>
+      <span style="width:7px;height:7px;border-radius:50%;background:#10B981;display:inline-block;" title="Live"></span>
+    </div>
+    <span class="npm" onclick="markAllNotifsRead()">Mark all read</span>
+  </div>
+  <div style="display:flex;border-bottom:1px solid var(--border);">
+    <button onclick="filterNotifs('all')" id="ntab_all" style="flex:1;padding:7px 4px;font-size:11px;font-weight:700;border:none;background:none;color:var(--primary);border-bottom:2px solid var(--primary);cursor:pointer;font-family:inherit;">All</button>
+    <button onclick="filterNotifs('new_application')" id="ntab_new_application" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border:none;background:none;color:var(--t2);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;">Applied</button>
+    <button onclick="filterNotifs('status_update')" id="ntab_status_update" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border:none;background:none;color:var(--t2);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;">Status</button>
+    <button onclick="filterNotifs('system')" id="ntab_system" style="flex:1;padding:7px 4px;font-size:11px;font-weight:600;border:none;background:none;color:var(--t2);border-bottom:2px solid transparent;cursor:pointer;font-family:inherit;">System</button>
+  </div>
+  <div id="notifListBox" style="max-height:360px;overflow-y:auto;">
+    <div style="text-align:center;padding:24px;color:var(--t3);font-size:12px;">Loading…</div>
+  </div>
+  <div style="padding:8px;border-top:1px solid var(--border);text-align:center;">
+    <button onclick="showPage('profile',null);closeDrop();" style="font-size:11px;color:var(--primary);background:none;border:none;cursor:pointer;font-weight:600;font-family:inherit;">View all in Profile →</button>
+  </div>
 </div>
 
 <!-- PROFILE DROPDOWN -->
@@ -3438,17 +3452,138 @@ function closeModal(id){$(id).classList.remove('open');}
 document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
 
 // Notif
+// ══════════════════════════════════════
+// REAL-TIME NOTIFICATION ENGINE
+// ══════════════════════════════════════
+var _notifCache=[], _notifFilter='all', _notifUnsub=null;
+
 function toggleNotif(){
   _nOpen=!_nOpen;
   $('notifPanel').classList.toggle('open',_nOpen);
   $('profileDrop').classList.remove('open');_dOpen=false;
+  if(_nOpen) renderNotifList();
 }
-function clearNotifs(){
-  document.querySelectorAll('.npi').forEach(n=>n.classList.remove('unr'));
-  document.querySelectorAll('.npd').forEach(d=>d.remove());
-  $('ncount').style.display='none';
+
+function filterNotifs(type){
+  _notifFilter=type;
+  ['all','new_application','status_update','system'].forEach(function(t){
+    var btn=document.getElementById('ntab_'+t);
+    if(!btn) return;
+    var active=(t===type);
+    btn.style.color=active?'var(--primary)':'var(--t2)';
+    btn.style.borderBottom=active?'2px solid var(--primary)':'2px solid transparent';
+    btn.style.fontWeight=active?'700':'600';
+  });
+  renderNotifList();
+}
+
+function renderNotifList(){
+  var box=document.getElementById('notifListBox');
+  if(!box) return;
+  var list=_notifFilter==='all'?_notifCache:_notifCache.filter(function(n){
+    if(_notifFilter==='new_application') return n.type==='new_application';
+    if(_notifFilter==='status_update') return ['status_update','shortlisted','offered','rejected','interview'].indexOf(n.type)!==-1;
+    if(_notifFilter==='system') return ['system','ai_match','like','connection','profile_view'].indexOf(n.type)!==-1;
+    return true;
+  });
+  if(!list.length){
+    box.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);font-size:12px;">No notifications here</div>';
+    return;
+  }
+  box.innerHTML='';
+  var icons={new_application:'📬',status_update:'📋',shortlisted:'⭐',offered:'🎉',rejected:'❌',
+             interview:'🎤',ai_match:'🤖',like:'👍',connection:'🤝',profile_view:'👁️',system:'🔔'};
+  list.slice(0,40).forEach(function(n){
+    var icon=icons[n.type]||'🔔';
+    var tm=n.createdAt&&n.createdAt.toDate?timeAgo(n.createdAt.toDate()):'Just now';
+    var div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:flex-start;gap:10px;padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s;background:'+(n.read?'transparent':'var(--pl)');
+    div.onmouseover=function(){this.style.background='var(--s2)';};
+    div.onmouseout=function(){this.style.background=n.read?'transparent':'var(--pl)';};
+    div.onclick=(function(nn){return function(){markNotifRead(nn.id);handleNotifClick(nn);renderNotifList();};})(n);
+    div.innerHTML=
+      '<div style="width:36px;height:36px;border-radius:50%;background:var(--s2);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;border:1.5px solid var(--border);">'+icon+'</div>'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:12px;font-weight:'+(n.read?'500':'700')+';color:var(--text);line-height:1.4;">'+validateInput(n.title||'')+'</div>'+
+        '<div style="font-size:11px;color:var(--t2);margin-top:2px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+validateInput(n.body||'')+'</div>'+
+        '<div style="font-size:10px;color:var(--t3);margin-top:3px;">'+tm+'</div>'+
+      '</div>'+
+      (!n.read?'<div style="width:8px;height:8px;border-radius:50%;background:var(--primary);flex-shrink:0;margin-top:6px;"></div>':'');
+    box.appendChild(div);
+  });
+}
+
+function handleNotifClick(n){
+  closeDrop();
+  if(n.type==='new_application'){showPage('profile',null);setTimeout(loadMyApplications,300);}
+  else if(['status_update','shortlisted','offered','rejected','interview'].indexOf(n.type)!==-1){showPage('profile',null);setTimeout(loadMySubmittedApps,300);}
+  else if(n.type==='ai_match'){showPage('jobs',null);}
+}
+
+async function markNotifRead(notifId){
+  if(!notifId) return;
+  _notifCache.forEach(function(n){if(n.id===notifId) n.read=true;});
+  if(!window._fb||!_user) return;
+  try{await window._fb.updateDoc(window._fb.doc(window._fb.db,'notifications',notifId),{read:true});}catch(e){}
+}
+
+async function markAllNotifsRead(){
+  _notifCache.forEach(function(n){n.read=true;});
+  renderNotifList();
+  var badge=document.getElementById('nBadge');
+  if(badge) badge.style.display='none';
   showToast('✅ All notifications marked read');
+  if(!window._fb||!_user) return;
+  _notifCache.forEach(async function(n){
+    if(!n.read_orig) try{await window._fb.updateDoc(window._fb.doc(window._fb.db,'notifications',n.id),{read:true});}catch(e){}
+  });
 }
+
+function clearNotifs(){markAllNotifsRead();}
+
+function listenNotifications(){
+  if(!window._fb||!_user) return;
+  if(_notifUnsub){_notifUnsub();_notifUnsub=null;}
+  try{
+    var q=window._fb.query(
+      window._fb.collection(window._fb.db,'notifications'),
+      window._fb.where('toUid','==',_user.uid),
+      window._fb.orderBy('createdAt','desc'),
+      window._fb.limit(50)
+    );
+    _notifUnsub=window._fb.onSnapshot(q,function(snap){
+      _notifCache=[];
+      snap.forEach(function(d){_notifCache.push({id:d.id,...d.data()});});
+      var unread=_notifCache.filter(function(n){return !n.read;}).length;
+      var badge=document.getElementById('nBadge');
+      if(badge){badge.textContent=unread>99?'99+':unread;badge.style.display=unread>0?'flex':'none';}
+      // Toast only for truly new (< 10 seconds old)
+      snap.docChanges().forEach(function(change){
+        if(change.type==='added'){
+          var n=change.doc.data();
+          if(n.read) return;
+          var age=n.createdAt&&n.createdAt.toDate?Date.now()-n.createdAt.toDate().getTime():99999;
+          if(age<10000){
+            var msg=n.type==='new_application'?'📬 '+validateInput(n.applicantName||'Someone')+' applied for '+validateInput(n.jobTitle||'your job'):
+              n.type==='shortlisted'?'⭐ You were shortlisted for '+validateInput(n.jobTitle||'a job')+'!':
+              n.type==='offered'?'🎉 Job offer for '+validateInput(n.jobTitle||'a position')+'!':
+              n.type==='rejected'?'Update on your application for '+validateInput(n.jobTitle||''):
+              validateInput(n.title||'New notification');
+            showToast(msg);
+          }
+        }
+      });
+      if(_nOpen) renderNotifList();
+    },function(err){console.warn('Notifications listener:',err);});
+  }catch(e){console.warn('listenNotifications:',e);}
+}
+
+function updateNotifBell(forceShow){
+  if(!forceShow) return;
+  var badge=document.getElementById('nBadge');
+  if(badge){var c=parseInt(badge.textContent)||0;badge.textContent=c+1;badge.style.display='flex';}
+}
+
 // Profile drop
 function toggleDrop(){
   _dOpen=!_dOpen;
@@ -4657,6 +4792,7 @@ async function submitApp(){
               type:'new_application',
               title:'New Application — '+appData.jobTitle,
               body:nm+' applied for '+appData.jobTitle+' at '+appData.company,
+              applicantId:_user.uid,
               applicantName:nm,
               applicantEmail:em,
               applicantPhone:ph,
@@ -4818,14 +4954,47 @@ function renderApplicationCard(id, n, isSeeker){
 async function updateAppStatus(notifId, status){
   if(!window._fb||!_user) return showToast('⚠️ Firebase not configured!');
   try{
+    // Get the notification to find applicantId + job info
+    const notifDoc=await window._fb.getDoc(window._fb.doc(window._fb.db,'notifications',notifId));
+    const notifData=notifDoc.exists()?notifDoc.data():{};
+
+    // Update recruiter's notification
     await window._fb.updateDoc(
       window._fb.doc(window._fb.db,'notifications',notifId),
       {status:status, read:true, updatedAt:window._fb.serverTimestamp()}
     );
-    showToast('✅ Application marked as '+status);
+
+    // ── SEND STATUS NOTIFICATION TO APPLICANT ──
+    if(notifData.applicantId||notifData.applicantEmail){
+      const statusMsgs={
+        Shortlisted:{title:'⭐ You\'ve been Shortlisted!',body:'Great news! '+validateInput(_up?.name||'The recruiter')+' shortlisted your application for '+validateInput(notifData.jobTitle||'a position')+' at '+validateInput(notifData.company||'')+'. Expect a call soon!',type:'shortlisted'},
+        Interview:{title:'🎤 Interview Invite!',body:'You\'re invited for an interview for '+validateInput(notifData.jobTitle||'a position')+' at '+validateInput(notifData.company||'')+'. Recruiter: '+validateInput(_up?.name||'')+'. Check your email for details.',type:'interview'},
+        Offered:{title:'🎉 Job Offer Received!',body:'Congratulations! You have received a job offer for '+validateInput(notifData.jobTitle||'a position')+' at '+validateInput(notifData.company||'')+'. Respond soon!',type:'offered'},
+        Rejected:{title:'Application Update',body:'Thank you for applying for '+validateInput(notifData.jobTitle||'the position')+' at '+validateInput(notifData.company||'')+'. We have moved forward with other candidates.',type:'rejected'},
+        Hired:{title:'🏆 You\'re Hired!',body:'Congratulations! You have been selected for '+validateInput(notifData.jobTitle||'the position')+' at '+validateInput(notifData.company||'')+'. Welcome aboard!',type:'offered'}
+      };
+      const msg=statusMsgs[status];
+      if(msg&&(notifData.applicantId)){
+        await window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{
+          toUid:notifData.applicantId,
+          type:msg.type,
+          title:msg.title,
+          body:msg.body,
+          jobTitle:notifData.jobTitle||'',
+          company:notifData.company||'',
+          recruiterName:_up?.name||'',
+          recruiterId:_user.uid,
+          read:false,
+          createdAt:window._fb.serverTimestamp()
+        });
+      }
+    }
+
+    showToast('✅ Marked as '+status+' · Applicant notified 📬');
     loadMyApplications();
   }catch(e){showToast('⚠️ '+e.message);}
 }
+
 
 // ── JOB SEEKER: Load my submitted applications ──
 async function loadMySubmittedApps(){
@@ -4862,48 +5031,6 @@ async function loadMySubmittedApps(){
     });
   }catch(e){
     box.innerHTML='<div style="padding:12px;font-size:12px;color:var(--red);">⚠️ '+validateInput(e.message)+'</div>';
-  }
-}
-
-// ── NOTIFICATION BELL: real-time unread count ──
-function listenNotifications(){
-  if(!window._fb||!_user) return;
-  try{
-    const q=window._fb.query(
-      window._fb.collection(window._fb.db,'notifications'),
-      window._fb.where('toUid','==',_user.uid),
-      window._fb.where('read','==',false),
-      window._fb.limit(99)
-    );
-    window._fb.onSnapshot(q,snap=>{
-      const cnt=snap.size;
-      const badge=document.getElementById('nBadge');
-      if(badge){
-        badge.textContent=cnt>99?'99+':cnt;
-        badge.style.display=cnt>0?'flex':'none';
-      }
-      // Show toast for brand new notifications
-      snap.docChanges().forEach(change=>{
-        if(change.type==='added'){
-          const n=change.doc.data();
-          if(n.type==='new_application'){
-            showToast('📬 New application: '+validateInput(n.applicantName||'Someone')+' applied for '+validateInput(n.jobTitle||'your job'));
-          }
-        }
-      });
-    },err=>console.warn('Notifications listener error:',err));
-  }catch(e){console.warn('listenNotifications error:',e);}
-}
-
-function updateNotifBell(forceShow){
-  // Called after submit to show new notif count
-  if(forceShow){
-    const badge=document.getElementById('nBadge');
-    if(badge){
-      var cur=parseInt(badge.textContent)||0;
-      badge.textContent=cur+1;
-      badge.style.display='flex';
-    }
   }
 }
 
