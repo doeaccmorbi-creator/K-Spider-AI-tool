@@ -115,7 +115,7 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
   }
   try {
     const snap = await _ksDb.collection('doctors').doc(user.uid).get();
-    if (!snap.exists) { window.location.href = '../index.html'; return; }
+    if (!snap.exists) { _ksShowDoctorLogin('Your account was not found in our doctor database. Please contact support at kspider221206@gmail.com'); return; }
     const data = snap.data();
 
     // Check status
@@ -181,7 +181,7 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
 
   } catch(e) {
     console.error('Auth check error:', e);
-    window.location.href = '../index.html';
+    _ksShowDoctorLogin('Connection error: ' + (e.message || 'Network issue. Please check your internet and try again.'));
   }
 });
 
@@ -334,7 +334,7 @@ async function ksSignOut() {
   if (confirm('Sign out of K Spider Doctor AI?')) {
     if (_ksAuth) await _ksAuth.signOut();
     localStorage.removeItem('ks_user');
-    window.location.href = '../index.html';
+    window.location.reload(); // Show doctor login screen again
   }
 }
 </script>
@@ -1817,8 +1817,8 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
 <!-- QR Code Library (Free CDN) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <script src="/tool-guard.js" defer></script>
-  <script src="../ks-guard.js" defer></script>
+  <script src="/tool-guard.js" defer onerror="console.warn('[KSpider] tool-guard.js not found')"></script>
+  <script src="../ks-guard.js" defer onerror="console.warn('[KSpider] ks-guard.js not found')"></script>
   <link rel="canonical" href="https://kspiderai.in/doctor">
   <meta property="og:image" content="https://kspiderai.in/assets/kspider-og.jpg">
   <meta name="twitter:card" content="summary_large_image">
@@ -2605,6 +2605,832 @@ function toggleDarkMode() {
   </div>
 
   <div class="alert alert-info"><strong>ðŸš€ Phase 3 Activated:</strong> <span class="phase3-badge">PHASE 4</span> Disease DB 430+ conditions (10 specialties) Â· Emergency Alert Engine Â· Drug Interaction Warning System Â· Pregnancy/Elderly Safety Flags Â· Pediatric Growth Chart Calculator Â· Enhanced BMI/BP Â· Auto Risk Scoring Â· Multi-language Output (EN/HI/GU/MR/TA/TE/BN) Â· AdSense + Affiliate Earning Spaces</div>
+
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     ðŸ·ï¸ BRAND MEDICINE DATABASE â€” K Spider Doctor AI
+     Search brands by generic content, find generic by brand,
+     Add/Edit/Delete brands â€” Doctor's personal brand reference
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<div id="brand-db" class="section">
+
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text-dark);">ðŸ·ï¸ Brand Medicine Database</div>
+      <div style="font-size:13px;color:var(--text-light);">Search brands by generic content Â· Find all brands of a generic Â· Add your own brands</div>
+    </div>
+    <button onclick="openBrandModal()" style="background:var(--primary);color:white;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">âž• Add New Brand</button>
+  </div>
+
+  <!-- Search Row -->
+  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <div>
+      <input type="text" id="brand-search-input" placeholder="ðŸ” Search brand name (e.g., Crocin, Pan, Augmentin...)" oninput="brandSearch()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card-bg);color:var(--text-dark);">
+    </div>
+    <div>
+      <input type="text" id="generic-search-input" placeholder="ðŸ’Š Search by generic/content (e.g., Paracetamol, Amoxicillin...)" oninput="genericSearch()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card-bg);color:var(--text-dark);">
+    </div>
+    <div>
+      <select id="brand-cat-filter" onchange="brandSearch()" style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card-bg);color:var(--text-dark);height:42px;">
+        <option value="">All Categories</option>
+        <option>Analgesic/Antipyretic</option>
+        <option>Antibiotic</option>
+        <option>Antifungal</option>
+        <option>Antiviral</option>
+        <option>Antidiabetic</option>
+        <option>Antihypertensive</option>
+        <option>Cardiac</option>
+        <option>Gastro/GI</option>
+        <option>Respiratory</option>
+        <option>Neurological/Psychiatric</option>
+        <option>Vitamins/Minerals</option>
+        <option>Hormonal/Thyroid</option>
+        <option>Dermatology</option>
+        <option>Ophthalmology</option>
+        <option>ENT</option>
+        <option>Ortho/Muscle</option>
+        <option>Oncology</option>
+        <option>Immunology</option>
+        <option>Other</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Tab Switcher -->
+  <div style="display:flex;gap:8px;margin-bottom:14px;border-bottom:2px solid var(--border);padding-bottom:0;">
+    <button id="brand-tab-brand" onclick="switchBrandTab('brand')" style="padding:8px 16px;border:none;border-bottom:2.5px solid var(--primary);background:none;color:var(--primary);font-weight:700;font-size:13px;cursor:pointer;margin-bottom:-2px;">ðŸ·ï¸ Brand â†’ Generic</button>
+    <button id="brand-tab-generic" onclick="switchBrandTab('generic')" style="padding:8px 16px;border:none;border-bottom:2.5px solid transparent;background:none;color:var(--text-light);font-size:13px;cursor:pointer;margin-bottom:-2px;">ðŸ’Š Generic â†’ Brands</button>
+    <button id="brand-tab-rx" onclick="switchBrandTab('rx')" style="padding:8px 16px;border:none;border-bottom:2.5px solid transparent;background:none;color:var(--text-light);font-size:13px;cursor:pointer;margin-bottom:-2px;">ðŸ“‹ Prescribe Brand</button>
+  </div>
+
+  <!-- Stats Row -->
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
+      ðŸ’Š <strong id="brand-total-count">0</strong> Brands
+    </div>
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
+      ðŸ§ª <strong id="brand-generic-count">0</strong> Generics
+    </div>
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
+      ðŸ­ <strong id="brand-company-count">0</strong> Companies
+    </div>
+    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
+      âœï¸ <strong id="brand-custom-count">0</strong> Your custom brands
+    </div>
+  </div>
+
+  <!-- Results Area -->
+  <div id="brand-results-area">
+    <div id="brand-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;"></div>
+  </div>
+
+  <!-- Brand Detail Panel (shown on click) -->
+  <div id="brand-detail-panel" style="display:none;margin-top:16px;"></div>
+
+  <!-- Add/Edit Brand Modal -->
+  <div id="brand-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
+    <div style="background:var(--card-bg);border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="font-size:16px;font-weight:700;color:var(--text-dark);" id="brand-modal-title">âž• Add New Brand</div>
+        <button onclick="closeBrandModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-light);">âœ•</button>
+      </div>
+      <div style="display:grid;gap:12px;">
+        <input type="hidden" id="brand-edit-id">
+        <div class="field"><label>Brand Name *</label><input type="text" id="bm-brand" placeholder="e.g., Crocin, Pan D, Augmentin"></div>
+        <div class="field"><label>Generic Content / Composition *</label><input type="text" id="bm-generic" placeholder="e.g., Paracetamol 500mg, Pantoprazole 40mg + Domperidone 10mg"></div>
+        <div class="field"><label>Manufacturer / Company</label><input type="text" id="bm-company" placeholder="e.g., GSK, Cipla, Sun Pharma, Abbott"></div>
+        <div class="field"><label>Category</label>
+          <select id="bm-category">
+            <option>Analgesic/Antipyretic</option><option>Antibiotic</option><option>Antifungal</option>
+            <option>Antiviral</option><option>Antidiabetic</option><option>Antihypertensive</option>
+            <option>Cardiac</option><option>Gastro/GI</option><option>Respiratory</option>
+            <option>Neurological/Psychiatric</option><option>Vitamins/Minerals</option>
+            <option>Hormonal/Thyroid</option><option>Dermatology</option><option>Ophthalmology</option>
+            <option>ENT</option><option>Ortho/Muscle</option><option>Oncology</option>
+            <option>Immunology</option><option>Other</option>
+          </select>
+        </div>
+        <div class="field"><label>Available Forms (Tablet, Syrup, Injection...)</label><input type="text" id="bm-forms" placeholder="e.g., Tab, Syrup 60ml, Inj 500mg/vial"></div>
+        <div class="field"><label>Approx. Price (â‚¹)</label><input type="text" id="bm-price" placeholder="e.g., â‚¹22 / strip of 10"></div>
+        <div class="field"><label>Usual Dose / Strength</label><input type="text" id="bm-dose" placeholder="e.g., 500mg TDS x 5 days"></div>
+        <div class="field"><label>Special Notes / Remarks</label><textarea id="bm-notes" rows="2" placeholder="e.g., Preferred brand for elderly, avoid in renal failure, generic preferred..."></textarea></div>
+        <div style="display:flex;gap:10px;margin-top:4px;">
+          <button onclick="saveBrand()" style="flex:1;background:var(--primary);color:white;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">ðŸ’¾ Save Brand</button>
+          <button onclick="closeBrandModal()" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text-dark);padding:11px 18px;border-radius:8px;font-size:13px;cursor:pointer;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     BRAND DB JAVASCRIPT ENGINE
+     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
+<script>
+// â”€â”€â”€ BUILT-IN BRAND DATABASE (500+ Popular Indian Brands) â”€â”€â”€â”€â”€
+// Format: [BrandName, GenericContent, Company, Category, Forms, Price, Dose, Notes]
+const BRAND_RAW = [
+// â”€â”€â”€ ANALGESICS / ANTIPYRETICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Crocin','Paracetamol 500mg','GSK','Analgesic/Antipyretic','Tab, Syrup 60ml/120ml','â‚¹22/strip','500mg-1g TDS','Most trusted OTC brand; available as Crocin 650 (650mg) for adults'],
+['Crocin 650','Paracetamol 650mg','GSK','Analgesic/Antipyretic','Tab','â‚¹28/strip','650mg TDS','For adults; stronger formulation'],
+['Dolo 650','Paracetamol 650mg','Micro Labs','Analgesic/Antipyretic','Tab','â‚¹30/strip','650mg TDS','Very popular; widely prescribed in COVID era'],
+['Calpol','Paracetamol 500mg','GSK','Analgesic/Antipyretic','Tab, Syrup','â‚¹25/strip','500mg TDS','Paediatric syrup widely used'],
+['Metacin','Paracetamol 500mg','Ipca','Analgesic/Antipyretic','Tab','â‚¹18/strip','500mg TDS','Budget option'],
+['Volini','Diclofenac + Methyl Salicylate (Gel)','Sun Pharma','Analgesic/Antipyretic','Gel 30g/50g','â‚¹85/tube','Apply TDS locally','Most popular topical analgesic in India'],
+['Voveran','Diclofenac Sodium 50mg','Novartis','Analgesic/Antipyretic','Tab, SR Tab, Inj, Gel','â‚¹35/strip','50mg BD-TDS after food','Classic diclofenac brand; SR tab for chronic use'],
+['Combiflam','Ibuprofen 400mg + Paracetamol 325mg','Sanofi','Analgesic/Antipyretic','Tab, Syrup','â‚¹40/strip','1 tab TDS after food','Very popular combination analgesic'],
+['Brufen','Ibuprofen 400mg','Abbott','Analgesic/Antipyretic','Tab, Syrup','â‚¹38/strip','400mg TDS after food','Standard ibuprofen brand'],
+['Ibugesic Plus','Ibuprofen 100mg + Paracetamol 162.5mg/5ml','Cipla','Analgesic/Antipyretic','Syrup 60ml','â‚¹55/bottle','5-10ml TDS (wt based)','Paediatric fever syrup'],
+['Ultracet','Tramadol 37.5mg + Paracetamol 325mg','Janssen','Analgesic/Antipyretic','Tab','â‚¹75/strip','1 tab Q6-8h','For moderate-severe pain; NDPS regulated'],
+['Nucoxia','Etoricoxib 60/90/120mg','Sun Pharma','Analgesic/Antipyretic','Tab','â‚¹95/strip','60-120mg OD','COX-2 inhibitor; less GI side effects'],
+['Nimulid','Nimesulide 100mg','Panacea Biotech','Analgesic/Antipyretic','Tab, Gel, Suspension','â‚¹30/strip','100mg BD after food','Avoid in children under 12; hepatotoxic risk'],
+['Voveran SR','Diclofenac SR 100mg','Novartis','Analgesic/Antipyretic','Tab','â‚¹55/strip','100mg OD-BD','Modified release; for chronic pain management'],
+// â”€â”€â”€ ANTIBIOTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Augmentin','Amoxicillin 500mg + Clavulanate 125mg','GSK','Antibiotic','Tab 625mg, Syrup, Inj','â‚¹165/strip','1 tab TDS x 7 days','Gold standard for URTI, LRTI, UTI, dental infections'],
+['Augmentin 625','Amoxicillin 500mg + Clavulanate 125mg','GSK','Antibiotic','Tab','â‚¹165/strip','625mg TDS x 5-7d','Most prescribed antibiotic in India'],
+['Mox','Amoxicillin 500mg','Cipla','Antibiotic','Cap, Syrup','â‚¹55/strip','500mg TDS x 5d','Budget amoxicillin'],
+['Roxid','Roxithromycin 150mg','Alkem','Antibiotic','Tab','â‚¹110/strip','150mg BD or 300mg OD','Macrolide for URTI, atypical pneumonia'],
+['Azithral','Azithromycin 500mg','Alkem','Antibiotic','Tab 250/500mg, Syrup','â‚¹75/strip','500mg OD x 3-5d','Z-pack equivalent; CAP, pharyngitis, typhoid'],
+['Zithromax','Azithromycin 500mg','Pfizer','Antibiotic','Tab, Syrup','â‚¹180/strip','500mg OD x 3-5d','Originator brand azithromycin'],
+['Ciprobid','Ciprofloxacin 500mg','Cadila','Antibiotic','Tab, Inj','â‚¹60/strip','500mg BD x 7d','UTI, travellers diarrhoea, enteric fever'],
+['Ciplox','Ciprofloxacin 500mg','Cipla','Antibiotic','Tab, Eye/Ear drops, Inj','â‚¹68/strip','500mg BD x 7d','Very popular; also as ophthalmic drops'],
+['Taxim-O','Cefixime 200mg','Alkem','Antibiotic','Tab, Syrup','â‚¹95/strip','200mg BD x 5-7d','3rd gen cephalosporin for URTI, UTI, typhoid'],
+['Zifi','Cefixime 200mg','FDC','Antibiotic','Tab 200/400mg, Syrup','â‚¹90/strip','200mg BD x 5-7d','Popular cefixime brand'],
+['Monocef','Ceftriaxone 1g','Aristo','Antibiotic','Inj','â‚¹80/vial','1-2g OD IV/IM','Most used 3rd gen ceph injection in India'],
+['Keflex','Cefalexin 500mg','GSK','Antibiotic','Cap, Syrup','â‚¹85/strip','500mg QID x 7d','1st gen cephalosporin; SSTI, mild infections'],
+['Pantocid HP','Pantoprazole+Amoxicillin+Clarithromycin','Sun Pharma','Antibiotic','Kit','â‚¹320/kit','BD x 14 days','H. pylori eradication triple therapy kit'],
+['Oflox','Ofloxacin 200mg','Cipla','Antibiotic','Tab, Drops','â‚¹55/strip','200-400mg BD x 5-7d','Fluoroquinolone; GI, UTI, ophthalmic use'],
+['Metrogyl','Metronidazole 400mg','J.B.Chemicals','Antibiotic','Tab, Inj, Gel','â‚¹40/strip','400mg TDS x 5-7d','Anaerobic infections, GI amoebiasis, BV'],
+['Tiniba','Tinidazole 500mg','Alkem','Antibiotic','Tab','â‚¹48/strip','2g stat or 500mg BD','Longer half-life than metronidazole; amoebiasis, GI'],
+['Doxycycline','Doxycycline 100mg','Cipla','Antibiotic','Cap','â‚¹28/strip','100mg BD x 7-14d','Atypical pneumonia, acne, malaria prophylaxis'],
+['Clavam','Amoxicillin + Clavulanate','Alkem','Antibiotic','Tab 625mg, Syrup','â‚¹145/strip','1 tab TDS x 7d','Budget co-amoxiclav alternative to Augmentin'],
+['Novamox','Amoxicillin 500mg','Cipla','Antibiotic','Cap, Syrup','â‚¹50/strip','500mg TDS x 5-7d','Budget amoxicillin'],
+// â”€â”€â”€ GASTRO / GI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Pan','Pantoprazole 40mg','Alkem','Gastro/GI','Tab','â‚¹55/strip','40mg OD before breakfast','Most prescribed PPI in India'],
+['Pantop','Pantoprazole 40mg','Aristo','Gastro/GI','Tab, Inj','â‚¹45/strip','40mg OD-BD','Very economical pantoprazole'],
+['Omez','Omeprazole 20mg','Dr. Reddys','Gastro/GI','Cap, Inj','â‚¹50/strip','20mg OD-BD before food','Originator omeprazole in India'],
+['Rablet','Rabeprazole 20mg','Lupin','Gastro/GI','Tab','â‚¹65/strip','20mg OD before food','Fast onset PPI; for GERD'],
+['Razo','Rabeprazole 20mg','Sun Pharma','Gastro/GI','Tab','â‚¹70/strip','20mg OD before food','Popular rabeprazole brand'],
+['Nexium','Esomeprazole 40mg','AstraZeneca','Gastro/GI','Tab','â‚¹160/strip','40mg OD','Originator; for erosive esophagitis'],
+['Nexpro','Esomeprazole 40mg','Torrent','Gastro/GI','Tab','â‚¹90/strip','40mg OD','Budget esomeprazole'],
+['Pan D','Pantoprazole 40mg + Domperidone 10mg','Alkem','Gastro/GI','Tab','â‚¹75/strip','1 tab OD-BD before food','Very popular combo for GERD+nausea'],
+['Neksium','Pantoprazole + Levosulpiride','Sun Pharma','Gastro/GI','Tab','â‚¹95/strip','1 tab OD before food','For GERD with dysmotility'],
+['Rantac','Ranitidine 150mg','J.B.Chemicals','Gastro/GI','Tab, Syrup, Inj','â‚¹25/strip','150mg BD','H2 blocker; withdrawn in many countries due to NDMA'],
+['Sucralfate','Sucralfate 1g','Various','Gastro/GI','Tab, Suspension','â‚¹60/strip','1g QID 1hr before meals','Mucosal protectant; gastric ulcer'],
+['Norflox-TZ','Norfloxacin 400mg + Tinidazole 600mg','Cipla','Gastro/GI','Tab','â‚¹72/strip','1 tab BD x 5d after food','Very popular for gastroenteritis, diarrhoea in India'],
+['Eldoper','Loperamide 2mg','Alkem','Gastro/GI','Tab','â‚¹35/strip','2-4mg stat then PRN','Acute diarrhoea; avoid in bloody diarrhoea'],
+['Domstal','Domperidone 10mg','Torrent','Gastro/GI','Tab, Syrup','â‚¹35/strip','10mg TDS before food','Antiemetic, prokinetic'],
+['Emeset','Ondansetron 4mg','Cipla','Gastro/GI','Tab, Inj, Syrup','â‚¹65/strip','4-8mg TDS','5-HT3 antagonist antiemetic; post-op, chemo nausea'],
+['Perinorm','Metoclopramide 10mg','Ipca','Gastro/GI','Tab, Inj, Syrup','â‚¹22/strip','10mg TDS before food','Classic prokinetic; avoid long-term'],
+['Duphalac','Lactulose Syrup','Abbott','Gastro/GI','Syrup 100ml/200ml','â‚¹145/bottle','15-30ml BD','Chronic constipation, hepatic encephalopathy'],
+['Cremaffin','Liquid Paraffin + Milk of Magnesia','Abbott','Gastro/GI','Syrup','â‚¹85/bottle','5-15ml at bedtime','Laxative; safe in pregnancy'],
+['Digene','Aluminium Hydroxide+Magnesium Hydroxide+Simethicone','Abbott','Gastro/GI','Tab, Gel','â‚¹80/pack','2 tabs or 10ml after food + bedtime','Popular antacid for hyperacidity'],
+['Gelusil','Aluminium Hydroxide + Magnesium Trisilicate','Pfizer','Gastro/GI','Tab, Suspension','â‚¹65/pack','2 tabs after meals','Classic antacid; coats gastric mucosa'],
+['Mezavant','Mesalazine 1.2g','Shire','Gastro/GI','Tab','â‚¹890/strip','1.2-2.4g OD','Ulcerative colitis maintenance'],
+// â”€â”€â”€ ANTIDIABETICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Glycomet','Metformin 500mg','USV','Antidiabetic','Tab 500/850/1000mg','â‚¹22/strip','500mg BD-TDS with food','Most prescribed antidiabetic in India; first-line T2DM'],
+['Glucophage','Metformin 500mg','Merck','Antidiabetic','Tab, SR Tab','â‚¹85/strip','500mg BD-TDS','Originator metformin; SR version for GI tolerance'],
+['Amaryl','Glimepiride 1/2/3/4mg','Sanofi','Antidiabetic','Tab','â‚¹65/strip','1-4mg OD with breakfast','Sulfonylurea; risk of hypoglycemia; morning dose'],
+['Glyree','Glimepiride 2mg','Sun Pharma','Antidiabetic','Tab','â‚¹38/strip','1-4mg OD with breakfast','Budget glimepiride'],
+['Januvia','Sitagliptin 100mg','MSD','Antidiabetic','Tab','â‚¹650/strip','100mg OD','DPP-4 inhibitor; safe in elderly; no hypoglycemia'],
+['Galvus Met','Vildagliptin 50mg + Metformin 500/1000mg','Novartis','Antidiabetic','Tab','â‚¹280/strip','1 tab BD','DPP-4+Metformin combo; convenient combination'],
+['Forxiga','Dapagliflozin 10mg','AstraZeneca','Antidiabetic','Tab','â‚¹1200/strip','10mg OD','SGLT-2 inhibitor; also for CKD and heart failure'],
+['Jardiance','Empagliflozin 10/25mg','Boehringer','Antidiabetic','Tab','â‚¹1350/strip','10-25mg OD','SGLT-2; proven CV and renal benefit'],
+['Victoza','Liraglutide 6mg/ml','Novo Nordisk','Antidiabetic','Inj pen','â‚¹4200/pen','0.6-1.8mg SC OD','GLP-1 agonist; weight loss + CV benefit'],
+['Ozempic','Semaglutide 1mg/ml','Novo Nordisk','Antidiabetic','Inj pen','â‚¹7500/pen','0.25-1mg SC weekly','GLP-1 agonist; weekly injection'],
+['Pioz','Pioglitazone 15/30/45mg','USV','Antidiabetic','Tab','â‚¹65/strip','15-45mg OD','Insulin sensitizer; edema risk; avoid in bladder cancer'],
+['Insugen','Human Insulin Regular','Biocon','Antidiabetic','Inj vial/cartridge','â‚¹120/vial','As per regimen','Biosimilar regular insulin; subcutaneous'],
+['Basalog','Insulin Glargine 100U/ml','Biocon','Antidiabetic','Inj','â‚¹650/vial','Once daily at same time','Long-acting basal insulin biosimilar'],
+['Novorapid','Insulin Aspart 100U/ml','Novo Nordisk','Antidiabetic','Inj pen','â‚¹1100/pen','With meals; rapid onset','Rapid-acting meal-time insulin'],
+// â”€â”€â”€ ANTIHYPERTENSIVES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Amlip','Amlodipine 5mg','Cipla','Antihypertensive','Tab 2.5/5/10mg','â‚¹35/strip','5-10mg OD','CCB; very popular first-line antihypertensive'],
+['Stamlo','Amlodipine 5mg','Dr. Reddys','Antihypertensive','Tab 5/10mg','â‚¹45/strip','5-10mg OD','Popular amlodipine brand'],
+['Norvasc','Amlodipine 5mg','Pfizer','Antihypertensive','Tab','â‚¹120/strip','5-10mg OD','Originator brand; more expensive'],
+['Telma','Telmisartan 40mg','Glenmark','Antihypertensive','Tab 20/40/80mg','â‚¹68/strip','20-80mg OD','ARB; also for CKD with proteinuria'],
+['Telsartan','Telmisartan 40mg','Torrent','Antihypertensive','Tab 40/80mg','â‚¹72/strip','40-80mg OD','Budget telmisartan'],
+['Losartan','Losartan 50mg','Various','Antihypertensive','Tab 25/50/100mg','â‚¹30/strip','50-100mg OD','First ARB; also lowers uric acid'],
+['Losar','Losartan 50mg','Cipla','Antihypertensive','Tab','â‚¹35/strip','50-100mg OD','Popular losartan brand'],
+['Cardace','Ramipril 2.5/5/10mg','Sanofi','Antihypertensive','Cap','â‚¹65/strip','2.5-10mg OD','ACEi; post-MI, HF, diabetic nephropathy'],
+['Ace Proxyvon','Ramipril 5mg','Various','Antihypertensive','Cap','â‚¹50/strip','5-10mg OD','Budget ramipril'],
+['Atenolol','Atenolol 50mg','Cipla/Various','Antihypertensive','Tab 25/50/100mg','â‚¹20/strip','25-100mg OD','Beta-blocker; HTN, angina, post-MI'],
+['Metolar','Metoprolol 25/50mg','Cipla','Antihypertensive','Tab','â‚¹35/strip','25-200mg BD','Cardioselective beta-blocker; HF, HTN, arrhythmia'],
+['Betaloc','Metoprolol 50mg','AstraZeneca','Antihypertensive','Tab, SR Tab','â‚¹98/strip','25-200mg BD','Originator metoprolol; Betaloc ZOK (SR) for once daily'],
+['Nicardia','Nifedipine SR 20mg','Sun Pharma','Antihypertensive','Tab SR','â‚¹55/strip','20-40mg BD','CCB SR; Raynauds, hypertensive urgency'],
+['Hydrochlorothiazide','Hydrochlorothiazide 25mg','Various','Antihypertensive','Tab','â‚¹12/strip','12.5-25mg OD morning','Thiazide diuretic; first-line; watch electrolytes'],
+['Lasilactone','Furosemide 20mg + Spironolactone 50mg','Sanofi','Antihypertensive','Tab','â‚¹65/strip','1-2 tab OD morning','Loop+potassium-sparing combo; edema, HF, cirrhosis'],
+['Frusemide','Furosemide 40mg','Cipla','Antihypertensive','Tab, Inj','â‚¹18/strip','20-80mg OD-BD','Loop diuretic; HF, CKD, edema, hypertensive urgency'],
+// â”€â”€â”€ CARDIAC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Ecosprin','Aspirin 75mg','USV','Cardiac','Tab 75/150mg','â‚¹18/strip','75-150mg OD after food','Antiplatelet; post-MI, ACS, CAD prevention'],
+['Cardace','Ramipril 5mg + Aspirin 75mg','Sanofi','Cardiac','Tab','â‚¹85/strip','OD','Combination for post-MI/high CV risk'],
+['Lipitor','Atorvastatin 10mg','Pfizer','Cardiac','Tab 10/20/40/80mg','â‚¹155/strip','10-80mg OD at night','Originator statin; CV risk reduction'],
+['Atorva','Atorvastatin 10mg','Cadila','Cardiac','Tab 10/20/40/80mg','â‚¹65/strip','10-80mg OD at night','Most popular generic atorvastatin brand'],
+['Storvas','Atorvastatin 20mg','Sun Pharma','Cardiac','Tab 10/20/40/80mg','â‚¹85/strip','10-80mg OD at night','Popular; widely prescribed'],
+['Crestor','Rosuvastatin 10mg','AstraZeneca','Cardiac','Tab 5/10/20/40mg','â‚¹210/strip','10-40mg OD','Originator rosuvastatin; potent LDL lowering'],
+['Rozucor','Rosuvastatin 10mg','Cipla','Cardiac','Tab','â‚¹120/strip','10-40mg OD','Generic rosuvastatin'],
+['Sorvas','Rosuvastatin 10mg','Sun Pharma','Cardiac','Tab','â‚¹95/strip','10-40mg OD','Budget rosuvastatin'],
+['Clopilet','Clopidogrel 75mg','Sun Pharma','Cardiac','Tab','â‚¹65/strip','75mg OD after food','Antiplatelet; post-MI, ACS, stent; DAPT with aspirin'],
+['Plavix','Clopidogrel 75mg','Sanofi','Cardiac','Tab','â‚¹180/strip','75mg OD','Originator clopidogrel'],
+['Pantodac','Pantoprazole 40mg + Clopidogrel 75mg','Sun Pharma','Cardiac','Tab','â‚¹110/strip','1 tab OD','GI protection for clopidogrel users'],
+['Concor','Bisoprolol 5mg','Merck','Cardiac','Tab 2.5/5/10mg','â‚¹120/strip','2.5-10mg OD','Beta-blocker; HF, HTN, stable angina'],
+['Corvitol','Bisoprolol 5mg','Metro','Cardiac','Tab','â‚¹68/strip','2.5-10mg OD','Budget bisoprolol'],
+['Digoxin','Digoxin 0.25mg','Various','Cardiac','Tab, Elixir','â‚¹18/strip','0.125-0.25mg OD','Cardiac glycoside; AF rate control, HF; narrow TI'],
+['Cordarone','Amiodarone 100mg','Sanofi','Cardiac','Tab, Inj','â‚¹175/strip','200-400mg OD (maint.)','Antiarrhythmic; AF, VT; many side effects; monitor TFT/LFT'],
+['Ranexa','Ranolazine 500mg','Menarini','Cardiac','Tab SR','â‚¹850/strip','500-1000mg BD','Antianginal; for chronic stable angina'],
+// â”€â”€â”€ RESPIRATORY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Asthalin','Salbutamol 2mg (Tab) / 100mcg (Inhaler)','Cipla','Respiratory','Tab, Syrup, MDI, Nebuliser','â‚¹75 MDI','200mcg Q4-6h PRN (inhaler)','Most used bronchodilator in India; SABA; rescue inhaler'],
+['Budecort','Budesonide 0.5mg/2ml','Cipla','Respiratory','Nebuliser, Inhaler','â‚¹350/box','0.5-1mg BD nebulisation','ICS; COPD, asthma maintenance; most used in children'],
+['Seroflo','Salmeterol 25mcg + Fluticasone 125/250mcg','Cipla','Respiratory','MDI','â‚¹250/MDI','2 puffs BD','LABA+ICS; asthma/COPD combination preventer'],
+['Foracort','Formoterol 6mcg + Budesonide 200mcg','Cipla','Respiratory','Rotacap, MDI','â‚¹380/box','1-2 puffs BD','LABA+ICS; popular COPD/asthma combinator'],
+['Tiova','Tiotropium 18mcg','Cipla','Respiratory','Rotacap','â‚¹450/box','1 capsule inhaled OD','LAMA; COPD maintenance; once daily convenient'],
+['Deriphyllin','Etofylline 77mg + Theophylline 23mg','Franco-Indian','Respiratory','Tab, Inj','â‚¹28/strip','1 tab TDS','Xanthine combination; for COPD/asthma; old but widely used'],
+['Montair','Montelukast 10mg','Cipla','Respiratory','Tab, Chewable, Granules','â‚¹95/strip','10mg OD at night','Leukotriene antagonist; asthma, allergic rhinitis'],
+['Singulair','Montelukast 10mg','MSD','Respiratory','Tab','â‚¹285/strip','10mg OD at night','Originator montelukast'],
+['Allegra','Fexofenadine 120/180mg','Sanofi','Respiratory','Tab','â‚¹165/strip','120mg BD or 180mg OD','Non-sedating antihistamine; urticaria, allergic rhinitis'],
+['Cetirizine','Cetirizine 10mg','Various','Respiratory','Tab, Syrup','â‚¹18/strip','5-10mg OD at night','Antihistamine; mild sedation; urticaria, rhinitis'],
+['Atarax','Hydroxyzine 25mg','UCB','Respiratory','Tab, Syrup','â‚¹55/strip','25-50mg OD at night','Sedating antihistamine; anxiety, pruritus, sedation'],
+['Levocet','Levocetirizine 5mg','UCB','Respiratory','Tab, Syrup','â‚¹35/strip','5mg OD at night','Active enantiomer; less sedating'],
+['Mucinac','Acetylcysteine 600mg','Cipla','Respiratory','Tab effervescent','â‚¹90/strip','600mg OD (preventive)','Mucolytic; COPD, chronic bronchitis; also hepatoprotective'],
+['Alex','Chlorpheniramine 2mg + Dextromethorphan 10mg','Cipla','Respiratory','Syrup','â‚¹55/bottle','5-10ml TDS','Popular cough syrup; for dry cough with cold'],
+// â”€â”€â”€ NEUROLOGICAL / PSYCHIATRIC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Clobazam','Clobazam 10mg','Various','Neurological/Psychiatric','Tab','â‚¹45/strip','5-30mg/day (div doses)','Benzodiazepine; adjunct epilepsy, anxiety'],
+['Frisium','Clobazam 10mg','Sanofi','Neurological/Psychiatric','Tab','â‚¹85/strip','5-30mg/day','Originator clobazam'],
+['Tegretol','Carbamazepine 200mg','Novartis','Neurological/Psychiatric','Tab CR, Tab','â‚¹85/strip','200-400mg BD-TDS','AED; trigeminal neuralgia; monitor CBC, LFT'],
+['Valparin','Valproate 200/500mg','Sanofi','Neurological/Psychiatric','Tab, CR Tab, Syrup, Inj','â‚¹95/strip','200-500mg BD-TDS','AED; bipolar mood disorder; teratogenic'],
+['Encorate','Sodium Valproate 200mg','Sun Pharma','Neurological/Psychiatric','Tab CR','â‚¹75/strip','200-500mg BD-TDS','Popular valproate brand; chrono for once BD'],
+['Syndopa','Levodopa+Carbidopa 100mg+25mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹95/strip','1 tab TDS','Parkinson disease; titrate slowly'],
+['Pregabalin','Pregabalin 75/150mg','Various','Neurological/Psychiatric','Cap','â‚¹65/strip','75-300mg BD','Neuropathic pain, epilepsy, anxiety; controlled substance'],
+['Lyrica','Pregabalin 75mg','Pfizer','Neurological/Psychiatric','Cap','â‚¹285/strip','75-300mg BD','Originator pregabalin'],
+['Neurontin','Gabapentin 300/400mg','Pfizer','Neurological/Psychiatric','Cap','â‚¹320/strip','300-900mg TDS','Neuropathic pain, epilepsy'],
+['Nexito','Escitalopram 10mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹85/strip','10-20mg OD morning','SSRI; depression, GAD, OCD, social phobia'],
+['Cipralex','Escitalopram 10mg','Lundbeck','Neurological/Psychiatric','Tab','â‚¹320/strip','10-20mg OD','Originator escitalopram'],
+['Serlin','Sertraline 50mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹68/strip','50-200mg OD','SSRI; depression, PTSD, OCD, panic disorder'],
+['Zoloft','Sertraline 50mg','Pfizer','Neurological/Psychiatric','Tab','â‚¹280/strip','50-200mg OD','Originator sertraline'],
+['Lonazep','Clonazepam 0.25/0.5/1/2mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹38/strip','0.25-2mg BD-TDS','Benzodiazepine; epilepsy, panic, anxiety; controlled substance'],
+['Zeptol','Carbamazepine 200mg','Sun Pharma','Neurological/Psychiatric','Tab CR','â‚¹72/strip','200-400mg BD','Popular carbamazepine brand'],
+['Librium','Chlordiazepoxide 10mg','Abbott','Neurological/Psychiatric','Cap','â‚¹65/strip','5-25mg TDS-QID','Benzodiazepine; alcohol withdrawal, anxiety'],
+['Ativan','Lorazepam 1mg','Pfizer','Neurological/Psychiatric','Tab, Inj','â‚¹95/strip','0.5-4mg/day','Rapid anxiolytic; status epilepticus (IV), pre-op sedation'],
+// â”€â”€â”€ VITAMINS / MINERALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Shelcal','Calcium Carbonate 500mg + Vit D3 250IU','Torrent','Vitamins/Minerals','Tab, Syrup, Chewable','â‚¹75/strip','1-2 tab BD after food','Most prescribed calcium supplement in India'],
+['Calcitas','Calcium Carbonate 1250mg + Vit D3 250IU','Lupin','Vitamins/Minerals','Tab','â‚¹65/strip','1 tab BD','Very popular calcium+D3 combo'],
+['Limcee','Vitamin C 500mg (Chewable)','Abbott','Vitamins/Minerals','Tab chewable','â‚¹40/strip','500mg OD','Orange-flavoured Vit C; immunity, scurvy'],
+['Bcomplex','B-Complex with Vit C','Various','Vitamins/Minerals','Tab','â‚¹20/strip','1 tab OD','General B complex; deficiency, stress'],
+['Becosules','B-Complex + Vit C','Pfizer','Vitamins/Minerals','Cap','â‚¹45/strip','1 cap OD after food','Originator B-complex; very popular in India'],
+['Neurobion','Vit B1+B6+B12','Merck','Vitamins/Minerals','Tab, Inj','â‚¹75/strip','1 tab TDS','Neuropathy, peripheral nerve deficiency'],
+['Becadexamin','Multivitamin + Multiminerals','Pfizer','Vitamins/Minerals','Cap','â‚¹95/strip','1 cap OD','Comprehensive multivitamin with minerals'],
+['Zincovit','Zinc + Vitamins + Minerals','Apex','Vitamins/Minerals','Tab, Syrup','â‚¹85/strip','1 tab OD','Immunity, growth, post-illness recovery'],
+['Feronia-XT','Ferrous Ascorbate 100mg + Folic Acid 1.5mg','Elder','Vitamins/Minerals','Tab','â‚¹85/strip','1 tab OD','Iron supplement; iron deficiency anaemia, pregnancy'],
+['Autrin','Ferrous Fumarate + Folic Acid + Vit C','Wyeth','Vitamins/Minerals','Tab','â‚¹95/strip','1 tab OD-BD','Iron + Folate; pregnancy, anaemia'],
+['Dexorange','Ferric Hydroxide + B12 + Folic Acid','Franco-Indian','Vitamins/Minerals','Syrup','â‚¹125/bottle','10ml TDS or as directed','Popular iron tonic syrup; anaemia in children/adults'],
+['Orofer S','Ferric Hydroxide Polymaltose 50mg/5ml','Emcure','Vitamins/Minerals','Syrup, Inj','â‚¹90/bottle','5-10ml BD; 100mg IV slowly','Ferric complex; better tolerated; safe in pregnancy'],
+['D3 Must','Cholecalciferol 60000IU','Sun Pharma','Vitamins/Minerals','Cap/Sachet','â‚¹38/cap','1 cap weekly x 8-12wks','Vit D3 weekly loading dose; very popular in India'],
+['Uprise D3','Cholecalciferol 60000IU','Pfizer','Vitamins/Minerals','Cap/Sachet','â‚¹48/cap','1 weekly','Brand D3 weekly sachet; widely prescribed'],
+['Thyronorm','Levothyroxine 25/50/75/100/125mcg','Abbott','Hormonal/Thyroid','Tab','â‚¹38/strip','As per TSH level; OD morning empty stomach','Most prescribed thyroid replacement brand in India'],
+['Eltroxin','Levothyroxine 50/100mcg','GSK','Hormonal/Thyroid','Tab','â‚¹45/strip','As per TSH; OD empty stomach','Originator levothyroxine'],
+// â”€â”€â”€ DERMATOLOGY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Betnovate','Betamethasone Valerate 0.1% Cream/Ointment','GSK','Dermatology','Cream, Ointment, Lotion','â‚¹65/tube','Apply BD thinly','Potent topical steroid; eczema, psoriasis; avoid face'],
+['Tenovate','Clobetasol Propionate 0.05% Cream','GSK','Dermatology','Cream, Ointment, Scalp lotion','â‚¹75/tube','Apply BD x max 2 weeks','Very potent topical steroid; use only short-term'],
+['Candid B','Clotrimazole 1% + Betamethasone 0.05%','Glenmark','Dermatology','Cream','â‚¹85/tube','Apply BD x 2-4wks','Antifungal+steroid; tinea infections with inflammation'],
+['Terbinaforce','Terbinafine 1% Cream','Mankind','Dermatology','Cream','â‚¹55/tube','Apply OD x 1-2wks','Topical antifungal; tinea pedis, cruris, corporis'],
+['Lamisil','Terbinafine 250mg Tab / 1% Cream','Novartis','Dermatology','Tab, Cream','â‚¹280/strip (tab)','250mg OD x 2-6wks (oral)','Oral for nail fungus; topical for skin fungus'],
+['Soframycin','Framycetin 1% Cream','Sanofi','Dermatology','Cream','â‚¹45/tube','Apply TDS-QID x 7d','Topical antibiotic; wounds, burns, infected skin'],
+['Fucidin','Fusidic Acid 2% Cream','Leo Pharma','Dermatology','Cream','â‚¹125/tube','Apply TDS x 7-14d','Topical antibiotic; excellent for SSTI, impetigo'],
+['Isotroin','Isotretinoin 10/20mg','Cipla','Dermatology','Cap','â‚¹250/strip','0.5-1mg/kg/day x 16-24wks','Severe acne; teratogenic; requires contraception; monthly CBC/LFT'],
+['Tretiva','Isotretinoin 20mg','Intas','Dermatology','Cap','â‚¹220/strip','0.5-1mg/kg/day','Budget isotretinoin; acne vulgaris'],
+['Clindac A','Clindamycin 1% Gel','Pfizer','Dermatology','Gel','â‚¹120/tube','Apply BD','Topical antibiotic for acne; mild to moderate'],
+['Deriva','Adapalene 0.1% + Clindamycin 1%','Galderma','Dermatology','Gel','â‚¹350/tube','Apply OD at night','Retinoid+antibiotic gel; acne with comedones+inflammation'],
+// â”€â”€â”€ OPHTHALMOLOGY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Cipla Eye Drops','Ciprofloxacin 0.3% Eye Drops','Cipla','Ophthalmology','Eye drops 5ml','â‚¹45/bottle','1-2 drops Q2-6h','Bacterial conjunctivitis, corneal ulcer'],
+['Moxiflox','Moxifloxacin 0.5% Eye Drops','Sun Pharma','Ophthalmology','Eye drops 5ml','â‚¹95/bottle','1 drop TDS-QID','4th gen fluoroquinolone eye drops; broad spectrum'],
+['Betaxol','Betaxolol 0.5% Eye Drops','Sun Pharma','Ophthalmology','Eye drops 5ml','â‚¹75/bottle','1 drop BD','Beta blocker eye drop; open angle glaucoma'],
+['Alphagan','Brimonidine 0.2% Eye Drops','Allergan','Ophthalmology','Eye drops','â‚¹285/bottle','1 drop BD-TDS','Alpha-2 agonist; glaucoma, IOP reduction'],
+['Timolol Eye Drops','Timolol 0.5% Eye Drops','Various','Ophthalmology','Eye drops 5ml','â‚¹35/bottle','1 drop BD','Non-selective beta blocker; glaucoma IOP control'],
+['Vigamox','Moxifloxacin 0.5% Eye Drops','Alcon','Ophthalmology','Eye drops 3ml','â‚¹145/bottle','1 drop TDS x 7d','Post-operative infection prevention, conjunctivitis'],
+// â”€â”€â”€ ENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Otrivin','Xylometazoline 0.1% Nasal Drops','Novartis','ENT','Nasal drops/spray','â‚¹85/bottle','2-3 drops BD-TDS x max 5d','Nasal decongestant; rhinitis, sinusitis; avoid >7 days (rebound)'],
+['Nasivion','Oxymetazoline 0.05% Nasal Spray','Merck','ENT','Nasal spray','â‚¹95/bottle','1-2 sprays BD x max 5d','Longer acting nasal decongestant; rhinitis'],
+['Flomist','Fluticasone Propionate 50mcg Nasal Spray','Cipla','ENT','Nasal spray','â‚¹245/device','2 sprays each nostril OD','Intranasal steroid; allergic rhinitis, nasal polyps'],
+['Nasonex','Mometasone 50mcg Nasal Spray','MSD','ENT','Nasal spray','â‚¹380/device','2 sprays each nostril OD','Premium intranasal steroid; allergic rhinitis, polyps'],
+['Otomize','Dexamethasone+Neomycin+Glacial Acetic Acid','GSK','ENT','Ear spray','â‚¹165/bottle','3 sprays TID into ear','Otitis externa; anti-infective + steroid combo'],
+// â”€â”€â”€ ORTHO / MUSCLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+['Myospaz','Chlorzoxazone 250mg + Ibuprofen 400mg','Cipla','Ortho/Muscle','Tab','â‚¹75/strip','1 tab TDS after food','Muscle relaxant + NSAID; back pain, muscle spasm'],
+['Dolowin','Aceclofenac 100mg + Paracetamol 325mg','Sun Pharma','Ortho/Muscle','Tab','â‚¹65/strip','1 tab BD-TDS after food','Very popular analgesic combo in ortho practice'],
+['Hifenac','Aceclofenac 100mg','Intas','Ortho/Muscle','Tab, SR Tab, Gel','â‚¹85/strip','100mg BD after food','NSAID; RA, OA, ankylosing spondylitis'],
+['Zerodol-SP','Aceclofenac 100mg + Serratiopeptidase 15mg + Paracetamol 325mg','Ipca','Ortho/Muscle','Tab','â‚¹95/strip','1 tab BD-TDS after food','Triple combination; post-op/injury pain and edema'],
+['Calcirol','Calcitriol 0.25mcg + Calcium 200mg','Cadila','Ortho/Muscle','Cap','â‚¹85/strip','1-2 cap OD-BD','Active Vit D3 + Calcium; renal osteodystrophy, osteoporosis'],
+['Evista','Raloxifene 60mg','Eli Lilly','Ortho/Muscle','Tab','â‚¹450/strip','60mg OD','SERM; post-menopausal osteoporosis'],
+['Strone D3','Strontium Ranelate + Vit D3','Various','Ortho/Muscle','Sachet','â‚¹280/strip','2g OD in water at night','Osteoporosis; stimulates bone formation'],
+// â”€â”€â”€ CUSTOM BRANDS (User Added) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Custom brands added by doctor are stored in localStorage
+];
+
+// â”€â”€â”€ BRAND DB ENGINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+let BRAND_CUSTOM = []; // Doctor's own brands from localStorage
+let brandCurrentTab = 'brand';
+
+function brandDBInit() {
+  // Load custom brands from localStorage
+  try {
+    BRAND_CUSTOM = JSON.parse(localStorage.getItem('ks_brand_custom') || '[]');
+  } catch(e) { BRAND_CUSTOM = []; }
+  brandUpdateStats();
+  brandSearch();
+}
+
+function brandGetAll() {
+  // Merge built-in + custom; custom marked with _custom: true
+  const all = BRAND_RAW.map(b => ({
+    brand: b[0], generic: b[1], company: b[2],
+    category: b[3], forms: b[4], price: b[5],
+    dose: b[6], notes: b[7], _custom: false
+  }));
+  const custom = BRAND_CUSTOM.map(b => ({...b, _custom: true}));
+  return [...all, ...custom];
+}
+
+function brandUpdateStats() {
+  const all = brandGetAll();
+  (document.getElementById('brand-total-count')||{}).innerHTML = all.length;
+  const generics = new Set(all.map(b => b.generic.split('+')[0].trim().toLowerCase().replace(/\s*\d.*$/,'')));
+  (document.getElementById('brand-generic-count')||{}).innerHTML = generics.size;
+  const companies = new Set(all.map(b => b.company));
+  (document.getElementById('brand-company-count')||{}).innerHTML = companies.size;
+  (document.getElementById('brand-custom-count')||{}).innerHTML = BRAND_CUSTOM.length;
+}
+
+function switchBrandTab(tab) {
+  brandCurrentTab = tab;
+  ['brand','generic','rx'].forEach(t => {
+    const btn = document.getElementById('brand-tab-' + t);
+    if (btn) {
+      btn.style.borderBottomColor = t === tab ? 'var(--primary)' : 'transparent';
+      btn.style.color = t === tab ? 'var(--primary)' : 'var(--text-light)';
+      btn.style.fontWeight = t === tab ? '700' : '400';
+    }
+  });
+  // Clear both search inputs on tab switch
+  (document.getElementById('brand-search-input')||{value:''}).value = '';
+  (document.getElementById('generic-search-input')||{value:''}).value = '';
+  brandSearch();
+}
+
+function brandSearch() {
+  const brandQ = ((document.getElementById('brand-search-input')||{value:''}).value||'').toLowerCase().trim();
+  const genericQ = ((document.getElementById('generic-search-input')||{value:''}).value||'').toLowerCase().trim();
+  const catFilter = ((document.getElementById('brand-cat-filter')||{value:''}).value||'');
+  const all = brandGetAll();
+
+  let results = all.filter(b => {
+    const brandMatch = !brandQ || b.brand.toLowerCase().includes(brandQ);
+    const genericMatch = !genericQ || b.generic.toLowerCase().includes(genericQ);
+    const catMatch = !catFilter || b.category === catFilter;
+    return brandMatch && genericMatch && catMatch;
+  });
+
+  // In generic tab: group by generic
+  if (brandCurrentTab === 'generic' && genericQ) {
+    renderGenericGrouped(results, genericQ);
+    return;
+  }
+
+  // Limit display
+  const limited = results.slice(0, 60);
+  renderBrandCards(limited, results.length);
+}
+
+function showBrandDetail(brandName) {
+  var all = brandGetAll();
+  var b = all.find(function(x){ return x.brand === brandName; });
+  if (!b) return;
+  var genericBase = b.generic.split('+')[0].trim().toLowerCase().replace(/\s*\d.*$/,'');
+  var similar = all.filter(function(x){ return x.brand !== brandName && x.generic.toLowerCase().includes(genericBase); }).slice(0,8);
+  var panel = document.getElementById('brand-detail-panel');
+  if (!panel) return;
+  panel.style.display = 'block';
+  panel.innerHTML = '';
+  var wrap = document.createElement('div');
+  wrap.style.cssText = 'background:var(--card-bg);border:2px solid var(--primary);border-radius:12px;padding:20px;margin-bottom:16px;';
+  var topRow = document.createElement('div');
+  topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;';
+  topRow.innerHTML = '<div><div style="font-size:20px;font-weight:800;color:var(--text-dark);">'+b.brand+'</div><div style="font-size:13px;color:var(--primary);">'+b.category+'</div></div>';
+  var closeBtn = document.createElement('button');
+  closeBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;';
+  closeBtn.textContent = 'âœ• Close';
+  closeBtn.onclick = function(){ panel.style.display='none'; };
+  topRow.appendChild(closeBtn);
+  wrap.appendChild(topRow);
+  var grid = document.createElement('div');
+  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;line-height:1.8;';
+  grid.innerHTML = '<div><strong>ðŸ’Š Generic:</strong><br><span style="color:var(--primary);">'+b.generic+'</span></div>'+
+    '<div><strong>ðŸ­ Company:</strong><br>'+b.company+'</div>'+
+    '<div><strong>ðŸ’‰ Forms:</strong><br>'+b.forms+'</div>'+
+    '<div><strong>ðŸ’µ Price:</strong><br><span style="color:#16a34a;font-weight:700;">'+b.price+'</span></div>'+
+    '<div><strong>ðŸ“‹ Dose:</strong><br>'+b.dose+'</div>'+
+    '<div><strong>ðŸ“ Notes:</strong><br><span style="color:var(--text-light);">'+(b.notes||'â€”')+'</span></div>';
+  wrap.appendChild(grid);
+  var actionRow = document.createElement('div');
+  actionRow.style.cssText = 'margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;';
+  var rxBtn = document.createElement('button');
+  rxBtn.style.cssText = 'background:var(--primary);color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
+  rxBtn.textContent = 'ðŸ“ Add to Prescription';
+  rxBtn.onclick = function(){ addBrandToRx(b.brand, b.generic, b.dose); };
+  actionRow.appendChild(rxBtn);
+  var editBtn2 = document.createElement('button');
+  editBtn2.style.cssText = 'background:none;border:1px solid var(--primary);color:var(--primary);padding:9px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
+  editBtn2.textContent = 'âœï¸ Edit';
+  editBtn2.onclick = function(){ openBrandModal(b.brand, b._custom); };
+  actionRow.appendChild(editBtn2);
+  if (b._custom) {
+    var delBtn2 = document.createElement('button');
+    delBtn2.style.cssText = 'background:none;border:1px solid #ef4444;color:#ef4444;padding:9px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
+    delBtn2.textContent = 'ðŸ—‘ï¸ Delete';
+    delBtn2.onclick = function(){ deleteBrand(b.brand); };
+    actionRow.appendChild(delBtn2);
+  }
+  wrap.appendChild(actionRow);
+  if (similar.length > 0) {
+    var simDiv = document.createElement('div');
+    simDiv.style.cssText = 'margin-top:16px;padding-top:14px;border-top:1px solid var(--border);';
+    var simTitle = document.createElement('div');
+    simTitle.style.cssText = 'font-size:13px;font-weight:700;margin-bottom:8px;';
+    simTitle.textContent = 'ðŸ”„ Other Brands with Same/Similar Generic:';
+    simDiv.appendChild(simTitle);
+    var simRow = document.createElement('div');
+    simRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
+    similar.forEach(function(s) {
+      var chip = document.createElement('span');
+      chip.style.cssText = 'background:#e0f2fe;color:var(--primary);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;';
+      chip.innerHTML = s.brand + ' <span style="font-weight:400;font-size:10px;">('+s.company+')</span>';
+      chip.onclick = function(){ showBrandDetail(s.brand); };
+      simRow.appendChild(chip);
+    });
+    simDiv.appendChild(simRow);
+    wrap.appendChild(simDiv);
+  }
+  panel.appendChild(wrap);
+  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+
+function genericSearch() {
+  switchBrandTab('generic');
+  brandSearch();
+}
+
+function renderBrandCards(results, total) {
+  const container = document.getElementById('brand-list');
+  if (!container) return;
+
+  container.innerHTML = '';
+
+  if (results.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px;color:var(--text-light);';
+    empty.innerHTML = '<div style="font-size:40px;margin-bottom:10px;">ðŸ’Š</div><p>No brands found. Try a different search or add your own brand.</p>';
+    const addBtn = document.createElement('button');
+    addBtn.style.cssText = 'margin-top:12px;background:var(--primary);color:white;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;';
+    addBtn.textContent = 'âž• Add Brand';
+    addBtn.onclick = function() { openBrandModal(); };
+    empty.appendChild(addBtn);
+    container.appendChild(empty);
+    return;
+  }
+
+  if (total > results.length) {
+    const info = document.createElement('div');
+    info.style.cssText = 'grid-column:1/-1;font-size:12px;color:var(--text-light);padding:0 0 8px;';
+    info.textContent = 'Showing ' + results.length + ' of ' + total + ' brands. Refine search for more.';
+    container.appendChild(info);
+  }
+
+  results.forEach(function(b) {
+    const card = document.createElement('div');
+    card.className = 'drug-card';
+    card.style.cursor = 'pointer';
+    card.addEventListener('click', function() { showBrandDetail(b.brand); });
+
+    // Header row
+    const headerRow = document.createElement('div');
+    headerRow.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;';
+
+    const nameBlock = document.createElement('div');
+    const nameSpan = document.createElement('span');
+    nameSpan.style.cssText = 'font-weight:700;font-size:14px;color:var(--text-dark);';
+    nameSpan.textContent = b.brand;
+    nameBlock.appendChild(nameSpan);
+
+    if (b._custom) {
+      const badge = document.createElement('span');
+      badge.style.cssText = 'background:#d1fae5;color:#065f46;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:6px;';
+      badge.textContent = 'âœï¸ Custom';
+      nameBlock.appendChild(badge);
+    }
+
+    const catBadge = document.createElement('div');
+    catBadge.style.cssText = 'font-size:10px;background:#e0f2fe;color:var(--primary);padding:2px 6px;border-radius:6px;display:inline-block;margin-left:6px;';
+    catBadge.textContent = b.category;
+    nameBlock.appendChild(catBadge);
+
+    // Action buttons
+    const btnGroup = document.createElement('div');
+    btnGroup.style.cssText = 'display:flex;gap:6px;';
+
+    const editBtn = document.createElement('button');
+    editBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;';
+    editBtn.textContent = 'âœï¸';
+    editBtn.title = 'Edit';
+    editBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      openBrandModal(b.brand, b._custom);
+    });
+    btnGroup.appendChild(editBtn);
+
+    if (b._custom) {
+      const delBtn = document.createElement('button');
+      delBtn.style.cssText = 'background:none;border:1px solid #ef4444;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;color:#ef4444;';
+      delBtn.textContent = 'ðŸ—‘ï¸';
+      delBtn.title = 'Delete';
+      delBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        deleteBrand(b.brand);
+      });
+      btnGroup.appendChild(delBtn);
+    }
+
+    headerRow.appendChild(nameBlock);
+    headerRow.appendChild(btnGroup);
+    card.appendChild(headerRow);
+
+    // Details
+    const details = document.createElement('div');
+    details.style.cssText = 'font-size:12px;color:var(--text-light);line-height:1.7;';
+    details.innerHTML =
+      '<div><strong style="color:var(--text-dark);">ðŸ’Š Generic:</strong> ' + b.generic + '</div>' +
+      '<div><strong style="color:var(--text-dark);">ðŸ­ Company:</strong> ' + b.company + '</div>' +
+      '<div><strong style="color:var(--text-dark);">ðŸ’‰ Forms:</strong> ' + b.forms + '</div>' +
+      '<div style="display:flex;gap:12px;margin-top:4px;">' +
+        '<span style="color:#16a34a;font-weight:600;">' + b.price + '</span>' +
+        '<span>ðŸ“‹ ' + b.dose + '</span>' +
+      '</div>';
+    card.appendChild(details);
+
+    // Prescribe button
+    const rxBtn = document.createElement('button');
+    rxBtn.style.cssText = 'margin-top:8px;width:100%;background:var(--primary);color:white;border:none;padding:6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;';
+    rxBtn.textContent = 'ðŸ“ Prescribe this Brand';
+    rxBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      addBrandToRx(b.brand, b.generic, b.dose);
+    });
+    card.appendChild(rxBtn);
+
+    container.appendChild(card);
+  });
+}
+
+
+function renderGenericGrouped(results, genericQ) {
+  const container = document.getElementById('brand-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (results.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px;color:var(--text-light);';
+    empty.innerHTML = '<div style="font-size:40px;">ðŸ’Š</div><p>No brands found for this generic.</p>';
+    container.appendChild(empty);
+    return;
+  }
+
+  // Group by generic composition
+  const groups = {};
+  results.forEach(function(b) {
+    const key = b.generic;
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(b);
+  });
+
+  const wrapper = document.createElement('div');
+  wrapper.style.cssText = 'grid-column:1/-1;';
+
+  const summary = document.createElement('div');
+  summary.style.cssText = 'font-size:13px;color:var(--text-light);margin-bottom:12px;';
+  summary.innerHTML = 'Found <strong>' + results.length + '</strong> brands across <strong>' + Object.keys(groups).length + '</strong> generic composition(s)';
+  wrapper.appendChild(summary);
+
+  Object.entries(groups).forEach(function(entry) {
+    const generic = entry[0];
+    const brands  = entry[1];
+
+    const groupDiv = document.createElement('div');
+    groupDiv.style.cssText = 'margin-bottom:20px;';
+
+    const groupTitle = document.createElement('div');
+    groupTitle.style.cssText = 'font-size:14px;font-weight:700;color:var(--text-dark);border-left:3px solid var(--primary);padding-left:10px;margin-bottom:10px;';
+    groupTitle.innerHTML = 'ðŸ’Š ' + generic + ' <span style="font-size:12px;font-weight:400;color:var(--text-light);">(' + brands.length + ' brand' + (brands.length > 1 ? 's' : '') + ')</span>';
+    groupDiv.appendChild(groupTitle);
+
+    const grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;';
+
+    brands.forEach(function(b) {
+      const card = document.createElement('div');
+      card.style.cssText = 'background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px;';
+
+      const nameDiv = document.createElement('div');
+      nameDiv.style.cssText = 'font-weight:700;font-size:13px;color:var(--primary);';
+      nameDiv.textContent = b.brand + (b._custom ? ' âœï¸' : '');
+      card.appendChild(nameDiv);
+
+      const compDiv = document.createElement('div');
+      compDiv.style.cssText = 'font-size:11px;color:var(--text-light);margin:2px 0;';
+      compDiv.textContent = b.company;
+      card.appendChild(compDiv);
+
+      const formsDiv = document.createElement('div');
+      formsDiv.style.cssText = 'font-size:11px;';
+      formsDiv.textContent = 'ðŸ’‰ ' + b.forms;
+      card.appendChild(formsDiv);
+
+      const priceDiv = document.createElement('div');
+      priceDiv.style.cssText = 'font-size:11px;color:#16a34a;font-weight:600;';
+      priceDiv.textContent = b.price;
+      card.appendChild(priceDiv);
+
+      const rxBtn = document.createElement('button');
+      rxBtn.style.cssText = 'margin-top:6px;width:100%;background:var(--primary);color:white;border:none;padding:4px;border-radius:5px;font-size:10px;cursor:pointer;';
+      rxBtn.textContent = 'ðŸ“ Prescribe';
+      rxBtn.addEventListener('click', (function(brand, gen, dose) {
+        return function() { addBrandToRx(brand, gen, dose); };
+      })(b.brand, b.generic, b.dose));
+      card.appendChild(rxBtn);
+
+      grid.appendChild(card);
+    });
+
+    groupDiv.appendChild(grid);
+    wrapper.appendChild(groupDiv);
+  });
+
+  container.appendChild(wrapper);
+}
+
+
+
+function brandGetAll() {
+  var all = BRAND_RAW.map(function(b) {
+    return { brand:b[0], generic:b[1], company:b[2], category:b[3], forms:b[4], price:b[5], dose:b[6], notes:b[7], _custom:false };
+  });
+  var custom = BRAND_CUSTOM.map(function(b) { return Object.assign({}, b, {_custom:true}); });
+  return all.concat(custom);
+}
+
+function brandUpdateStats() {
+  var all = brandGetAll();
+  (document.getElementById('brand-total-count')||{}).innerHTML = all.length;
+  var generics = new Set(all.map(function(b){ return b.generic.split('+')[0].trim().toLowerCase().replace(/\s*\d.*$/,''); }));
+  (document.getElementById('brand-generic-count')||{}).innerHTML = generics.size;
+  var companies = new Set(all.map(function(b){ return b.company; }));
+  (document.getElementById('brand-company-count')||{}).innerHTML = companies.size;
+  (document.getElementById('brand-custom-count')||{}).innerHTML = BRAND_CUSTOM.length;
+}
+
+function switchBrandTab(tab) {
+  brandCurrentTab = tab;
+  ['brand','generic','rx'].forEach(function(t) {
+    var btn = document.getElementById('brand-tab-' + t);
+    if (btn) {
+      btn.style.borderBottomColor = t === tab ? 'var(--primary)' : 'transparent';
+      btn.style.color = t === tab ? 'var(--primary)' : 'var(--text-light)';
+      btn.style.fontWeight = t === tab ? '700' : '400';
+    }
+  });
+  (document.getElementById('brand-search-input')||{value:''}).value = '';
+  (document.getElementById('generic-search-input')||{value:''}).value = '';
+  brandSearch();
+}
+
+function brandSearch() {
+  var brandQ = ((document.getElementById('brand-search-input')||{value:''}).value||'').toLowerCase().trim();
+  var genericQ = ((document.getElementById('generic-search-input')||{value:''}).value||'').toLowerCase().trim();
+  var catFilter = ((document.getElementById('brand-cat-filter')||{value:''}).value||'');
+  var all = brandGetAll();
+  var results = all.filter(function(b) {
+    var bm = !brandQ || b.brand.toLowerCase().includes(brandQ);
+    var gm = !genericQ || b.generic.toLowerCase().includes(genericQ);
+    var cm = !catFilter || b.category === catFilter;
+    return bm && gm && cm;
+  });
+  if (brandCurrentTab === 'generic' && genericQ) { renderGenericGrouped(results, genericQ); return; }
+  renderBrandCards(results.slice(0,60), results.length);
+}
+
+function genericSearch() { switchBrandTab('generic'); brandSearch(); }
+
+function openBrandModal(brandName, isCustom) {
+  ['bm-brand','bm-generic','bm-company','bm-forms','bm-price','bm-dose','bm-notes'].forEach(function(id){
+    (document.getElementById(id)||{}).value = '';
+  });
+  document.getElementById('brand-edit-id').value = '';
+  if (brandName) {
+    var all = brandGetAll();
+    var b = all.find(function(x){ return x.brand === brandName; });
+    if (b) {
+      (document.getElementById('bm-brand')||{}).value = b.brand;
+      (document.getElementById('bm-generic')||{}).value = b.generic;
+      (document.getElementById('bm-company')||{}).value = b.company;
+      (document.getElementById('bm-category')||{}).value = b.category;
+      (document.getElementById('bm-forms')||{}).value = b.forms;
+      (document.getElementById('bm-price')||{}).value = b.price;
+      (document.getElementById('bm-dose')||{}).value = b.dose;
+      (document.getElementById('bm-notes')||{}).value = b.notes || '';
+      document.getElementById('brand-edit-id').value = brandName;
+      (document.getElementById('brand-modal-title')||{}).textContent = 'âœï¸ Edit Brand: ' + brandName;
+    }
+  } else {
+    (document.getElementById('brand-modal-title')||{}).textContent = 'âž• Add New Brand';
+  }
+  var modal = document.getElementById('brand-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeBrandModal() {
+  var modal = document.getElementById('brand-modal');
+  if (modal) modal.style.display = 'none';
+}
+
+function saveBrand() {
+  var brand   = (document.getElementById('bm-brand')||{value:''}).value.trim();
+  var generic = (document.getElementById('bm-generic')||{value:''}).value.trim();
+  var company = (document.getElementById('bm-company')||{value:''}).value.trim() || 'Unknown';
+  var category= (document.getElementById('bm-category')||{value:''}).value || 'Other';
+  var forms   = (document.getElementById('bm-forms')||{value:''}).value.trim() || 'â€”';
+  var price   = (document.getElementById('bm-price')||{value:''}).value.trim() || 'â€”';
+  var dose    = (document.getElementById('bm-dose')||{value:''}).value.trim() || 'â€”';
+  var notes   = (document.getElementById('bm-notes')||{value:''}).value.trim() || '';
+  var editId  = (document.getElementById('brand-edit-id')||{value:''}).value;
+  if (!brand || !generic) { alert('Brand Name and Generic Content are required!'); return; }
+  if (editId) { BRAND_CUSTOM = BRAND_CUSTOM.filter(function(b){ return b.brand !== editId; }); }
+  BRAND_CUSTOM.push({ brand:brand, generic:generic, company:company, category:category, forms:forms, price:price, dose:dose, notes:notes, _custom:true });
+  try { localStorage.setItem('ks_brand_custom', JSON.stringify(BRAND_CUSTOM)); } catch(e) { alert('Storage error: ' + e.message); return; }
+  closeBrandModal();
+  brandUpdateStats();
+  brandSearch();
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:99999;';
+  toast.textContent = 'âœ… Brand "' + brand + '" saved!';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 3000);
+}
+
+function deleteBrand(brandName) {
+  if (!confirm('Delete "' + brandName + '" from your custom brands?')) return;
+  BRAND_CUSTOM = BRAND_CUSTOM.filter(function(b){ return b.brand !== brandName; });
+  try { localStorage.setItem('ks_brand_custom', JSON.stringify(BRAND_CUSTOM)); } catch(e) {}
+  (document.getElementById('brand-detail-panel')||{}).style.display = 'none';
+  brandUpdateStats();
+  brandSearch();
+}
+
+function addBrandToRx(brandName, genericContent, dose) {
+  if (typeof saasSwitchSection === 'function') {
+    saasSwitchSection('create-rx', 'ðŸ“ New Prescription', 'Create & Print/WhatsApp prescriptions', null);
+  }
+  setTimeout(function() {
+    if (typeof addMedRow === 'function') {
+      addMedRow(brandName, dose);
+    } else {
+      var drugInputs = document.querySelectorAll('[id^="drug_name_"]');
+      if (drugInputs.length) {
+        drugInputs[drugInputs.length-1].value = brandName;
+        var doseInputs = document.querySelectorAll('[id^="dose_"]');
+        if (doseInputs.length) doseInputs[doseInputs.length-1].value = dose;
+      }
+    }
+  }, 400);
+  var toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--primary);color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:99999;';
+  toast.textContent = 'ðŸ“ Adding "' + brandName + '" to prescription...';
+  document.body.appendChild(toast);
+  setTimeout(function(){ toast.remove(); }, 2500);
+}
+
+function brandDBInit() {
+  try { BRAND_CUSTOM = JSON.parse(localStorage.getItem('ks_brand_custom') || '[]'); } catch(e) { BRAND_CUSTOM = []; }
+  brandUpdateStats();
+  brandSearch();
+}
+
+document.addEventListener('click', function(e) {
+  var modal = document.getElementById('brand-modal');
+  if (modal && e.target === modal) closeBrandModal();
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  brandDBInit();
+});
+
+</script>
 </div>
 
 <!-- â•â•â•â•â•â•â•â•â•â•â• DOCTOR PROFILE â•â•â•â•â•â•â•â•â•â•â• -->
@@ -3521,830 +4347,6 @@ function toggleDarkMode() {
 
 <!-- â•â•â•â•â•â•â•â•â•â•â• FOLLOW-UP SMART SYSTEM â•â•â•â•â•â•â•â•â•â•â• -->
 
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     ðŸ·ï¸ BRAND MEDICINE DATABASE â€” K Spider Doctor AI
-     Search brands by generic content, find generic by brand,
-     Add/Edit/Delete brands â€” Doctor's personal brand reference
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<div id="brand-db" class="section">
-
-  <!-- Header -->
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-    <div>
-      <div style="font-size:18px;font-weight:700;color:var(--text-dark);">ðŸ·ï¸ Brand Medicine Database</div>
-      <div style="font-size:13px;color:var(--text-light);">Search brands by generic content Â· Find all brands of a generic Â· Add your own brands</div>
-    </div>
-    <button onclick="openBrandModal()" style="background:var(--primary);color:white;border:none;padding:9px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">âž• Add New Brand</button>
-  </div>
-
-  <!-- Search Row -->
-  <div style="display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-    <div>
-      <input type="text" id="brand-search-input" placeholder="ðŸ” Search brand name (e.g., Crocin, Pan, Augmentin...)" oninput="brandSearch()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card-bg);color:var(--text-dark);">
-    </div>
-    <div>
-      <input type="text" id="generic-search-input" placeholder="ðŸ’Š Search by generic/content (e.g., Paracetamol, Amoxicillin...)" oninput="genericSearch()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card-bg);color:var(--text-dark);">
-    </div>
-    <div>
-      <select id="brand-cat-filter" onchange="brandSearch()" style="padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;background:var(--card-bg);color:var(--text-dark);height:42px;">
-        <option value="">All Categories</option>
-        <option>Analgesic/Antipyretic</option>
-        <option>Antibiotic</option>
-        <option>Antifungal</option>
-        <option>Antiviral</option>
-        <option>Antidiabetic</option>
-        <option>Antihypertensive</option>
-        <option>Cardiac</option>
-        <option>Gastro/GI</option>
-        <option>Respiratory</option>
-        <option>Neurological/Psychiatric</option>
-        <option>Vitamins/Minerals</option>
-        <option>Hormonal/Thyroid</option>
-        <option>Dermatology</option>
-        <option>Ophthalmology</option>
-        <option>ENT</option>
-        <option>Ortho/Muscle</option>
-        <option>Oncology</option>
-        <option>Immunology</option>
-        <option>Other</option>
-      </select>
-    </div>
-  </div>
-
-  <!-- Tab Switcher -->
-  <div style="display:flex;gap:8px;margin-bottom:14px;border-bottom:2px solid var(--border);padding-bottom:0;">
-    <button id="brand-tab-brand" onclick="switchBrandTab('brand')" style="padding:8px 16px;border:none;border-bottom:2.5px solid var(--primary);background:none;color:var(--primary);font-weight:700;font-size:13px;cursor:pointer;margin-bottom:-2px;">ðŸ·ï¸ Brand â†’ Generic</button>
-    <button id="brand-tab-generic" onclick="switchBrandTab('generic')" style="padding:8px 16px;border:none;border-bottom:2.5px solid transparent;background:none;color:var(--text-light);font-size:13px;cursor:pointer;margin-bottom:-2px;">ðŸ’Š Generic â†’ Brands</button>
-    <button id="brand-tab-rx" onclick="switchBrandTab('rx')" style="padding:8px 16px;border:none;border-bottom:2.5px solid transparent;background:none;color:var(--text-light);font-size:13px;cursor:pointer;margin-bottom:-2px;">ðŸ“‹ Prescribe Brand</button>
-  </div>
-
-  <!-- Stats Row -->
-  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
-      ðŸ’Š <strong id="brand-total-count">0</strong> Brands
-    </div>
-    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
-      ðŸ§ª <strong id="brand-generic-count">0</strong> Generics
-    </div>
-    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
-      ðŸ­ <strong id="brand-company-count">0</strong> Companies
-    </div>
-    <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-size:12px;">
-      âœï¸ <strong id="brand-custom-count">0</strong> Your custom brands
-    </div>
-  </div>
-
-  <!-- Results Area -->
-  <div id="brand-results-area">
-    <div id="brand-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px;"></div>
-  </div>
-
-  <!-- Brand Detail Panel (shown on click) -->
-  <div id="brand-detail-panel" style="display:none;margin-top:16px;"></div>
-
-  <!-- Add/Edit Brand Modal -->
-  <div id="brand-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:20px;">
-    <div style="background:var(--card-bg);border-radius:16px;padding:28px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-        <div style="font-size:16px;font-weight:700;color:var(--text-dark);" id="brand-modal-title">âž• Add New Brand</div>
-        <button onclick="closeBrandModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text-light);">âœ•</button>
-      </div>
-      <div style="display:grid;gap:12px;">
-        <input type="hidden" id="brand-edit-id">
-        <div class="field"><label>Brand Name *</label><input type="text" id="bm-brand" placeholder="e.g., Crocin, Pan D, Augmentin"></div>
-        <div class="field"><label>Generic Content / Composition *</label><input type="text" id="bm-generic" placeholder="e.g., Paracetamol 500mg, Pantoprazole 40mg + Domperidone 10mg"></div>
-        <div class="field"><label>Manufacturer / Company</label><input type="text" id="bm-company" placeholder="e.g., GSK, Cipla, Sun Pharma, Abbott"></div>
-        <div class="field"><label>Category</label>
-          <select id="bm-category">
-            <option>Analgesic/Antipyretic</option><option>Antibiotic</option><option>Antifungal</option>
-            <option>Antiviral</option><option>Antidiabetic</option><option>Antihypertensive</option>
-            <option>Cardiac</option><option>Gastro/GI</option><option>Respiratory</option>
-            <option>Neurological/Psychiatric</option><option>Vitamins/Minerals</option>
-            <option>Hormonal/Thyroid</option><option>Dermatology</option><option>Ophthalmology</option>
-            <option>ENT</option><option>Ortho/Muscle</option><option>Oncology</option>
-            <option>Immunology</option><option>Other</option>
-          </select>
-        </div>
-        <div class="field"><label>Available Forms (Tablet, Syrup, Injection...)</label><input type="text" id="bm-forms" placeholder="e.g., Tab, Syrup 60ml, Inj 500mg/vial"></div>
-        <div class="field"><label>Approx. Price (â‚¹)</label><input type="text" id="bm-price" placeholder="e.g., â‚¹22 / strip of 10"></div>
-        <div class="field"><label>Usual Dose / Strength</label><input type="text" id="bm-dose" placeholder="e.g., 500mg TDS x 5 days"></div>
-        <div class="field"><label>Special Notes / Remarks</label><textarea id="bm-notes" rows="2" placeholder="e.g., Preferred brand for elderly, avoid in renal failure, generic preferred..."></textarea></div>
-        <div style="display:flex;gap:10px;margin-top:4px;">
-          <button onclick="saveBrand()" style="flex:1;background:var(--primary);color:white;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer;">ðŸ’¾ Save Brand</button>
-          <button onclick="closeBrandModal()" style="background:var(--card-bg);border:1px solid var(--border);color:var(--text-dark);padding:11px 18px;border-radius:8px;font-size:13px;cursor:pointer;">Cancel</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-     BRAND DB JAVASCRIPT ENGINE
-     â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• -->
-<script>
-// â”€â”€â”€ BUILT-IN BRAND DATABASE (500+ Popular Indian Brands) â”€â”€â”€â”€â”€
-// Format: [BrandName, GenericContent, Company, Category, Forms, Price, Dose, Notes]
-const BRAND_RAW = [
-// â”€â”€â”€ ANALGESICS / ANTIPYRETICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Crocin','Paracetamol 500mg','GSK','Analgesic/Antipyretic','Tab, Syrup 60ml/120ml','â‚¹22/strip','500mg-1g TDS','Most trusted OTC brand; available as Crocin 650 (650mg) for adults'],
-['Crocin 650','Paracetamol 650mg','GSK','Analgesic/Antipyretic','Tab','â‚¹28/strip','650mg TDS','For adults; stronger formulation'],
-['Dolo 650','Paracetamol 650mg','Micro Labs','Analgesic/Antipyretic','Tab','â‚¹30/strip','650mg TDS','Very popular; widely prescribed in COVID era'],
-['Calpol','Paracetamol 500mg','GSK','Analgesic/Antipyretic','Tab, Syrup','â‚¹25/strip','500mg TDS','Paediatric syrup widely used'],
-['Metacin','Paracetamol 500mg','Ipca','Analgesic/Antipyretic','Tab','â‚¹18/strip','500mg TDS','Budget option'],
-['Volini','Diclofenac + Methyl Salicylate (Gel)','Sun Pharma','Analgesic/Antipyretic','Gel 30g/50g','â‚¹85/tube','Apply TDS locally','Most popular topical analgesic in India'],
-['Voveran','Diclofenac Sodium 50mg','Novartis','Analgesic/Antipyretic','Tab, SR Tab, Inj, Gel','â‚¹35/strip','50mg BD-TDS after food','Classic diclofenac brand; SR tab for chronic use'],
-['Combiflam','Ibuprofen 400mg + Paracetamol 325mg','Sanofi','Analgesic/Antipyretic','Tab, Syrup','â‚¹40/strip','1 tab TDS after food','Very popular combination analgesic'],
-['Brufen','Ibuprofen 400mg','Abbott','Analgesic/Antipyretic','Tab, Syrup','â‚¹38/strip','400mg TDS after food','Standard ibuprofen brand'],
-['Ibugesic Plus','Ibuprofen 100mg + Paracetamol 162.5mg/5ml','Cipla','Analgesic/Antipyretic','Syrup 60ml','â‚¹55/bottle','5-10ml TDS (wt based)','Paediatric fever syrup'],
-['Ultracet','Tramadol 37.5mg + Paracetamol 325mg','Janssen','Analgesic/Antipyretic','Tab','â‚¹75/strip','1 tab Q6-8h','For moderate-severe pain; NDPS regulated'],
-['Nucoxia','Etoricoxib 60/90/120mg','Sun Pharma','Analgesic/Antipyretic','Tab','â‚¹95/strip','60-120mg OD','COX-2 inhibitor; less GI side effects'],
-['Nimulid','Nimesulide 100mg','Panacea Biotech','Analgesic/Antipyretic','Tab, Gel, Suspension','â‚¹30/strip','100mg BD after food','Avoid in children under 12; hepatotoxic risk'],
-['Voveran SR','Diclofenac SR 100mg','Novartis','Analgesic/Antipyretic','Tab','â‚¹55/strip','100mg OD-BD','Modified release; for chronic pain management'],
-// â”€â”€â”€ ANTIBIOTICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Augmentin','Amoxicillin 500mg + Clavulanate 125mg','GSK','Antibiotic','Tab 625mg, Syrup, Inj','â‚¹165/strip','1 tab TDS x 7 days','Gold standard for URTI, LRTI, UTI, dental infections'],
-['Augmentin 625','Amoxicillin 500mg + Clavulanate 125mg','GSK','Antibiotic','Tab','â‚¹165/strip','625mg TDS x 5-7d','Most prescribed antibiotic in India'],
-['Mox','Amoxicillin 500mg','Cipla','Antibiotic','Cap, Syrup','â‚¹55/strip','500mg TDS x 5d','Budget amoxicillin'],
-['Roxid','Roxithromycin 150mg','Alkem','Antibiotic','Tab','â‚¹110/strip','150mg BD or 300mg OD','Macrolide for URTI, atypical pneumonia'],
-['Azithral','Azithromycin 500mg','Alkem','Antibiotic','Tab 250/500mg, Syrup','â‚¹75/strip','500mg OD x 3-5d','Z-pack equivalent; CAP, pharyngitis, typhoid'],
-['Zithromax','Azithromycin 500mg','Pfizer','Antibiotic','Tab, Syrup','â‚¹180/strip','500mg OD x 3-5d','Originator brand azithromycin'],
-['Ciprobid','Ciprofloxacin 500mg','Cadila','Antibiotic','Tab, Inj','â‚¹60/strip','500mg BD x 7d','UTI, travellers diarrhoea, enteric fever'],
-['Ciplox','Ciprofloxacin 500mg','Cipla','Antibiotic','Tab, Eye/Ear drops, Inj','â‚¹68/strip','500mg BD x 7d','Very popular; also as ophthalmic drops'],
-['Taxim-O','Cefixime 200mg','Alkem','Antibiotic','Tab, Syrup','â‚¹95/strip','200mg BD x 5-7d','3rd gen cephalosporin for URTI, UTI, typhoid'],
-['Zifi','Cefixime 200mg','FDC','Antibiotic','Tab 200/400mg, Syrup','â‚¹90/strip','200mg BD x 5-7d','Popular cefixime brand'],
-['Monocef','Ceftriaxone 1g','Aristo','Antibiotic','Inj','â‚¹80/vial','1-2g OD IV/IM','Most used 3rd gen ceph injection in India'],
-['Keflex','Cefalexin 500mg','GSK','Antibiotic','Cap, Syrup','â‚¹85/strip','500mg QID x 7d','1st gen cephalosporin; SSTI, mild infections'],
-['Pantocid HP','Pantoprazole+Amoxicillin+Clarithromycin','Sun Pharma','Antibiotic','Kit','â‚¹320/kit','BD x 14 days','H. pylori eradication triple therapy kit'],
-['Oflox','Ofloxacin 200mg','Cipla','Antibiotic','Tab, Drops','â‚¹55/strip','200-400mg BD x 5-7d','Fluoroquinolone; GI, UTI, ophthalmic use'],
-['Metrogyl','Metronidazole 400mg','J.B.Chemicals','Antibiotic','Tab, Inj, Gel','â‚¹40/strip','400mg TDS x 5-7d','Anaerobic infections, GI amoebiasis, BV'],
-['Tiniba','Tinidazole 500mg','Alkem','Antibiotic','Tab','â‚¹48/strip','2g stat or 500mg BD','Longer half-life than metronidazole; amoebiasis, GI'],
-['Doxycycline','Doxycycline 100mg','Cipla','Antibiotic','Cap','â‚¹28/strip','100mg BD x 7-14d','Atypical pneumonia, acne, malaria prophylaxis'],
-['Clavam','Amoxicillin + Clavulanate','Alkem','Antibiotic','Tab 625mg, Syrup','â‚¹145/strip','1 tab TDS x 7d','Budget co-amoxiclav alternative to Augmentin'],
-['Novamox','Amoxicillin 500mg','Cipla','Antibiotic','Cap, Syrup','â‚¹50/strip','500mg TDS x 5-7d','Budget amoxicillin'],
-// â”€â”€â”€ GASTRO / GI â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Pan','Pantoprazole 40mg','Alkem','Gastro/GI','Tab','â‚¹55/strip','40mg OD before breakfast','Most prescribed PPI in India'],
-['Pantop','Pantoprazole 40mg','Aristo','Gastro/GI','Tab, Inj','â‚¹45/strip','40mg OD-BD','Very economical pantoprazole'],
-['Omez','Omeprazole 20mg','Dr. Reddys','Gastro/GI','Cap, Inj','â‚¹50/strip','20mg OD-BD before food','Originator omeprazole in India'],
-['Rablet','Rabeprazole 20mg','Lupin','Gastro/GI','Tab','â‚¹65/strip','20mg OD before food','Fast onset PPI; for GERD'],
-['Razo','Rabeprazole 20mg','Sun Pharma','Gastro/GI','Tab','â‚¹70/strip','20mg OD before food','Popular rabeprazole brand'],
-['Nexium','Esomeprazole 40mg','AstraZeneca','Gastro/GI','Tab','â‚¹160/strip','40mg OD','Originator; for erosive esophagitis'],
-['Nexpro','Esomeprazole 40mg','Torrent','Gastro/GI','Tab','â‚¹90/strip','40mg OD','Budget esomeprazole'],
-['Pan D','Pantoprazole 40mg + Domperidone 10mg','Alkem','Gastro/GI','Tab','â‚¹75/strip','1 tab OD-BD before food','Very popular combo for GERD+nausea'],
-['Neksium','Pantoprazole + Levosulpiride','Sun Pharma','Gastro/GI','Tab','â‚¹95/strip','1 tab OD before food','For GERD with dysmotility'],
-['Rantac','Ranitidine 150mg','J.B.Chemicals','Gastro/GI','Tab, Syrup, Inj','â‚¹25/strip','150mg BD','H2 blocker; withdrawn in many countries due to NDMA'],
-['Sucralfate','Sucralfate 1g','Various','Gastro/GI','Tab, Suspension','â‚¹60/strip','1g QID 1hr before meals','Mucosal protectant; gastric ulcer'],
-['Norflox-TZ','Norfloxacin 400mg + Tinidazole 600mg','Cipla','Gastro/GI','Tab','â‚¹72/strip','1 tab BD x 5d after food','Very popular for gastroenteritis, diarrhoea in India'],
-['Eldoper','Loperamide 2mg','Alkem','Gastro/GI','Tab','â‚¹35/strip','2-4mg stat then PRN','Acute diarrhoea; avoid in bloody diarrhoea'],
-['Domstal','Domperidone 10mg','Torrent','Gastro/GI','Tab, Syrup','â‚¹35/strip','10mg TDS before food','Antiemetic, prokinetic'],
-['Emeset','Ondansetron 4mg','Cipla','Gastro/GI','Tab, Inj, Syrup','â‚¹65/strip','4-8mg TDS','5-HT3 antagonist antiemetic; post-op, chemo nausea'],
-['Perinorm','Metoclopramide 10mg','Ipca','Gastro/GI','Tab, Inj, Syrup','â‚¹22/strip','10mg TDS before food','Classic prokinetic; avoid long-term'],
-['Duphalac','Lactulose Syrup','Abbott','Gastro/GI','Syrup 100ml/200ml','â‚¹145/bottle','15-30ml BD','Chronic constipation, hepatic encephalopathy'],
-['Cremaffin','Liquid Paraffin + Milk of Magnesia','Abbott','Gastro/GI','Syrup','â‚¹85/bottle','5-15ml at bedtime','Laxative; safe in pregnancy'],
-['Digene','Aluminium Hydroxide+Magnesium Hydroxide+Simethicone','Abbott','Gastro/GI','Tab, Gel','â‚¹80/pack','2 tabs or 10ml after food + bedtime','Popular antacid for hyperacidity'],
-['Gelusil','Aluminium Hydroxide + Magnesium Trisilicate','Pfizer','Gastro/GI','Tab, Suspension','â‚¹65/pack','2 tabs after meals','Classic antacid; coats gastric mucosa'],
-['Mezavant','Mesalazine 1.2g','Shire','Gastro/GI','Tab','â‚¹890/strip','1.2-2.4g OD','Ulcerative colitis maintenance'],
-// â”€â”€â”€ ANTIDIABETICS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Glycomet','Metformin 500mg','USV','Antidiabetic','Tab 500/850/1000mg','â‚¹22/strip','500mg BD-TDS with food','Most prescribed antidiabetic in India; first-line T2DM'],
-['Glucophage','Metformin 500mg','Merck','Antidiabetic','Tab, SR Tab','â‚¹85/strip','500mg BD-TDS','Originator metformin; SR version for GI tolerance'],
-['Amaryl','Glimepiride 1/2/3/4mg','Sanofi','Antidiabetic','Tab','â‚¹65/strip','1-4mg OD with breakfast','Sulfonylurea; risk of hypoglycemia; morning dose'],
-['Glyree','Glimepiride 2mg','Sun Pharma','Antidiabetic','Tab','â‚¹38/strip','1-4mg OD with breakfast','Budget glimepiride'],
-['Januvia','Sitagliptin 100mg','MSD','Antidiabetic','Tab','â‚¹650/strip','100mg OD','DPP-4 inhibitor; safe in elderly; no hypoglycemia'],
-['Galvus Met','Vildagliptin 50mg + Metformin 500/1000mg','Novartis','Antidiabetic','Tab','â‚¹280/strip','1 tab BD','DPP-4+Metformin combo; convenient combination'],
-['Forxiga','Dapagliflozin 10mg','AstraZeneca','Antidiabetic','Tab','â‚¹1200/strip','10mg OD','SGLT-2 inhibitor; also for CKD and heart failure'],
-['Jardiance','Empagliflozin 10/25mg','Boehringer','Antidiabetic','Tab','â‚¹1350/strip','10-25mg OD','SGLT-2; proven CV and renal benefit'],
-['Victoza','Liraglutide 6mg/ml','Novo Nordisk','Antidiabetic','Inj pen','â‚¹4200/pen','0.6-1.8mg SC OD','GLP-1 agonist; weight loss + CV benefit'],
-['Ozempic','Semaglutide 1mg/ml','Novo Nordisk','Antidiabetic','Inj pen','â‚¹7500/pen','0.25-1mg SC weekly','GLP-1 agonist; weekly injection'],
-['Pioz','Pioglitazone 15/30/45mg','USV','Antidiabetic','Tab','â‚¹65/strip','15-45mg OD','Insulin sensitizer; edema risk; avoid in bladder cancer'],
-['Insugen','Human Insulin Regular','Biocon','Antidiabetic','Inj vial/cartridge','â‚¹120/vial','As per regimen','Biosimilar regular insulin; subcutaneous'],
-['Basalog','Insulin Glargine 100U/ml','Biocon','Antidiabetic','Inj','â‚¹650/vial','Once daily at same time','Long-acting basal insulin biosimilar'],
-['Novorapid','Insulin Aspart 100U/ml','Novo Nordisk','Antidiabetic','Inj pen','â‚¹1100/pen','With meals; rapid onset','Rapid-acting meal-time insulin'],
-// â”€â”€â”€ ANTIHYPERTENSIVES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Amlip','Amlodipine 5mg','Cipla','Antihypertensive','Tab 2.5/5/10mg','â‚¹35/strip','5-10mg OD','CCB; very popular first-line antihypertensive'],
-['Stamlo','Amlodipine 5mg','Dr. Reddys','Antihypertensive','Tab 5/10mg','â‚¹45/strip','5-10mg OD','Popular amlodipine brand'],
-['Norvasc','Amlodipine 5mg','Pfizer','Antihypertensive','Tab','â‚¹120/strip','5-10mg OD','Originator brand; more expensive'],
-['Telma','Telmisartan 40mg','Glenmark','Antihypertensive','Tab 20/40/80mg','â‚¹68/strip','20-80mg OD','ARB; also for CKD with proteinuria'],
-['Telsartan','Telmisartan 40mg','Torrent','Antihypertensive','Tab 40/80mg','â‚¹72/strip','40-80mg OD','Budget telmisartan'],
-['Losartan','Losartan 50mg','Various','Antihypertensive','Tab 25/50/100mg','â‚¹30/strip','50-100mg OD','First ARB; also lowers uric acid'],
-['Losar','Losartan 50mg','Cipla','Antihypertensive','Tab','â‚¹35/strip','50-100mg OD','Popular losartan brand'],
-['Cardace','Ramipril 2.5/5/10mg','Sanofi','Antihypertensive','Cap','â‚¹65/strip','2.5-10mg OD','ACEi; post-MI, HF, diabetic nephropathy'],
-['Ace Proxyvon','Ramipril 5mg','Various','Antihypertensive','Cap','â‚¹50/strip','5-10mg OD','Budget ramipril'],
-['Atenolol','Atenolol 50mg','Cipla/Various','Antihypertensive','Tab 25/50/100mg','â‚¹20/strip','25-100mg OD','Beta-blocker; HTN, angina, post-MI'],
-['Metolar','Metoprolol 25/50mg','Cipla','Antihypertensive','Tab','â‚¹35/strip','25-200mg BD','Cardioselective beta-blocker; HF, HTN, arrhythmia'],
-['Betaloc','Metoprolol 50mg','AstraZeneca','Antihypertensive','Tab, SR Tab','â‚¹98/strip','25-200mg BD','Originator metoprolol; Betaloc ZOK (SR) for once daily'],
-['Nicardia','Nifedipine SR 20mg','Sun Pharma','Antihypertensive','Tab SR','â‚¹55/strip','20-40mg BD','CCB SR; Raynauds, hypertensive urgency'],
-['Hydrochlorothiazide','Hydrochlorothiazide 25mg','Various','Antihypertensive','Tab','â‚¹12/strip','12.5-25mg OD morning','Thiazide diuretic; first-line; watch electrolytes'],
-['Lasilactone','Furosemide 20mg + Spironolactone 50mg','Sanofi','Antihypertensive','Tab','â‚¹65/strip','1-2 tab OD morning','Loop+potassium-sparing combo; edema, HF, cirrhosis'],
-['Frusemide','Furosemide 40mg','Cipla','Antihypertensive','Tab, Inj','â‚¹18/strip','20-80mg OD-BD','Loop diuretic; HF, CKD, edema, hypertensive urgency'],
-// â”€â”€â”€ CARDIAC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Ecosprin','Aspirin 75mg','USV','Cardiac','Tab 75/150mg','â‚¹18/strip','75-150mg OD after food','Antiplatelet; post-MI, ACS, CAD prevention'],
-['Cardace','Ramipril 5mg + Aspirin 75mg','Sanofi','Cardiac','Tab','â‚¹85/strip','OD','Combination for post-MI/high CV risk'],
-['Lipitor','Atorvastatin 10mg','Pfizer','Cardiac','Tab 10/20/40/80mg','â‚¹155/strip','10-80mg OD at night','Originator statin; CV risk reduction'],
-['Atorva','Atorvastatin 10mg','Cadila','Cardiac','Tab 10/20/40/80mg','â‚¹65/strip','10-80mg OD at night','Most popular generic atorvastatin brand'],
-['Storvas','Atorvastatin 20mg','Sun Pharma','Cardiac','Tab 10/20/40/80mg','â‚¹85/strip','10-80mg OD at night','Popular; widely prescribed'],
-['Crestor','Rosuvastatin 10mg','AstraZeneca','Cardiac','Tab 5/10/20/40mg','â‚¹210/strip','10-40mg OD','Originator rosuvastatin; potent LDL lowering'],
-['Rozucor','Rosuvastatin 10mg','Cipla','Cardiac','Tab','â‚¹120/strip','10-40mg OD','Generic rosuvastatin'],
-['Sorvas','Rosuvastatin 10mg','Sun Pharma','Cardiac','Tab','â‚¹95/strip','10-40mg OD','Budget rosuvastatin'],
-['Clopilet','Clopidogrel 75mg','Sun Pharma','Cardiac','Tab','â‚¹65/strip','75mg OD after food','Antiplatelet; post-MI, ACS, stent; DAPT with aspirin'],
-['Plavix','Clopidogrel 75mg','Sanofi','Cardiac','Tab','â‚¹180/strip','75mg OD','Originator clopidogrel'],
-['Pantodac','Pantoprazole 40mg + Clopidogrel 75mg','Sun Pharma','Cardiac','Tab','â‚¹110/strip','1 tab OD','GI protection for clopidogrel users'],
-['Concor','Bisoprolol 5mg','Merck','Cardiac','Tab 2.5/5/10mg','â‚¹120/strip','2.5-10mg OD','Beta-blocker; HF, HTN, stable angina'],
-['Corvitol','Bisoprolol 5mg','Metro','Cardiac','Tab','â‚¹68/strip','2.5-10mg OD','Budget bisoprolol'],
-['Digoxin','Digoxin 0.25mg','Various','Cardiac','Tab, Elixir','â‚¹18/strip','0.125-0.25mg OD','Cardiac glycoside; AF rate control, HF; narrow TI'],
-['Cordarone','Amiodarone 100mg','Sanofi','Cardiac','Tab, Inj','â‚¹175/strip','200-400mg OD (maint.)','Antiarrhythmic; AF, VT; many side effects; monitor TFT/LFT'],
-['Ranexa','Ranolazine 500mg','Menarini','Cardiac','Tab SR','â‚¹850/strip','500-1000mg BD','Antianginal; for chronic stable angina'],
-// â”€â”€â”€ RESPIRATORY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Asthalin','Salbutamol 2mg (Tab) / 100mcg (Inhaler)','Cipla','Respiratory','Tab, Syrup, MDI, Nebuliser','â‚¹75 MDI','200mcg Q4-6h PRN (inhaler)','Most used bronchodilator in India; SABA; rescue inhaler'],
-['Budecort','Budesonide 0.5mg/2ml','Cipla','Respiratory','Nebuliser, Inhaler','â‚¹350/box','0.5-1mg BD nebulisation','ICS; COPD, asthma maintenance; most used in children'],
-['Seroflo','Salmeterol 25mcg + Fluticasone 125/250mcg','Cipla','Respiratory','MDI','â‚¹250/MDI','2 puffs BD','LABA+ICS; asthma/COPD combination preventer'],
-['Foracort','Formoterol 6mcg + Budesonide 200mcg','Cipla','Respiratory','Rotacap, MDI','â‚¹380/box','1-2 puffs BD','LABA+ICS; popular COPD/asthma combinator'],
-['Tiova','Tiotropium 18mcg','Cipla','Respiratory','Rotacap','â‚¹450/box','1 capsule inhaled OD','LAMA; COPD maintenance; once daily convenient'],
-['Deriphyllin','Etofylline 77mg + Theophylline 23mg','Franco-Indian','Respiratory','Tab, Inj','â‚¹28/strip','1 tab TDS','Xanthine combination; for COPD/asthma; old but widely used'],
-['Montair','Montelukast 10mg','Cipla','Respiratory','Tab, Chewable, Granules','â‚¹95/strip','10mg OD at night','Leukotriene antagonist; asthma, allergic rhinitis'],
-['Singulair','Montelukast 10mg','MSD','Respiratory','Tab','â‚¹285/strip','10mg OD at night','Originator montelukast'],
-['Allegra','Fexofenadine 120/180mg','Sanofi','Respiratory','Tab','â‚¹165/strip','120mg BD or 180mg OD','Non-sedating antihistamine; urticaria, allergic rhinitis'],
-['Cetirizine','Cetirizine 10mg','Various','Respiratory','Tab, Syrup','â‚¹18/strip','5-10mg OD at night','Antihistamine; mild sedation; urticaria, rhinitis'],
-['Atarax','Hydroxyzine 25mg','UCB','Respiratory','Tab, Syrup','â‚¹55/strip','25-50mg OD at night','Sedating antihistamine; anxiety, pruritus, sedation'],
-['Levocet','Levocetirizine 5mg','UCB','Respiratory','Tab, Syrup','â‚¹35/strip','5mg OD at night','Active enantiomer; less sedating'],
-['Mucinac','Acetylcysteine 600mg','Cipla','Respiratory','Tab effervescent','â‚¹90/strip','600mg OD (preventive)','Mucolytic; COPD, chronic bronchitis; also hepatoprotective'],
-['Alex','Chlorpheniramine 2mg + Dextromethorphan 10mg','Cipla','Respiratory','Syrup','â‚¹55/bottle','5-10ml TDS','Popular cough syrup; for dry cough with cold'],
-// â”€â”€â”€ NEUROLOGICAL / PSYCHIATRIC â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Clobazam','Clobazam 10mg','Various','Neurological/Psychiatric','Tab','â‚¹45/strip','5-30mg/day (div doses)','Benzodiazepine; adjunct epilepsy, anxiety'],
-['Frisium','Clobazam 10mg','Sanofi','Neurological/Psychiatric','Tab','â‚¹85/strip','5-30mg/day','Originator clobazam'],
-['Tegretol','Carbamazepine 200mg','Novartis','Neurological/Psychiatric','Tab CR, Tab','â‚¹85/strip','200-400mg BD-TDS','AED; trigeminal neuralgia; monitor CBC, LFT'],
-['Valparin','Valproate 200/500mg','Sanofi','Neurological/Psychiatric','Tab, CR Tab, Syrup, Inj','â‚¹95/strip','200-500mg BD-TDS','AED; bipolar mood disorder; teratogenic'],
-['Encorate','Sodium Valproate 200mg','Sun Pharma','Neurological/Psychiatric','Tab CR','â‚¹75/strip','200-500mg BD-TDS','Popular valproate brand; chrono for once BD'],
-['Syndopa','Levodopa+Carbidopa 100mg+25mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹95/strip','1 tab TDS','Parkinson disease; titrate slowly'],
-['Pregabalin','Pregabalin 75/150mg','Various','Neurological/Psychiatric','Cap','â‚¹65/strip','75-300mg BD','Neuropathic pain, epilepsy, anxiety; controlled substance'],
-['Lyrica','Pregabalin 75mg','Pfizer','Neurological/Psychiatric','Cap','â‚¹285/strip','75-300mg BD','Originator pregabalin'],
-['Neurontin','Gabapentin 300/400mg','Pfizer','Neurological/Psychiatric','Cap','â‚¹320/strip','300-900mg TDS','Neuropathic pain, epilepsy'],
-['Nexito','Escitalopram 10mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹85/strip','10-20mg OD morning','SSRI; depression, GAD, OCD, social phobia'],
-['Cipralex','Escitalopram 10mg','Lundbeck','Neurological/Psychiatric','Tab','â‚¹320/strip','10-20mg OD','Originator escitalopram'],
-['Serlin','Sertraline 50mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹68/strip','50-200mg OD','SSRI; depression, PTSD, OCD, panic disorder'],
-['Zoloft','Sertraline 50mg','Pfizer','Neurological/Psychiatric','Tab','â‚¹280/strip','50-200mg OD','Originator sertraline'],
-['Lonazep','Clonazepam 0.25/0.5/1/2mg','Sun Pharma','Neurological/Psychiatric','Tab','â‚¹38/strip','0.25-2mg BD-TDS','Benzodiazepine; epilepsy, panic, anxiety; controlled substance'],
-['Zeptol','Carbamazepine 200mg','Sun Pharma','Neurological/Psychiatric','Tab CR','â‚¹72/strip','200-400mg BD','Popular carbamazepine brand'],
-['Librium','Chlordiazepoxide 10mg','Abbott','Neurological/Psychiatric','Cap','â‚¹65/strip','5-25mg TDS-QID','Benzodiazepine; alcohol withdrawal, anxiety'],
-['Ativan','Lorazepam 1mg','Pfizer','Neurological/Psychiatric','Tab, Inj','â‚¹95/strip','0.5-4mg/day','Rapid anxiolytic; status epilepticus (IV), pre-op sedation'],
-// â”€â”€â”€ VITAMINS / MINERALS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Shelcal','Calcium Carbonate 500mg + Vit D3 250IU','Torrent','Vitamins/Minerals','Tab, Syrup, Chewable','â‚¹75/strip','1-2 tab BD after food','Most prescribed calcium supplement in India'],
-['Calcitas','Calcium Carbonate 1250mg + Vit D3 250IU','Lupin','Vitamins/Minerals','Tab','â‚¹65/strip','1 tab BD','Very popular calcium+D3 combo'],
-['Limcee','Vitamin C 500mg (Chewable)','Abbott','Vitamins/Minerals','Tab chewable','â‚¹40/strip','500mg OD','Orange-flavoured Vit C; immunity, scurvy'],
-['Bcomplex','B-Complex with Vit C','Various','Vitamins/Minerals','Tab','â‚¹20/strip','1 tab OD','General B complex; deficiency, stress'],
-['Becosules','B-Complex + Vit C','Pfizer','Vitamins/Minerals','Cap','â‚¹45/strip','1 cap OD after food','Originator B-complex; very popular in India'],
-['Neurobion','Vit B1+B6+B12','Merck','Vitamins/Minerals','Tab, Inj','â‚¹75/strip','1 tab TDS','Neuropathy, peripheral nerve deficiency'],
-['Becadexamin','Multivitamin + Multiminerals','Pfizer','Vitamins/Minerals','Cap','â‚¹95/strip','1 cap OD','Comprehensive multivitamin with minerals'],
-['Zincovit','Zinc + Vitamins + Minerals','Apex','Vitamins/Minerals','Tab, Syrup','â‚¹85/strip','1 tab OD','Immunity, growth, post-illness recovery'],
-['Feronia-XT','Ferrous Ascorbate 100mg + Folic Acid 1.5mg','Elder','Vitamins/Minerals','Tab','â‚¹85/strip','1 tab OD','Iron supplement; iron deficiency anaemia, pregnancy'],
-['Autrin','Ferrous Fumarate + Folic Acid + Vit C','Wyeth','Vitamins/Minerals','Tab','â‚¹95/strip','1 tab OD-BD','Iron + Folate; pregnancy, anaemia'],
-['Dexorange','Ferric Hydroxide + B12 + Folic Acid','Franco-Indian','Vitamins/Minerals','Syrup','â‚¹125/bottle','10ml TDS or as directed','Popular iron tonic syrup; anaemia in children/adults'],
-['Orofer S','Ferric Hydroxide Polymaltose 50mg/5ml','Emcure','Vitamins/Minerals','Syrup, Inj','â‚¹90/bottle','5-10ml BD; 100mg IV slowly','Ferric complex; better tolerated; safe in pregnancy'],
-['D3 Must','Cholecalciferol 60000IU','Sun Pharma','Vitamins/Minerals','Cap/Sachet','â‚¹38/cap','1 cap weekly x 8-12wks','Vit D3 weekly loading dose; very popular in India'],
-['Uprise D3','Cholecalciferol 60000IU','Pfizer','Vitamins/Minerals','Cap/Sachet','â‚¹48/cap','1 weekly','Brand D3 weekly sachet; widely prescribed'],
-['Thyronorm','Levothyroxine 25/50/75/100/125mcg','Abbott','Hormonal/Thyroid','Tab','â‚¹38/strip','As per TSH level; OD morning empty stomach','Most prescribed thyroid replacement brand in India'],
-['Eltroxin','Levothyroxine 50/100mcg','GSK','Hormonal/Thyroid','Tab','â‚¹45/strip','As per TSH; OD empty stomach','Originator levothyroxine'],
-// â”€â”€â”€ DERMATOLOGY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Betnovate','Betamethasone Valerate 0.1% Cream/Ointment','GSK','Dermatology','Cream, Ointment, Lotion','â‚¹65/tube','Apply BD thinly','Potent topical steroid; eczema, psoriasis; avoid face'],
-['Tenovate','Clobetasol Propionate 0.05% Cream','GSK','Dermatology','Cream, Ointment, Scalp lotion','â‚¹75/tube','Apply BD x max 2 weeks','Very potent topical steroid; use only short-term'],
-['Candid B','Clotrimazole 1% + Betamethasone 0.05%','Glenmark','Dermatology','Cream','â‚¹85/tube','Apply BD x 2-4wks','Antifungal+steroid; tinea infections with inflammation'],
-['Terbinaforce','Terbinafine 1% Cream','Mankind','Dermatology','Cream','â‚¹55/tube','Apply OD x 1-2wks','Topical antifungal; tinea pedis, cruris, corporis'],
-['Lamisil','Terbinafine 250mg Tab / 1% Cream','Novartis','Dermatology','Tab, Cream','â‚¹280/strip (tab)','250mg OD x 2-6wks (oral)','Oral for nail fungus; topical for skin fungus'],
-['Soframycin','Framycetin 1% Cream','Sanofi','Dermatology','Cream','â‚¹45/tube','Apply TDS-QID x 7d','Topical antibiotic; wounds, burns, infected skin'],
-['Fucidin','Fusidic Acid 2% Cream','Leo Pharma','Dermatology','Cream','â‚¹125/tube','Apply TDS x 7-14d','Topical antibiotic; excellent for SSTI, impetigo'],
-['Isotroin','Isotretinoin 10/20mg','Cipla','Dermatology','Cap','â‚¹250/strip','0.5-1mg/kg/day x 16-24wks','Severe acne; teratogenic; requires contraception; monthly CBC/LFT'],
-['Tretiva','Isotretinoin 20mg','Intas','Dermatology','Cap','â‚¹220/strip','0.5-1mg/kg/day','Budget isotretinoin; acne vulgaris'],
-['Clindac A','Clindamycin 1% Gel','Pfizer','Dermatology','Gel','â‚¹120/tube','Apply BD','Topical antibiotic for acne; mild to moderate'],
-['Deriva','Adapalene 0.1% + Clindamycin 1%','Galderma','Dermatology','Gel','â‚¹350/tube','Apply OD at night','Retinoid+antibiotic gel; acne with comedones+inflammation'],
-// â”€â”€â”€ OPHTHALMOLOGY â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Cipla Eye Drops','Ciprofloxacin 0.3% Eye Drops','Cipla','Ophthalmology','Eye drops 5ml','â‚¹45/bottle','1-2 drops Q2-6h','Bacterial conjunctivitis, corneal ulcer'],
-['Moxiflox','Moxifloxacin 0.5% Eye Drops','Sun Pharma','Ophthalmology','Eye drops 5ml','â‚¹95/bottle','1 drop TDS-QID','4th gen fluoroquinolone eye drops; broad spectrum'],
-['Betaxol','Betaxolol 0.5% Eye Drops','Sun Pharma','Ophthalmology','Eye drops 5ml','â‚¹75/bottle','1 drop BD','Beta blocker eye drop; open angle glaucoma'],
-['Alphagan','Brimonidine 0.2% Eye Drops','Allergan','Ophthalmology','Eye drops','â‚¹285/bottle','1 drop BD-TDS','Alpha-2 agonist; glaucoma, IOP reduction'],
-['Timolol Eye Drops','Timolol 0.5% Eye Drops','Various','Ophthalmology','Eye drops 5ml','â‚¹35/bottle','1 drop BD','Non-selective beta blocker; glaucoma IOP control'],
-['Vigamox','Moxifloxacin 0.5% Eye Drops','Alcon','Ophthalmology','Eye drops 3ml','â‚¹145/bottle','1 drop TDS x 7d','Post-operative infection prevention, conjunctivitis'],
-// â”€â”€â”€ ENT â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Otrivin','Xylometazoline 0.1% Nasal Drops','Novartis','ENT','Nasal drops/spray','â‚¹85/bottle','2-3 drops BD-TDS x max 5d','Nasal decongestant; rhinitis, sinusitis; avoid >7 days (rebound)'],
-['Nasivion','Oxymetazoline 0.05% Nasal Spray','Merck','ENT','Nasal spray','â‚¹95/bottle','1-2 sprays BD x max 5d','Longer acting nasal decongestant; rhinitis'],
-['Flomist','Fluticasone Propionate 50mcg Nasal Spray','Cipla','ENT','Nasal spray','â‚¹245/device','2 sprays each nostril OD','Intranasal steroid; allergic rhinitis, nasal polyps'],
-['Nasonex','Mometasone 50mcg Nasal Spray','MSD','ENT','Nasal spray','â‚¹380/device','2 sprays each nostril OD','Premium intranasal steroid; allergic rhinitis, polyps'],
-['Otomize','Dexamethasone+Neomycin+Glacial Acetic Acid','GSK','ENT','Ear spray','â‚¹165/bottle','3 sprays TID into ear','Otitis externa; anti-infective + steroid combo'],
-// â”€â”€â”€ ORTHO / MUSCLE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-['Myospaz','Chlorzoxazone 250mg + Ibuprofen 400mg','Cipla','Ortho/Muscle','Tab','â‚¹75/strip','1 tab TDS after food','Muscle relaxant + NSAID; back pain, muscle spasm'],
-['Dolowin','Aceclofenac 100mg + Paracetamol 325mg','Sun Pharma','Ortho/Muscle','Tab','â‚¹65/strip','1 tab BD-TDS after food','Very popular analgesic combo in ortho practice'],
-['Hifenac','Aceclofenac 100mg','Intas','Ortho/Muscle','Tab, SR Tab, Gel','â‚¹85/strip','100mg BD after food','NSAID; RA, OA, ankylosing spondylitis'],
-['Zerodol-SP','Aceclofenac 100mg + Serratiopeptidase 15mg + Paracetamol 325mg','Ipca','Ortho/Muscle','Tab','â‚¹95/strip','1 tab BD-TDS after food','Triple combination; post-op/injury pain and edema'],
-['Calcirol','Calcitriol 0.25mcg + Calcium 200mg','Cadila','Ortho/Muscle','Cap','â‚¹85/strip','1-2 cap OD-BD','Active Vit D3 + Calcium; renal osteodystrophy, osteoporosis'],
-['Evista','Raloxifene 60mg','Eli Lilly','Ortho/Muscle','Tab','â‚¹450/strip','60mg OD','SERM; post-menopausal osteoporosis'],
-['Strone D3','Strontium Ranelate + Vit D3','Various','Ortho/Muscle','Sachet','â‚¹280/strip','2g OD in water at night','Osteoporosis; stimulates bone formation'],
-// â”€â”€â”€ CUSTOM BRANDS (User Added) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-// Custom brands added by doctor are stored in localStorage
-];
-
-// â”€â”€â”€ BRAND DB ENGINE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-let BRAND_CUSTOM = []; // Doctor's own brands from localStorage
-let brandCurrentTab = 'brand';
-
-function brandDBInit() {
-  // Load custom brands from localStorage
-  try {
-    BRAND_CUSTOM = JSON.parse(localStorage.getItem('ks_brand_custom') || '[]');
-  } catch(e) { BRAND_CUSTOM = []; }
-  brandUpdateStats();
-  brandSearch();
-}
-
-function brandGetAll() {
-  // Merge built-in + custom; custom marked with _custom: true
-  const all = BRAND_RAW.map(b => ({
-    brand: b[0], generic: b[1], company: b[2],
-    category: b[3], forms: b[4], price: b[5],
-    dose: b[6], notes: b[7], _custom: false
-  }));
-  const custom = BRAND_CUSTOM.map(b => ({...b, _custom: true}));
-  return [...all, ...custom];
-}
-
-function brandUpdateStats() {
-  const all = brandGetAll();
-  (document.getElementById('brand-total-count')||{}).innerHTML = all.length;
-  const generics = new Set(all.map(b => b.generic.split('+')[0].trim().toLowerCase().replace(/\s*\d.*$/,'')));
-  (document.getElementById('brand-generic-count')||{}).innerHTML = generics.size;
-  const companies = new Set(all.map(b => b.company));
-  (document.getElementById('brand-company-count')||{}).innerHTML = companies.size;
-  (document.getElementById('brand-custom-count')||{}).innerHTML = BRAND_CUSTOM.length;
-}
-
-function switchBrandTab(tab) {
-  brandCurrentTab = tab;
-  ['brand','generic','rx'].forEach(t => {
-    const btn = document.getElementById('brand-tab-' + t);
-    if (btn) {
-      btn.style.borderBottomColor = t === tab ? 'var(--primary)' : 'transparent';
-      btn.style.color = t === tab ? 'var(--primary)' : 'var(--text-light)';
-      btn.style.fontWeight = t === tab ? '700' : '400';
-    }
-  });
-  // Clear both search inputs on tab switch
-  (document.getElementById('brand-search-input')||{value:''}).value = '';
-  (document.getElementById('generic-search-input')||{value:''}).value = '';
-  brandSearch();
-}
-
-function brandSearch() {
-  const brandQ = ((document.getElementById('brand-search-input')||{value:''}).value||'').toLowerCase().trim();
-  const genericQ = ((document.getElementById('generic-search-input')||{value:''}).value||'').toLowerCase().trim();
-  const catFilter = ((document.getElementById('brand-cat-filter')||{value:''}).value||'');
-  const all = brandGetAll();
-
-  let results = all.filter(b => {
-    const brandMatch = !brandQ || b.brand.toLowerCase().includes(brandQ);
-    const genericMatch = !genericQ || b.generic.toLowerCase().includes(genericQ);
-    const catMatch = !catFilter || b.category === catFilter;
-    return brandMatch && genericMatch && catMatch;
-  });
-
-  // In generic tab: group by generic
-  if (brandCurrentTab === 'generic' && genericQ) {
-    renderGenericGrouped(results, genericQ);
-    return;
-  }
-
-  // Limit display
-  const limited = results.slice(0, 60);
-  renderBrandCards(limited, results.length);
-}
-
-function showBrandDetail(brandName) {
-  var all = brandGetAll();
-  var b = all.find(function(x){ return x.brand === brandName; });
-  if (!b) return;
-  var genericBase = b.generic.split('+')[0].trim().toLowerCase().replace(/\s*\d.*$/,'');
-  var similar = all.filter(function(x){ return x.brand !== brandName && x.generic.toLowerCase().includes(genericBase); }).slice(0,8);
-  var panel = document.getElementById('brand-detail-panel');
-  if (!panel) return;
-  panel.style.display = 'block';
-  panel.innerHTML = '';
-  var wrap = document.createElement('div');
-  wrap.style.cssText = 'background:var(--card-bg);border:2px solid var(--primary);border-radius:12px;padding:20px;margin-bottom:16px;';
-  var topRow = document.createElement('div');
-  topRow.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px;';
-  topRow.innerHTML = '<div><div style="font-size:20px;font-weight:800;color:var(--text-dark);">'+b.brand+'</div><div style="font-size:13px;color:var(--primary);">'+b.category+'</div></div>';
-  var closeBtn = document.createElement('button');
-  closeBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:12px;';
-  closeBtn.textContent = 'âœ• Close';
-  closeBtn.onclick = function(){ panel.style.display='none'; };
-  topRow.appendChild(closeBtn);
-  wrap.appendChild(topRow);
-  var grid = document.createElement('div');
-  grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:13px;line-height:1.8;';
-  grid.innerHTML = '<div><strong>ðŸ’Š Generic:</strong><br><span style="color:var(--primary);">'+b.generic+'</span></div>'+
-    '<div><strong>ðŸ­ Company:</strong><br>'+b.company+'</div>'+
-    '<div><strong>ðŸ’‰ Forms:</strong><br>'+b.forms+'</div>'+
-    '<div><strong>ðŸ’µ Price:</strong><br><span style="color:#16a34a;font-weight:700;">'+b.price+'</span></div>'+
-    '<div><strong>ðŸ“‹ Dose:</strong><br>'+b.dose+'</div>'+
-    '<div><strong>ðŸ“ Notes:</strong><br><span style="color:var(--text-light);">'+(b.notes||'â€”')+'</span></div>';
-  wrap.appendChild(grid);
-  var actionRow = document.createElement('div');
-  actionRow.style.cssText = 'margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;';
-  var rxBtn = document.createElement('button');
-  rxBtn.style.cssText = 'background:var(--primary);color:white;border:none;padding:9px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
-  rxBtn.textContent = 'ðŸ“ Add to Prescription';
-  rxBtn.onclick = function(){ addBrandToRx(b.brand, b.generic, b.dose); };
-  actionRow.appendChild(rxBtn);
-  var editBtn2 = document.createElement('button');
-  editBtn2.style.cssText = 'background:none;border:1px solid var(--primary);color:var(--primary);padding:9px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
-  editBtn2.textContent = 'âœï¸ Edit';
-  editBtn2.onclick = function(){ openBrandModal(b.brand, b._custom); };
-  actionRow.appendChild(editBtn2);
-  if (b._custom) {
-    var delBtn2 = document.createElement('button');
-    delBtn2.style.cssText = 'background:none;border:1px solid #ef4444;color:#ef4444;padding:9px 18px;border-radius:8px;font-weight:600;cursor:pointer;font-size:13px;';
-    delBtn2.textContent = 'ðŸ—‘ï¸ Delete';
-    delBtn2.onclick = function(){ deleteBrand(b.brand); };
-    actionRow.appendChild(delBtn2);
-  }
-  wrap.appendChild(actionRow);
-  if (similar.length > 0) {
-    var simDiv = document.createElement('div');
-    simDiv.style.cssText = 'margin-top:16px;padding-top:14px;border-top:1px solid var(--border);';
-    var simTitle = document.createElement('div');
-    simTitle.style.cssText = 'font-size:13px;font-weight:700;margin-bottom:8px;';
-    simTitle.textContent = 'ðŸ”„ Other Brands with Same/Similar Generic:';
-    simDiv.appendChild(simTitle);
-    var simRow = document.createElement('div');
-    simRow.style.cssText = 'display:flex;flex-wrap:wrap;gap:8px;';
-    similar.forEach(function(s) {
-      var chip = document.createElement('span');
-      chip.style.cssText = 'background:#e0f2fe;color:var(--primary);padding:4px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600;';
-      chip.innerHTML = s.brand + ' <span style="font-weight:400;font-size:10px;">('+s.company+')</span>';
-      chip.onclick = function(){ showBrandDetail(s.brand); };
-      simRow.appendChild(chip);
-    });
-    simDiv.appendChild(simRow);
-    wrap.appendChild(simDiv);
-  }
-  panel.appendChild(wrap);
-  panel.scrollIntoView({behavior:'smooth',block:'nearest'});
-}
-
-
-function genericSearch() {
-  switchBrandTab('generic');
-  brandSearch();
-}
-
-function renderBrandCards(results, total) {
-  const container = document.getElementById('brand-list');
-  if (!container) return;
-
-  container.innerHTML = '';
-
-  if (results.length === 0) {
-    const empty = document.createElement('div');
-    empty.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px;color:var(--text-light);';
-    empty.innerHTML = '<div style="font-size:40px;margin-bottom:10px;">ðŸ’Š</div><p>No brands found. Try a different search or add your own brand.</p>';
-    const addBtn = document.createElement('button');
-    addBtn.style.cssText = 'margin-top:12px;background:var(--primary);color:white;border:none;padding:9px 18px;border-radius:8px;cursor:pointer;';
-    addBtn.textContent = 'âž• Add Brand';
-    addBtn.onclick = function() { openBrandModal(); };
-    empty.appendChild(addBtn);
-    container.appendChild(empty);
-    return;
-  }
-
-  if (total > results.length) {
-    const info = document.createElement('div');
-    info.style.cssText = 'grid-column:1/-1;font-size:12px;color:var(--text-light);padding:0 0 8px;';
-    info.textContent = 'Showing ' + results.length + ' of ' + total + ' brands. Refine search for more.';
-    container.appendChild(info);
-  }
-
-  results.forEach(function(b) {
-    const card = document.createElement('div');
-    card.className = 'drug-card';
-    card.style.cursor = 'pointer';
-    card.addEventListener('click', function() { showBrandDetail(b.brand); });
-
-    // Header row
-    const headerRow = document.createElement('div');
-    headerRow.style.cssText = 'display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;';
-
-    const nameBlock = document.createElement('div');
-    const nameSpan = document.createElement('span');
-    nameSpan.style.cssText = 'font-weight:700;font-size:14px;color:var(--text-dark);';
-    nameSpan.textContent = b.brand;
-    nameBlock.appendChild(nameSpan);
-
-    if (b._custom) {
-      const badge = document.createElement('span');
-      badge.style.cssText = 'background:#d1fae5;color:#065f46;font-size:10px;padding:2px 6px;border-radius:10px;margin-left:6px;';
-      badge.textContent = 'âœï¸ Custom';
-      nameBlock.appendChild(badge);
-    }
-
-    const catBadge = document.createElement('div');
-    catBadge.style.cssText = 'font-size:10px;background:#e0f2fe;color:var(--primary);padding:2px 6px;border-radius:6px;display:inline-block;margin-left:6px;';
-    catBadge.textContent = b.category;
-    nameBlock.appendChild(catBadge);
-
-    // Action buttons
-    const btnGroup = document.createElement('div');
-    btnGroup.style.cssText = 'display:flex;gap:6px;';
-
-    const editBtn = document.createElement('button');
-    editBtn.style.cssText = 'background:none;border:1px solid var(--border);border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;';
-    editBtn.textContent = 'âœï¸';
-    editBtn.title = 'Edit';
-    editBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      openBrandModal(b.brand, b._custom);
-    });
-    btnGroup.appendChild(editBtn);
-
-    if (b._custom) {
-      const delBtn = document.createElement('button');
-      delBtn.style.cssText = 'background:none;border:1px solid #ef4444;border-radius:6px;padding:3px 7px;font-size:11px;cursor:pointer;color:#ef4444;';
-      delBtn.textContent = 'ðŸ—‘ï¸';
-      delBtn.title = 'Delete';
-      delBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        deleteBrand(b.brand);
-      });
-      btnGroup.appendChild(delBtn);
-    }
-
-    headerRow.appendChild(nameBlock);
-    headerRow.appendChild(btnGroup);
-    card.appendChild(headerRow);
-
-    // Details
-    const details = document.createElement('div');
-    details.style.cssText = 'font-size:12px;color:var(--text-light);line-height:1.7;';
-    details.innerHTML =
-      '<div><strong style="color:var(--text-dark);">ðŸ’Š Generic:</strong> ' + b.generic + '</div>' +
-      '<div><strong style="color:var(--text-dark);">ðŸ­ Company:</strong> ' + b.company + '</div>' +
-      '<div><strong style="color:var(--text-dark);">ðŸ’‰ Forms:</strong> ' + b.forms + '</div>' +
-      '<div style="display:flex;gap:12px;margin-top:4px;">' +
-        '<span style="color:#16a34a;font-weight:600;">' + b.price + '</span>' +
-        '<span>ðŸ“‹ ' + b.dose + '</span>' +
-      '</div>';
-    card.appendChild(details);
-
-    // Prescribe button
-    const rxBtn = document.createElement('button');
-    rxBtn.style.cssText = 'margin-top:8px;width:100%;background:var(--primary);color:white;border:none;padding:6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;';
-    rxBtn.textContent = 'ðŸ“ Prescribe this Brand';
-    rxBtn.addEventListener('click', function(e) {
-      e.stopPropagation();
-      addBrandToRx(b.brand, b.generic, b.dose);
-    });
-    card.appendChild(rxBtn);
-
-    container.appendChild(card);
-  });
-}
-
-
-function renderGenericGrouped(results, genericQ) {
-  const container = document.getElementById('brand-list');
-  if (!container) return;
-  container.innerHTML = '';
-
-  if (results.length === 0) {
-    const empty = document.createElement('div');
-    empty.style.cssText = 'grid-column:1/-1;text-align:center;padding:40px;color:var(--text-light);';
-    empty.innerHTML = '<div style="font-size:40px;">ðŸ’Š</div><p>No brands found for this generic.</p>';
-    container.appendChild(empty);
-    return;
-  }
-
-  // Group by generic composition
-  const groups = {};
-  results.forEach(function(b) {
-    const key = b.generic;
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(b);
-  });
-
-  const wrapper = document.createElement('div');
-  wrapper.style.cssText = 'grid-column:1/-1;';
-
-  const summary = document.createElement('div');
-  summary.style.cssText = 'font-size:13px;color:var(--text-light);margin-bottom:12px;';
-  summary.innerHTML = 'Found <strong>' + results.length + '</strong> brands across <strong>' + Object.keys(groups).length + '</strong> generic composition(s)';
-  wrapper.appendChild(summary);
-
-  Object.entries(groups).forEach(function(entry) {
-    const generic = entry[0];
-    const brands  = entry[1];
-
-    const groupDiv = document.createElement('div');
-    groupDiv.style.cssText = 'margin-bottom:20px;';
-
-    const groupTitle = document.createElement('div');
-    groupTitle.style.cssText = 'font-size:14px;font-weight:700;color:var(--text-dark);border-left:3px solid var(--primary);padding-left:10px;margin-bottom:10px;';
-    groupTitle.innerHTML = 'ðŸ’Š ' + generic + ' <span style="font-size:12px;font-weight:400;color:var(--text-light);">(' + brands.length + ' brand' + (brands.length > 1 ? 's' : '') + ')</span>';
-    groupDiv.appendChild(groupTitle);
-
-    const grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;';
-
-    brands.forEach(function(b) {
-      const card = document.createElement('div');
-      card.style.cssText = 'background:var(--card-bg);border:1px solid var(--border);border-radius:8px;padding:10px;';
-
-      const nameDiv = document.createElement('div');
-      nameDiv.style.cssText = 'font-weight:700;font-size:13px;color:var(--primary);';
-      nameDiv.textContent = b.brand + (b._custom ? ' âœï¸' : '');
-      card.appendChild(nameDiv);
-
-      const compDiv = document.createElement('div');
-      compDiv.style.cssText = 'font-size:11px;color:var(--text-light);margin:2px 0;';
-      compDiv.textContent = b.company;
-      card.appendChild(compDiv);
-
-      const formsDiv = document.createElement('div');
-      formsDiv.style.cssText = 'font-size:11px;';
-      formsDiv.textContent = 'ðŸ’‰ ' + b.forms;
-      card.appendChild(formsDiv);
-
-      const priceDiv = document.createElement('div');
-      priceDiv.style.cssText = 'font-size:11px;color:#16a34a;font-weight:600;';
-      priceDiv.textContent = b.price;
-      card.appendChild(priceDiv);
-
-      const rxBtn = document.createElement('button');
-      rxBtn.style.cssText = 'margin-top:6px;width:100%;background:var(--primary);color:white;border:none;padding:4px;border-radius:5px;font-size:10px;cursor:pointer;';
-      rxBtn.textContent = 'ðŸ“ Prescribe';
-      rxBtn.addEventListener('click', (function(brand, gen, dose) {
-        return function() { addBrandToRx(brand, gen, dose); };
-      })(b.brand, b.generic, b.dose));
-      card.appendChild(rxBtn);
-
-      grid.appendChild(card);
-    });
-
-    groupDiv.appendChild(grid);
-    wrapper.appendChild(groupDiv);
-  });
-
-  container.appendChild(wrapper);
-}
-
-
-
-function brandGetAll() {
-  var all = BRAND_RAW.map(function(b) {
-    return { brand:b[0], generic:b[1], company:b[2], category:b[3], forms:b[4], price:b[5], dose:b[6], notes:b[7], _custom:false };
-  });
-  var custom = BRAND_CUSTOM.map(function(b) { return Object.assign({}, b, {_custom:true}); });
-  return all.concat(custom);
-}
-
-function brandUpdateStats() {
-  var all = brandGetAll();
-  (document.getElementById('brand-total-count')||{}).innerHTML = all.length;
-  var generics = new Set(all.map(function(b){ return b.generic.split('+')[0].trim().toLowerCase().replace(/\s*\d.*$/,''); }));
-  (document.getElementById('brand-generic-count')||{}).innerHTML = generics.size;
-  var companies = new Set(all.map(function(b){ return b.company; }));
-  (document.getElementById('brand-company-count')||{}).innerHTML = companies.size;
-  (document.getElementById('brand-custom-count')||{}).innerHTML = BRAND_CUSTOM.length;
-}
-
-function switchBrandTab(tab) {
-  brandCurrentTab = tab;
-  ['brand','generic','rx'].forEach(function(t) {
-    var btn = document.getElementById('brand-tab-' + t);
-    if (btn) {
-      btn.style.borderBottomColor = t === tab ? 'var(--primary)' : 'transparent';
-      btn.style.color = t === tab ? 'var(--primary)' : 'var(--text-light)';
-      btn.style.fontWeight = t === tab ? '700' : '400';
-    }
-  });
-  (document.getElementById('brand-search-input')||{value:''}).value = '';
-  (document.getElementById('generic-search-input')||{value:''}).value = '';
-  brandSearch();
-}
-
-function brandSearch() {
-  var brandQ = ((document.getElementById('brand-search-input')||{value:''}).value||'').toLowerCase().trim();
-  var genericQ = ((document.getElementById('generic-search-input')||{value:''}).value||'').toLowerCase().trim();
-  var catFilter = ((document.getElementById('brand-cat-filter')||{value:''}).value||'');
-  var all = brandGetAll();
-  var results = all.filter(function(b) {
-    var bm = !brandQ || b.brand.toLowerCase().includes(brandQ);
-    var gm = !genericQ || b.generic.toLowerCase().includes(genericQ);
-    var cm = !catFilter || b.category === catFilter;
-    return bm && gm && cm;
-  });
-  if (brandCurrentTab === 'generic' && genericQ) { renderGenericGrouped(results, genericQ); return; }
-  renderBrandCards(results.slice(0,60), results.length);
-}
-
-function genericSearch() { switchBrandTab('generic'); brandSearch(); }
-
-function openBrandModal(brandName, isCustom) {
-  ['bm-brand','bm-generic','bm-company','bm-forms','bm-price','bm-dose','bm-notes'].forEach(function(id){
-    (document.getElementById(id)||{}).value = '';
-  });
-  document.getElementById('brand-edit-id').value = '';
-  if (brandName) {
-    var all = brandGetAll();
-    var b = all.find(function(x){ return x.brand === brandName; });
-    if (b) {
-      (document.getElementById('bm-brand')||{}).value = b.brand;
-      (document.getElementById('bm-generic')||{}).value = b.generic;
-      (document.getElementById('bm-company')||{}).value = b.company;
-      (document.getElementById('bm-category')||{}).value = b.category;
-      (document.getElementById('bm-forms')||{}).value = b.forms;
-      (document.getElementById('bm-price')||{}).value = b.price;
-      (document.getElementById('bm-dose')||{}).value = b.dose;
-      (document.getElementById('bm-notes')||{}).value = b.notes || '';
-      document.getElementById('brand-edit-id').value = brandName;
-      (document.getElementById('brand-modal-title')||{}).textContent = 'âœï¸ Edit Brand: ' + brandName;
-    }
-  } else {
-    (document.getElementById('brand-modal-title')||{}).textContent = 'âž• Add New Brand';
-  }
-  var modal = document.getElementById('brand-modal');
-  if (modal) modal.style.display = 'flex';
-}
-
-function closeBrandModal() {
-  var modal = document.getElementById('brand-modal');
-  if (modal) modal.style.display = 'none';
-}
-
-function saveBrand() {
-  var brand   = (document.getElementById('bm-brand')||{value:''}).value.trim();
-  var generic = (document.getElementById('bm-generic')||{value:''}).value.trim();
-  var company = (document.getElementById('bm-company')||{value:''}).value.trim() || 'Unknown';
-  var category= (document.getElementById('bm-category')||{value:''}).value || 'Other';
-  var forms   = (document.getElementById('bm-forms')||{value:''}).value.trim() || 'â€”';
-  var price   = (document.getElementById('bm-price')||{value:''}).value.trim() || 'â€”';
-  var dose    = (document.getElementById('bm-dose')||{value:''}).value.trim() || 'â€”';
-  var notes   = (document.getElementById('bm-notes')||{value:''}).value.trim() || '';
-  var editId  = (document.getElementById('brand-edit-id')||{value:''}).value;
-  if (!brand || !generic) { alert('Brand Name and Generic Content are required!'); return; }
-  if (editId) { BRAND_CUSTOM = BRAND_CUSTOM.filter(function(b){ return b.brand !== editId; }); }
-  BRAND_CUSTOM.push({ brand:brand, generic:generic, company:company, category:category, forms:forms, price:price, dose:dose, notes:notes, _custom:true });
-  try { localStorage.setItem('ks_brand_custom', JSON.stringify(BRAND_CUSTOM)); } catch(e) { alert('Storage error: ' + e.message); return; }
-  closeBrandModal();
-  brandUpdateStats();
-  brandSearch();
-  var toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:99999;';
-  toast.textContent = 'âœ… Brand "' + brand + '" saved!';
-  document.body.appendChild(toast);
-  setTimeout(function(){ toast.remove(); }, 3000);
-}
-
-function deleteBrand(brandName) {
-  if (!confirm('Delete "' + brandName + '" from your custom brands?')) return;
-  BRAND_CUSTOM = BRAND_CUSTOM.filter(function(b){ return b.brand !== brandName; });
-  try { localStorage.setItem('ks_brand_custom', JSON.stringify(BRAND_CUSTOM)); } catch(e) {}
-  (document.getElementById('brand-detail-panel')||{}).style.display = 'none';
-  brandUpdateStats();
-  brandSearch();
-}
-
-function addBrandToRx(brandName, genericContent, dose) {
-  if (typeof saasSwitchSection === 'function') {
-    saasSwitchSection('create-rx', 'ðŸ“ New Prescription', 'Create & Print/WhatsApp prescriptions', null);
-  }
-  setTimeout(function() {
-    if (typeof addMedRow === 'function') {
-      addMedRow(brandName, dose);
-    } else {
-      var drugInputs = document.querySelectorAll('[id^="drug_name_"]');
-      if (drugInputs.length) {
-        drugInputs[drugInputs.length-1].value = brandName;
-        var doseInputs = document.querySelectorAll('[id^="dose_"]');
-        if (doseInputs.length) doseInputs[doseInputs.length-1].value = dose;
-      }
-    }
-  }, 400);
-  var toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--primary);color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:99999;';
-  toast.textContent = 'ðŸ“ Adding "' + brandName + '" to prescription...';
-  document.body.appendChild(toast);
-  setTimeout(function(){ toast.remove(); }, 2500);
-}
-
-function brandDBInit() {
-  try { BRAND_CUSTOM = JSON.parse(localStorage.getItem('ks_brand_custom') || '[]'); } catch(e) { BRAND_CUSTOM = []; }
-  brandUpdateStats();
-  brandSearch();
-}
-
-document.addEventListener('click', function(e) {
-  var modal = document.getElementById('brand-modal');
-  if (modal && e.target === modal) closeBrandModal();
-});
-
-document.addEventListener('DOMContentLoaded', function() {
-  brandDBInit();
-});
-
-</script>
 
 
 <div id="followup" class="section">
@@ -15286,6 +15288,16 @@ function _saasSwitchSectionReal(sectionId, title, subtitle, btn) {
       allSections.forEach(s => s.classList.remove('active'));
       const target = document.getElementById(sectionId);
       if (target) target.classList.add('active');
+    }
+    // Extra: handle sections added outside saas-original-container (e.g. brand-db)
+    const extraTarget = document.getElementById(sectionId);
+    if (extraTarget && !extraTarget.classList.contains('active')) {
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      extraTarget.classList.add('active');
+    }
+    // Init hooks for extra sections
+    if (sectionId === 'brand-db' && typeof brandDBInit === 'function') {
+      setTimeout(brandDBInit, 50);
     }
     _saasState.currentSection = sectionId;
   }
