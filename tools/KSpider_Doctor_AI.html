@@ -1817,8 +1817,8 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
 <!-- QR Code Library (Free CDN) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 
-  <script src="/tool-guard.js" defer onerror="console.warn('[KSpider] tool-guard.js not found')"></script>
-  <script src="../ks-guard.js" defer onerror="console.warn('[KSpider] ks-guard.js not found')"></script>
+  <!-- tool-guard.js standalone -->
+  <!-- ks-guard.js standalone -->
   <link rel="canonical" href="https://kspiderai.in/doctor">
   <meta property="og:image" content="https://kspiderai.in/assets/kspider-og.jpg">
   <meta name="twitter:card" content="summary_large_image">
@@ -2089,7 +2089,7 @@ function toggleDarkMode() {
     <!-- Sidebar Footer -->
     <div class="sidebar-footer">
       <button class="sidebar-collapse-btn" onclick="saasSidebarToggle()" id="sidebar-toggle-btn">
-        Ã¢â€”â‚¬ Collapse
+        â—€ Collapse
       </button>
     </div>
 
@@ -2125,7 +2125,7 @@ function toggleDarkMode() {
         </select>
         <!-- New Rx Quick Action -->
         <button class="topbar-btn primary" onclick="saasSwitchSection('create-rx','ðŸ“ OPD / Create Rx','Patient visit & prescription',null)">
-          Ã¢Å¾â€¢ New Rx
+          âž• New Rx
         </button>
         <!-- Dark Mode Toggle (preserved) -->
         <button class="topbar-btn dark-toggle" onclick="toggleDarkMode()" title="Toggle Dark Mode" style="font-size:16px;padding:5px 10px;">ðŸŒ™</button>
@@ -2181,7 +2181,7 @@ function toggleDarkMode() {
 
         <!-- â”€â”€ Quick Actions â”€â”€ -->
         <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e8edf5;box-shadow:var(--saas-card-shadow);margin-bottom:24px;">
-          <div class="saas-chart-title">Ã¢Å¡Â¡ Quick Actions</div>
+          <div class="saas-chart-title">âš¡ Quick Actions</div>
           <div class="saas-quick-actions">
             <div class="saas-quick-card" onclick="saasSwitchSection('create-rx','ðŸ“ OPD / Create Rx','Patient visit & prescription',null)">
               <div class="saas-quick-icon">ðŸ“</div>
@@ -2244,7 +2244,7 @@ function toggleDarkMode() {
 
           <!-- Recent Activity -->
           <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e8edf5;box-shadow:var(--saas-card-shadow);">
-            <div class="saas-chart-title">Ã¢Å¡Â¡ Recent Activity</div>
+            <div class="saas-chart-title">âš¡ Recent Activity</div>
             <div id="saas-activity-feed" class="saas-activity-list">
               <div class="saas-activity-item">
                 <div class="saas-activity-dot blue"></div>
@@ -2288,7 +2288,7 @@ function toggleDarkMode() {
             <div class="saas-section-title">ðŸ“… Appointments</div>
             <div class="saas-breadcrumb">Manage patient appointment schedule</div>
           </div>
-          <button class="btn btn-primary" onclick="saasAddAppointment()">Ã¢Å¾â€¢ New Appointment</button>
+          <button class="btn btn-primary" onclick="saasAddAppointment()">âž• New Appointment</button>
         </div>
 
         <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px;">
@@ -2308,7 +2308,7 @@ function toggleDarkMode() {
               <div style="font-size:12px;opacity:0.7;margin-top:4px;">Appointments scheduled</div>
             </div>
             <div style="background:white;border-radius:14px;padding:20px;border:1px solid #e8edf5;box-shadow:var(--saas-card-shadow);">
-              <div class="saas-chart-title">Ã¢Å¾â€¢ Quick Schedule</div>
+              <div class="saas-chart-title">âž• Quick Schedule</div>
               <div class="field"><label>Patient Name</label><input type="text" id="saas-appt-name" placeholder="Enter patient name"></div>
               <div class="field"><label>Time</label><input type="time" id="saas-appt-time"></div>
               <div class="field"><label>Type</label>
@@ -2332,7 +2332,7 @@ function toggleDarkMode() {
             <div class="saas-section-title">ðŸ’° Billing</div>
             <div class="saas-breadcrumb">Invoice & payment management</div>
           </div>
-          <button class="btn btn-primary" onclick="saasCreateInvoice()">Ã¢Å¾â€¢ New Invoice</button>
+          <button class="btn btn-primary" onclick="saasCreateInvoice()">âž• New Invoice</button>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:20px;">
@@ -2407,7 +2407,7 @@ function toggleDarkMode() {
             <div class="saas-section-title">ðŸ§ª Lab Management</div>
             <div class="saas-breadcrumb">Track lab orders, samples & results</div>
           </div>
-          <button class="btn btn-primary" onclick="saasAddLabOrder()">Ã¢Å¾â€¢ New Lab Order</button>
+          <button class="btn btn-primary" onclick="saasAddLabOrder()">âž• New Lab Order</button>
         </div>
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
@@ -3431,6 +3431,24 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 </script>
+<script>
+/* Brand DB Auto-Init */
+(function(){
+  document.addEventListener("DOMContentLoaded",function(){
+    setTimeout(function(){if(typeof brandUpdateStats==="function")brandUpdateStats();},300);
+    var sec=document.getElementById("brand-db");
+    if(sec&&typeof MutationObserver!=="undefined"){
+      new MutationObserver(function(ml){
+        ml.forEach(function(m){
+          if(m.attributeName==="class"&&sec.classList.contains("active")){
+            setTimeout(function(){if(typeof brandDBInit==="function")brandDBInit();},30);
+          }
+        });
+      }).observe(sec,{attributes:true,attributeFilter:["class"]});
+    }
+  });
+})();
+</script>
 </div>
 
 <!-- â•â•â•â•â•â•â•â•â•â•â• DOCTOR PROFILE â•â•â•â•â•â•â•â•â•â•â• -->
@@ -3623,7 +3641,7 @@ document.addEventListener('DOMContentLoaded', function() {
   </div>
 
   <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;">
-    <button class="btn btn-secondary" onclick="generateAISuggestions()">Ã¢Å¡Â¡ Generate AI Analysis</button>
+    <button class="btn btn-secondary" onclick="generateAISuggestions()">âš¡ Generate AI Analysis</button>
     <button onclick="explainToPatient()" style="background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;border:none;padding:10px 18px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;gap:7px;box-shadow:0 3px 12px rgba(124,58,237,0.35);transition:transform 0.15s;" onmouseover="this.style.transform='scale(1.04)'" onmouseout="this.style.transform='scale(1)'">ðŸ§‘â€ðŸ¤â€ðŸ§‘ Explain to Patient</button>
         <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(30,58,138,0.06);border:1px solid rgba(30,58,138,0.2);border-radius:8px;padding:6px 12px;margin-left:6px;">
           <span style="font-size:12px;font-weight:700;color:var(--primary);">ðŸŒ Output:</span>
@@ -3680,7 +3698,7 @@ document.addEventListener('DOMContentLoaded', function() {
     <button class="tab-btn" onclick="switchReportTab('thyroid',this)">ðŸ¦‹ Thyroid</button>
     <button class="tab-btn" onclick="switchReportTab('lipid',this)">ðŸ©º Lipid</button>
     <button class="tab-btn" onclick="switchReportTab('hba1c',this)">ðŸ©¹ HbA1c/Sugar</button>
-    <button class="tab-btn" onclick="switchReportTab('electro',this)">Ã¢Å¡Â¡ Electrolytes</button>
+    <button class="tab-btn" onclick="switchReportTab('electro',this)">âš¡ Electrolytes</button>
     <button class="tab-btn" onclick="switchReportTab('vitamins',this)">ðŸ’Š Vitamins</button>
     <button class="tab-btn" onclick="switchReportTab('vitals',this)">ðŸ’“ BMI/BP</button>
     <button class="tab-btn" onclick="switchReportTab('cardiac',this)">â¤ï¸ Cardiac</button>
@@ -3824,7 +3842,7 @@ document.addEventListener('DOMContentLoaded', function() {
   <!-- Electrolytes -->
   <div id="tab-electro" class="tab-content">
     <div class="card">
-      <div class="card-title">Ã¢Å¡Â¡ Serum Electrolytes</div>
+      <div class="card-title">âš¡ Serum Electrolytes</div>
       <table class="report-table">
         <tr><th>Parameter</th><th>Your Value</th><th>Unit</th><th>Normal Range</th><th>Result</th></tr>
         <tr><td>Sodium (Na)</td><td><input type="number" id="el_na" placeholder="140" step="1"></td><td>mEq/L</td><td>136 â€“ 145</td><td id="r_el_na"></td></tr>
@@ -4333,7 +4351,7 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 
     <div class="card">
-      <div class="card-title">Ã¢Å¡Â¡ Drug Interaction Checker</div>
+      <div class="card-title">âš¡ Drug Interaction Checker</div>
       <p style="font-size:13px;color:var(--text-light);margin-bottom:14px;">Enter two drug names to check for known interactions.</p>
       <div class="field"><label>Drug 1</label><input type="text" id="int_drug1" placeholder="e.g., Warfarin" oninput="liveInteractionCheck()"></div>
       <div class="field"><label>Drug 2</label><input type="text" id="int_drug2" placeholder="e.g., Aspirin" oninput="liveInteractionCheck()"></div>
@@ -4531,7 +4549,7 @@ document.addEventListener('DOMContentLoaded', function() {
       <label style="font-size:13px;font-weight:normal;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="rs_fh"> ðŸ‘¨â€ðŸ‘©â€ðŸ‘¦ Family Hx CVD</label>
       <label style="font-size:13px;font-weight:normal;display:flex;align-items:center;gap:5px;"><input type="checkbox" id="rs_htn"> ðŸ©º On BP Meds</label>
     </div>
-    <button class="btn btn-accent" onclick="calculateRiskScore()">Ã¢Å¡Â¡ Calculate Risk Score</button>
+    <button class="btn btn-accent" onclick="calculateRiskScore()">âš¡ Calculate Risk Score</button>
     <div id="risk-score-result" style="margin-top:16px;"></div>
   </div>
 
@@ -5082,7 +5100,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
   <!-- Built-in Templates -->
   <div class="card">
-    <div class="card-title">Ã¢Å¡Â¡ Quick-Start Templates (Evidence-Based)</div>
+    <div class="card-title">âš¡ Quick-Start Templates (Evidence-Based)</div>
     <p style="font-size:12px;color:#64748b;margin-bottom:12px;">Click any template to view and load into prescription builder.</p>
     <div id="builtin-templates-list"></div>
   </div>
@@ -5254,7 +5272,7 @@ document.addEventListener('DOMContentLoaded', function() {
   <div class="adsense-slot" style="min-height:90px;margin-bottom:32px;text-align:center;">
     <div class="adsense-label">Advertisement â€” Google AdSense</div>
     <div class="adsense-inner">
-      <!-- Ã¢â€“Â¼ PASTE YOUR ADSENSE BANNER CODE HERE (Pre-Footer) Ã¢â€“Â¼ -->
+      <!-- â–¼ PASTE YOUR ADSENSE BANNER CODE HERE (Pre-Footer) â–¼ -->
       <div style="color:#94a3b8;font-size:12px;padding:8px;">ðŸ“¢ 728Ã—90 â€” Pre-Footer Ad Space | kspiderai.in</div>
     </div>
   </div>
@@ -5461,7 +5479,7 @@ document.addEventListener('DOMContentLoaded', function() {
   <!-- Footer AdSense Banner -->
   <div style="background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.2);border-radius:8px;padding:10px;margin-bottom:20px;font-size:11px;color:rgba(255,255,255,0.5);text-align:center;">
     ðŸ“¢ Footer Ad Space â€” Google AdSense 728Ã—90 or 320Ã—50 Mobile Banner
-    <!-- Ã¢â€“Â¼ INSERT ADSENSE FOOTER CODE HERE Ã¢â€“Â¼ -->
+    <!-- â–¼ INSERT ADSENSE FOOTER CODE HERE â–¼ -->
   </div>
 
   <!-- Footer Grid -->
@@ -5547,7 +5565,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </button>
         <button id="wa-tab-btn-unsaved" onclick="switchWaTab('unsaved',this)"
           style="padding:10px;border-radius:10px;border:2px solid var(--border);background:white;color:var(--text-dark);font-weight:700;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;transition:all 0.2s;">
-          Ã¢Å¾â€¢ Unsaved Number
+          âž• Unsaved Number
         </button>
       </div>
 
@@ -8881,8 +8899,8 @@ function updateDiagApplyBtn() {
   const btn = document.getElementById('rx-apply-diag-btn');
   if (btn) {
     btn.textContent = _selectedDiagnoses.size > 0
-      ? `Ã¢Å¡Â¡ Load Rx for ${_selectedDiagnoses.size} Diagnosis${_selectedDiagnoses.size>1?'es':''}`
-      : 'Ã¢Å¡Â¡ Load Rx';
+      ? `âš¡ Load Rx for ${_selectedDiagnoses.size} Diagnosis${_selectedDiagnoses.size>1?'es':''}`
+      : 'âš¡ Load Rx';
     btn.style.opacity = _selectedDiagnoses.size > 0 ? '1' : '0.5';
   }
 }
@@ -8915,7 +8933,7 @@ function openPrescriptionBuilder() {
       <div style="font-size:13px;font-weight:800;color:#1e3a8a;">ðŸ” AI Probable Diagnoses â€” Select to Auto-Fill Rx:</div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <button onclick="selectAllDiagnoses()" style="background:#e0e7ff;color:#3730a3;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;">â˜‘ Select All</button>
-        <button id="rx-apply-diag-btn" onclick="fillRxFromSelectedDiagnoses()" style="background:linear-gradient(135deg,#1e3a8a,#0891b2);color:white;border:none;padding:5px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;opacity:0.5;">Ã¢Å¡Â¡ Load Rx</button>
+        <button id="rx-apply-diag-btn" onclick="fillRxFromSelectedDiagnoses()" style="background:linear-gradient(135deg,#1e3a8a,#0891b2);color:white;border:none;padding:5px 14px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;opacity:0.5;">âš¡ Load Rx</button>
       </div>
     </div>`;
     dpHtml += `<div style="display:flex;flex-wrap:wrap;gap:8px;">`;
@@ -10909,7 +10927,7 @@ function addFuMedRowWithData(medName, prevDose, action) {
         <option value="continue" ${action==='continue'?'selected':''}>âœ… Continue</option>
         <option value="modify" ${action==='modify'?'selected':''}>âœï¸ Modify</option>
         <option value="stop" ${action==='stop'?'selected':''}>ðŸ›‘ Stop</option>
-        <option value="add">Ã¢Å¾â€¢ Add New</option>
+        <option value="add">âž• Add New</option>
       </select>
     </td>
     <td><input type="text" placeholder="New dose if modified" style="width:120px;padding:6px;border:1px solid var(--border);border-radius:6px;font-size:12px;"></td>
@@ -11144,7 +11162,7 @@ function interpretValue(val, low, high, critLow, critHigh, unit, paramName) {
   const v = parseFloat(val);
   let cls, label, icon;
   if ((critLow !== null && v < critLow) || (critHigh !== null && v > critHigh)) {
-    cls = 'critical'; label = v < (critLow||Infinity) ? 'Ã¢â€º" CRITICAL LOW' : 'Ã¢â€º" CRITICAL HIGH'; icon = 'Ã¢â€º"';
+    cls = 'critical'; label = v < (critLow||Infinity) ? 'â›”" CRITICAL LOW' : 'â›”" CRITICAL HIGH'; icon = 'â›”"';
   } else if (v < low) {
     cls = 'low'; label = 'â¬‡ LOW'; icon = 'â¬‡';
   } else if (v > high) {
@@ -11815,7 +11833,7 @@ function buildSymptomGroups(priorityKey) {
     html += '<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:6px;">';
     html += '<div onclick="toggleOtherSymptoms(this)" style="background:#f1f5f9;padding:9px 14px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:700;color:var(--text-light);user-select:none;">'
           + '<span>ðŸ“‹ Other Specialty Symptoms <span id="other-sym-sel-count" style="background:var(--accent);color:white;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:6px;">0 selected</span></span>'
-          + '<span id="other-sym-chevron" style="font-size:14px;transition:transform 0.2s;">Ã¢â€“Â¼</span></div>';
+          + '<span id="other-sym-chevron" style="font-size:14px;transition:transform 0.2s;">â–¼</span></div>';
     html += '<div id="other-sym-body" style="display:none;">';
     otherKeys.forEach(function(key) {
       var s = SYMPTOM_DB[key];
@@ -11823,7 +11841,7 @@ function buildSymptomGroups(priorityKey) {
       html += '<div class="sym-group" id="symgrp-' + key + '" style="border-top:1px solid var(--border);">';
       html += '<div class="sym-group-title" onclick="toggleSymGroup(this)" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#fafafa;">'
             + '<span>' + s.icon + ' ' + s.label + (selInGroup > 0 ? ' <span style="background:var(--success);color:white;border-radius:8px;padding:1px 6px;font-size:10px;margin-left:5px;">'+selInGroup+' âœ“</span>' : '') + '</span>'
-            + '<span class="sym-grp-chevron" style="font-size:12px;color:var(--text-light);">Ã¢â€“Â¶</span></div>';
+            + '<span class="sym-grp-chevron" style="font-size:12px;color:var(--text-light);">â–¶</span></div>';
       html += '<div class="sym-tags sym-grp-body" style="display:none;padding:8px 10px 4px 10px;">';
       s.symptoms.forEach(function(sym) {
         var sel = selectedSet.indexOf(sym) >= 0;
@@ -11854,7 +11872,7 @@ function toggleSymGroup(header) {
   var isOpen = body.style.display !== 'none';
   body.style.display = isOpen ? 'none' : 'flex';
   if (!isOpen) body.style.flexWrap = 'wrap';
-  if (chevron) chevron.textContent = isOpen ? 'Ã¢â€“Â¶' : 'Ã¢â€“Â¼';
+  if (chevron) chevron.textContent = isOpen ? 'â–¶' : 'â–¼';
 }
 
 function updateOtherSymSelCount() {
@@ -12379,7 +12397,7 @@ function translateLabBox(el) {
     if (txt==='ABNORMAL') badge.textContent = t('abnormal').toUpperCase();
     if (txt==='HIGH')     badge.textContent = 'â¬† HIGH';
     if (txt==='LOW')      badge.textContent = 'â¬‡ LOW';
-    if (txt==='CRITICAL') badge.textContent = 'Ã¢â€º" CRITICAL';
+    if (txt==='CRITICAL') badge.textContent = 'â›”" CRITICAL';
   });
 }
 
@@ -12614,7 +12632,7 @@ function checkEmergencyAlerts() {
       <div class="em-content">
         <strong>ðŸš¨ ${t('emergency').toUpperCase()}: ${a.title}</strong>
         <p>${a.msg}</p>
-        <p style="margin-top:6px;font-weight:700;background:rgba(255,255,255,0.2);padding:6px 10px;border-radius:6px;font-size:12px;">Ã¢Å¡Â¡ ACTION: ${a.action}</p>
+        <p style="margin-top:6px;font-weight:700;background:rgba(255,255,255,0.2);padding:6px 10px;border-radius:6px;font-size:12px;">âš¡ ACTION: ${a.action}</p>
       </div>
     </div>`;
   });
@@ -13965,7 +13983,7 @@ function closePatientExplain() {
     transition:background 0.2s;
     white-space:nowrap;
   " title="Dr. Shreyansh Raval â€” Medical Guide">
-    Ã¢â€“Â¶ Medical Guide
+    â–¶ Medical Guide
   </div>
 
   <!-- Expandable panel -->
@@ -14037,7 +14055,7 @@ function closePatientExplain() {
       box-shadow:0 2px 8px rgba(192,57,43,0.4);
       transition:opacity 0.15s;
     " onmouseover="this.style.opacity='0.88'" onmouseout="this.style.opacity='1'">
-      Ã¢â€“Â¶ Watch Medical Videos
+      â–¶ Watch Medical Videos
     </a>
   </div>
 </div>
@@ -14085,7 +14103,7 @@ setTimeout(function() {
 
     <!-- Add Patient Form -->
     <div class="card">
-      <div class="card-title">Ã¢Å¾â€¢ Add Patient to Queue</div>
+      <div class="card-title">âž• Add Patient to Queue</div>
       <div class="field"><label>Patient Name *</label>
         <input type="text" id="opd-q-name" placeholder="Full name" style="font-size:14px;">
       </div>
@@ -14145,7 +14163,7 @@ setTimeout(function() {
         <div style="font-size:52px;font-weight:900;font-family:'Poppins',sans-serif;line-height:1;" id="opd-current-token">â€”</div>
         <div style="font-size:14px;opacity:0.85;margin-top:6px;" id="opd-current-name">No patient in room</div>
         <div style="margin-top:12px;display:flex;gap:8px;justify-content:center;">
-          <button onclick="opdCallNext()" style="background:white;color:#1e3a8a;border:none;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px;cursor:pointer;">Ã¢â€“Â¶ Call Next</button>
+          <button onclick="opdCallNext()" style="background:white;color:#1e3a8a;border:none;border-radius:8px;padding:8px 18px;font-weight:700;font-size:13px;cursor:pointer;">â–¶ Call Next</button>
           <button onclick="opdCompleteCurrent()" style="background:rgba(255,255,255,0.15);color:white;border:1.5px solid rgba(255,255,255,0.4);border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;">âœ… Done</button>
         </div>
       </div>
@@ -14449,7 +14467,7 @@ setTimeout(function() {
 
         <!-- Quick Symptom Tags -->
         <div style="margin-top:12px;">
-          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;">Ã¢Å¡Â¡ Quick Add:</div>
+          <div style="font-size:11px;font-weight:700;color:#64748b;margin-bottom:6px;">âš¡ Quick Add:</div>
           <div style="display:flex;flex-wrap:wrap;gap:5px;">
             <span class="ai-sym-tag" onclick="aiAddSymTag(this)">ðŸŒ¡ï¸ Fever</span>
             <span class="ai-sym-tag" onclick="aiAddSymTag(this)">ðŸ¤§ Cough</span>
@@ -15135,7 +15153,7 @@ setTimeout(function() {
 
         <!-- ABHA Create Placeholder -->
         <div style="border:1.5px solid #e8edf5;border-radius:10px;padding:16px;margin-bottom:14px;">
-          <div style="font-size:13px;font-weight:700;color:#0b3c5d;margin-bottom:12px;">Ã¢Å¾â€¢ Create ABHA for Patient</div>
+          <div style="font-size:13px;font-weight:700;color:#0b3c5d;margin-bottom:12px;">âž• Create ABHA for Patient</div>
           <div class="grid-2">
             <div class="field"><label>Patient Aadhaar (last 4 digits)</label>
               <input type="text" id="abdm-aadhaar-partial" placeholder="XXXX" maxlength="4">
@@ -15330,7 +15348,7 @@ function saasSidebarToggle() {
   _saasState.sidebarCollapsed = !_saasState.sidebarCollapsed;
   sidebar.classList.toggle('collapsed', _saasState.sidebarCollapsed);
   document.body.classList.toggle('sidebar-collapsed', _saasState.sidebarCollapsed);
-  if (btn) btn.textContent = _saasState.sidebarCollapsed ? 'Ã¢â€“Â¶' : 'Ã¢â€”â‚¬ Collapse';
+  if (btn) btn.textContent = _saasState.sidebarCollapsed ? 'â–¶' : 'â—€ Collapse';
   localStorage.setItem('saas_sidebar_collapsed', _saasState.sidebarCollapsed ? '1' : '0');
 }
 
@@ -15717,7 +15735,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (sidebar) sidebar.classList.add('collapsed');
     document.body.classList.add('sidebar-collapsed');
     const btn = document.getElementById('sidebar-toggle-btn');
-    if (btn) btn.textContent = 'Ã¢â€“Â¶';
+    if (btn) btn.textContent = 'â–¶';
     _saasState.sidebarCollapsed = true;
   }
 
