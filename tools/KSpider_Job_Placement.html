@@ -1338,8 +1338,17 @@ img{max-width:100%;display:block;}
             <div class="rsc"><div class="rn" style="color:var(--green)" id="anApps">0</div><div class="rl">Applications</div></div>
             <div class="rsc"><div class="rn" style="color:var(--gold)" id="anViews">0</div><div class="rl">Profile Views</div></div>
           </div>
-          <div class="wgt"><div class="wt">📈 Job Performance</div><div style="font-size:12px;color:var(--t3);text-align:center;padding:16px;">Post jobs to see performance analytics here.</div></div>
-          <div class="wgt"><div class="wt">🚀 Boost ROI</div><div style="font-size:12px;color:var(--t3);text-align:center;padding:16px;"><button class="boost-btn" onclick="showPage('boost',null)" style="max-width:200px">Boost a Job to See ROI</button></div></div>
+          <div class="wgt"><div class="wt">📈 Job Performance</div>
+            <div id="jobPerfBox" style="display:flex;flex-direction:column;gap:8px;"></div>
+            <button onclick="loadAnalytics()" style="margin-top:10px;padding:8px 16px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;width:100%;">🔄 Refresh Analytics</button>
+          </div>
+          <div class="wgt"><div class="wt">🚀 Boost ROI</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+              <div style="background:var(--s2);border-radius:var(--rs);padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--gold);" id="anBoosted">0</div><div style="font-size:10px;color:var(--t3);">Boosted Jobs</div></div>
+              <div style="background:var(--s2);border-radius:var(--rs);padding:10px;text-align:center;"><div style="font-size:18px;font-weight:800;color:var(--primary);" id="anConvRate">0%</div><div style="font-size:10px;color:var(--t3);">Avg Conversion</div></div>
+            </div>
+            <button class="boost-btn" onclick="showPage('boost',null)" style="max-width:100%;width:100%">⚡ Boost a Job for 10x Applicants</button>
+          </div>
         </div>
 
         <!-- ── APPLICANTS PAGE ── -->
@@ -1358,13 +1367,56 @@ img{max-width:100%;display:block;}
         <!-- ── NETWORK PAGE ── -->
         <div id="page-network" class="page">
           <div class="ph2">🤝 My Network</div>
-          <div class="wgt"><div style="font-size:13px;color:var(--t2);text-align:center;padding:16px;"><div style="font-size:28px;margin-bottom:8px;">🤝</div>Network features — connect with recruiters &amp; seekers!<br><br><button class="bap" style="width:auto;padding:9px 18px;border-radius:var(--rs)" onclick="showToast('🔍 Finding people to connect…')">Find People</button></div></div>
+          <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--sh);">
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+              <input type="text" class="fc" placeholder="🔍 Search by name, skill, company…" id="networkSearch" style="flex:1;min-width:140px;" oninput="searchNetwork()">
+              <select class="fc" style="width:120px;" id="networkRoleFilter" onchange="searchNetwork()">
+                <option value="">All Roles</option>
+                <option value="recruiter">Recruiters</option>
+                <option value="jobseeker">Job Seekers</option>
+              </select>
+            </div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;" id="networkSkillTags">
+              <span onclick="networkFilterSkill('React')" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);cursor:pointer;color:var(--t2);">React</span>
+              <span onclick="networkFilterSkill('Python')" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);cursor:pointer;color:var(--t2);">Python</span>
+              <span onclick="networkFilterSkill('HR')" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);cursor:pointer;color:var(--t2);">HR</span>
+              <span onclick="networkFilterSkill('MBA')" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);cursor:pointer;color:var(--t2);">MBA</span>
+              <span onclick="networkFilterSkill('Marketing')" style="font-size:11px;padding:4px 10px;border-radius:99px;border:1px solid var(--border);cursor:pointer;color:var(--t2);">Marketing</span>
+            </div>
+          </div>
+          <div id="networkBox" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;padding:24px;color:var(--t3);font-size:12px;"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>Loading people…</div>
+          </div>
         </div>
 
         <!-- ── MESSAGES PAGE ── -->
         <div id="page-messages" class="page">
-          <div class="ph2">💬 Messages</div>
-          <div class="wgt" style="text-align:center;padding:20px;"><div style="font-size:32px;margin-bottom:8px;">💬</div><div style="font-weight:600;margin-bottom:4px;">No messages yet</div><div style="font-size:12px;color:var(--t3);">Start a conversation with a recruiter or job seeker!</div></div>
+          <div class="ph2">💬 Messages
+            <button onclick="openNewMessage()" style="padding:7px 14px;border-radius:var(--rs);background:var(--primary);color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">+ New Message</button>
+          </div>
+          <div style="display:flex;gap:12px;height:calc(100vh - 200px);min-height:400px;">
+            <!-- Conversation List -->
+            <div style="width:220px;flex-shrink:0;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);overflow:hidden;display:flex;flex-direction:column;">
+              <div style="padding:10px;border-bottom:1px solid var(--border);">
+                <input type="text" class="fc" placeholder="🔍 Search messages" id="msgSearch" oninput="filterConversations()" style="font-size:11px;margin:0;">
+              </div>
+              <div id="convList" style="flex:1;overflow-y:auto;"></div>
+            </div>
+            <!-- Chat Area -->
+            <div style="flex:1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);display:flex;flex-direction:column;overflow:hidden;">
+              <div id="chatHeader" style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">
+                <div style="font-size:22px;">💬</div>
+                <div><div style="font-size:13px;font-weight:700;color:var(--text);" id="chatName">Select a conversation</div><div style="font-size:11px;color:var(--t3);" id="chatStatus">or start a new one</div></div>
+              </div>
+              <div id="chatBox" style="flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;">
+                <div style="text-align:center;padding:32px;color:var(--t3);font-size:12px;">Select a conversation to start chatting 💬</div>
+              </div>
+              <div id="chatInputArea" style="padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;">
+                <input type="text" class="fc" id="msgInput" placeholder="Type a message…" style="flex:1;margin:0;font-size:12px;" onkeydown="if(event.key==='Enter')sendMessage()">
+                <button onclick="sendMessage()" style="padding:9px 14px;background:var(--primary);color:#fff;border:none;border-radius:var(--rs);font-weight:700;cursor:pointer;font-family:inherit;font-size:12px;">Send</button>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- ── AI TOOLS PAGE ── -->
@@ -1794,7 +1846,10 @@ img{max-width:100%;display:block;}
                 <div class="fg"><label class="fl">Your Price (₹) *</label><input type="number" class="fc" id="prodPrice" placeholder="e.g. 199" min="49"></div>
                 <div class="fg"><label class="fl">Original Price (₹)</label><input type="number" class="fc" id="prodOrig" placeholder="e.g. 399 (for discount display)"></div>
               </div>
-              <div class="fg"><label class="fl">Upload File *</label><div class="upz" onclick="showToast('📁 File picker — PDF/ZIP/MP4 max 100MB')">📎 Upload Your Product (PDF / ZIP / Video — max 100MB)</div></div>
+              <div class="fg"><label class="fl">Upload File *</label><div class="upz" id="mktFileDropZone" onclick="document.getElementById('mktFileInput').click()" style="cursor:pointer;">📎 Click to upload product file<br><span style="font-size:10px;color:var(--t3);">PDF / ZIP · Max 20 KB</span></div>
+              <input type="file" id="mktFileInput" accept=".pdf,.zip,.txt,.doc,.docx" style="display:none" onchange="handleMktFile(event)">
+              <div id="mktFileStatus" style="font-size:11px;color:var(--green);margin-top:4px;display:none;"></div>
+              <div id="mktFileError" style="font-size:11px;color:var(--red);margin-top:4px;display:none;"></div</div>
               <div class="fg">
                 <label class="fl">Cover Image / Thumbnail <span style="color:var(--t3);font-weight:400;">(Max 50 KB · JPG/PNG/WebP)</span></label>
                 <div style="border:2px dashed var(--border);border-radius:var(--rs);padding:14px;text-align:center;background:var(--s2);position:relative;">
@@ -1914,7 +1969,7 @@ img{max-width:100%;display:block;}
               </div>
               <div style="display:flex;gap:8px;">
                 <button class="bap" style="flex:2;" onclick="openReferModal({company:'TechNova Solutions',role:'Senior Full Stack Developer',reward:2000,exp:'3–5 Yrs',skills:'React.js, Node.js'})">👤 Refer a Candidate</button>
-                <button onclick="showToast('📤 Job link copied for sharing!')" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
+                <button onclick="shareJobToast(this)" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
               </div>
             </div>
 
@@ -1939,7 +1994,7 @@ img{max-width:100%;display:block;}
               </div>
               <div style="display:flex;gap:8px;">
                 <button class="bap" style="flex:2;background:linear-gradient(135deg,var(--purple),#9F5CF0);" onclick="openReferModal({company:'MindBridge AI',role:'AI/ML Engineer',reward:3500,exp:'2–5 Yrs',skills:'Python, LangChain, LLMs'})">👤 Refer a Candidate</button>
-                <button onclick="showToast('📤 Copied!')" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
+                <button onclick="copyToClipboard(this)" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
               </div>
             </div>
 
@@ -1964,7 +2019,7 @@ img{max-width:100%;display:block;}
               </div>
               <div style="display:flex;gap:8px;">
                 <button class="bap" style="flex:2;background:linear-gradient(135deg,var(--green),#059669);" onclick="openReferModal({company:'StartupIndia Hub',role:'Product Designer',reward:1500,exp:'1–3 Yrs',skills:'Figma, UX Research'})">👤 Refer a Candidate</button>
-                <button onclick="showToast('📤 Copied!')" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
+                <button onclick="copyToClipboard(this)" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
               </div>
             </div>
 
@@ -2119,8 +2174,8 @@ img{max-width:100%;display:block;}
                 <div class="sktgs"><span class="sk">Data Structures</span><span class="sk">JavaScript</span><span class="sk">System Design</span><span class="sk">SQL</span></div>
                 <div style="display:flex;gap:8px;">
                   <button class="bap" onclick="showModal('driveRegModal')" style="flex:2;">📝 Register for Drive</button>
-                  <button class="bsv" onclick="showToast('🔖 Drive saved!')">🔖</button>
-                  <button onclick="showToast('📤 Drive link copied!')" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
+                  <button class="bsv" onclick="saveDrive(this)">🔖</button>
+                  <button onclick="shareDrive(this)" style="padding:8px 12px;background:transparent;border:1.5px solid var(--border);border-radius:var(--rs);cursor:pointer;font-size:14px;">📤</button>
                 </div>
               </div>
 
@@ -2147,7 +2202,7 @@ img{max-width:100%;display:block;}
                 <div class="sktgs"><span class="sk">Java</span><span class="sk">Python</span><span class="sk">Problem Solving</span><span class="sk">Communication</span></div>
                 <div style="display:flex;gap:8px;">
                   <button class="bap" onclick="showModal('driveRegModal')" style="flex:2;background:linear-gradient(135deg,var(--purple),#9F5CF0);">📝 Register for Drive</button>
-                  <button class="bsv" onclick="showToast('🔖 Saved!')">🔖</button>
+                  <button class="bsv" onclick="saveItem(this)">🔖</button>
                 </div>
               </div>
 
@@ -2172,7 +2227,7 @@ img{max-width:100%;display:block;}
                 <div class="sktgs"><span class="sk">Aptitude</span><span class="sk">Verbal</span><span class="sk">Coding</span></div>
                 <div style="display:flex;gap:8px;">
                   <button class="bap" onclick="showModal('driveRegModal')" style="flex:2;background:linear-gradient(135deg,var(--green),#059669);">📝 Register for Drive</button>
-                  <button class="bsv" onclick="showToast('🔖 Saved!')">🔖</button>
+                  <button class="bsv" onclick="saveItem(this)">🔖</button>
                 </div>
               </div>
 
@@ -2827,9 +2882,9 @@ Frontend Intern | TechNova | June–Aug 2023
       </div>
       <div class="wgt">
         <div class="wt">🤝 People You May Know</div>
-        <div class="pit"><img src="https://i.pravatar.cc/150?img=11" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1.5px solid var(--border);" alt=""><div class="pi"><div class="pin">Vivek Patel</div><div class="pir">React Dev · 3 mutual</div></div><button class="bco" onclick="showToast('✅ Request sent!')">Connect</button></div>
-        <div class="pit"><img src="https://i.pravatar.cc/150?img=19" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1.5px solid var(--border);" alt=""><div class="pi"><div class="pin">Neha Joshi</div><div class="pir">HR Manager · TCS</div></div><button class="bco" onclick="showToast('✅ Request sent!')">Connect</button></div>
-        <div class="pit"><img src="https://i.pravatar.cc/150?img=27" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1.5px solid var(--border);" alt=""><div class="pi"><div class="pin">Arjun Shah</div><div class="pir">AI Engineer · Infosys</div></div><button class="bco" onclick="showToast('✅ Request sent!')">Connect</button></div>
+        <div class="pit"><img src="https://i.pravatar.cc/150?img=11" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1.5px solid var(--border);" alt=""><div class="pi"><div class="pin">Vivek Patel</div><div class="pir">React Dev · 3 mutual</div></div><button class="bco" onclick="sendConnectRequest(this)">Connect</button></div>
+        <div class="pit"><img src="https://i.pravatar.cc/150?img=19" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1.5px solid var(--border);" alt=""><div class="pi"><div class="pin">Neha Joshi</div><div class="pir">HR Manager · TCS</div></div><button class="bco" onclick="sendConnectRequest(this)">Connect</button></div>
+        <div class="pit"><img src="https://i.pravatar.cc/150?img=27" style="width:30px;height:30px;border-radius:50%;flex-shrink:0;object-fit:cover;border:1.5px solid var(--border);" alt=""><div class="pi"><div class="pin">Arjun Shah</div><div class="pir">AI Engineer · Infosys</div></div><button class="bco" onclick="sendConnectRequest(this)">Connect</button></div>
       </div>
       <div class="wgt">
         <div class="wt">🔥 Trending</div>
@@ -2941,7 +2996,7 @@ Frontend Intern | TechNova | June–Aug 2023
   <div class="pdi" onclick="showPage('boost',null);closeDrop()"><span class="di">🚀</span>Boost Job</div>
   <div class="pdd"></div>
   <div class="pdi" onclick="showModal('aiModal');closeDrop()"><span class="di">🤖</span>AI Tools</div>
-  <div class="pdi" onclick="showToast('💎 Pro upgrade coming!');closeDrop()"><span class="di">💎</span>Upgrade Pro</div>
+  <div class="pdi" onclick="showPage('pro',null);closeDrop()"><span class="di">💎</span>Upgrade Pro</div>
   <div class="pdd"></div>
   <div class="pdi dng" onclick="doSignOut()"><span class="di">🚪</span>Sign Out</div>
 </div>
@@ -2960,8 +3015,10 @@ Frontend Intern | TechNova | June–Aug 2023
       </div>
       <textarea class="fc" style="min-height:110px;border:none;padding:0;resize:none;font-size:14px;" id="ptxt" placeholder="What's on your mind?…"></textarea>
       <div style="display:flex;gap:6px;padding:10px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border);margin:10px 0;flex-wrap:wrap;">
-        <button class="ca" onclick="showToast('📸 Photo picker…')"><span>🖼️</span>Photo</button>
-        <button class="ca" onclick="showToast('📹 Video picker…')"><span>📹</span>Video</button>
+        <input type="file" id="postImageInput" accept="image/*" style="display:none" onchange="attachPostImage(event)">
+        <input type="file" id="postVideoInput" accept="video/*" style="display:none" onchange="attachPostVideo(event)">
+        <button class="ca" onclick="document.getElementById('postImageInput').click()"><span>🖼️</span>Photo</button>
+        <button class="ca" onclick="document.getElementById('postVideoInput').click()"><span>📹</span>Video</button>
         <button class="ca" onclick="aiAssist()"><span>🤖</span>AI Write</button>
         <button class="ca" onclick="showToast('📊 Poll…')"><span>📊</span>Poll</button>
       </div>
@@ -3231,7 +3288,7 @@ Frontend Intern | TechNova | June–Aug 2023
         <div class="fg"><label class="fl">CGPA *</label><input type="number" class="fc" id="drRegCGPA" placeholder="e.g. 8.5" step="0.1" max="10"></div>
         <div class="fg"><label class="fl">Graduation Year *</label><select class="fc" id="drRegYear"><option>2025</option><option>2026</option><option>2024</option></select></div>
       </div>
-      <div class="fg"><label class="fl">Resume</label><div class="upz" onclick="showToast('📁 Resume picker opening…')">📎 Upload Resume (PDF — max 5MB)</div></div>
+      <div class="fg"><label class="fl">Resume</label><div class="upz" onclick="document.getElementById('profileResumeInput').click()" id="profileResumeDropZone">📎 Click to upload resume (PDF/TXT — max 20KB)</div></div>
       <div class="fg"><label class="fl">Active Backlogs?</label><select class="fc" id="drRegBacklogs"><option>No backlogs</option><option>1 backlog</option><option>2 backlogs</option><option>3+ backlogs</option></select></div>
       <div style="background:var(--gl);border-radius:var(--rs);padding:9px;margin-bottom:12px;font-size:11px;color:var(--green);">🛡️ Your data is secure. Only the recruiting company's HR team will see your application. DPDP Act 2023 Compliant.</div>
       <button class="bprim" onclick="submitDriveReg()">✅ Register for Drive</button>
@@ -3694,7 +3751,7 @@ async function doSignOut(){
 function demoLogin(){
   $('authScreen').style.display='none';$('appScreen').style.display='block';
   _up={name:'Gaurang Raval',headline:'🚀 AI Platform Builder · KSpider AI',photoURL:'https://i.pravatar.cc/150?img=12',posts:187,jobs:12,boostedJobs:2};
-  updateUI();loadFeed();loadJobs();initGeo();listenNotifications();
+  updateUI();loadFeed();loadJobs();initGeo();listenNotifications();loadAnalytics();
 }
 
 // ══════════════════════════════════════
@@ -4132,7 +4189,7 @@ function renderJobCard(j){
         <div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.6;">${desc}</div>
         <div class="jar" style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="bap" onclick="openApply('${t}','${co}','${sal}','${exp}','${typ}')">⚡ Easy Apply</button>
-          <button class="bsv" onclick="showToast('✅ Job saved!')" title="Save">🔖</button>
+          <button class="bsv" onclick="saveJob(this)" title="Save">🔖</button>
           <button class="bsv" onclick="shareJob('${t}','${co}','${validateInput(j.location||'')}')" title="Share" style="font-size:14px;">📤</button>
         </div>
       </div>
@@ -5034,21 +5091,389 @@ async function loadMySubmittedApps(){
   }
 }
 
-// Auto-load applications + listen notifications when profile opens or user logs in
+
+// ══════════════════════════════════════
+// MESSAGES — Real-time Firebase Chat
+// ══════════════════════════════════════
+var _activeChatUid=null, _activeChatName='', _msgUnsub=null, _convUnsub=null;
+
+function openNewMessage(){
+  var name=prompt('Enter name or email of person to message:');
+  if(!name||!name.trim()) return;
+  showToast('💬 Opening chat with '+validateInput(name.trim())+'…');
+}
+
+async function loadConversations(){
+  var box=$('convList');
+  if(!box||!window._fb||!_user) return;
+  if(_convUnsub){_convUnsub();_convUnsub=null;}
+  try{
+    var q=window._fb.query(
+      window._fb.collection(window._fb.db,'conversations'),
+      window._fb.where('participants','array-contains',_user.uid),
+      window._fb.orderBy('lastMessageAt','desc'),
+      window._fb.limit(30)
+    );
+    _convUnsub=window._fb.onSnapshot(q,function(snap){
+      if(snap.empty){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">No conversations yet</div>';return;}
+      box.innerHTML='';
+      snap.forEach(function(d){
+        var c=d.data();
+        var otherUid=c.participants.find(function(u){return u!==_user.uid;})||'';
+        var otherName=c.participantNames?c.participantNames[otherUid]||'User':'User';
+        var tm=c.lastMessageAt?timeAgo(c.lastMessageAt.toDate()):'';
+        var unread=c.unread&&c.unread[_user.uid]>0;
+        var item=document.createElement('div');
+        item.style.cssText='padding:10px 12px;cursor:pointer;border-bottom:1px solid var(--border);background:'+(unread?'var(--pl)':'transparent')+';';
+        item.onmouseover=function(){this.style.background='var(--s2)';};
+        item.onmouseout=function(){this.style.background=unread?'var(--pl)':'transparent';};
+        item.onclick=(function(uid,nm,cid){return function(){openChat(uid,nm,cid);};})(otherUid,otherName,d.id);
+        item.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;"><div style="font-size:12px;font-weight:'+(unread?'700':'500')+';color:var(--text);">'+validateInput(otherName)+'</div><div style="font-size:9px;color:var(--t3);">'+tm+'</div></div>'+
+          '<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+validateInput(c.lastMessage||'')+'</div>';
+        box.appendChild(item);
+      });
+    });
+  }catch(e){console.warn('loadConversations:',e);}
+}
+
+function filterConversations(){
+  var q=($('msgSearch')||{}).value||'';
+  document.querySelectorAll('#convList > div').forEach(function(el){
+    el.style.display=el.textContent.toLowerCase().includes(q.toLowerCase())?'':'none';
+  });
+}
+
+function openChat(uid,name,convId){
+  _activeChatUid=uid; _activeChatName=name;
+  var cn=$('chatName'), cs=$('chatStatus');
+  if(cn) cn.textContent=validateInput(name);
+  if(cs) cs.textContent='Active now';
+  if(_msgUnsub){_msgUnsub();_msgUnsub=null;}
+  var box=$('chatBox');
+  if(!box) return;
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);font-size:11px;"><div class="spinner2" style="margin:0 auto 6px;width:16px;height:16px;border-width:2px;"></div></div>';
+  if(!window._fb||!_user){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">Configure Firebase to enable chat.</div>';return;}
+  // Build conversation ID (sorted UIDs)
+  var cid=convId||[_user.uid,uid].sort().join('_');
+  var q=window._fb.query(
+    window._fb.collection(window._fb.db,'messages'),
+    window._fb.where('conversationId','==',cid),
+    window._fb.orderBy('createdAt','asc'),
+    window._fb.limit(50)
+  );
+  _msgUnsub=window._fb.onSnapshot(q,function(snap){
+    box.innerHTML='';
+    if(snap.empty){box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">Say hello! 👋</div>';return;}
+    snap.forEach(function(d){
+      var m=d.data();
+      var isMine=m.senderId===_user.uid;
+      var tm=m.createdAt&&m.createdAt.toDate?timeAgo(m.createdAt.toDate()):'';
+      var bubble=document.createElement('div');
+      bubble.style.cssText='display:flex;flex-direction:column;align-items:'+(isMine?'flex-end':'flex-start')+';margin:'+(isMine?'0 0 6px 40px':'0 40px 6px 0');
+      bubble.innerHTML='<div style="background:'+(isMine?'var(--primary)':'var(--s2)')+';color:'+(isMine?'#fff':'var(--text)')+';padding:8px 12px;border-radius:'+(isMine?'12px 12px 4px 12px':'12px 12px 12px 4px')+';font-size:12px;line-height:1.5;max-width:100%;">'+validateInput(m.text||'')+'</div>'+
+        '<div style="font-size:9px;color:var(--t3);margin-top:2px;padding:0 4px;">'+tm+'</div>';
+      box.appendChild(bubble);
+    });
+    box.scrollTop=box.scrollHeight;
+  });
+  // Store convId
+  $('msgInput').dataset.convId=cid;
+  $('msgInput').dataset.recipientId=uid;
+  $('msgInput').focus();
+}
+
+async function sendMessage(){
+  var inp=$('msgInput');
+  if(!inp) return;
+  var text=inp.value.trim();
+  if(!text||!_activeChatUid) return;
+  if(!window._fb||!_user) return showToast('⚠️ Login to send messages!');
+  var cid=inp.dataset.convId||[_user.uid,_activeChatUid].sort().join('_');
+  inp.value='';
+  var now=window._fb.serverTimestamp();
+  try{
+    // Save message
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'messages'),{
+      conversationId:cid,senderId:_user.uid,senderName:_up?.name||'User',
+      text:validateInput(text),createdAt:now
+    });
+    // Update/create conversation
+    var convRef=window._fb.doc(window._fb.db,'conversations',cid);
+    var names={};names[_user.uid]=_up?.name||'User';names[_activeChatUid]=_activeChatName;
+    await window._fb.setDoc(convRef,{
+      participants:[_user.uid,_activeChatUid],
+      participantNames:names,
+      lastMessage:text.slice(0,60),
+      lastMessageAt:now,
+      lastSenderId:_user.uid
+    },{merge:true});
+    // Send notification to recipient
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{
+      toUid:_activeChatUid,type:'system',
+      title:'💬 New message from '+validateInput(_up?.name||'Someone'),
+      body:text.slice(0,80),read:false,createdAt:now
+    });
+  }catch(e){showToast('⚠️ Send failed: '+e.message);}
+}
+
+// ══════════════════════════════════════
+// NETWORK — Real Firebase people search
+// ══════════════════════════════════════
+var _networkCache=[];
+
+async function searchNetwork(){
+  var box=$('networkBox');
+  if(!box) return;
+  var q=($('networkSearch')||{}).value||'';
+  var role=($('networkRoleFilter')||{}).value||'';
+  if(!window._fb||!_user){
+    renderNetworkUsers([
+      {id:'demo1',name:'Priya Sharma',headline:'React Developer · 3 yrs',role:'jobseeker',photoURL:'https://i.pravatar.cc/150?img=5'},
+      {id:'demo2',name:'Rahul Mehta',headline:'HR Manager · TCS',role:'recruiter',photoURL:'https://i.pravatar.cc/150?img=22'},
+      {id:'demo3',name:'Ananya Kosh',headline:'AI Engineer · Startup',role:'jobseeker',photoURL:'https://i.pravatar.cc/150?img=15'}
+    ]);
+    return;
+  }
+  box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div></div>';
+  try{
+    var constraints=[
+      window._fb.collection(window._fb.db,'users'),
+      window._fb.limit(20)
+    ];
+    var fsq;
+    if(role) fsq=window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==',role),window._fb.limit(20));
+    else fsq=window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.limit(20));
+    var snap=await window._fb.getDocs(fsq);
+    var users=[];
+    snap.forEach(function(d){if(d.id!==_user.uid) users.push({id:d.id,...d.data()});});
+    // Client-side filter by name/skill
+    if(q){users=users.filter(function(u){return (u.name||'').toLowerCase().includes(q.toLowerCase())||(u.skills||'').toLowerCase().includes(q.toLowerCase())||(u.headline||'').toLowerCase().includes(q.toLowerCase());});}
+    _networkCache=users;
+    renderNetworkUsers(users);
+  }catch(e){box.innerHTML='<div style="padding:12px;font-size:12px;color:var(--red);">⚠️ '+validateInput(e.message)+'</div>';}
+}
+
+function networkFilterSkill(skill){$('networkSearch').value=skill;searchNetwork();}
+
+function renderNetworkUsers(users){
+  var box=$('networkBox');
+  if(!box) return;
+  if(!users.length){box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">No users found. Try different keywords.</div>';return;}
+  box.innerHTML='';
+  users.forEach(function(u){
+    var card=document.createElement('div');
+    card.style.cssText='background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--sh);display:flex;align-items:center;gap:12px;animation:fu .3s ease;';
+    var photo=u.photoURL||('https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'U')+'&background=0A84FF&color=fff');
+    var roleBadge=u.role==='recruiter'?'<span style="font-size:9px;font-weight:700;background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED30;padding:1px 5px;border-radius:99px;">RECRUITER</span>':
+      u.role==='jobseeker'?'<span style="font-size:9px;font-weight:700;background:#0A84FF18;color:#0A84FF;border:1px solid #0A84FF30;padding:1px 5px;border-radius:99px;">JOB SEEKER</span>':'';
+    card.innerHTML=
+      '<img src="'+photo+'" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid var(--border);" onerror="this.src=\'https://ui-avatars.com/api/?name=U&background=0A84FF&color=fff\'">'+
+      '<div style="flex:1;min-width:0;">'+
+        '<div style="font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:5px;">'+validateInput(u.name||'User')+' '+roleBadge+'</div>'+
+        '<div style="font-size:11px;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+validateInput(u.headline||'KSpider Connect Member')+'</div>'+
+        (u.location?'<div style="font-size:10px;color:var(--t3);">📍 '+validateInput(u.location)+'</div>':'')+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px;">'+
+        '<button onclick="sendConnectRequestById(\''+u.id+'\',\''+validateInput(u.name||'User')+'\')" style="padding:6px 12px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Connect</button>'+
+        '<button onclick="openChatWithUser(\''+u.id+'\',\''+validateInput(u.name||'User')+'\')" style="padding:6px 12px;border-radius:99px;background:var(--s2);color:var(--t2);border:1px solid var(--border);font-size:11px;cursor:pointer;font-family:inherit;">💬 Chat</button>'+
+      '</div>';
+    box.appendChild(card);
+  });
+}
+
+async function sendConnectRequestById(uid,name){
+  if(!window._fb||!_user) return showToast('⚠️ Login to connect!');
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{
+      toUid:uid,type:'connection',
+      title:'🤝 Connection request from '+validateInput(_up?.name||'Someone'),
+      body:validateInput(_up?.name||'Someone')+' wants to connect with you on KSpider Connect.',
+      fromUid:_user.uid,fromName:_up?.name||'',read:false,
+      createdAt:window._fb.serverTimestamp()
+    });
+    showToast('✅ Connection request sent to '+validateInput(name)+'!');
+  }catch(e){showToast('⚠️ '+e.message);}
+}
+
+function sendConnectRequest(btn){
+  if(btn) btn.textContent='Sent ✓';
+  if(btn) btn.disabled=true;
+  showToast('✅ Connection request sent!');
+}
+
+function openChatWithUser(uid,name){
+  _activeChatUid=uid; _activeChatName=name;
+  showPage('messages',null);
+  setTimeout(function(){
+    loadConversations();
+    openChat(uid,name,null);
+  },300);
+}
+
+// ══════════════════════════════════════
+// ANALYTICS — Real Firebase data
+// ══════════════════════════════════════
+async function loadAnalytics(){
+  if(!window._fb||!_user){
+    if($('anJobs')) $('anJobs').textContent='3';
+    if($('anApps')) $('anApps').textContent='12';
+    if($('anViews')) $('anViews').textContent='48';
+    return;
+  }
+  try{
+    // Get jobs by this recruiter
+    var jobsQ=window._fb.query(window._fb.collection(window._fb.db,'jobs'),window._fb.where('recruiterId','==',_user.uid),window._fb.limit(50));
+    var jobsSnap=await window._fb.getDocs(jobsQ);
+    if($('anJobs')) $('anJobs').textContent=jobsSnap.size;
+    // Get applications received
+    var appsQ=window._fb.query(window._fb.collection(window._fb.db,'notifications'),window._fb.where('toUid','==',_user.uid),window._fb.where('type','==','new_application'),window._fb.limit(99));
+    var appsSnap=await window._fb.getDocs(appsQ);
+    if($('anApps')) $('anApps').textContent=appsSnap.size;
+    // Job performance breakdown
+    var perfBox=$('jobPerfBox');
+    if(perfBox&&!jobsSnap.empty){
+      perfBox.innerHTML='';
+      var boosted=0;
+      jobsSnap.forEach(function(d){
+        var j=d.data();
+        if(j.sponsored) boosted++;
+        var appsForJob=0;
+        appsSnap.forEach(function(a){if(a.data().jobTitle===j.title) appsForJob++;});
+        var row=document.createElement('div');
+        row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:var(--rs);font-size:12px;';
+        row.innerHTML='<div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">'+validateInput(j.title||'Job')+
+          (j.sponsored?'<span style="font-size:9px;color:var(--gold);margin-left:4px;">⭐ Boosted</span>':'')+
+          '</div><div style="font-size:11px;font-weight:700;color:var(--primary);margin-left:8px;">'+appsForJob+' apps</div>';
+        perfBox.appendChild(row);
+      });
+      if($('anBoosted')) $('anBoosted').textContent=boosted;
+      var cr=jobsSnap.size>0?Math.round((appsSnap.size/jobsSnap.size)*100)+'%':'0%';
+      if($('anConvRate')) $('anConvRate').textContent=cr;
+    } else if(perfBox){
+      perfBox.innerHTML='<div style="font-size:12px;color:var(--t3);text-align:center;padding:12px;">Post jobs to see performance.</div>';
+    }
+  }catch(e){console.warn('loadAnalytics:',e);}
+}
+
+// ══════════════════════════════════════
+// SAVE JOB / SAVE ITEM
+// ══════════════════════════════════════
+async function saveJob(btn){
+  var card=btn.closest('.pc');
+  var title=card?card.querySelector('.jtt')?.textContent:'Job';
+  if(!window._fb||!_user){showToast('⚠️ Login to save jobs!');return;}
+  try{
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'saved_jobs',_user.uid+'_'+(Date.now())),{
+      userId:_user.uid,jobTitle:validateInput(title||''),savedAt:window._fb.serverTimestamp()
+    });
+    if(btn){btn.textContent='🔖';btn.style.color='var(--primary)';}
+    showToast('✅ Job saved! View in profile.');
+  }catch(e){showToast('⚠️ '+e.message);}
+}
+
+function saveItem(btn){if(btn){btn.textContent='🔖';btn.style.color='var(--primary)';}showToast('✅ Saved!');}
+function saveDrive(btn){if(btn){btn.style.color='var(--primary)';}showToast('✅ Drive saved!');}
+
+// ══════════════════════════════════════
+// SHARE HELPERS
+// ══════════════════════════════════════
+function shareDrive(btn){
+  var card=btn.closest('.pc');
+  var title=card?card.querySelector('.jtt,.cnm')?.textContent:'Campus Drive';
+  var text='🎓 Campus Drive: '+validateInput(title||'')+'\n\n👉 Apply on KSpider Connect: https://kspiderai.in/tools/KSpider_Job_Placement.html';
+  if(navigator.share) navigator.share({title:'Campus Drive',text:text}).catch(function(){});
+  else navigator.clipboard.writeText(text).then(function(){showToast('📤 Drive link copied!');}).catch(function(){});
+}
+
+function shareJobToast(btn){
+  var card=btn.closest('.pc');
+  var title=card?card.querySelector('.jtt')?.textContent:'Job';
+  var company=card?card.querySelector('.cnm')?.textContent:'';
+  var text='🔥 Job Alert: '+validateInput(title||'')+' @ '+validateInput(company||'')+'\n\n👉 Apply: https://kspiderai.in/tools/KSpider_Job_Placement.html #KSpiderAI #Jobs';
+  if(navigator.share) navigator.share({title:title,text:text}).catch(function(){});
+  else navigator.clipboard.writeText(text).then(function(){showToast('📤 Job link copied!');}).catch(function(){});
+}
+
+function copyToClipboard(btn){
+  var card=btn.closest('.pc');
+  var title=card?card.querySelector('.jtt,.cnm')?.textContent:'Item';
+  var text=validateInput(title||'')+' — KSpider Connect: https://kspiderai.in/tools/KSpider_Job_Placement.html';
+  navigator.clipboard.writeText(text).then(function(){showToast('📋 Copied!');}).catch(function(){showToast('📋 Copy failed');});
+}
+
+// ══════════════════════════════════════
+// POST PHOTO/VIDEO ATTACHMENT
+// ══════════════════════════════════════
+var _postImageData=null, _postVideoName=null;
+
+function attachPostImage(event){
+  var file=event.target.files[0];
+  if(!file) return;
+  if(file.size>20480){showToast('❌ Image too large! Max 20 KB.');event.target.value='';return;}
+  var reader=new FileReader();
+  reader.onload=function(e){
+    _postImageData=e.target.result;
+    showToast('✅ Image attached ('+Math.round(file.size/1024*10)/10+' KB)');
+    // Show preview
+    var prev=document.getElementById('postImgPreview');
+    if(!prev){
+      prev=document.createElement('div');
+      prev.id='postImgPreview';
+      prev.style.cssText='margin-top:8px;position:relative;';
+      var ta=$('ptxt');
+      if(ta&&ta.parentNode) ta.parentNode.insertBefore(prev,ta.nextSibling);
+    }
+    prev.innerHTML='<img src="'+e.target.result+'" style="max-width:100%;border-radius:var(--rs);border:1.5px solid var(--border);max-height:160px;object-fit:cover;">'+
+      '<button onclick="_postImageData=null;document.getElementById(\'postImgPreview\').remove();" style="position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:12px;font-family:inherit;">✕</button>';
+  };
+  reader.readAsDataURL(file);
+}
+
+function attachPostVideo(event){
+  var file=event.target.files[0];
+  if(!file) return;
+  if(file.size>20480){showToast('❌ Video too large! Max 20 KB.');event.target.value='';return;}
+  _postVideoName=file.name;
+  showToast('✅ Video attached: '+validateInput(file.name));
+}
+
+// ══════════════════════════════════════
+// MARKETPLACE FILE HANDLER
+// ══════════════════════════════════════
+var _mktFileData=null;
+function handleMktFile(event){
+  var file=event.target.files[0];
+  var err=$('mktFileError'),status=$('mktFileStatus');
+  if(!file) return;
+  if(err) err.style.display='none';
+  if(file.size>20480){
+    if(err){err.textContent='❌ File too large: '+Math.round(file.size/1024*10)/10+' KB. Max 20 KB.';err.style.display='block';}
+    event.target.value='';_mktFileData=null;return;
+  }
+  var reader=new FileReader();
+  reader.onload=function(e){
+    _mktFileData={name:file.name,size:file.size,type:file.type,data:e.target.result};
+    if(status){status.textContent='✅ '+file.name+' ('+Math.round(file.size/1024*10)/10+' KB)';status.style.display='block';}
+    showToast('✅ File attached: '+validateInput(file.name));
+  };
+  reader.readAsDataURL(file);
+}
+
+// ══════════════════════════════════════
+// SHOWPAGE PATCH — auto-load for each page
+// ══════════════════════════════════════
 document.addEventListener('DOMContentLoaded',function(){
-  // Patch showPage to auto-load applications on profile visit
   var origSP=window.showPage;
   window.showPage=function(pg,btn){
     origSP(pg,btn);
-    if(pg==='profile'){
-      setTimeout(function(){
-        loadMyApplications();
-        loadMySubmittedApps();
-      },200);
-    }
-    if(pg==='viral') setTimeout(vmInit,50);
+    if(pg==='profile'){setTimeout(function(){loadMyApplications();loadMySubmittedApps();},200);}
+    if(pg==='messages'){setTimeout(loadConversations,200);}
+    if(pg==='network'){setTimeout(searchNetwork,200);}
+    if(pg==='analytics'){setTimeout(loadAnalytics,200);}
+    if(pg==='viral'){setTimeout(vmInit,50);}
   };
 });
+
 
 
 // ══════════════════════════════════════
