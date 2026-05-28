@@ -2064,23 +2064,107 @@ function genQ(topic, count){
 const KS_SHEETS_ENABLED = true; // ✅ LIVE — K Spider Question Bank
 
 // =====================================================================
-// MASTER SHEET — Single Google Sheet auto-subject detection
-// Columns: Topic | Question | OptionA | OptionB | OptionC | OptionD | Answer(0-3) | Explanation | Year
-// Add questions to the sheet → tool auto-detects subject & shows them
+// QUESTION BANK — Google Sheet (Multi-tab, auto-subject detection)
+// Master sheet: all subjects in one spreadsheet, each in its own tab.
+// Columns: Topic | Question | OptionA | OptionB | OptionC | OptionD | Answer(0-3 or A-D) | Explanation | Year
 // =====================================================================
-const KS_MASTER_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0rJfs6_hrYNlm5g7JVtWitLgI0g0HcSWubP4_cRigbt2U0n1vBtLTwcE4biOhu2ZlA-X8tUhJCmhy/pub?output=csv';
 
-// Legacy per-topic URLs (kept for compatibility; master sheet used first)
-const KS_SHEET_URLS = {};
+// ── Per-topic GID URLs (each maps to a specific sheet tab) ──────────
+const KS_MASTER_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0rJfs6_hrYNlm5g7JVtWitLgI0g0HcSWubP4_cRigbt2U0n1vBtLTwcE4biOhu2ZlA-X8tUhJCmhy/pub';
+function gidUrl(gid) { return KS_MASTER_BASE + '?gid=' + gid + '&single=true&output=csv'; }
+
+const KS_SHEET_URLS = {
+  // ── NEET UG ──────────────────────────────────────────────────────
+  'NEET Biology':                  gidUrl('1827226949'),
+  'NEET Botany':                   gidUrl('1827226949'),
+  'NEET Zoology':                  gidUrl('1827226949'),
+  'NEET Physics':                  gidUrl('1085211451'),
+  'NEET Chemistry':                gidUrl('879529002'),
+  // ── MBBS 1st Year ────────────────────────────────────────────────
+  'MBBS Anatomy':                  gidUrl('645087016'),
+  'MBBS Physiology':               gidUrl('1353068065'),
+  'MBBS Biochemistry':             gidUrl('205029425'),
+  // ── MBBS 2nd Year ────────────────────────────────────────────────
+  'MBBS Pathology':                gidUrl('205029425'),
+  'MBBS Microbiology':             gidUrl('1406552970'),
+  'MBBS Pharmacology':             gidUrl('1490416483'),
+  'MBBS Forensic Medicine':        gidUrl('205029425'),
+  // ── MBBS 3rd & Final Year ────────────────────────────────────────
+  'MBBS General Medicine':         gidUrl('1812572585'),
+  'MBBS General Surgery':          gidUrl('658600051'),
+  'MBBS Obstetrics Gynaecology':   gidUrl('676903303'),
+  'MBBS Paediatrics':              gidUrl('676903303'),
+  'MBBS Pediatrics':               gidUrl('676903303'),
+  'MBBS Ophthalmology':            gidUrl('205029425'),
+  'MBBS ENT':                      gidUrl('205029425'),
+  'MBBS Psychiatry':               gidUrl('205029425'),
+  'MBBS Orthopaedics':             gidUrl('205029425'),
+  'MBBS Radiology':                gidUrl('205029425'),
+  'MBBS Community Medicine':       gidUrl('205029425'),
+  // ── PG NEET / INI-CET (combined from all MBBS sheets) ────────────
+  'PG NEET Medicine':              gidUrl('1812572585'),
+  'PG NEET Surgery':               gidUrl('658600051'),
+  'PG NEET OBG':                   gidUrl('676903303'),
+  'PG NEET Paediatrics':           gidUrl('676903303'),
+  'PG NEET Pharmacology':          gidUrl('1490416483'),
+  'PG NEET Anatomy':               gidUrl('645087016'),
+  'PG NEET Physiology':            gidUrl('1353068065'),
+  'PG NEET Microbiology':          gidUrl('1406552970'),
+  // ── JEE Mains ────────────────────────────────────────────────────
+  'JEE Maths':                     gidUrl('336176434'),
+  'JEE Physics':                   gidUrl('1085211451'),
+  'JEE Chemistry':                 gidUrl('879529002'),
+  // ── JEE Advanced ─────────────────────────────────────────────────
+  'JEE Advanced Maths':            gidUrl('336176434'),
+  'JEE Advanced Physics':          gidUrl('1085211451'),
+  'JEE Advanced Chemistry':        gidUrl('879529002'),
+  'JEE Advanced Integer Type':     gidUrl('336176434'),
+  'JEE Advanced Multiple Correct': gidUrl('336176434'),
+  'JEE Advanced Paragraph Based':  gidUrl('336176434'),
+  // ── GPSC ─────────────────────────────────────────────────────────
+  'GPSC Maths':                    gidUrl('336176434'),
+  'GPSC History':                  gidUrl('2147433082'),
+  'GPSC Gujarat GK':               gidUrl('2147433082'),
+  'GPSC Geography':                gidUrl('2147433082'),
+  'GPSC Polity':                   gidUrl('2147433082'),
+  'GPSC Economy':                  gidUrl('336176434'),
+  'GPSC Science':                  gidUrl('336176434'),
+  'GPSC Current Affairs':          gidUrl('2147433082'),
+  'GPSC Reasoning':                gidUrl('336176434'),
+  // ── UPSC ─────────────────────────────────────────────────────────
+  'UPSC Polity':                   gidUrl('2147433082'),
+  'UPSC History':                  gidUrl('2147433082'),
+  'UPSC Geography':                gidUrl('2147433082'),
+  'UPSC Economy':                  gidUrl('336176434'),
+  'UPSC Science':                  gidUrl('1085211451'),
+  'UPSC Environment':              gidUrl('1085211451'),
+  'UPSC Current Affairs':          gidUrl('2147433082'),
+  'UPSC Art Culture':              gidUrl('2147433082'),
+};
+
+// ── All GIDs to fetch for full master cache ───────────────────────
+const KS_ALL_GIDS = [
+  {gid:'1827226949', label:'NEET Biology'},
+  {gid:'1085211451', label:'NEET Physics'},
+  {gid:'879529002',  label:'NEET Chemistry'},
+  {gid:'645087016',  label:'MBBS Anatomy'},
+  {gid:'1353068065', label:'MBBS Physiology'},
+  {gid:'205029425',  label:'MBBS Biochemistry'},
+  {gid:'1406552970', label:'MBBS Microbiology'},
+  {gid:'1490416483', label:'MBBS Pharmacology'},
+  {gid:'1812572585', label:'MBBS General Medicine'},
+  {gid:'658600051',  label:'MBBS General Surgery'},
+  {gid:'676903303',  label:'MBBS Paediatrics'},
+  {gid:'336176434',  label:'GPSC Maths'},
+  {gid:'2147433082', label:'GPSC History'},
+];
 
 // Cache for sheet data (session-level)
 const KS_SHEET_CACHE = {};
-
-// Master sheet cache: { "Topic Name": [questions], ... }
 var KS_MASTER_CACHE        = null;
 var KS_MASTER_LOAD_PROMISE = null;
 
-// Parse CSV text into question objects
+// ── Parse CSV text → question objects (handles all sheet formats) ─
 function parseSheetCSV(csvText, topicName) {
   try {
     const lines = csvText.trim().split('\n');
@@ -2089,21 +2173,48 @@ function parseSheetCSV(csvText, topicName) {
     for (let i = 1; i < lines.length; i++) {
       const row = parseCSVRow(lines[i]);
       if (!row || row.length < 7) continue;
-      const [topic, q, optA, optB, optC, optD, ansRaw, exp, yr] = row;
-      const ans = parseInt(ansRaw);
-      if (!q || isNaN(ans) || ans < 0 || ans > 3) continue;
+      // Column mapping (handles 'Questions' vs 'Question' header variations)
+      const topicCol = (row[0] || '').trim();
+      const q        = (row[1] || '').trim();
+      const optA     = String(row[2] || '').trim();
+      const optB     = String(row[3] || '').trim();
+      const optC     = String(row[4] || '').trim();
+      const optD     = String(row[5] || '').trim();
+      let   ansRaw   = (row[6] || '').toString().trim();
+      const expRaw   = (row[7] || '').trim();
+      const yrRaw    = (row[8] || 'General').trim();
+
+      if (!q) continue;
+
+      // ── Normalise answer to 0-3 index ──────────────────────────
+      let ans;
+      // Letter answer: A→0, B→1, C→2, D→3 (handles GPSC Gujarat GK format)
+      if (/^[A-Da-d]$/.test(ansRaw)) {
+        ans = 'ABCDabcd'.indexOf(ansRaw) % 4;
+      } else {
+        // Numeric: may be "0","1","2","3" or "0.0","1.0" etc.
+        ans = parseInt(parseFloat(ansRaw));
+      }
+      if (isNaN(ans) || ans < 0 || ans > 3) continue;
+
+      // ── Skip rows with empty/invalid options ───────────────────
+      if (!optA && !optB && !optC && !optD) continue;
+
       questions.push({
-        q: q.trim(),
-        opts: [optA.trim(), optB.trim(), optC.trim(), optD.trim()],
-        ans: ans,
-        exp: (exp || '').trim(),
-        yr: (yr || 'General').trim(),
-        topic: (topic && topic.trim()) ? topic.trim() : topicName,
+        q:    q,
+        opts: [optA, optB, optC, optD],
+        ans:  ans,
+        exp:  expRaw,
+        yr:   yrRaw,
+        topic: topicCol ? topicCol : topicName,
         fromSheet: true
       });
     }
     return questions;
-  } catch(e) { console.warn('Sheet parse error:', e); return []; }
+  } catch(e) {
+    console.warn('Sheet parse error:', e);
+    return [];
+  }
 }
 
 // Parse a single CSV row (handles commas inside quotes)
@@ -2111,56 +2222,71 @@ function parseCSVRow(line) {
   const result = []; let current = ''; let inQuotes = false;
   for (let i = 0; i < line.length; i++) {
     const ch = line[i];
-    if (ch === '"') { inQuotes = !inQuotes; }
-    else if (ch === ',' && !inQuotes) { result.push(current); current = ''; }
-    else { current += ch; }
+    if (ch === '"') {
+      // Handle escaped quotes ("")
+      if (inQuotes && line[i+1] === '"') { current += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current); current = '';
+    } else {
+      current += ch;
+    }
   }
-  result.push(current); return result;
+  result.push(current);
+  return result;
 }
 
 // CORS proxy fallback
 async function sheetFetchCSV(url) {
   try { var r = await fetch(url, {mode:'cors'}); if(r.ok){var t=await r.text();if(t&&t.length>20)return t;} } catch(e) {}
-  var proxies = ['https://corsproxy.io/?'+encodeURIComponent(url),'https://api.allorigins.win/raw?url='+encodeURIComponent(url)];
+  var proxies = [
+    'https://corsproxy.io/?'+encodeURIComponent(url),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(url)
+  ];
   for(var pi=0;pi<proxies.length;pi++){
     try{var pr=await fetch(proxies[pi]);if(pr.ok){var txt=await pr.text();if(txt&&txt.length>20)return txt;}}catch(e2){}
   }
-  throw new Error('Fetch failed: '+url.slice(0,60));
+  throw new Error('Fetch failed: '+url.slice(0,80));
 }
 
-// Load master sheet → group by topic
+// ── Load ALL sheet tabs into master cache ─────────────────────────
 async function loadMasterSheet() {
   if (KS_MASTER_CACHE !== null) return KS_MASTER_CACHE;
   if (KS_MASTER_LOAD_PROMISE) return KS_MASTER_LOAD_PROMISE;
   KS_MASTER_LOAD_PROMISE = (async function() {
-    try {
-      const csv = await sheetFetchCSV(KS_MASTER_SHEET_URL);
-      const allQs = parseSheetCSV(csv, 'General');
-      const grouped = {};
-      allQs.forEach(function(q) {
+    const grouped = {};
+    // Fetch each known GID tab in parallel
+    const fetches = KS_ALL_GIDS.map(async function(item) {
+      try {
+        const url = gidUrl(item.gid);
+        const csv = await sheetFetchCSV(url);
+        const qs  = parseSheetCSV(csv, item.label);
+        return qs;
+      } catch(e) {
+        console.warn('[KSpider] Failed to load GID', item.gid, item.label, e.message);
+        return [];
+      }
+    });
+    const results = await Promise.all(fetches);
+    results.forEach(function(qs) {
+      qs.forEach(function(q) {
         const t = (q.topic || 'General').trim();
         if (!grouped[t]) grouped[t] = [];
         grouped[t].push(q);
       });
-      KS_MASTER_CACHE = grouped;
-      console.log('[KSpider] Master sheet loaded. Topics:', Object.keys(grouped).join(', '));
-      return grouped;
-    } catch(e) {
-      console.warn('[KSpider] Master sheet failed:', e.message);
-      KS_MASTER_CACHE = {};
-      return {};
-    }
+    });
+    KS_MASTER_CACHE = grouped;
+    console.log('[KSpider] Master cache loaded. Topics:', Object.keys(grouped).join(', '));
+    return grouped;
   })();
   return KS_MASTER_LOAD_PROMISE;
 }
 
-// Smart topic matcher — handles "NEET Biology" → "Biology", "JEE Maths" → "Maths", etc.
+// ── Smart topic matcher ───────────────────────────────────────────
 function findMatchingTopics(requested, sheetTopics) {
   const req = requested.toLowerCase().trim();
-  // Exact match
   const exact = sheetTopics.filter(t => t.toLowerCase() === req);
   if (exact.length) return exact;
-  // All words of request appear in sheet topic or vice versa
   const words = req.split(/\s+/).filter(w => w.length > 2);
   const partial = sheetTopics.filter(function(t) {
     const tl = t.toLowerCase();
@@ -2168,16 +2294,35 @@ function findMatchingTopics(requested, sheetTopics) {
            tl.split(/\s+/).filter(w=>w.length>2).every(w => req.includes(w));
   });
   if (partial.length) return partial;
-  // Any keyword match (>3 chars)
   const keys = req.split(/\s+/).filter(w => w.length > 3);
   if (!keys.length) return [];
   return sheetTopics.filter(t => keys.some(w => t.toLowerCase().includes(w)));
 }
 
-// Fetch questions for a topic — master sheet first, then fallback
+// ── Fetch questions for a topic ───────────────────────────────────
 async function fetchSheetQs(topic) {
   if (!KS_SHEETS_ENABLED) return [];
-  // 1. Try master sheet
+
+  // 1. Try per-topic GID URL (fastest, most precise)
+  const gidUrlForTopic = KS_SHEET_URLS[topic];
+  if (gidUrlForTopic) {
+    if (KS_SHEET_CACHE[topic]) {
+      const c = KS_SHEET_CACHE[topic].slice();
+      for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}
+      return c;
+    }
+    try {
+      const csv = await sheetFetchCSV(gidUrlForTopic);
+      const qs  = parseSheetCSV(csv, topic);
+      for(let i=qs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[qs[i],qs[j]]=[qs[j],qs[i]];}
+      KS_SHEET_CACHE[topic] = qs;
+      return qs;
+    } catch(e) {
+      console.warn('[KSpider] GID fetch failed for', topic, e.message);
+    }
+  }
+
+  // 2. Try master cache (all tabs loaded together)
   try {
     const grouped = await loadMasterSheet();
     const matched = findMatchingTopics(topic, Object.keys(grouped));
@@ -2188,13 +2333,10 @@ async function fetchSheetQs(topic) {
       KS_SHEET_CACHE[topic] = qs;
       return qs;
     }
-  } catch(e) { console.warn('[KSpider] Master lookup failed for', topic, e.message); }
-  // 2. Cached
-  if (KS_SHEET_CACHE[topic]) {
-    const c=KS_SHEET_CACHE[topic].slice();
-    for(let i=c.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[c[i],c[j]]=[c[j],c[i]];}
-    return c;
+  } catch(e) {
+    console.warn('[KSpider] Master cache lookup failed for', topic, e.message);
   }
+
   return [];
 }
 
@@ -3412,7 +3554,7 @@ function renderTranslatedQ(translated, idx){
 
 // ===================== GOVT SCHEME PROMOTIONAL MARKETING =====================
 // Google Sheet columns: Scheme Name | Ministry/Dept | Benefits | Eligibility | How to Apply | Website | Type(Gujarat/Central)
-const GOVT_SCHEME_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRiIbkF9LbJCCbbEG2YGFqGSysNGXzaE-NFielPO2c38BSAMy7TLe4QesECe5xIS-uZ-exsn42AcGqD/pub?gid=1616372879&single=true&output=csv';
+const GOVT_SCHEME_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdo3ydRseddlSOQ_Ufe_ny8yoGYHpNgcQM2d7HdpQLMdfpEaO3DlgunL1EMy8SKS42L4l7w5Ux0Tql/pub?gid=0&single=true&output=csv';
 let KS_ALL_SCHEMES = [];
 let KS_SCHEME_IDX = 0;
 
