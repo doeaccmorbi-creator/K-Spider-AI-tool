@@ -289,12 +289,46 @@ document.addEventListener('DOMContentLoaded', () => {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <!-- Emoji Picker -->
 <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
-<!-- Firebase v9 compat -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-storage-compat.js"></script>
+<!-- Firebase v10 Modular SDK -->
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,GoogleAuthProvider,signInWithPopup,getRedirectResult}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,addDoc,getDocs,getDoc,setDoc,doc,updateDoc,deleteDoc,onSnapshot,query,orderBy,limit,where,serverTimestamp,increment,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getDatabase,ref as dbRef,set as dbSet,remove as dbRemove,onValue}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const _cfg={apiKey:"AIzaSyBR84eviPn7JRtgAF02OyXQphjCLy3-RKY",authDomain:"k-spider-social-media.firebaseapp.com",databaseURL:"https://k-spider-social-media-default-rtdb.firebaseio.com",projectId:"k-spider-social-media",storageBucket:"k-spider-social-media.firebasestorage.app",messagingSenderId:"1063536440954",appId:"1:1063536440954:web:9a27a9c116132539bcadc3"};
+try{
+const _app=initializeApp(_cfg);
+const _auth=getAuth(_app);const _db=getFirestore(_app);const _rtdb=getDatabase(_app);const _gp=new GoogleAuthProvider();
+window._fb={auth:_auth,db:_db,rtdb:_rtdb,gp:_gp,
+  createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,getRedirectResult,
+  collection,addDoc,getDocs,getDoc,setDoc,doc,updateDoc,deleteDoc,onSnapshot,query,orderBy,limit,where,serverTimestamp,increment,arrayUnion,arrayRemove,
+  dbRef,dbSet,dbRemove,onValue};
+window._FB_READY=true;
+console.log("KSpider Firebase connected");
+onAuthStateChanged(_auth,async user=>{
+  window._currentUser=user;
+  if(user&&!window._isGuest){
+    document.getElementById("fb-auth-overlay")?.classList.add("hidden");
+    if(typeof window.setupFirebaseUser==="function")await window.setupFirebaseUser(user);
+    if(typeof window.subscribeToPostsRT==="function")window.subscribeToPostsRT();
+    const nm=window.STATE?.currentUser?.name||user.displayName||user.email?.split("@")[0]||"K Spider User";
+    const av=window.STATE?.currentUser?.avatar||user.photoURL||"https://api.dicebear.com/7.x/avataaars/svg?seed="+user.uid;
+    if(typeof window.setupPresence==="function")window.setupPresence(user.uid,nm,av);
+    if(typeof window.subscribeToOnlineUsers==="function")window.subscribeToOnlineUsers();
+  }else if(!window._isGuest){
+    if(window.STATE){window.STATE.currentUser=null;window.STATE.posts=[];}
+    localStorage.removeItem("kspider_user");
+    document.getElementById("fb-auth-overlay")?.classList.remove("hidden");
+    if(typeof window.renderPosts==="function")window.renderPosts();
+  }
+});
+getRedirectResult(_auth).catch(()=>{});
+}catch(err){
+  console.warn("Firebase init failed:",err.message);
+  window._FB_READY=false;window._fb=null;
+  document.addEventListener("DOMContentLoaded",()=>{document.getElementById("fb-auth-overlay")?.classList.remove("hidden");});
+}
+</script>
 
 <style>
 /* ============================================================
@@ -4428,7 +4462,7 @@ const STATE = {
 };
 
 /* ============================================================
-   LOCAL STORAGE HELPERS
+   LOCAL window._fb?.storage||null HELPERS
 ============================================================ */
 function saveState() {
   try {
@@ -4956,9 +4990,9 @@ async function submitPost() {
   const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Post'; } };
 
   try {
-    if (FB_READY && STATE.currentUser.isFirebase) {
+    if (window._FB_READY && STATE.currentUser.isFirebase) {
       // ── FIREBASE PATH ──
-      const firebaseUser = AUTH.currentUser;
+      const firebaseUser = window._currentUser;
       if (!firebaseUser) {
         resetBtn();
         showToast('Session expired. Please login again.', 'error');
@@ -4971,7 +5005,7 @@ async function submitPost() {
         if (STATE.currentPostMediaType === 'image') {
           showToast('Compressing image...', 'info');
           const compressed = await compressImageTo100KB(STATE.currentPostMedia, 95);
-          if (STORAGE) {
+          if (window._fb?.storage||null) {
             try {
               imageURL = await uploadImageToStorage(
                 compressed, 'posts/' + firebaseUser.uid + '_' + Date.now() + '.jpg'
@@ -4992,14 +5026,14 @@ async function submitPost() {
         feeling: STATE.activeTags?.feeling || null,
         location: STATE.activeTags?.location || STATE.currentUser.city || null,
         visibility,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+        timestamp: window._fb.serverTimestamp(),
         likes: 0, comments: [], shares: 0, views: 0,
         userCity: STATE.currentUser.city || null,
         userSchool: STATE.currentUser.school || null,
         userCollege: STATE.currentUser.college || null,
       };
 
-      const docRef = await DB.collection('posts').add(postData);
+      const docRef = await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),postData);
       STATE.posts.unshift({ id: docRef.id, ...postData, timestamp: Date.now(), isOwn: true });
       showToast('Post shared! 🚀', 'success');
 
@@ -5295,24 +5329,25 @@ async function likePost(postId) {
   if (!post) return;
   const btn = document.getElementById('like-btn-' + postId);
 
-  if (FB_READY && STATE.currentUser?.isFirebase && AUTH.currentUser) {
-    // Firebase real-time like
-    const myId = AUTH.currentUser.uid;
+  if (window._FB_READY && STATE.currentUser?.isFirebase && window._currentUser) {
+    const myId = window._currentUser.uid;
     try {
-      const likeRef = DB.collection('posts').doc(postId).collection('likes').doc(myId);
-      const snap = await likeRef.get();
-      if (snap.exists) {
-        await likeRef.delete();
-        await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
+      // Use subcollection for likes tracking
+      const likeRef = window._fb.doc(window._fb.db,'posts',postId+'_likes_'+myId.substring(0,8));
+      const postRef = window._fb.doc(window._fb.db,'posts',postId);
+      const snap = await window._fb.getDoc(postRef);
+      const postData = snap.exists() ? snap.data() : null;
+      const alreadyLiked = STATE.likedPosts.has(postId);
+      if (alreadyLiked) {
+        await window._fb.updateDoc(postRef, { likes: window._fb.increment(-1) });
         STATE.likedPosts.delete(postId);
         delete STATE.reactions[postId];
-        post.likes = Math.max(0, (post.likes || 1) - 1);
+        post.likes = Math.max(0, (post.likes||1) - 1);
         btn?.classList.remove('liked');
       } else {
-        await likeRef.set({ uid: myId, ts: firebase.firestore.FieldValue.serverTimestamp() });
-        await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(1) });
+        await window._fb.updateDoc(postRef, { likes: window._fb.increment(1) });
         STATE.likedPosts.add(postId);
-        post.likes = (post.likes || 0) + 1;
+        post.likes = (post.likes||0) + 1;
         btn?.classList.add('liked');
       }
     } catch(e) { console.error('likePost error:', e); }
@@ -5367,8 +5402,8 @@ async function submitComment(postId) {
     id: 'c_' + Date.now(),
     author: STATE.currentUser.name,
     avatar: STATE.currentUser.avatar,
-    authorId: (FB_READY && STATE.currentUser.isFirebase && AUTH.currentUser)
-      ? AUTH.currentUser.uid : (STATE.currentUser.id || 'guest'),
+    authorId: (window._FB_READY && STATE.currentUser.isFirebase && window._currentUser)
+      ? window._currentUser.uid : (STATE.currentUser.id || 'guest'),
     text, timestamp: Date.now(), likes: 0,
   };
   if (!post.comments) post.comments = [];
@@ -5376,10 +5411,10 @@ async function submitComment(postId) {
   const listEl = document.getElementById('comments-list-' + postId);
   if (listEl) listEl.insertAdjacentHTML('beforeend', renderComments([comment]));
   input.value = '';
-  if (FB_READY && STATE.currentUser.isFirebase && AUTH.currentUser) {
+  if (window._FB_READY && STATE.currentUser.isFirebase && window._currentUser) {
     try {
-      await DB.collection('posts').doc(postId).update({
-        comments: firebase.firestore.FieldValue.arrayUnion(comment)
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId),{
+        comments: window._fb.arrayUnion(comment)
       });
     } catch(e) { console.warn('Comment save failed:', e.message); }
   }
@@ -5404,9 +5439,9 @@ function savePost(postId, el) {
 
 async function deletePost(postId) {
   if (!confirm('Delete this post?')) return;
-  if (FB_READY && STATE.currentUser?.isFirebase && AUTH.currentUser) {
+  if (window._FB_READY && STATE.currentUser?.isFirebase && window._currentUser) {
     try {
-      await DB.collection('posts').doc(postId).delete();
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db,'posts',postId));
     } catch(e) {
       showToast('Delete failed: ' + e.message, 'error'); return;
     }
@@ -5471,15 +5506,15 @@ async function submitReport(postId, reason, btn) {
     reportedBy: STATE.currentUser?.id || 'guest',
     reportedByName: STATE.currentUser?.name || 'Guest',
     reason,
-    timestamp: FB_READY ? firebase.firestore.FieldValue.serverTimestamp() : Date.now(),
+    timestamp: window._FB_READY ? window._fb.serverTimestamp() : Date.now(),
     status: 'pending'
   };
 
-  if (FB_READY) {
+  if (window._FB_READY) {
     try {
-      await DB.collection('reports').add(reportData);
+      await window._fb.addDoc(window._fb.collection(window._fb.db,'reports'),reportData);
       // Also flag the post
-      await DB.collection('posts').doc(postId).update({ flagged: true, flagReason: reason });
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId),{ flagged: true, flagReason: reason });
     } catch(e) { console.warn('Report save failed:', e); }
   }
 
@@ -5607,9 +5642,9 @@ async function saveProfile(e) {
   u.linkedin = document.getElementById('edit-linkedin')?.value?.trim() || u.linkedin;
 
   // Save to Firestore if logged in
-  if (FB_READY && u.isFirebase && u.id) {
+  if (window._FB_READY && u.isFirebase && u.id) {
     try {
-      await DB.collection('users').doc(u.id).update({
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',u.id),{
         name: u.name, profession: u.profession, bio: u.bio,
         website: u.website, youtube: u.youtube, instagram: u.instagram,
         phone: u.phone || null, dob: u.dob || null, gender: u.gender || null,
@@ -5647,16 +5682,16 @@ async function handleCoverUpload(e) {
     document.getElementById('profile-cover-img').src = compressed;
     saveState();
     // Save to Firebase Storage if available
-    if (FB_READY && STATE.currentUser?.isFirebase && STORAGE) {
+    if (window._FB_READY && STATE.currentUser?.isFirebase && window._fb?.storage||null) {
       try {
         const coverURL = await uploadImageToStorage(compressed, `covers/${STATE.currentUser.id}_${Date.now()}.jpg`);
         STATE.currentUser.cover = coverURL;
         document.getElementById('profile-cover-img').src = coverURL;
-        await DB.collection('users').doc(STATE.currentUser.id).update({ cover: coverURL });
+        await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',STATE.currentUser.id),{ cover: coverURL });
         saveState();
       } catch(err) {
         // Use base64 fallback
-        await DB.collection('users').doc(STATE.currentUser.id).update({ cover: compressed }).catch(()=>{});
+        await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',STATE.currentUser.id),{ cover: compressed }).catch(()=>{});
       }
     }
     showToast('✅ Cover photo updated!', 'success');
@@ -5696,10 +5731,10 @@ async function handleAvatarUpload(e) {
       applyUserProfile();
       updateNavUserChip();
       // Save to Firestore
-      if (FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
-        await DB.collection('users').doc(STATE.currentUser.id).update({ avatar: url });
+      if (window._FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
+        await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',STATE.currentUser.id),{ avatar: url });
         // Update presence
-        if (_myPresenceRef) await _myPresenceRef.update({ avatar: url });
+        // presence avatar update via RTDB handled by setupPresence
       }
       saveState();
       showToast('✅ Profile photo updated!', 'success');
@@ -5714,7 +5749,7 @@ async function handleAvatarUpload(e) {
       const compressed = await compressImageTo100KB(ev.target.result, 100);
       let finalURL = compressed;
       // Try Firebase Storage upload
-      if (STORAGE && FB_READY && STATE.currentUser?.id) {
+      if (window._fb?.storage||null && window._FB_READY && STATE.currentUser?.id) {
         try {
           finalURL = await uploadImageToStorage(compressed, `avatars/${STATE.currentUser.id}_${Date.now()}.jpg`);
         } catch(se) { finalURL = compressed; }
@@ -5722,9 +5757,9 @@ async function handleAvatarUpload(e) {
       STATE.currentUser.avatar = finalURL;
       applyUserProfile();
       updateNavUserChip();
-      if (FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
-        try { await DB.collection('users').doc(STATE.currentUser.id).update({ avatar: finalURL }); } catch(e) {}
-        if (_myPresenceRef) { try { await _myPresenceRef.update({ avatar: finalURL }); } catch(e) {} }
+      if (window._FB_READY && STATE.currentUser.id && !STATE.currentUser.isGuest) {
+        try { await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',STATE.currentUser.id),{ avatar: finalURL }); } catch(e) {}
+        // presence avatar update skipped
       }
       saveState();
       showToast('✅ Profile photo updated!', 'success');
@@ -6914,567 +6949,291 @@ const _analyticsPageHook = () => { setTimeout(renderAnalyticsPage, 100); };
    Developed by Gaurang Raval & Khush Raval — kspiderai.in
 ============================================================ */
 
-/* ── YOUR FIREBASE CONFIG ──────────────────────────────────
-   STEP 1: Go to https://console.firebase.google.com
-   STEP 2: Create project → Add Web App → Copy config below
-   STEP 3: Enable Authentication (Email/Password + Anonymous)
-   STEP 4: Enable Firestore Database (start in test mode)
-   STEP 5: Enable Realtime Database (start in test mode)
-   ──────────────────────────────────────────────────────── */
-const FB_CONFIG = {
-  apiKey:            "AIzaSyBR84eviPn7JRtgAF02OyXQphjCLy3-RKY",
-  authDomain:        "k-spider-social-media.firebaseapp.com",
-  databaseURL:       "https://k-spider-social-media-default-rtdb.firebaseio.com",
-  projectId:         "k-spider-social-media",
-  storageBucket:     "k-spider-social-media.firebasestorage.app",
-  messagingSenderId: "1063536440954",
-  appId:             "1:1063536440954:web:9a27a9c116132539bcadc3",
-  measurementId:     "G-CH0RSTGBRS"
-};
+/* ═══════════════════════════════════════════════════════════
+   FIREBASE ENGINE — Modular SDK (v10)
+   window._fb          = Firebase API methods
+   window._currentUser = live Firebase User object
+   window._FB_READY    = true when Firebase connected
+   ═══════════════════════════════════════════════════════════ */
 
-/* ── FIREBASE STATE ── */
-let FB = null, DB = null, RTDB = null, AUTH = null, STORAGE = null;
-let FB_READY = false;
+window._isGuest    = false;
 let _postsListener = null;
-let _onlineListener = null;
-let _isGuest = false;
-let _myPresenceRef = null;
+let _presenceRef   = null;
 
-/* ── INIT ── */
-function initFirebase() {
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    FB    = firebase.app();
-    AUTH  = firebase.auth();
-    DB    = firebase.firestore();
-    RTDB  = firebase.database();
-    STORAGE = firebase.storage();
-    FB_READY = true;
-    console.log('✅ Firebase connected');
-    // Handle Google redirect result (mobile fallback)
-    AUTH.getRedirectResult().then(result => {
-      if (result && result.user) {
-        console.log('✅ Google redirect login:', result.user.email);
-      }
-    }).catch(e => {
-      if (e.code !== 'auth/no-current-user') console.warn('Redirect result error:', e.message);
-    });
-    listenAuthState();
-  } catch(e) {
-    console.warn('⚠️ Firebase init failed — running offline:', e.message);
-    FB_READY = false;
-    document.getElementById('fb-auth-overlay').classList.remove('hidden');
-  }
-}
-
-/* ── AUTH STATE LISTENER ── */
-function listenAuthState() {
-  AUTH.onAuthStateChanged(async (user) => {
-    if (user && !_isGuest) {
-      // Logged in — hide overlay, set up user, subscribe to data
-      const overlay = document.getElementById('fb-auth-overlay');
-      if (overlay) overlay.classList.add('hidden');
-      await setupFirebaseUser(user);
-      subscribeToPostsRT();
-      const presenceName = STATE.currentUser?.name ||
-                           user.displayName ||
-                           user.email?.split('@')[0] ||
-                           'K Spider User';
-      const presenceAvatar = STATE.currentUser?.avatar ||
-                             user.photoURL ||
-                             `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.uid}`;
-      setupPresence(user.uid, presenceName, presenceAvatar);
-      subscribeToOnlineUsers();
-      showToast(`✅ Welcome, ${presenceName}!`, 'success');
-    } else if (!_isGuest) {
-      // Signed out — clear stale data and show login
-      STATE.currentUser = null;
-      STATE.posts = [];
-      localStorage.removeItem('kspider_user');
-      const overlay = document.getElementById('fb-auth-overlay');
-      if (overlay) overlay.classList.remove('hidden');
-      renderPosts();
-    }
+/* ── IMAGE COMPRESS (<=100 KB) ── */
+async function compressImageTo100KB(dataURL, maxKB=95){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      let w=img.width,h=img.height;
+      if(w>1200){h=Math.round(h*1200/w);w=1200;}
+      if(h>1200){w=Math.round(w*1200/h);h=1200;}
+      c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      let q=0.85;
+      const go=()=>{const r=c.toDataURL('image/jpeg',q);if(Math.round(r.length*0.75/1024)<=maxKB||q<=0.1){resolve(r);}else{q=Math.max(0.1,q-0.1);go();}};
+      go();
+    };
+    img.src=dataURL;
   });
 }
 
-/* ── SETUP USER AFTER LOGIN ── */
-async function setupFirebaseUser(firebaseUser) {
-  const uid = firebaseUser.uid;
-  // Google/social login photo takes priority
-  const googlePhoto = firebaseUser.photoURL || null;
-  const displayName = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'K Spider User';
-  const defaultAvatar = googlePhoto || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
-
-  try {
-    const snap = await DB.collection('users').doc(uid).get();
-    if (snap.exists) {
-      const data = snap.data();
-      STATE.currentUser = {
-        id: uid,
-        name: data.name || displayName,
-        handle: data.handle || '@' + (data.name || displayName).toLowerCase().replace(/\s+/g,''),
-        bio: data.bio || '🚀 K Spider AI User',
-        // Always use Google photo if available, fallback to saved, then dicebear
-        avatar: googlePhoto || data.avatar || defaultAvatar,
-        cover: data.cover || 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
-        profession: data.profession || 'K Spider AI User',
-        website: data.website || 'https://www.kspiderai.in',
-        followers: data.followers || 0,
-        following_count: data.following_count || 0,
-        likes: data.likes || 0,
-        email: firebaseUser.email,
-        phone: data.phone || null,
-        dob: data.dob || null,
-        gender: data.gender || null,
-        relationship: data.relationship || null,
-        city: data.city || null,
-        school: data.school || null,
-        college: data.college || null,
-        worksAt: data.worksAt || null,
-        hometown: data.hometown || null,
-        languages: data.languages || null,
-        twitter: data.twitter || null,
-        linkedin: data.linkedin || null,
-        geo: data.geo || null,
-        themeColor: data.themeColor || null,
-        isFirebase: true
+/* ── SETUP USER FROM FIRESTORE ── */
+window.setupFirebaseUser = async function(firebaseUser){
+  const uid=firebaseUser.uid;
+  const gPhoto=firebaseUser.photoURL||null;
+  const dName=firebaseUser.displayName||firebaseUser.email?.split('@')[0]||'K Spider User';
+  const defAvatar=gPhoto||'https://api.dicebear.com/7.x/avataaars/svg?seed='+uid;
+  try{
+    const snap=await window._fb.getDoc(window._fb.doc(window._fb.db,'users',uid));
+    if(snap.exists()){
+      const d=snap.data();
+      STATE.currentUser={
+        id:uid, name:d.name||dName,
+        handle:d.handle||'@'+dName.toLowerCase().replace(/\s+/g,''),
+        bio:d.bio||'KSpider AI User',
+        avatar:gPhoto||d.avatar||defAvatar,
+        cover:d.cover||'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
+        profession:d.profession||'K Spider AI User',
+        website:d.website||'https://www.kspiderai.in',
+        youtube:d.youtube||'', instagram:d.instagram||'',
+        twitter:d.twitter||'', linkedin:d.linkedin||'',
+        followers:d.followers||0, following_count:d.following_count||0, likes:d.likes||0,
+        email:firebaseUser.email,
+        phone:d.phone||null, dob:d.dob||null, gender:d.gender||null,
+        relationship:d.relationship||null, city:d.city||null,
+        school:d.school||null, college:d.college||null,
+        worksAt:d.worksAt||null, hometown:d.hometown||null,
+        languages:d.languages||null, geo:d.geo||null,
+        themeColor:d.themeColor||null, isFirebase:true
       };
-      // Update avatar in Firestore if Google photo changed
-      if (googlePhoto && googlePhoto !== data.avatar) {
-        await DB.collection('users').doc(uid).update({ avatar: googlePhoto }).catch(()=>{});
+      if(gPhoto&&gPhoto!==d.avatar){
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',uid),{avatar:gPhoto}).catch(()=>{});
       }
     } else {
-      // First login — create full profile
-      STATE.currentUser = {
-        id: uid,
-        name: displayName,
-        handle: '@' + displayName.toLowerCase().replace(/\s+/g,''),
-        bio: '🚀 New to K Spider Social AI!',
-        avatar: defaultAvatar,
-        cover: 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
-        profession: 'K Spider AI User',
-        website: 'https://www.kspiderai.in',
-        followers: 0, following_count: 0, likes: 0,
-        email: firebaseUser.email,
-        isFirebase: true
+      STATE.currentUser={
+        id:uid, name:dName,
+        handle:'@'+dName.toLowerCase().replace(/\s+/g,''),
+        bio:'New to K Spider Social AI!', avatar:defAvatar,
+        cover:'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
+        profession:'K Spider AI User', website:'https://www.kspiderai.in',
+        youtube:'', instagram:'', twitter:'', linkedin:'',
+        followers:0, following_count:0, likes:0,
+        email:firebaseUser.email, isFirebase:true
       };
-      await DB.collection('users').doc(uid).set(STATE.currentUser);
+      await window._fb.setDoc(window._fb.doc(window._fb.db,'users',uid),STATE.currentUser);
     }
-  } catch(e) {
-    console.warn('Firestore user fetch failed:', e);
-    STATE.currentUser = {
-      id: uid, name: displayName,
-      handle: '@' + displayName.toLowerCase().replace(/\s+/g,''),
-      bio: '', avatar: defaultAvatar,
-      email: firebaseUser.email,
-      isFirebase: true
-    };
+  }catch(e){
+    console.warn('setupFirebaseUser:',e.message);
+    STATE.currentUser={id:uid,name:dName,handle:'@'+uid,bio:'',avatar:defAvatar,email:firebaseUser.email,isFirebase:true};
   }
-  applyUserProfile();
-  updateNavUserChip();
-  checkAdminAccess();
-
-  // Capture GPS location for nearby feed
-  if (navigator.geolocation && !STATE.currentUser.geo) {
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      const geo = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      STATE.currentUser.geo = geo;
-      saveState();
-      try { await DB.collection('users').doc(uid).update({ geo }); } catch(e) {}
-    }, () => {}, { timeout: 5000 });
+  applyUserProfile(); updateNavUserChip();
+  if(typeof checkAdminAccess==='function')checkAdminAccess();
+  if(navigator.geolocation&&!STATE.currentUser.geo){
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      const geo={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      STATE.currentUser.geo=geo;
+      window._fb.updateDoc(window._fb.doc(window._fb.db,'users',uid),{geo}).catch(()=>{});
+    },()=>{},{timeout:5000});
   }
-
-  // Check if user is banned
-  const banned = await checkIfBanned(uid);
-  if (banned) {
-    await AUTH.signOut();
-    document.getElementById('fb-auth-overlay').classList.remove('hidden');
-    showAuthError('🚫 Your account has been banned for violating Community Guidelines. Contact: kspider221206@gmail.com');
-    return;
-  }
-}
-
-/* ── UPDATE NAV CHIP ── */
-function updateNavUserChip() {
-  const u = STATE.currentUser;
-  if (!u) return;
-  const chip = document.getElementById('nav-user-chip');
-  const nameEl = document.getElementById('nav-user-name');
-  const img = document.getElementById('nav-avatar-img');
-  if (chip) { chip.style.display = 'flex'; }
-  if (nameEl) nameEl.textContent = u.name.split(' ')[0];
-  if (img) img.src = u.avatar;
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) logoutBtn.style.display = 'flex';
-  const oldWrap = document.getElementById('nav-avatar-wrap');
-  if (oldWrap) oldWrap.style.display = 'none';
-}
-
-/* ── REAL-TIME POSTS SUBSCRIPTION ── */
-function subscribeToPostsRT() {
-  if (!FB_READY) return;
-  if (_postsListener) _postsListener(); // unsubscribe old
-  // Show nearby banner if user has location-based data
-  const u = STATE.currentUser;
-  const banner = document.getElementById('nearby-feed-banner');
-  if (banner && u && (u.city || u.school || u.college || u.geo)) {
-    banner.style.display = 'flex';
-  }
-  let firstLoad = true;
-  _postsListener = DB.collection('posts')
-    .orderBy('timestamp', 'desc')
-    .limit(50)
-    .onSnapshot((snapshot) => {
-      const newPosts = [];
-      snapshot.forEach(doc => {
-        newPosts.push({ id: doc.id, ...doc.data() });
-      });
-      if (firstLoad) {
-        STATE.posts = newPosts;
-        renderPosts();
-        firstLoad = false;
-      } else {
-        // Check for genuinely new posts from other users
-        const myId = STATE.currentUser?.id;
-        const newFromOthers = newPosts.filter(p =>
-          p.authorId !== myId && !STATE.posts.find(old => old.id === p.id)
-        );
-        STATE.posts = newPosts;
-        if (newFromOthers.length > 0) {
-          showRTIndicator(newFromOthers.length);
-        } else {
-          renderPosts(); // own actions — render silently
-        }
-      }
-    }, (err) => {
-      console.warn('Posts listener error:', err);
-    });
-}
-
-/* ── SHOW NEW POST INDICATOR ── */
-let _rtIndicatorTimeout = null;
-function showRTIndicator(count) {
-  const el = document.getElementById('rt-indicator');
-  if (!el) return;
-  el.textContent = `🔴 ${count} new post${count>1?'s':''} — tap to load`;
-  el.classList.add('show');
-  el.style.cursor = 'pointer';
-  el.onclick = () => { renderPosts(); el.classList.remove('show'); };
-  clearTimeout(_rtIndicatorTimeout);
-  _rtIndicatorTimeout = setTimeout(() => el.classList.remove('show'), 8000);
-}
-
-/* ── ONLINE PRESENCE SYSTEM (Realtime DB) ── */
-function setupPresence(uid, name, avatar) {
-  if (!RTDB) return;
-  const presenceRef = RTDB.ref('presence/' + uid);
-  _myPresenceRef = presenceRef;
-  const userData = { name, avatar, uid, online: true, lastSeen: firebase.database.ServerValue.TIMESTAMP };
-
-  // Set online when connected
-  RTDB.ref('.info/connected').on('value', (snap) => {
-    if (snap.val() === true) {
-      presenceRef.onDisconnect().remove(); // auto-remove on disconnect
-      presenceRef.set(userData);
+  try{
+    const ban=await window._fb.getDoc(window._fb.doc(window._fb.db,'bannedUsers',uid));
+    if(ban.exists()){
+      await window._fb.signOut(window._fb.auth);
+      document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+      showAuthError('Your account has been banned. Contact: kspider221206@gmail.com');
+      return;
     }
-  });
+  }catch(e){}
+  showToast('Welcome, '+STATE.currentUser.name+'!','success');
+};
 
-  // Heartbeat every 30s to keep presence fresh
-  setInterval(() => {
-    if (_myPresenceRef) _myPresenceRef.update({ lastSeen: firebase.database.ServerValue.TIMESTAMP });
-  }, 30000);
-}
-
-/* ── SUBSCRIBE TO ONLINE USERS LIST ── */
-function subscribeToOnlineUsers() {
-  if (!RTDB) return;
-  if (_onlineListener) RTDB.ref('presence').off('value', _onlineListener);
-
-  _onlineListener = RTDB.ref('presence').on('value', (snap) => {
-    const data = snap.val() || {};
-    const users = Object.values(data);
-    updateOnlinePanel(users);
-  });
-}
-
-/* ── RENDER ONLINE PANEL ── */
-let _onlinePanelCollapsed = false;
-function updateOnlinePanel(users) {
-  const list = document.getElementById('online-list');
-  const badge = document.getElementById('online-count-badge');
-  const title = document.getElementById('online-panel-title');
-  if (!list) return;
-
-  const myId = STATE.currentUser?.id;
-  const others = users.filter(u => u.uid !== myId);
-  const total = users.length;
-
-  if (badge) badge.textContent = total;
-  if (title) title.textContent = `🟢 Online Now`;
-
-  if (users.length === 0) {
-    list.innerHTML = '<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">No one online yet</div>';
-    return;
-  }
-
-  list.innerHTML = users.map(u => `
-    <div class="online-user-item" title="${u.name}">
-      <div class="online-avatar-wrap">
-        <img src="${u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'" alt="${u.name}">
-        <div class="online-dot"></div>
-      </div>
-      <div style="min-width:0">
-        <div class="online-user-name">${u.uid===myId ? u.name+' (You)' : u.name}</div>
-        <div class="online-user-sub">🟢 Active now</div>
-      </div>
-    </div>
-  `).join('');
-}
-
-function toggleOnlinePanel() {
-  _onlinePanelCollapsed = !_onlinePanelCollapsed;
-  const panel = document.getElementById('online-panel');
-  const list = document.getElementById('online-list');
-  const title = document.getElementById('online-panel-title');
-  if (_onlinePanelCollapsed) {
-    if (list) list.style.display = 'none';
-    if (title) title.style.display = 'none';
-    panel.style.width = '52px';
-  } else {
-    if (list) list.style.display = 'block';
-    if (title) title.style.display = 'block';
-    panel.style.width = '220px';
-  }
-}
-
-/* ── IMAGE COMPRESS UTILITY (compress to ≤100KB) ── */
-async function compressImageTo100KB(dataURL, maxKB = 100) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      const canvas = document.createElement('canvas');
-      let w = img.width, h = img.height;
-      // Max dimension 1200px
-      if (w > 1200) { h = Math.round(h * 1200 / w); w = 1200; }
-      if (h > 1200) { w = Math.round(w * 1200 / h); h = 1200; }
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-      let quality = 0.85;
-      const tryCompress = () => {
-        const result = canvas.toDataURL('image/jpeg', quality);
-        const sizeKB = Math.round(result.length * 0.75 / 1024);
-        if (sizeKB <= maxKB || quality <= 0.1) {
-          resolve(result);
-        } else {
-          quality = Math.max(0.1, quality - 0.1);
-          tryCompress();
-        }
-      };
-      tryCompress();
-    };
-    img.src = dataURL;
-  });
-}
-
-/* ── UPLOAD IMAGE TO FIREBASE STORAGE ── */
-async function uploadImageToStorage(dataURL, path) {
-  if (!STORAGE) throw new Error('Storage not ready');
-  const blob = await (await fetch(dataURL)).blob();
-  const ref = STORAGE.ref(path);
-  await ref.put(blob, { contentType: 'image/jpeg' });
-  return await ref.getDownloadURL();
-}
-
-/* ── FIREBASE POST SAVE (override submitPost) ── */
-
-
-
-/* ── AUTH UI FUNCTIONS ── */
-function switchAuthTab(tab) {
-  document.getElementById('auth-login-form').style.display    = tab === 'login'    ? 'block' : 'none';
-  document.getElementById('auth-register-form').style.display = tab === 'register' ? 'block' : 'none';
-  document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
-  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-  document.getElementById('auth-err').classList.remove('show');
-}
-
-function showAuthError(msg) {
-  const el = document.getElementById('auth-err');
-  el.textContent = '⚠️ ' + msg;
-  el.classList.add('show');
-}
-
-async function fbLogin() {
-  const errBox = document.getElementById('auth-err');
-  errBox.classList.remove('show');
-
-  if (!FB_READY) { showAuthError('Firebase not configured. Please add your Firebase config.'); return; }
-
-  const email    = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  if (!email)    { showAuthError('Please enter your email address.'); return; }
-  if (!password) { showAuthError('Please enter your password.'); return; }
-
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true; btn.textContent = '⏳ Logging in...';
-
-  try {
-    console.log('🔄 Logging in:', email);
-    await AUTH.signInWithEmailAndPassword(email, password);
-    console.log('✅ Login success');
-    // onAuthStateChanged handles rest
-  } catch(e) {
-    console.error('❌ Login error:', e.code, e.message);
-    showAuthError(firebaseErrMsg(e.code) + ' [' + e.code + ']');
-    btn.disabled = false; btn.textContent = '🚀 Login to K Spider AI';
-  }
-}
-
-async function fbRegister() {
-  const errBox = document.getElementById('auth-err');
-  errBox.classList.remove('show');
-
-  if (!FB_READY) { showAuthError('Firebase not configured. Please add your Firebase config.'); return; }
-
-  const fname    = document.getElementById('reg-fname').value.trim();
-  const lname    = document.getElementById('reg-lname').value.trim();
-  const email    = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-
-  if (!fname)    { showAuthError('Please enter your first name.'); return; }
-  if (!email)    { showAuthError('Please enter your email address.'); return; }
-  if (!password) { showAuthError('Please enter a password.'); return; }
-  if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
-
-  const btn = document.getElementById('reg-btn');
-  btn.disabled = true; btn.textContent = '⏳ Creating account...';
-
-  try {
-    console.log('🔄 Registering:', email);
-    const cred = await AUTH.createUserWithEmailAndPassword(email, password);
-    console.log('✅ User created:', cred.user.uid);
-    await cred.user.updateProfile({ displayName: fname + (lname ? ' ' + lname : '') });
-    console.log('✅ Profile updated');
-    // onAuthStateChanged handles the rest
-  } catch(e) {
-    console.error('❌ Register error:', e.code, e.message);
-    showAuthError(firebaseErrMsg(e.code) + ' [' + e.code + ']');
-    btn.disabled = false; btn.textContent = '🎉 Create Account';
-  }
-}
-
-/* ── GOOGLE LOGIN ── */
-async function fbGoogleLogin() {
-  if (!FB_READY) { showAuthError('Firebase not ready. Please refresh.'); return; }
-  const btn = document.getElementById('google-login-btn');
-  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Opening Google...'; }
-  try {
-    const provider = new firebase.auth.GoogleAuthProvider();
-    provider.addScope('profile');
-    provider.addScope('email');
-    try {
-      await AUTH.signInWithPopup(provider);
-    } catch(popupErr) {
-      if (popupErr.code === 'auth/popup-blocked' || popupErr.code === 'auth/popup-closed-by-user') {
-        await AUTH.signInWithRedirect(provider);
-      } else { throw popupErr; }
-    }
-    // onAuthStateChanged will handle the rest automatically
-  } catch(e) {
-    console.error('Google login error:', e);
-    showAuthError('Google login failed: ' + (e.message || e.code));
-    if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.5 20-21 0-1.4-.2-2.7-.5-4z"/></svg> Continue with Google'; }
-  }
-}
-
-async function fbGuest() {
-  document.getElementById('fb-auth-overlay').classList.add('hidden');
-  STATE.currentUser = {
-    id: 'guest_' + Date.now(),
-    name: 'Guest User',
-    handle: '@guest',
-    bio: 'Browsing as guest',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest' + Date.now(),
-    isGuest: true,
-    email: ''
-  };
-  applyUserProfile();
-  updateNavUserChip();
-  checkAdminAccess();
-  // Guests can read posts from Firestore but not post
-  if (FB_READY) {
-    subscribeToPostsRT();
-    subscribeToOnlineUsers();
-  }
-  showToast('👤 Browsing as Guest — login to post!', 'info');
-}
-
-async function fbLogout() {
-  if (!confirm('Logout from K Spider Social AI?')) return;
-  try {
-    // 1. Remove RTDB presence
-    if (_myPresenceRef) { try { await _myPresenceRef.remove(); } catch(e) {} }
-    // 2. Unsubscribe real-time listeners
-    if (_postsListener) { try { _postsListener(); } catch(e) {} _postsListener = null; }
-    if (_onlineListener && RTDB) { try { RTDB.ref('presence').off('value', _onlineListener); } catch(e) {} _onlineListener = null; }
-    // 3. Clear all state
-    _isGuest = false;
-    _myPresenceRef = null;
-    STATE.currentUser = null;
-    STATE.posts = [];
-    // 4. Clear localStorage completely (stale user causes permission errors on reload)
-    localStorage.removeItem('kspider_user');
-    localStorage.removeItem('kspider_posts');
-    // 5. Firebase signOut — this triggers onAuthStateChanged(null) → shows overlay
-    if (AUTH) { try { await AUTH.signOut(); } catch(e) {} }
-    // 6. Hide nav UI elements
-    const chip = document.getElementById('nav-user-chip');
-    const logoutBtn = document.getElementById('logout-btn');
-    if (chip) chip.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-    const onlineList = document.getElementById('online-list');
-    if (onlineList) onlineList.innerHTML = '<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">Connecting...</div>';
-    const badge = document.getElementById('online-count-badge');
-    if (badge) badge.textContent = '0';
+/* ── POSTS REAL-TIME LISTENER ── */
+window.subscribeToPostsRT = function(){
+  if(!window._fb?.db) return;
+  if(_postsListener){try{_postsListener();}catch(e){}_postsListener=null;}
+  const u=STATE.currentUser;
+  const banner=document.getElementById('nearby-feed-banner');
+  if(banner&&u&&(u.city||u.school||u.college||u.geo)){banner.style.display='flex';}
+  let first=true;
+  const q=window._fb.query(
+    window._fb.collection(window._fb.db,'posts'),
+    window._fb.orderBy('timestamp','desc'),
+    window._fb.limit(50)
+  );
+  _postsListener=window._fb.onSnapshot(q,snap=>{
+    const pts=[];
+    snap.forEach(d=>pts.push({id:d.id,...d.data(),isOwn:d.data().authorId===window._currentUser?.uid}));
+    STATE.posts=pts;
     renderPosts();
-    navigateTo('feed');
-    // 7. Show login overlay (onAuthStateChanged also does this, belt+suspenders)
-    setTimeout(() => {
-      const overlay = document.getElementById('fb-auth-overlay');
-      if (overlay) overlay.classList.remove('hidden');
-    }, 200);
-    showToast('👋 Logged out successfully', 'info');
-  } catch(e) {
-    console.error('Logout error:', e);
-    // Force show overlay even on error
-    localStorage.removeItem('kspider_user');
-    const overlay = document.getElementById('fb-auth-overlay');
-    if (overlay) overlay.classList.remove('hidden');
-    showToast('👋 Logged out', 'info');
+    if(!first){const el=document.getElementById('rt-indicator');if(el){el.classList.add('show');setTimeout(()=>el.classList.remove('show'),4000);}}
+    first=false;
+  },err=>console.warn('Posts listener:',err.message));
+};
+
+/* ── PRESENCE SETUP ── */
+window.setupPresence = function(uid,name,avatar){
+  if(!window._fb?.rtdb) return;
+  const ref=window._fb.dbRef(window._fb.rtdb,'presence/'+uid);
+  _presenceRef=ref;
+  window._fb.dbSet(ref,{uid,name,avatar,online:true,lastSeen:Date.now()}).catch(()=>{});
+  window.addEventListener('beforeunload',()=>window._fb.dbRemove(ref).catch(()=>{}));
+};
+
+/* ── ONLINE USERS LISTENER ── */
+window.subscribeToOnlineUsers = function(){
+  if(!window._fb?.rtdb) return;
+  const ref=window._fb.dbRef(window._fb.rtdb,'presence');
+  window._fb.onValue(ref,snap=>{
+    const list=document.getElementById('online-list');
+    const badge=document.getElementById('online-count-badge');
+    const users=Object.values(snap.val()||{});
+    if(badge)badge.textContent=users.length;
+    if(!list)return;
+    if(!users.length){list.innerHTML='<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">No one online yet</div>';return;}
+    list.innerHTML=users.map(u=>`<div class="online-user-item" onclick="navigateTo('profile')"><div class="online-avatar-wrap"><img src="${u.avatar||'https://api.dicebear.com/7.x/avataaars/svg?seed=x'}" class="online-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=x'"><span class="online-dot"></span></div><span class="online-name">${u.name||'User'}</span></div>`).join('');
+  });
+};
+
+/* ── AUTH: EMAIL LOGIN ── */
+async function fbLogin(){
+  if(!window._FB_READY){showAuthError('Firebase not ready. Please refresh.');return;}
+  const email=document.getElementById('fb-email')?.value?.trim();
+  const pass=document.getElementById('fb-pass')?.value;
+  if(!email||!pass){showAuthError('Please enter email and password.');return;}
+  const btn=document.getElementById('fb-login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Logging in...';}
+  try{
+    await window._fb.signInWithEmailAndPassword(window._fb.auth,email,pass);
+  }catch(e){
+    showAuthError(firebaseErrMsg(e.code));
+    if(btn){btn.disabled=false;btn.textContent='Login';}
   }
 }
 
-function firebaseErrMsg(code) {
-  const msgs = {
-    'auth/user-not-found':      'No account found with this email.',
-    'auth/wrong-password':      'Wrong password. Please try again.',
-    'auth/email-already-in-use':'This email is already registered. Please login.',
-    'auth/invalid-email':       'Please enter a valid email address.',
-    'auth/weak-password':       'Password too weak. Use at least 6 characters.',
-    'auth/too-many-requests':   'Too many attempts. Please wait and try again.',
-    'auth/network-request-failed': 'Network error. Check your internet connection.',
-    'auth/invalid-credential':  'Invalid email or password. Please check and try again.',
-  };
-  return msgs[code] || 'Something went wrong. Please try again.';
+/* ── AUTH: REGISTER ── */
+async function fbRegister(){
+  if(!window._FB_READY){showAuthError('Firebase not ready. Please refresh.');return;}
+  const name=document.getElementById('fb-reg-name')?.value?.trim();
+  const email=document.getElementById('fb-reg-email')?.value?.trim();
+  const pass=document.getElementById('fb-reg-pass')?.value;
+  if(!name||!email||!pass){showAuthError('Please fill all fields.');return;}
+  if(pass.length<6){showAuthError('Password must be at least 6 characters.');return;}
+  const btn=document.getElementById('fb-register-btn');
+  if(btn){btn.disabled=true;btn.textContent='Creating account...';}
+  try{
+    const cred=await window._fb.createUserWithEmailAndPassword(window._fb.auth,email,pass);
+    await window._fb.updateProfile(cred.user,{displayName:name});
+  }catch(e){
+    showAuthError(firebaseErrMsg(e.code));
+    if(btn){btn.disabled=false;btn.textContent='Create Account';}
+  }
 }
 
-/* ── INIT FIREBASE ON PAGE LOAD ── */
-document.addEventListener('DOMContentLoaded', () => {
-  initFirebase();
-  ksUpdatePreview();
+/* ── AUTH: GOOGLE LOGIN ── */
+async function fbGoogleLogin(){
+  if(!window._FB_READY){showAuthError('Firebase not ready. Please refresh.');return;}
+  const btn=document.getElementById('google-login-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='Opening Google...';}
+  try{
+    try{await window._fb.signInWithPopup(window._fb.auth,window._fb.gp);}
+    catch(pe){
+      if(pe.code==='auth/popup-blocked'||pe.code==='auth/popup-closed-by-user'){
+        await window._fb.signInWithRedirect(window._fb.auth,window._fb.gp);
+      }else throw pe;
+    }
+  }catch(e){
+    showAuthError('Google login failed: '+(e.message||e.code));
+    if(btn){btn.disabled=false;btn.innerHTML='<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.5 20-21 0-1.4-.2-2.7-.5-4z"/></svg> Continue with Google';}
+  }
+}
+
+/* ── AUTH: GUEST MODE ── */
+async function fbGuest(){
+  window._isGuest=true;
+  document.getElementById('fb-auth-overlay')?.classList.add('hidden');
+  STATE.currentUser={
+    id:'guest_'+Date.now(), name:'Guest User', handle:'@guest',
+    bio:'Browsing K Spider AI', profession:'Guest',
+    avatar:'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
+    cover:'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
+    website:'', youtube:'', instagram:'',
+    followers:0, following_count:0, likes:0, isFirebase:false, isGuest:true
+  };
+  applyUserProfile(); updateNavUserChip(); renderPosts();
+  showToast('Guest mode — posts will not be saved','info');
+}
+
+/* ── AUTH: LOGOUT ── */
+async function fbLogout(){
+  if(!confirm('Logout from K Spider Social AI?'))return;
+  try{
+    if(_presenceRef&&window._fb?.rtdb){try{await window._fb.dbRemove(_presenceRef);}catch(e){}}
+    if(_postsListener){try{_postsListener();}catch(e){}_postsListener=null;}
+    window._isGuest=false; _presenceRef=null;
+    STATE.currentUser=null; STATE.posts=[];
+    localStorage.removeItem('kspider_user'); localStorage.removeItem('kspider_posts');
+    if(window._fb?.auth)await window._fb.signOut(window._fb.auth);
+    setTimeout(()=>{document.getElementById('fb-auth-overlay')?.classList.remove('hidden');},150);
+    document.getElementById('nav-user-chip')?.style.setProperty('display','none');
+    document.getElementById('logout-btn')?.style.setProperty('display','none');
+    const ol=document.getElementById('online-list');
+    if(ol)ol.innerHTML='<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">Connecting...</div>';
+    const ob=document.getElementById('online-count-badge');if(ob)ob.textContent='0';
+    renderPosts(); navigateTo('feed');
+    showToast('Logged out successfully','info');
+  }catch(e){
+    console.error('Logout error:',e);
+    localStorage.removeItem('kspider_user');
+    document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+    showToast('Logged out','info');
+  }
+}
+
+/* ── SAVE PROFILE ── */
+async function saveProfile(e){
+  e.preventDefault();
+  const u=STATE.currentUser; if(!u)return;
+  const g=id=>document.getElementById(id)?.value?.trim()||null;
+  u.name=g('edit-name')||u.name;
+  u.profession=g('edit-profession')||''; u.bio=g('edit-bio')||'';
+  u.website=g('edit-website')||''; u.youtube=g('edit-youtube')||'';
+  u.instagram=g('edit-instagram')||''; u.twitter=g('edit-twitter')||'';
+  u.linkedin=g('edit-linkedin')||'';
+  u.phone=g('edit-phone'); u.dob=document.getElementById('edit-dob')?.value||null;
+  u.gender=document.getElementById('edit-gender')?.value||null;
+  u.relationship=document.getElementById('edit-relationship')?.value||null;
+  u.city=g('edit-city'); u.hometown=g('edit-hometown');
+  u.school=g('edit-school'); u.college=g('edit-college');
+  u.worksAt=g('edit-works'); u.languages=g('edit-languages');
+  u.themeColor=document.getElementById('edit-theme-color')?.value||u.themeColor;
+  if(window._FB_READY&&u.isFirebase&&window._currentUser){
+    try{
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',window._currentUser.uid),{
+        name:u.name,profession:u.profession,bio:u.bio,website:u.website,
+        youtube:u.youtube,instagram:u.instagram,twitter:u.twitter,linkedin:u.linkedin,
+        phone:u.phone,dob:u.dob,gender:u.gender,relationship:u.relationship,
+        city:u.city,hometown:u.hometown,school:u.school,college:u.college,
+        worksAt:u.worksAt,languages:u.languages
+      });
+    }catch(err){console.warn('Profile save:',err.message);}
+  }
+  applyUserProfile();
+  document.getElementById('edit-profile-form')?.classList.remove('open');
+  showToast('Profile saved!','success');
+}
+
+/* ── FIREBASE ERROR MESSAGES ── */
+function firebaseErrMsg(code){
+  const m={'auth/user-not-found':'No account found with this email.','auth/wrong-password':'Wrong password. Please try again.','auth/email-already-in-use':'Email already registered. Please login.','auth/invalid-email':'Please enter a valid email address.','auth/weak-password':'Password too weak. Use at least 6 characters.','auth/too-many-requests':'Too many attempts. Please wait.','auth/network-request-failed':'Network error. Check your internet.','auth/invalid-credential':'Invalid email or password.'};
+  return m[code]||'Something went wrong. Please try again.';
+}
+
+/* ── INIT ON PAGE LOAD ── */
+document.addEventListener('DOMContentLoaded',()=>{
+  initUser(); renderPosts(); ksUpdatePreview();
 });
+
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════
@@ -7820,8 +7579,8 @@ function applyKSTheme(themeKey) {
   if (navbar) navbar.style.background = t.navbar;
   // Save preference
   localStorage.setItem('ks_theme_key', themeKey);
-  if (STATE.currentUser && FB_READY && !STATE.currentUser.isGuest) {
-    DB.collection('users').doc(STATE.currentUser.id).update({ themeKey }).catch(()=>{});
+  if (STATE.currentUser && window._FB_READY && !STATE.currentUser.isGuest) {
+    window._fb.updateDoc(window._fb.doc(window._fb.db,'users',STATE.currentUser.id),{ themeKey }).catch(()=>{});
   }
   showToast(`${t.name} theme applied!`, 'success');
   // Close modal
@@ -7965,7 +7724,7 @@ function getConvoId(uid1, uid2) {
 }
 
 async function startRealChat(targetUid, targetName, targetAvatar) {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) {
+  if (!window._FB_READY || !STATE.currentUser?.isFirebase) {
     showToast('💬 Login required to send messages', 'error'); return;
   }
   const myId = STATE.currentUser.id;
@@ -7973,13 +7732,13 @@ async function startRealChat(targetUid, targetName, targetAvatar) {
   _activeConvoId = convoId;
 
   // Create/update conversation doc
-  await DB.collection('conversations').doc(convoId).set({
+  await window._fb.collection(window._fb.db,'conversations').doc(convoId).set({
     participants: [myId, targetUid],
     participantNames: { [myId]: STATE.currentUser.name, [targetUid]: targetName },
     participantAvatars: { [myId]: STATE.currentUser.avatar, [targetUid]: targetAvatar },
     lastMessage: '',
-    lastMessageTime: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    lastMessageTime: window._fb.serverTimestamp(),
+    updatedAt: window._fb.serverTimestamp(),
   }, { merge: true });
 
   navigateTo('messages');
@@ -8007,9 +7766,13 @@ function openRealChat(convoId, name, avatar) {
   const msgs = document.getElementById('chat-messages');
   if (msgs) msgs.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted);font-size:12px">Loading messages...</div>';
 
-  _msgListener = DB.collection('conversations').doc(convoId)
-    .collection('messages').orderBy('timestamp', 'asc').limit(50)
-    .onSnapshot(snap => {
+  _msgListener = window._fb.onSnapshot(
+    window._fb.query(
+      window._fb.collection(window._fb.db,'conversations/'+convoId+'/messages'),
+      window._fb.orderBy('timestamp','asc'),
+      window._fb.limit(50)
+    ),
+    snap => {
       if (!msgs) return;
       if (snap.empty) {
         msgs.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);font-size:12px">👋 Say hello!</div>';
@@ -8035,7 +7798,7 @@ function openRealChat(convoId, name, avatar) {
 }
 
 async function sendRealMessage() {
-  if (!_activeConvoId || !FB_READY) return;
+  if (!_activeConvoId || !window._FB_READY) return;
   const input = document.getElementById('msg-input') || document.querySelector('.msg-input-field');
   const text = input?.value?.trim();
   if (!text) return;
@@ -8047,16 +7810,16 @@ async function sendRealMessage() {
     senderId: myId,
     senderName: STATE.currentUser?.name,
     senderAvatar: STATE.currentUser?.avatar,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+    timestamp: window._fb.serverTimestamp(),
   };
 
   try {
-    await DB.collection('conversations').doc(_activeConvoId)
+    await window._fb.collection(window._fb.db,'conversations').doc(_activeConvoId)
       .collection('messages').add(msgData);
     // Update conversation preview
-    await DB.collection('conversations').doc(_activeConvoId).update({
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'conversations',_activeConvoId),{
       lastMessage: text,
-      lastMessageTime: firebase.firestore.FieldValue.serverTimestamp(),
+      lastMessageTime: window._fb.serverTimestamp(),
     });
   } catch(e) {
     showToast('❌ Message failed: ' + e.message, 'error');
@@ -8070,7 +7833,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const sendBtn = document.querySelector('.msg-send-btn');
     if (sendBtn) {
       sendBtn.onclick = () => {
-        if (_activeConvoId && FB_READY) sendRealMessage();
+        if (_activeConvoId && window._FB_READY) sendRealMessage();
         else sendMessage(); // fallback to original
       };
     }
@@ -8080,7 +7843,7 @@ document.addEventListener('DOMContentLoaded', () => {
       msgInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault();
-          if (_activeConvoId && FB_READY) sendRealMessage();
+          if (_activeConvoId && window._FB_READY) sendRealMessage();
           else sendMessage();
         }
       });
@@ -8090,12 +7853,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
 /* Load real conversations list */
 async function loadRealConversations() {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) return;
+  if (!window._FB_READY || !STATE.currentUser?.isFirebase) return;
   const myId = STATE.currentUser.id;
   try {
-    const snap = await DB.collection('conversations')
-      .where('participants', 'array-contains', myId)
-      .orderBy('updatedAt', 'desc').limit(20).get();
+    const snap = await window._fb.getDocs(
+      window._fb.query(
+        window._fb.collection(window._fb.db,'conversations'),
+        window._fb.where('participants','array-contains',myId),
+        window._fb.orderBy('updatedAt','desc'),
+        window._fb.limit(20)
+      )
+    );
 
     const container = document.getElementById('message-threads');
     if (!container || snap.empty) return;
@@ -8234,7 +8002,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const _prevNav = origNav;
       window.navigateTo = function(page) {
         _prevNav(page);
-        if (page === 'messages' && FB_READY) loadRealConversations();
+        if (page === 'messages' && window._FB_READY) loadRealConversations();
       };
     }
   }, 1500);
@@ -8257,7 +8025,7 @@ async function loadLeaderboard(tab) {
   if (!list) return;
   list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">⏳ Loading...</div>';
 
-  if (!FB_READY) {
+  if (!window._FB_READY) {
     list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Firebase required for leaderboard</div>';
     return;
   }
@@ -8265,9 +8033,9 @@ async function loadLeaderboard(tab) {
   try {
     let snap;
     if (tab === 'posts') {
-      snap = await DB.collection('posts').get();
+      snap = await window._fb.collection(window._fb.db,'posts').get();
     } else {
-      snap = await DB.collection('posts').get();
+      snap = await window._fb.collection(window._fb.db,'posts').get();
     }
 
     // Aggregate by author
@@ -8341,8 +8109,8 @@ function saveRewardData(data) {
   const uid = STATE.currentUser?.id || 'guest';
   localStorage.setItem('ks_rewards_' + uid, JSON.stringify(data));
   // Also sync to Firebase
-  if (FB_READY && STATE.currentUser?.isFirebase) {
-    DB.collection('users').doc(STATE.currentUser.id).update({
+  if (window._FB_READY && STATE.currentUser?.isFirebase) {
+    window._fb.updateDoc(window._fb.doc(window._fb.db,'users',STATE.currentUser.id),{
       rewardPoints: data.points,
       streak: data.streak,
       lastClaim: data.lastClaim
@@ -8599,13 +8367,13 @@ function shareAIToWhatsApp() {
    📊 TIER 2 — FEATURE 4: POST ANALYTICS (view count tracking)
 ============================================================ */
 function trackPostView(postId) {
-  if (!FB_READY || !postId) return;
+  if (!window._FB_READY || !postId) return;
   const myId = STATE.currentUser?.id;
   // Use set with merge so each user only counts once per post
-  DB.collection('posts').doc(postId).collection('views').doc(myId || 'anon_' + Date.now()).set({
-    uid: myId || null, ts: firebase.firestore.FieldValue.serverTimestamp()
+  window._fb.doc(window._fb.db,'posts',postId).collection('views').doc(myId || 'anon_' + Date.now()).set({
+    uid: myId || null, ts: window._fb.serverTimestamp()
   }, { merge: true }).then(() => {
-    DB.collection('posts').doc(postId).update({ views: firebase.firestore.FieldValue.increment(1) }).catch(()=>{});
+    window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId),{ views: window._fb.increment(1) }).catch(()=>{});
   }).catch(()=>{});
 }
 
@@ -8674,7 +8442,7 @@ function checkAdminAccess() {
   // Retry after short delay if STATE not ready
   if (!STATE.currentUser?.email && AUTH?.currentUser?.email) {
     STATE.currentUser = STATE.currentUser || {};
-    STATE.currentUser.email = AUTH.currentUser.email;
+    STATE.currentUser.email = window._currentUser.email;
   }
   
   if (isAdmin()) {
@@ -8688,9 +8456,9 @@ function checkAdminAccess() {
 
 /* Load reports count for badge */
 async function loadAdminReportsBadge() {
-  if (!FB_READY) return;
+  if (!window._FB_READY) return;
   try {
-    const snap = await DB.collection('reports').where('status','==','pending').get();
+    const snap = await window._fb.collection(window._fb.db,'reports').where('status','==','pending').get();
     const count = snap.size;
     const badge = document.getElementById('admin-pending-badge');
     const tabCount = document.getElementById('atab-reports-count');
@@ -8720,13 +8488,13 @@ async function loadAdminPage() {
   if (!isAdmin()) return;
   adminTab(_currentAdminTab);
   // Load stats
-  if (FB_READY) {
+  if (window._FB_READY) {
     try {
-      const postsSnap = await DB.collection('posts').get();
+      const postsSnap = await window._fb.collection(window._fb.db,'posts').get();
       document.getElementById('admin-stat-posts').textContent = postsSnap.size;
     } catch(e) {}
     try {
-      const usersSnap = await DB.collection('users').get();
+      const usersSnap = await window._fb.collection(window._fb.db,'users').get();
       document.getElementById('admin-stat-users').textContent = usersSnap.size;
     } catch(e) {}
   }
@@ -8765,9 +8533,9 @@ function adminRefresh() {
 /* ── REPORTS TAB ── */
 async function loadAdminReports() {
   const content = document.getElementById('admin-content');
-  if (!FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
+  if (!window._FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
   try {
-    const snap = await DB.collection('reports').orderBy('timestamp','desc').limit(50).get();
+    const snap = await window._fb.collection(window._fb.db,'reports').orderBy('timestamp','desc').limit(50).get();
     if (snap.empty) {
       content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:36px">✅</div><div style="font-weight:700;margin-top:8px">No reports! Community is safe.</div></div>`;
       return;
@@ -8815,9 +8583,9 @@ async function loadAdminReports() {
 /* ── POSTS TAB ── */
 async function loadAdminPosts() {
   const content = document.getElementById('admin-content');
-  if (!FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
+  if (!window._FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
   try {
-    const snap = await DB.collection('posts').orderBy('timestamp','desc').limit(30).get();
+    const snap = await window._fb.collection(window._fb.db,'posts').orderBy('timestamp','desc').limit(30).get();
     if (snap.empty) { content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">No posts yet.</div>`; return; }
     let html = '<div style="display:flex;flex-direction:column;gap:8px">';
     snap.forEach(doc => {
@@ -8852,9 +8620,9 @@ async function loadAdminPosts() {
 /* ── USERS TAB ── */
 async function loadAdminUsers() {
   const content = document.getElementById('admin-content');
-  if (!FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
+  if (!window._FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
   try {
-    const snap = await DB.collection('users').limit(50).get();
+    const snap = await window._fb.collection(window._fb.db,'users').limit(50).get();
     if (snap.empty) { content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">No users found.</div>`; return; }
     let html = '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">';
     snap.forEach(doc => {
@@ -8891,9 +8659,9 @@ async function loadAdminUsers() {
 /* ── BANNED TAB ── */
 async function loadAdminBanned() {
   const content = document.getElementById('admin-content');
-  if (!FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
+  if (!window._FB_READY) { content.innerHTML = adminOfflineMsg(); return; }
   try {
-    const snap = await DB.collection('banned').get();
+    const snap = await window._fb.collection(window._fb.db,'banned').get();
     if (snap.empty) {
       content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:36px">🎉</div><div style="font-weight:700;margin-top:8px">No banned users!</div></div>`;
       return;
@@ -8924,9 +8692,9 @@ async function loadAdminBanned() {
 async function adminDeletePost(postId, reportId) {
   if (!confirm('Delete this post permanently? This cannot be undone.')) return;
   try {
-    if (FB_READY) {
-      await DB.collection('posts').doc(postId).delete();
-      if (reportId) await DB.collection('reports').doc(reportId).update({ status: 'resolved' });
+    if (window._FB_READY) {
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db,'posts',postId));
+      if (reportId) await window._fb.updateDoc(window._fb.doc(window._fb.db,'reports',reportId),{ status: 'resolved' });
     }
     // Remove from UI
     document.getElementById('post-' + postId)?.remove();
@@ -8942,17 +8710,17 @@ async function adminBanUser(userId, userName, reportId) {
   if (!userId) { showToast('❌ User ID not found', 'error'); return; }
   if (!confirm(`Ban user "${userName}"? They will not be able to login.`)) return;
   try {
-    if (FB_READY) {
-      await DB.collection('banned').doc(userId).set({
+    if (window._FB_READY) {
+      await window._fb.collection(window._fb.db,'banned').doc(userId).set({
         uid: userId,
         name: userName,
-        bannedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        bannedAt: window._fb.serverTimestamp(),
         bannedBy: STATE.currentUser?.name || 'Admin',
         reason: 'Community Guidelines Violation'
       });
       // Flag user profile
-      await DB.collection('users').doc(userId).update({ banned: true });
-      if (reportId) await DB.collection('reports').doc(reportId).update({ status: 'resolved' });
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',userId),{ banned: true });
+      if (reportId) await window._fb.updateDoc(window._fb.doc(window._fb.db,'reports',reportId),{ status: 'resolved' });
     }
     _bannedUsers.add(userId);
     showToast(`🚫 User "${userName}" has been banned`, 'success');
@@ -8966,9 +8734,9 @@ async function adminBanUser(userId, userName, reportId) {
 async function adminUnbanUser(userId, userName) {
   if (!confirm(`Unban user "${userName}"?`)) return;
   try {
-    if (FB_READY) {
-      await DB.collection('banned').doc(userId).delete();
-      await DB.collection('users').doc(userId).update({ banned: false });
+    if (window._FB_READY) {
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db,'banned',userId));
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',userId),{ banned: false });
     }
     _bannedUsers.delete(userId);
     showToast(`✅ User "${userName}" unbanned`, 'success');
@@ -8980,7 +8748,7 @@ async function adminUnbanUser(userId, userName) {
 
 async function adminDismissReport(reportId) {
   try {
-    if (FB_READY) await DB.collection('reports').doc(reportId).update({ status: 'dismissed' });
+    if (window._FB_READY) await window._fb.updateDoc(window._fb.doc(window._fb.db,'reports',reportId),{ status: 'dismissed' });
     showToast('Report dismissed', 'info');
     adminTab('reports');
     loadAdminReportsBadge();
@@ -8989,7 +8757,7 @@ async function adminDismissReport(reportId) {
 
 async function adminFlagPost(postId) {
   try {
-    if (FB_READY) await DB.collection('posts').doc(postId).update({ flagged: true });
+    if (window._FB_READY) await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId),{ flagged: true });
     showToast('⚠️ Post flagged for review', 'warning');
     adminTab('posts');
   } catch(e) { showToast('❌ Error: ' + e.message, 'error'); }
@@ -8999,7 +8767,7 @@ async function adminViewUserPosts(userId, userName) {
   const content = document.getElementById('admin-content');
   content.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-muted)">Loading posts by ${userName}...</div>`;
   try {
-    const snap = await DB.collection('posts').where('authorId','==',userId).orderBy('timestamp','desc').get();
+    const snap = await window._fb.collection(window._fb.db,'posts').where('authorId','==',userId).orderBy('timestamp','desc').get();
     if (snap.empty) { content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-muted)">No posts by ${userName}</div>`; return; }
     let html = `<div style="margin-bottom:12px"><button onclick="adminTab('users')" style="padding:7px 14px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg-card);color:var(--text-primary);font-size:12px;font-weight:700;cursor:pointer">← Back to Users</button></div>`;
     html += `<div style="font-weight:800;margin-bottom:10px">Posts by ${userName} (${snap.size})</div>`;
@@ -9017,9 +8785,9 @@ async function adminViewUserPosts(userId, userName) {
 }
 
 async function loadBannedList() {
-  if (!FB_READY) return;
+  if (!window._FB_READY) return;
   try {
-    const snap = await DB.collection('banned').get();
+    const snap = await window._fb.collection(window._fb.db,'banned').get();
     _bannedUsers.clear();
     snap.forEach(doc => _bannedUsers.add(doc.id));
   } catch(e) {}
@@ -9027,9 +8795,9 @@ async function loadBannedList() {
 
 /* Check banned on login */
 async function checkIfBanned(uid) {
-  if (!FB_READY) return false;
+  if (!window._FB_READY) return false;
   try {
-    const snap = await DB.collection('banned').doc(uid).get();
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db,'banned',uid));
     return snap.exists;
   } catch(e) { return false; }
 }
