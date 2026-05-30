@@ -4566,6 +4566,28 @@ function applyUserProfile() {
   }
 }
 
+function updateNavUserChip() {
+  const u = STATE.currentUser;
+  const chip = document.getElementById('nav-user-chip');
+  const nameEl = document.getElementById('nav-user-name');
+  const avatarEl = document.getElementById('nav-avatar-img');
+  if (!chip) return;
+  if (u && !u.isGuest) {
+    chip.style.display = 'flex';
+    if (nameEl) nameEl.textContent = u.name || 'User';
+    if (avatarEl) avatarEl.src = u.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=kspider';
+  } else if (u && u.isGuest) {
+    chip.style.display = 'flex';
+    if (nameEl) nameEl.textContent = 'Guest';
+    if (avatarEl) avatarEl.src = 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest';
+  } else {
+    chip.style.display = 'none';
+  }
+  // Show/hide logout button
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = (u && !u.isGuest) ? 'flex' : 'none';
+}
+
 /* ============================================================
    SAMPLE DATA GENERATORS
 ============================================================ */
@@ -7095,44 +7117,80 @@ window.subscribeToOnlineUsers = function(){
   });
 };
 
+/* ── AUTH UI HELPERS ── */
+function showAuthError(msg){
+  const el=document.getElementById('auth-err');
+  if(!el)return;
+  el.textContent=msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),5000);
+}
+
+function switchAuthTab(tab){
+  const loginForm=document.getElementById('auth-login-form');
+  const regForm=document.getElementById('auth-register-form');
+  const tabLogin=document.getElementById('tab-login');
+  const tabReg=document.getElementById('tab-register');
+  const err=document.getElementById('auth-err');
+  if(err)err.classList.remove('show');
+  if(tab==='login'){
+    if(loginForm)loginForm.style.display='block';
+    if(regForm)regForm.style.display='none';
+    if(tabLogin)tabLogin.classList.add('active');
+    if(tabReg)tabReg.classList.remove('active');
+  }else{
+    if(loginForm)loginForm.style.display='none';
+    if(regForm)regForm.style.display='block';
+    if(tabLogin)tabLogin.classList.remove('active');
+    if(tabReg)tabReg.classList.add('active');
+  }
+}
+
 /* ── AUTH: EMAIL LOGIN ── */
 async function fbLogin(){
-  if(!window._FB_READY){showAuthError('Firebase not ready. Please refresh.');return;}
-  const email=document.getElementById('fb-email')?.value?.trim();
-  const pass=document.getElementById('fb-pass')?.value;
+  if(!window._fb||!window._FB_READY){
+    showAuthError('Firebase connecting... Please wait 2 seconds and try again.');
+    return;
+  }
+  const email=document.getElementById('login-email')?.value?.trim();
+  const pass=document.getElementById('login-password')?.value;
   if(!email||!pass){showAuthError('Please enter email and password.');return;}
-  const btn=document.getElementById('fb-login-btn');
+  const btn=document.getElementById('login-btn');
   if(btn){btn.disabled=true;btn.textContent='Logging in...';}
   try{
     await window._fb.signInWithEmailAndPassword(window._fb.auth,email,pass);
+    /* onAuthStateChanged in module handles rest — no manual setup needed */
   }catch(e){
     showAuthError(firebaseErrMsg(e.code));
-    if(btn){btn.disabled=false;btn.textContent='Login';}
+    if(btn){btn.disabled=false;btn.textContent='🚀 Login to K Spider AI';}
   }
 }
 
 /* ── AUTH: REGISTER ── */
 async function fbRegister(){
-  if(!window._FB_READY){showAuthError('Firebase not ready. Please refresh.');return;}
-  const name=document.getElementById('fb-reg-name')?.value?.trim();
-  const email=document.getElementById('fb-reg-email')?.value?.trim();
-  const pass=document.getElementById('fb-reg-pass')?.value;
+  if(!window._fb||!window._FB_READY){showAuthError('Firebase connecting... Please wait and try again.');return;}
+  const fname=document.getElementById('reg-fname')?.value?.trim();
+  const lname=document.getElementById('reg-lname')?.value?.trim();
+  const name=(fname+' '+lname).trim()||fname||lname;
+  const email=document.getElementById('reg-email')?.value?.trim();
+  const pass=document.getElementById('reg-password')?.value;
   if(!name||!email||!pass){showAuthError('Please fill all fields.');return;}
   if(pass.length<6){showAuthError('Password must be at least 6 characters.');return;}
-  const btn=document.getElementById('fb-register-btn');
+  const btn=document.getElementById('reg-btn');
   if(btn){btn.disabled=true;btn.textContent='Creating account...';}
   try{
     const cred=await window._fb.createUserWithEmailAndPassword(window._fb.auth,email,pass);
     await window._fb.updateProfile(cred.user,{displayName:name});
+    /* onAuthStateChanged fires next */
   }catch(e){
     showAuthError(firebaseErrMsg(e.code));
-    if(btn){btn.disabled=false;btn.textContent='Create Account';}
+    if(btn){btn.disabled=false;btn.textContent='🎉 Create Account';}
   }
 }
 
 /* ── AUTH: GOOGLE LOGIN ── */
 async function fbGoogleLogin(){
-  if(!window._FB_READY){showAuthError('Firebase not ready. Please refresh.');return;}
+  if(!window._fb||!window._FB_READY){showAuthError('Firebase connecting... Please wait and try again.');return;}
   const btn=document.getElementById('google-login-btn');
   if(btn){btn.disabled=true;btn.innerHTML='Opening Google...';}
   try{
