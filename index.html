@@ -456,7 +456,7 @@
   (function() {
     var _cfg = {
       apiKey:            "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
-      authDomain:        "www.kspiderai.in",
+      authDomain:        "kspideraimain.firebaseapp.com",
       projectId:         "kspideraimain",
       storageBucket:     "kspideraimain.firebasestorage.app",
       messagingSenderId: "940003391760",
@@ -3084,7 +3084,7 @@ var EJS_PUBLIC_KEY = 'KU5yrIwmM4PMVyqBN';
    ══════════════════════════════════════════════════════ */
 var FB_CONFIG = {
   apiKey:            "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
-  authDomain:        "www.kspiderai.in",
+  authDomain:        "kspideraimain.firebaseapp.com",
   projectId:         "kspideraimain",
   storageBucket:     "kspideraimain.firebasestorage.app",
   messagingSenderId: "940003391760",
@@ -7244,47 +7244,29 @@ function ksCookieDecline(){
       provider.addScope('profile');
       provider.setCustomParameters({ prompt: 'select_account' });
 
-      // Detect mobile / popup-hostile environments → use redirect
-      var isMobile = /Android|iPhone|iPad|iPod|Opera Mini|IEMobile/i.test(navigator.userAgent);
-      var isInAppBrowser = /FBAN|FBAV|Instagram|Snapchat|Twitter|Line\/|wv\)/i.test(navigator.userAgent);
+      // ── IMPORTANT: Site hosted on GitHub Pages (kspiderai.in) ──
+      // signInWithRedirect CANNOT be used here because it routes through
+      // kspiderai.in/__/auth/handler which does not exist on GitHub Pages (404).
+      // authDomain must remain kspideraimain.firebaseapp.com so Firebase handles
+      // the OAuth callback on its own server — popup flow achieves this correctly.
+      // ALWAYS use signInWithPopup for ALL devices on GitHub Pages hosting.
 
-      if (isMobile || isInAppBrowser) {
-        // ── REDIRECT FLOW (mobile / in-app browsers) ──
-        sessionStorage.setItem('ks_google_signin_pending', '1');
-        auth.signInWithRedirect(provider).catch(function(err) {
-          console.error('[KSpider] Redirect sign-in error:', err.code, err.message);
-          sessionStorage.removeItem('ks_google_signin_pending');
-          var msg = err.code === 'auth/network-request-failed'
-            ? 'Internet connection check karo.' : 'Google Sign-In failed. Please try again.';
-          if (typeof toast === 'function') toast('❌ ' + msg, 'error', 5000);
-          _ksResetGoogleBtn();
-        });
-      } else {
-        // ── POPUP FLOW (desktop browsers) ──
-        auth.signInWithPopup(provider).then(function(result) {
-          _ksHandleGoogleUser(result.user);
-        }).catch(function(err) {
-          console.error('[KSpider] Google Sign-In error:', err.code, err.message);
-          if (err.code === 'auth/popup-blocked' || err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request') {
-            // Graceful fallback to redirect
-            console.log('[KSpider] Popup failed (' + err.code + ') → falling back to redirect');
-            sessionStorage.setItem('ks_google_signin_pending', '1');
-            if (btn) btn.innerHTML = '<div class="sp-icon"></div> Redirecting...';
-            auth.signInWithRedirect(provider).catch(function(e2) {
-              sessionStorage.removeItem('ks_google_signin_pending');
-              var m2 = e2.code === 'auth/network-request-failed' ? 'Internet check karo.' : 'Google Sign-In failed. Please try again.';
-              if (typeof toast === 'function') toast('❌ ' + m2, 'error', 5000);
-              _ksResetGoogleBtn();
-            });
-          } else {
-            var msg = err.code === 'auth/network-request-failed'
-              ? 'Internet connection check karo.'
-              : 'Google Sign-In failed. Please try again.';
-            if (typeof toast === 'function') toast('❌ ' + msg, 'error', 5000);
-            _ksResetGoogleBtn();
-          }
-        });
-      }
+      auth.signInWithPopup(provider).then(function(result) {
+        _ksHandleGoogleUser(result.user);
+      }).catch(function(err) {
+        console.error('[KSpider] Google Sign-In error:', err.code, err.message);
+        var errMsgs = {
+          'auth/popup-blocked':           '⚠️ Popup blocked! Please allow popups for kspiderai.in and try again.',
+          'auth/popup-closed-by-user':    '⚠️ Sign-in window closed. Please try again.',
+          'auth/cancelled-popup-request': '⚠️ Please try again.',
+          'auth/network-request-failed':  '❌ Internet connection check karo.',
+          'auth/user-disabled':           '❌ This account has been disabled.',
+          'auth/account-exists-with-different-credential': '⚠️ This email is already registered with another method.'
+        };
+        var msg = errMsgs[err.code] || ('❌ Google Sign-In failed. Please try again. (' + (err.code || '') + ')');
+        if (typeof toast === 'function') toast(msg, 'error', 6000);
+        _ksResetGoogleBtn();
+      });
     }
 
     // Wait for Firebase auth to be ready (retry up to 5s)
@@ -7309,36 +7291,15 @@ function ksCookieDecline(){
         setTimeout(checkRedirectResult, 800);
         return;
       }
+      // GitHub Pages hosting: signInWithRedirect is NOT used (/__/auth/handler = 404).
+      // getRedirectResult is called only as a safety net — will always return null result here.
       var auth = firebase.auth();
-      // Show loading state if we know we're returning from a redirect
-      var isPending = sessionStorage.getItem('ks_google_signin_pending') === '1';
-      if (isPending) {
-        var btn = document.getElementById('ks-google-btn');
-        if (btn) { btn.disabled = true; btn.innerHTML = '<div class="sp-icon"></div> Completing sign-in...'; }
-        // Open modal if it is not visible
-        if (typeof openM === 'function') {
-          var ov = document.getElementById('reg-ov');
-          if (ov && ov.style.display === 'none') openM('reg-ov');
-        }
-      }
+      sessionStorage.removeItem('ks_google_signin_pending');
       auth.getRedirectResult().then(function(result) {
-        sessionStorage.removeItem('ks_google_signin_pending');
-        _ksResetGoogleBtn();
-        if (result && result.user) {
-          _ksHandleGoogleUser(result.user);
-        }
+        if (result && result.user) { _ksHandleGoogleUser(result.user); }
       }).catch(function(err) {
-        sessionStorage.removeItem('ks_google_signin_pending');
-        _ksResetGoogleBtn();
         if (err && err.code && err.code !== 'auth/no-auth-event') {
-          console.error('[KSpider] getRedirectResult error:', err.code, err.message);
-          // Only show toast if user actually tried to sign in
-          if (isPending) {
-            var msg = err.code === 'auth/account-exists-with-different-credential'
-              ? 'Yeh email already doosre method se registered hai. Please try again.'
-              : 'Google Sign-In failed. Please try again.';
-            if (typeof toast === 'function') toast('❌ ' + msg, 'error', 5000);
-          }
+          console.warn('[KSpider] getRedirectResult (safety check):', err.code);
         }
       });
     }
