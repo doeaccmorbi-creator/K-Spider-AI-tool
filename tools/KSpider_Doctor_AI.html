@@ -1596,20 +1596,181 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
   background: rgba(0,0,0,0.5);
   z-index: 1099;
 }
-@media(max-width:768px) {
-  #saas-sidebar { transform: translateX(-100%); }
-  #saas-sidebar.mobile-open { transform: translateX(0); }
-  #saas-sidebar.mobile-open ~ #saas-sidebar-overlay,
-  body.sidebar-mobile-open #saas-sidebar-overlay { display: block; }
-  #saas-main { margin-left: 0 !important; width: 100% !important; }
-  #saas-topbar { left: 0 !important; }
-  #saas-content-wrapper { padding: 16px; }
-  .saas-overview-grid { grid-template-columns: 1fr 1fr; }
-  .saas-quick-actions { grid-template-columns: repeat(3, 1fr); }
+/* ═══ MOBILE OVERLAY ═══════════════════════════════════════════ */
+#ks-sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 1099;
+  -webkit-tap-highlight-color: transparent;
 }
-@media(max-width:480px) {
-  .saas-overview-grid { grid-template-columns: 1fr; }
-  .saas-quick-actions { grid-template-columns: repeat(2, 1fr); }
+
+/* ═══ TABLET & MOBILE BASE ══════════════════════════════════════ */
+@media(max-width:1023px) {
+  #saas-hamburger { display: flex !important; }
+}
+
+/* ═══ MOBILE (max 767px) ════════════════════════════════════════ */
+@media(max-width:767px) {
+  :root {
+    --saas-sidebar-width: 0px;
+    --saas-topbar-height: 56px;
+  }
+  /* Sidebar: slide off-screen by default */
+  #saas-sidebar {
+    width: 270px !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.28s cubic-bezier(.4,0,.2,1) !important;
+    position: fixed !important;
+    top: 0; left: 0;
+    height: 100vh !important;
+    z-index: 1100;
+    overflow-y: auto;
+    box-shadow: none;
+  }
+  /* Sidebar OPEN state */
+  #saas-sidebar.mobile-open,
+  body.sidebar-mobile-open #saas-sidebar {
+    transform: translateX(0) !important;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
+  }
+  /* Overlay shown when sidebar open */
+  #saas-sidebar.mobile-open ~ #ks-sidebar-overlay,
+  body.sidebar-mobile-open #ks-sidebar-overlay,
+  body.sidebar-mobile-open #saas-sidebar-overlay {
+    display: block !important;
+  }
+  /* Main: full width, push below topbar */
+  #saas-main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    padding-top: 56px !important;
+  }
+  /* Topbar: full width */
+  #saas-topbar {
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 56px !important;
+    padding: 0 10px !important;
+  }
+  /* Content padding */
+  #saas-content-wrapper { padding: 10px !important; }
+  /* Grids → single column */
+  .saas-overview-grid { grid-template-columns: 1fr 1fr !important; }
+  .saas-quick-actions { grid-template-columns: repeat(2, 1fr) !important; }
+  /* Stats */
+  #ks-pt-stats,
+  #brand-stats-row { grid-template-columns: 1fr 1fr !important; display: grid !important; }
+  /* Brand list */
+  #brand-list { grid-template-columns: 1fr !important; }
+  /* Modals → full screen */
+  #ks-pt-modal, #ks-pt-detail-modal, #brand-modal {
+    padding: 0 !important;
+    align-items: flex-start !important;
+  }
+  #ks-pt-modal > div,
+  #ks-pt-detail-modal > div,
+  #brand-modal > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    max-height: 100vh;
+    overflow-y: auto;
+  }
+  /* Patient table */
+  #ks-pt-table { font-size: 0.76rem !important; }
+  #ks-pt-table td, #ks-pt-table th { padding: 6px 7px !important; white-space: nowrap; }
+  #ks-pt-table th:nth-child(5), #ks-pt-table td:nth-child(5),
+  #ks-pt-table th:nth-child(7), #ks-pt-table td:nth-child(7) { display: none; }
+  /* Breadcrumb: hide on mobile */
+  .saas-breadcrumb, .topbar-sub { display: none !important; }
+  /* Topbar title: smaller */
+  .topbar-title, #saas-topbar-title { font-size: 0.9rem !important; }
+  /* Section headings */
+  .section h2, .section h3 { font-size: 1rem !important; }
+  /* Drug cards */
+  .drug-card { padding: 10px !important; font-size: 0.82rem !important; }
+  /* Tables: scroll */
+  table { display: block !important; overflow-x: auto !important; -webkit-overflow-scrolling: touch; }
+  /* Touch targets */
+  button { min-height: 36px; }
+  .sidebar-nav-item { min-height: 44px !important; }
+  /* Section detail area */
+  #ks-ptd-content { max-height: 52vh !important; }
+  .ks-ptd-tab { padding: 8px 9px !important; font-size: 0.77rem !important; }
+  /* Flex rows: wrap */
+  .topbar-actions { gap: 4px !important; flex-wrap: wrap; }
+  .topbar-actions > button { padding: 5px 7px !important; font-size: 0.75rem !important; }
+  /* Drug/Brand search inputs */
+  #brand-search-input, #generic-search-input { min-width: 0 !important; }
+  /* Inline grids */
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ═══ TINY PHONES (max 400px) ═══════════════════════════════════ */
+@media(max-width:400px) {
+  .saas-overview-grid { grid-template-columns: 1fr !important; }
+  .saas-quick-actions { grid-template-columns: 1fr 1fr !important; }
+  .topbar-actions > button span,
+  .topbar-label { display: none !important; }
+}
+
+/* ═══ TABLET (768–1023px) ═══════════════════════════════════════ */
+@media(min-width:768px) and (max-width:1023px) {
+  :root { --saas-sidebar-width: 210px; }
+  #saas-sidebar { width: 210px !important; }
+  #saas-main {
+    margin-left: 210px !important;
+    width: calc(100% - 210px) !important;
+  }
+  #saas-topbar { left: 210px !important; }
+  #saas-content-wrapper { padding: 14px !important; }
+  .saas-overview-grid { grid-template-columns: repeat(2,1fr) !important; }
+  .grid-4 { grid-template-columns: repeat(2,1fr) !important; }
+  #brand-list { grid-template-columns: repeat(auto-fill,minmax(270px,1fr)) !important; }
+}
+
+/* ═══ COLLAPSED SIDEBAR (desktop) ══════════════════════════════ */
+@media(min-width:768px) {
+  body.sidebar-collapsed #saas-sidebar { width: 64px !important; }
+  body.sidebar-collapsed #saas-main {
+    margin-left: 64px !important;
+    width: calc(100% - 64px) !important;
+  }
+  body.sidebar-collapsed #saas-topbar { left: 64px !important; }
+}
+
+/* ═══ TOUCH DEVICES ════════════════════════════════════════════ */
+@media(hover:none) and (pointer:coarse) {
+  button, input, select { min-height: 40px !important; }
+  .brand-chip { min-height: 32px !important; }
+}
+
+/* ═══ SAFE AREA (iPhone notch) ══════════════════════════════════ */
+@supports(padding:env(safe-area-inset-bottom)) {
+  #saas-sidebar {
+    padding-top: env(safe-area-inset-top, 0);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  #saas-topbar {
+    padding-top: max(0px, env(safe-area-inset-top, 0));
+  }
+}
+
+/* ═══ PRINT ═════════════════════════════════════════════════════ */
+@media print {
+  #saas-sidebar, #saas-topbar,
+  #saas-hamburger, #ks-sidebar-overlay { display: none !important; }
+  #saas-main { margin-left: 0 !important; padding-top: 0 !important; width: 100% !important; }
+  .section:not(.active) { display: none !important; }
+  .section.active { display: block !important; }
 }
 
 /* ── Mobile Hamburger ── */
@@ -1808,6 +1969,7 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
 .dark-mode #wa-preview-box { background:#1a2e1a;border-color:#166534;color:#e2e8f0; }
 .dark-mode #em-note-preview { background:#1e0a0a;border-color:#991b1b;color:#e2e8f0; }
 
+
 </style>
 <meta name="theme-color" content="#2563eb">
 <meta name="mobile-web-app-capable" content="yes">
@@ -1858,7 +2020,7 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
     }, 1000);
     window.ksSanitize = function(str) {
       if (typeof str !== 'string') return '';
-      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#x27;');
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
     };
     _con.log('%c🕷️ K Spider Doctor AI','color:#00c9a7;font-size:20px;font-weight:bold;');
     _con.log('%cCreated by Gaurang Raval & Khush Raval | © 2025 kspiderai.in','color:#6366f1;font-size:12px;');
@@ -1866,6 +2028,7 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
   </script>
 </head>
 <body class="saas-mode">
+<div id="ks-sidebar-overlay" onclick="saasSidebarToggleMobile()"></div>
 
 <script>
 /* ── EARLY STUB FIX: All functions defined before HTML buttons render ── */
@@ -1889,9 +2052,28 @@ function saasSidebarToggle() {
 }
 function saasSidebarToggleMobile() {
   var sb = document.getElementById('saas-sidebar');
+  var isOpen = sb && sb.classList.contains('mobile-open');
   if (sb) sb.classList.toggle('mobile-open');
   document.body.classList.toggle('sidebar-mobile-open');
+  // Overlay
+  var ov = document.getElementById('ks-sidebar-overlay');
+  var saasOv = document.getElementById('saas-sidebar-overlay');
+  var nowOpen = sb && sb.classList.contains('mobile-open');
+  if (ov) ov.style.display = nowOpen ? 'block' : 'none';
+  if (saasOv) saasOv.style.display = nowOpen ? 'block' : 'none';
 }
+// Close sidebar when overlay clicked
+document.addEventListener('click', function(e) {
+  var ov = document.getElementById('ks-sidebar-overlay');
+  var saasOv = document.getElementById('saas-sidebar-overlay');
+  if ((ov && e.target === ov) || (saasOv && e.target === saasOv)) {
+    var sb = document.getElementById('saas-sidebar');
+    if (sb) sb.classList.remove('mobile-open');
+    document.body.classList.remove('sidebar-mobile-open');
+    if (ov) ov.style.display = 'none';
+    if (saasOv) saasOv.style.display = 'none';
+  }
+});
 function _saasUpdateStats() {}
 function switchSection(id, btn) {
   // Stub — real function loads later
@@ -2081,6 +2263,17 @@ function toggleDarkMode() {
         <span class="nav-icon">&#x1F512;</span>
         <span class="sidebar-label">Compliance</span>
         <span class="sidebar-badge new">NEW</span>
+      </button>
+
+      <!-- PATIENT DATABASE -->
+      <div class="sidebar-section-title" style="margin-top:8px;">&#x1F3E5; Patient DB</div>
+      <button class="sidebar-nav-item" data-section="ks-patient-db" onclick="saasSwitchSection('ks-patient-db','&#x1F9D1;&#x200D;&#x2695;&#xFE0F; Patient Database','UHID &#xB7; Records &#xB7; History',this)">
+        <span class="nav-icon">&#x1F9D1;&#x200D;&#x2695;&#xFE0F;</span>
+        <span class="sidebar-label">Patient DB</span>
+      </button>
+      <button class="sidebar-nav-item" data-section="ks-csv-manager" onclick="saasSwitchSection('ks-csv-manager','&#x1F4C4; CSV Manager','Import &#xB7; Export &#xB7; Backup',this)">
+        <span class="nav-icon">&#x1F4C4;</span>
+        <span class="sidebar-label">CSV Manager</span>
       </button>
 
     </div><!-- /sidebar-nav -->
@@ -2504,6 +2697,294 @@ function toggleDarkMode() {
 
 <div class="container" id="saas-original-container">
 
+<!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; PATIENT DATABASE SECTION &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
+<div id="ks-patient-db" class="section" style="display:none;">
+<div style="padding:16px 20px;">
+
+<!-- HEADER -->
+<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:18px;">
+  <div>
+    <h2 style="margin:0;font-size:1.3rem;font-weight:700;color:var(--primary);">&#x1F9D1;&#x200D;&#x2695;&#xFE0F; Patient Database</h2>
+    <p style="margin:4px 0 0;font-size:0.82rem;color:var(--text-light);">UHID-linked records &#x2022; Full history &#x2022; Linked billing &amp; prescriptions</p>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button onclick="ksPtOpenModal()" style="background:var(--primary);color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:0.88rem;font-weight:600;cursor:pointer;">&#x2795; New Patient</button>
+    <button onclick="ksPtExportCSV()" style="background:#27ae60;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:0.88rem;cursor:pointer;">&#x1F4E5; Export CSV</button>
+    <button onclick="ksPtImportCSVClick()" style="background:#2980b9;color:#fff;border:none;border-radius:8px;padding:10px 16px;font-size:0.88rem;cursor:pointer;">&#x1F4E4; Import CSV</button>
+    <input type="file" id="ks-pt-csv-import" accept=".csv" style="display:none;" onchange="ksPtImportCSV(this)">
+  </div>
+</div>
+
+<!-- STATS ROW -->
+<div id="ks-pt-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;"></div>
+
+<!-- SEARCH BAR -->
+<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:14px;">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <input id="ks-pt-search" type="text" placeholder="&#x1F50D; Search by name, UHID, phone, diagnosis..."
+      oninput="ksPtRender()"
+      style="flex:3;min-width:200px;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);">
+    <select id="ks-pt-filter-gender" onchange="ksPtRender()"
+      style="flex:1;min-width:100px;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);">
+      <option value="">All Gender</option>
+      <option>Male</option><option>Female</option><option>Other</option>
+    </select>
+    <select id="ks-pt-filter-type" onchange="ksPtRender()"
+      style="flex:1;min-width:120px;padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);">
+      <option value="">All Types</option>
+      <option>New Patient</option><option>Follow-up</option><option>Emergency</option><option>IPD</option><option>OPD</option>
+    </select>
+    <button onclick="ksPtRender()" style="padding:9px 14px;background:var(--primary);color:#fff;border:none;border-radius:7px;cursor:pointer;font-weight:600;">Search</button>
+    <button onclick="ksPtClearSearch()" style="padding:9px 14px;background:var(--light-bg);border:1px solid var(--border);border-radius:7px;cursor:pointer;color:var(--text);">Clear</button>
+  </div>
+</div>
+
+<!-- RESULTS COUNT -->
+<div id="ks-pt-count" style="font-size:0.82rem;color:var(--text-light);margin-bottom:10px;"></div>
+
+<!-- PATIENT TABLE -->
+<div style="overflow-x:auto;border-radius:10px;border:1px solid var(--border);">
+<table id="ks-pt-table" style="width:100%;border-collapse:collapse;font-size:0.85rem;background:var(--card-bg);">
+  <thead>
+    <tr style="background:var(--primary);color:#fff;">
+      <th style="padding:10px 12px;text-align:left;white-space:nowrap;">UHID</th>
+      <th style="padding:10px 12px;text-align:left;">Patient Name</th>
+      <th style="padding:10px 12px;text-align:left;">Age/Gender</th>
+      <th style="padding:10px 12px;text-align:left;">Phone</th>
+      <th style="padding:10px 12px;text-align:left;">Blood Group</th>
+      <th style="padding:10px 12px;text-align:left;">Last Visit</th>
+      <th style="padding:10px 12px;text-align:left;">Diagnosis</th>
+      <th style="padding:10px 12px;text-align:left;">Type</th>
+      <th style="padding:10px 12px;text-align:center;">Actions</th>
+    </tr>
+  </thead>
+  <tbody id="ks-pt-tbody"></tbody>
+</table>
+</div>
+
+</div><!-- /padding -->
+
+<!-- &#x2550;&#x2550;&#x2550; ADD/EDIT PATIENT MODAL &#x2550;&#x2550;&#x2550; -->
+<div id="ks-pt-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;">
+  <div style="background:var(--card-bg);border-radius:14px;padding:24px;max-width:700px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3 id="ks-pt-modal-title" style="margin:0;font-size:1.1rem;font-weight:700;color:var(--primary);">&#x2795; New Patient Registration</h3>
+      <button onclick="ksPtCloseModal()" style="background:none;border:none;font-size:1.4rem;cursor:pointer;color:var(--text-light);">&#x2715;</button>
+    </div>
+
+    <!-- UHID Display -->
+    <div style="background:linear-gradient(135deg,#1a5276,#2980b9);color:#fff;border-radius:8px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+      <span style="font-size:1.5rem;">&#x1F194;</span>
+      <div>
+        <div style="font-size:0.75rem;opacity:0.8;">Unique Hospital ID (UHID)</div>
+        <div id="ks-pt-uhid-display" style="font-size:1.2rem;font-weight:800;letter-spacing:2px;">Auto-generated</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Full Name *</label>
+        <input id="ks-pt-name" placeholder="Patient full name" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Age *</label>
+        <input id="ks-pt-age" type="number" placeholder="Age" min="0" max="130" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Gender *</label>
+        <select id="ks-pt-gender" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);">
+          <option>Male</option><option>Female</option><option>Other</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Date of Birth</label>
+        <input id="ks-pt-dob" type="date" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Phone *</label>
+        <input id="ks-pt-phone" type="tel" placeholder="10-digit mobile" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Alternate Phone</label>
+        <input id="ks-pt-phone2" type="tel" placeholder="Optional" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Blood Group</label>
+        <select id="ks-pt-blood" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);">
+          <option value="">Unknown</option>
+          <option>A+</option><option>A-</option><option>B+</option><option>B-</option>
+          <option>AB+</option><option>AB-</option><option>O+</option><option>O-</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Patient Type</label>
+        <select id="ks-pt-type" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);">
+          <option>New Patient</option><option>Follow-up</option><option>Emergency</option>
+          <option>IPD</option><option>OPD</option><option>Referral</option>
+        </select>
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Address</label>
+        <input id="ks-pt-address" placeholder="Full address" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Primary Diagnosis</label>
+        <input id="ks-pt-diagnosis" placeholder="e.g. Hypertension, Diabetes" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Referred By</label>
+        <input id="ks-pt-referred" placeholder="Doctor / Hospital name" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Known Allergies</label>
+        <input id="ks-pt-allergies" placeholder="Drug / food allergies" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Chronic Conditions</label>
+        <input id="ks-pt-chronic" placeholder="DM, HTN, Asthma..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Insurance / TPA</label>
+        <input id="ks-pt-insurance" placeholder="Insurance company / TPA" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Occupation</label>
+        <input id="ks-pt-occupation" placeholder="Job / Profession" style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">
+      </div>
+      <div style="grid-column:1/-1;">
+        <label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">Notes / Remarks</label>
+        <textarea id="ks-pt-notes" rows="2" placeholder="Additional clinical notes..." style="width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);resize:vertical;box-sizing:border-box;"></textarea>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:20px;">
+      <button onclick="ksPtSave()" style="flex:1;padding:12px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.95rem;font-weight:700;cursor:pointer;">&#x2705; Save Patient</button>
+      <button onclick="ksPtCloseModal()" style="padding:12px 20px;background:var(--light-bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;color:var(--text);">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- &#x2550;&#x2550;&#x2550; PATIENT DETAIL MODAL &#x2550;&#x2550;&#x2550; -->
+<div id="ks-pt-detail-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9998;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;">
+  <div style="background:var(--card-bg);border-radius:14px;padding:0;max-width:800px;width:100%;margin:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);overflow:hidden;">
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,#1a5276,#2980b9);color:#fff;padding:20px 24px;display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div id="ks-ptd-uhid" style="font-size:0.8rem;opacity:0.8;letter-spacing:1px;">UHID: ---</div>
+        <div id="ks-ptd-name" style="font-size:1.3rem;font-weight:800;">Patient Name</div>
+        <div id="ks-ptd-sub" style="font-size:0.85rem;opacity:0.85;">Age | Gender | Blood Group</div>
+      </div>
+      <button onclick="ksPtCloseDetailModal()" style="background:rgba(255,255,255,0.2);border:none;color:#fff;font-size:1.3rem;cursor:pointer;border-radius:8px;padding:6px 12px;">&#x2715;</button>
+    </div>
+
+    <!-- Action buttons -->
+    <div style="padding:12px 20px;background:var(--light-bg);border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap;">
+      <button id="ks-ptd-rx-btn" onclick="ksPtLoadToRx()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x1F4DD; Create Rx</button>
+      <button id="ks-ptd-bill-btn" onclick="ksPtLoadToBill()" style="background:#27ae60;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x1F4B0; Generate Bill</button>
+      <button id="ks-ptd-appt-btn" onclick="ksPtLoadToAppt()" style="background:#2980b9;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x1F4C5; Book Appointment</button>
+      <button id="ks-ptd-edit-btn" onclick="ksPtEditFromDetail()" style="background:#f39c12;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x270F; Edit</button>
+      <button id="ks-ptd-csv-btn" onclick="ksPtExportSingleCSV()" style="background:#8e44ad;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x1F4E5; Export</button>
+      <button id="ks-ptd-del-btn" onclick="ksPtDeleteFromDetail()" style="background:#e74c3c;color:#fff;border:none;border-radius:6px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x1F5D1; Delete</button>
+    </div>
+
+    <!-- Patient detail tabs -->
+    <div style="padding:0 20px;background:var(--card-bg);border-bottom:1px solid var(--border);display:flex;gap:0;">
+      <button class="ks-ptd-tab active" onclick="ksPtdTab('info')" id="ks-ptd-t-info" style="padding:10px 16px;border:none;background:none;font-size:0.85rem;font-weight:600;color:var(--primary);border-bottom:2px solid var(--primary);margin-bottom:-1px;cursor:pointer;">&#x1F464; Info</button>
+      <button class="ks-ptd-tab" onclick="ksPtdTab('visits')" id="ks-ptd-t-visits" style="padding:10px 16px;border:none;background:none;font-size:0.85rem;color:var(--text-light);cursor:pointer;">&#x1F4CB; Visits</button>
+      <button class="ks-ptd-tab" onclick="ksPtdTab('rx')" id="ks-ptd-t-rx" style="padding:10px 16px;border:none;background:none;font-size:0.85rem;color:var(--text-light);cursor:pointer;">&#x1F48A; Prescriptions</button>
+      <button class="ks-ptd-tab" onclick="ksPtdTab('bills')" id="ks-ptd-t-bills" style="padding:10px 16px;border:none;background:none;font-size:0.85rem;color:var(--text-light);cursor:pointer;">&#x1F4B0; Bills</button>
+      <button class="ks-ptd-tab" onclick="ksPtdTab('vitals')" id="ks-ptd-t-vitals" style="padding:10px 16px;border:none;background:none;font-size:0.85rem;color:var(--text-light);cursor:pointer;">&#x2764; Vitals</button>
+    </div>
+
+    <!-- Tab content -->
+    <div id="ks-ptd-content" style="padding:20px;max-height:60vh;overflow-y:auto;"></div>
+  </div>
+</div>
+
+</div><!-- /ks-patient-db section -->
+
+<!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; CSV MANAGER SECTION &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
+<div id="ks-csv-manager" class="section" style="display:none;">
+<div style="padding:16px 20px;">
+
+<h2 style="margin:0 0 4px;font-size:1.3rem;font-weight:700;color:var(--primary);">&#x1F4C4; CSV Data Manager</h2>
+<p style="margin:0 0 18px;font-size:0.82rem;color:var(--text-light);">Export/Import all clinic data &#x2022; Backup &amp; restore &#x2022; Manage drug database via CSV</p>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;">
+
+  <!-- Patients CSV -->
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F9D1;&#x200D;&#x2695;&#xFE0F; Patient Database</div>
+    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">All patients with UHID, demographics, diagnosis, contact info</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="ksPtExportCSV()" style="flex:1;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.85rem;font-weight:600;">&#x1F4E5; Export</button>
+      <button onclick="ksPtImportCSVClick()" style="flex:1;padding:9px;background:#2980b9;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.85rem;font-weight:600;">&#x1F4E4; Import</button>
+      <button onclick="ksPtDownloadTemplate()" style="flex:1;padding:9px;background:var(--light-bg);border:1px solid var(--border);color:var(--text);border-radius:7px;cursor:pointer;font-size:0.85rem;">Template</button>
+    </div>
+  </div>
+
+  <!-- Drug/Brand CSV -->
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F48A; Drug &amp; Brand Database</div>
+    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">267+ built-in brands + your custom brands. Edit via CSV and re-import</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="ksDrugExportCSV()" style="flex:1;min-width:120px;padding:9px;background:#1a5276;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E5; Export Drugs</button><button onclick="ksCsvExportBrands()" style="flex:1;min-width:120px;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E5; Export Brands</button><button onclick="ksCsvImportBrandsClick()" style="flex:1;min-width:120px;padding:9px;background:#2980b9;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E4; Import Brands</button><button onclick="ksDrugImportCSVClick()" style="flex:1;min-width:120px;padding:9px;background:#8e44ad;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E4; Import Drugs</button></div>
+    <input type="file" id="ks-csv-brand-import" accept=".csv" style="display:none;" onchange="ksCsvImportBrands(this)">
+  </div>
+
+  <!-- Prescriptions CSV -->
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F4DD; Prescriptions History</div>
+    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">All saved prescriptions with patient UHID, date, diagnosis, medicines</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="ksCsvExportRx()" style="flex:1;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.85rem;font-weight:600;">&#x1F4E5; Export</button>
+    </div>
+  </div>
+
+  <!-- Billing CSV -->
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F4B0; Billing &amp; Invoices</div>
+    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">All invoices with UHID, patient name, items, amounts, payment mode</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="ksCsvExportBilling()" style="flex:1;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.85rem;font-weight:600;">&#x1F4E5; Export</button>
+    </div>
+  </div>
+
+  <!-- Appointments CSV -->
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F4C5; Appointments</div>
+    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">All booked appointments with UHID, date, time, type, status</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="ksCsvExportAppts()" style="flex:1;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.85rem;font-weight:600;">&#x1F4E5; Export</button>
+    </div>
+  </div>
+
+  <!-- Vitals CSV -->
+  <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x2764; Vitals Log</div>
+    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">All vitals records with UHID, date, BP, HR, SpO2, sugar, weight</p>
+    <div style="display:flex;gap:8px;">
+      <button onclick="exportVitalsCSV()" style="flex:1;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.85rem;font-weight:600;">&#x1F4E5; Export</button>
+    </div>
+  </div>
+
+  <!-- Full Backup -->
+  <div style="background:linear-gradient(135deg,#1a5276,#154360);color:#fff;border-radius:12px;padding:18px;grid-column:1/-1;">
+    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F4BE; Full Clinic Backup</div>
+    <p style="font-size:0.82rem;opacity:0.85;margin:0 0 14px;">Download ALL data (patients, Rx, billing, appointments, vitals, brands) as a single ZIP-equivalent JSON backup file. Restore anytime.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="ksCsvFullBackup()" style="padding:10px 20px;background:#fff;color:#1a5276;border:none;border-radius:7px;cursor:pointer;font-size:0.88rem;font-weight:700;">&#x1F4E5; Download Full Backup</button>
+      <button onclick="ksCsvRestoreBackup()" style="padding:10px 20px;background:rgba(255,255,255,0.15);color:#fff;border:1px solid rgba(255,255,255,0.4);border-radius:7px;cursor:pointer;font-size:0.88rem;">&#x1F4E4; Restore from Backup</button>
+      <input type="file" id="ks-backup-restore-input" accept=".json" style="display:none;" onchange="ksCsvDoRestore(this)">
+    </div>
+  </div>
+
+</div>
+</div><!-- /padding -->
+</div><!-- /ks-csv-manager section -->
+
+
+
+
 
 
 <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; DASHBOARD &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
@@ -2803,194 +3284,194 @@ function toggleDarkMode() {
 const KSPIDER_BRAND_DB = [
 // Format: [BrandName, Generic, Company, Category, Form, Price, Dose, Notes]
 // ─── ANTIBIOTICS ──────────────────────────────────────────────────────────
-["Augmentin","Amoxicillin+Clavulanate","GSK","Antibiotic","Tab/Syp","&#x20B9;180/strip","625mg TDS x7d","Broad-spectrum; sinusitis, UTI, LRTI"],
-["Mox","Amoxicillin 500mg","Cipla","Antibiotic","Cap","&#x20B9;42/strip","500mg TDS x5d","First-line for mild-mod infections"],
-["Taxim-O","Cefixime 200mg","Alkem","Antibiotic","Tab","&#x20B9;130/strip","200mg BD","Typhoid, UTI, URTI"],
-["Zifi","Cefixime 200mg","FDC","Antibiotic","Tab","&#x20B9;128/strip","200mg BD x5d","Cephalosporin; ear, throat, UTI"],
-["Oflox","Ofloxacin 200mg","Cipla","Antibiotic","Tab","&#x20B9;48/strip","200mg BD","Quinolone; ENT, GI, UTI"],
-["Norflox","Norfloxacin 400mg","Cipla","Antibiotic","Tab","&#x20B9;38/strip","400mg BD","GI infections, UTI"],
-["Cifran","Ciprofloxacin 500mg","Sun","Antibiotic","Tab","&#x20B9;65/strip","500mg BD x5d","Wide-spectrum quinolone"],
-["Azithral","Azithromycin 500mg","Alembic","Antibiotic","Tab","&#x20B9;68/strip","500mg OD x3d","Z-pack; atypicals, URTI, LSTI"],
-["Zithromax","Azithromycin 500mg","Pfizer","Antibiotic","Tab","&#x20B9;95/strip","500mg OD x3d","Brand original azithro"],
-["Ciplox","Ciprofloxacin 500mg","Cipla","Antibiotic","Tab","&#x20B9;60/strip","500mg BD","Urinary, respiratory, skin infections"],
-["Erythrocin","Erythromycin 500mg","Abbott","Antibiotic","Tab","&#x20B9;78/strip","500mg QID","Macrolide; skin, URTI, atypicals"],
-["Clavam","Amox+Clav 625mg","Alkem","Antibiotic","Tab","&#x20B9;165/strip","1 tab TDS x7d","Like Augmentin; ENT, chest"],
-["Metrogyl","Metronidazole 400mg","J&J","Antibiotic","Tab","&#x20B9;22/strip","400mg TDS x5d","Anaerobe, amoebiasis, H.pylori"],
-["Flagyl","Metronidazole 400mg","Abbott","Antibiotic","Tab","&#x20B9;28/strip","400mg TDS","Anaerobic infections"],
-["Doxycap","Doxycycline 100mg","Cipla","Antibiotic","Cap","&#x20B9;38/strip","100mg BD","Atypicals, malaria, acne, rickettsia"],
-["Vibramycin","Doxycycline 100mg","Pfizer","Antibiotic","Cap","&#x20B9;65/strip","100mg BD x7d","Original doxy"],
-["Klacid","Clarithromycin 500mg","Abbott","Antibiotic","Tab","&#x20B9;320/strip","500mg BD x7d","H.pylori triple therapy, URTI"],
-["Norflox-TZ","Norflox+Tinidazole","Cipla","Antibiotic","Tab","&#x20B9;38/strip","1 tab BD x3d","Traveller's diarrhea, dysentery"],
-["Rifagut","Rifaximin 400mg","Sun","Antibiotic","Tab","&#x20B9;320/strip","400mg TDS x3d","IBS, traveller's diarrhoea, HE"],
-["Monocef","Ceftriaxone 1g","Aristo","Antibiotic","Inj","&#x20B9;185/vial","1g IV OD-BD","3rd gen cephalosporin; hospital"],
-["Sporanox","Itraconazole 100mg","Janssen","Antifungal","Cap","&#x20B9;650/10cap","100mg OD/BD","Systemic fungal infections"],
-["Forcan","Fluconazole 150mg","Cipla","Antifungal","Tab","&#x20B9;22/tab","150mg single dose","Vaginal candidiasis, thrush"],
-["Terbinaforce","Terbinafine 250mg","Mankind","Antifungal","Tab","&#x20B9;85/strip","250mg OD x6wk","Onychomycosis, tinea"],
+["Augmentin","Amoxicillin+Clavulanate","GSK","Antibiotic","Tab/Syp","₹180/strip","625mg TDS x7d","Broad-spectrum; sinusitis, UTI, LRTI"],
+["Mox","Amoxicillin 500mg","Cipla","Antibiotic","Cap","₹42/strip","500mg TDS x5d","First-line for mild-mod infections"],
+["Taxim-O","Cefixime 200mg","Alkem","Antibiotic","Tab","₹130/strip","200mg BD","Typhoid, UTI, URTI"],
+["Zifi","Cefixime 200mg","FDC","Antibiotic","Tab","₹128/strip","200mg BD x5d","Cephalosporin; ear, throat, UTI"],
+["Oflox","Ofloxacin 200mg","Cipla","Antibiotic","Tab","₹48/strip","200mg BD","Quinolone; ENT, GI, UTI"],
+["Norflox","Norfloxacin 400mg","Cipla","Antibiotic","Tab","₹38/strip","400mg BD","GI infections, UTI"],
+["Cifran","Ciprofloxacin 500mg","Sun","Antibiotic","Tab","₹65/strip","500mg BD x5d","Wide-spectrum quinolone"],
+["Azithral","Azithromycin 500mg","Alembic","Antibiotic","Tab","₹68/strip","500mg OD x3d","Z-pack; atypicals, URTI, LSTI"],
+["Zithromax","Azithromycin 500mg","Pfizer","Antibiotic","Tab","₹95/strip","500mg OD x3d","Brand original azithro"],
+["Ciplox","Ciprofloxacin 500mg","Cipla","Antibiotic","Tab","₹60/strip","500mg BD","Urinary, respiratory, skin infections"],
+["Erythrocin","Erythromycin 500mg","Abbott","Antibiotic","Tab","₹78/strip","500mg QID","Macrolide; skin, URTI, atypicals"],
+["Clavam","Amox+Clav 625mg","Alkem","Antibiotic","Tab","₹165/strip","1 tab TDS x7d","Like Augmentin; ENT, chest"],
+["Metrogyl","Metronidazole 400mg","J&J","Antibiotic","Tab","₹22/strip","400mg TDS x5d","Anaerobe, amoebiasis, H.pylori"],
+["Flagyl","Metronidazole 400mg","Abbott","Antibiotic","Tab","₹28/strip","400mg TDS","Anaerobic infections"],
+["Doxycap","Doxycycline 100mg","Cipla","Antibiotic","Cap","₹38/strip","100mg BD","Atypicals, malaria, acne, rickettsia"],
+["Vibramycin","Doxycycline 100mg","Pfizer","Antibiotic","Cap","₹65/strip","100mg BD x7d","Original doxy"],
+["Klacid","Clarithromycin 500mg","Abbott","Antibiotic","Tab","₹320/strip","500mg BD x7d","H.pylori triple therapy, URTI"],
+["Norflox-TZ","Norflox+Tinidazole","Cipla","Antibiotic","Tab","₹38/strip","1 tab BD x3d","Traveller's diarrhea, dysentery"],
+["Rifagut","Rifaximin 400mg","Sun","Antibiotic","Tab","₹320/strip","400mg TDS x3d","IBS, traveller's diarrhoea, HE"],
+["Monocef","Ceftriaxone 1g","Aristo","Antibiotic","Inj","₹185/vial","1g IV OD-BD","3rd gen cephalosporin; hospital"],
+["Sporanox","Itraconazole 100mg","Janssen","Antifungal","Cap","₹650/10cap","100mg OD/BD","Systemic fungal infections"],
+["Forcan","Fluconazole 150mg","Cipla","Antifungal","Tab","₹22/tab","150mg single dose","Vaginal candidiasis, thrush"],
+["Terbinaforce","Terbinafine 250mg","Mankind","Antifungal","Tab","₹85/strip","250mg OD x6wk","Onychomycosis, tinea"],
 // ─── ANALGESICS / NSAIDs ──────────────────────────────────────────────────
-["Crocin","Paracetamol 500mg","GSK","Analgesic","Tab","&#x20B9;18/strip","500-1000mg TDS","First-line antipyretic; safe in mild liver disease"],
-["Dolo 650","Paracetamol 650mg","Micro Labs","Analgesic","Tab","&#x20B9;30/strip","1 tab TDS-QID","High-dose paracetamol; COVID fever"],
-["Combiflam","Ibuprofen+Paracetamol","Sanofi","Analgesic","Tab","&#x20B9;30/strip","1 tab TDS after food","Combination; moderate pain + fever"],
-["Brufen","Ibuprofen 400mg","Abbott","NSAID","Tab","&#x20B9;35/strip","400mg TDS after food","Musculoskeletal, fever"],
-["Voveran","Diclofenac 50mg","Novartis","NSAID","Tab","&#x20B9;24/strip","50mg BD-TDS after food","Musculoskeletal, dysmenorrhoea"],
-["Hifenac","Aceclofenac 100mg","Intas","NSAID","Tab","&#x20B9;45/strip","100mg BD after food","OA, RA, sports injuries"],
-["Arcoxia","Etoricoxib 60mg","MSD","NSAID","Tab","&#x20B9;152/strip","60mg OD","COX-2; gout, OA; low GI risk"],
-["Celebrex","Celecoxib 200mg","Pfizer","NSAID","Cap","&#x20B9;185/strip","200mg OD-BD","COX-2; OA, RA"],
-["Nise","Nimesulide 100mg","Dr.Reddy","NSAID","Tab","&#x20B9;32/strip","100mg BD after food","Anti-inflammatory; avoid >15d"],
-["Ketorol","Ketorolac 10mg","Sun","NSAID","Tab","&#x20B9;38/strip","10mg QID max 5d","Post-op pain; strong analgesic"],
-["Ultracet","Tramadol+Paracetamol","J&J","Analgesic","Tab","&#x20B9;68/strip","1 tab Q6H prn","Moderate-severe pain; caution dependence"],
-["Volini","Diclofenac gel 1%","Sun","NSAID","Gel","&#x20B9;85/tube","Apply TDS","Topical; joint and muscle pain"],
+["Crocin","Paracetamol 500mg","GSK","Analgesic","Tab","₹18/strip","500-1000mg TDS","First-line antipyretic; safe in mild liver disease"],
+["Dolo 650","Paracetamol 650mg","Micro Labs","Analgesic","Tab","₹30/strip","1 tab TDS-QID","High-dose paracetamol; COVID fever"],
+["Combiflam","Ibuprofen+Paracetamol","Sanofi","Analgesic","Tab","₹30/strip","1 tab TDS after food","Combination; moderate pain + fever"],
+["Brufen","Ibuprofen 400mg","Abbott","NSAID","Tab","₹35/strip","400mg TDS after food","Musculoskeletal, fever"],
+["Voveran","Diclofenac 50mg","Novartis","NSAID","Tab","₹24/strip","50mg BD-TDS after food","Musculoskeletal, dysmenorrhoea"],
+["Hifenac","Aceclofenac 100mg","Intas","NSAID","Tab","₹45/strip","100mg BD after food","OA, RA, sports injuries"],
+["Arcoxia","Etoricoxib 60mg","MSD","NSAID","Tab","₹152/strip","60mg OD","COX-2; gout, OA; low GI risk"],
+["Celebrex","Celecoxib 200mg","Pfizer","NSAID","Cap","₹185/strip","200mg OD-BD","COX-2; OA, RA"],
+["Nise","Nimesulide 100mg","Dr.Reddy","NSAID","Tab","₹32/strip","100mg BD after food","Anti-inflammatory; avoid >15d"],
+["Ketorol","Ketorolac 10mg","Sun","NSAID","Tab","₹38/strip","10mg QID max 5d","Post-op pain; strong analgesic"],
+["Ultracet","Tramadol+Paracetamol","J&J","Analgesic","Tab","₹68/strip","1 tab Q6H prn","Moderate-severe pain; caution dependence"],
+["Volini","Diclofenac gel 1%","Sun","NSAID","Gel","₹85/tube","Apply TDS","Topical; joint and muscle pain"],
 // ─── GI / ANTACIDS ────────────────────────────────────────────────────────
-["Pan","Pantoprazole 40mg","Alkem","PPI","Tab","&#x20B9;55/strip","40mg OD before breakfast","GERD, PUD, H.pylori eradication"],
-["Omez","Omeprazole 20mg","Dr.Reddy","PPI","Cap","&#x20B9;30/strip","20mg OD morning","Standard PPI; GERD, ulcers"],
-["Nexium","Esomeprazole 40mg","AstraZeneca","PPI","Tab","&#x20B9;210/strip","40mg OD","Resistant GERD; strongest PPI"],
-["Razo","Rabeprazole 20mg","Sun","PPI","Tab","&#x20B9;62/strip","20mg OD morning","PPI; GERD, duodenal ulcer"],
-["Gelusil","Antacid suspension","Pfizer","Antacid","Tab","&#x20B9;48/strip","2 tabs after meals","Mag+Al hydroxide; heartburn"],
-["Perinorm","Metoclopramide 10mg","Neon","Prokinetic","Tab","&#x20B9;18/strip","10mg TDS before meals","Nausea, gastroparesis, GERD"],
-["Ganaton","Itopride 50mg","Abbott","Prokinetic","Tab","&#x20B9;78/strip","50mg TDS before food","Gastroparesis, bloating"],
-["Emeset","Ondansetron 4mg","Cipla","Antiemetic","Tab","&#x20B9;38/strip","4mg TDS","Nausea, vomiting; post-op/chemo"],
-["Imodium","Loperamide 2mg","J&J","Antidiarrheal","Cap","&#x20B9;55/strip","2mg after each loose stool","IBS-D, acute diarrhoea"],
-["Duphalac","Lactulose 10g/15ml","Abbott","Laxative","Syp","&#x20B9;180/200ml","15-30ml BD","Constipation, hepatic encephalopathy"],
-["Enterogermina","Bacillus clausii","Sanofi","Probiotic","Vial","&#x20B9;180/6vials","1 vial TDS x5d","Post-antibiotic gut restoration"],
-["Econorm","Saccharomyces boulardii","Dr.Reddy","Probiotic","Cap","&#x20B9;110/strip","1 cap BD","Antibiotic diarrhoea prevention"],
+["Pan","Pantoprazole 40mg","Alkem","PPI","Tab","₹55/strip","40mg OD before breakfast","GERD, PUD, H.pylori eradication"],
+["Omez","Omeprazole 20mg","Dr.Reddy","PPI","Cap","₹30/strip","20mg OD morning","Standard PPI; GERD, ulcers"],
+["Nexium","Esomeprazole 40mg","AstraZeneca","PPI","Tab","₹210/strip","40mg OD","Resistant GERD; strongest PPI"],
+["Razo","Rabeprazole 20mg","Sun","PPI","Tab","₹62/strip","20mg OD morning","PPI; GERD, duodenal ulcer"],
+["Gelusil","Antacid suspension","Pfizer","Antacid","Tab","₹48/strip","2 tabs after meals","Mag+Al hydroxide; heartburn"],
+["Perinorm","Metoclopramide 10mg","Neon","Prokinetic","Tab","₹18/strip","10mg TDS before meals","Nausea, gastroparesis, GERD"],
+["Ganaton","Itopride 50mg","Abbott","Prokinetic","Tab","₹78/strip","50mg TDS before food","Gastroparesis, bloating"],
+["Emeset","Ondansetron 4mg","Cipla","Antiemetic","Tab","₹38/strip","4mg TDS","Nausea, vomiting; post-op/chemo"],
+["Imodium","Loperamide 2mg","J&J","Antidiarrheal","Cap","₹55/strip","2mg after each loose stool","IBS-D, acute diarrhoea"],
+["Duphalac","Lactulose 10g/15ml","Abbott","Laxative","Syp","₹180/200ml","15-30ml BD","Constipation, hepatic encephalopathy"],
+["Enterogermina","Bacillus clausii","Sanofi","Probiotic","Vial","₹180/6vials","1 vial TDS x5d","Post-antibiotic gut restoration"],
+["Econorm","Saccharomyces boulardii","Dr.Reddy","Probiotic","Cap","₹110/strip","1 cap BD","Antibiotic diarrhoea prevention"],
 // ─── CARDIOVASCULAR ───────────────────────────────────────────────────────
-["Betaloc","Metoprolol 25mg","AstraZeneca","Beta-blocker","Tab","&#x20B9;55/strip","25-50mg BD","HTN, angina, CHF; cardioselective"],
-["Atenolol","Atenolol 50mg","Various","Beta-blocker","Tab","&#x20B9;28/strip","50-100mg OD","HTN, angina, arrhythmia"],
-["Amlopress","Amlodipine 5mg","Cipla","CCB","Tab","&#x20B9;25/strip","5mg OD","First-line HTN, Prinzmetal angina"],
-["Stamlo","Amlodipine 5mg","Dr.Reddy","CCB","Tab","&#x20B9;30/strip","5-10mg OD","HTN, stable angina"],
-["Norvasc","Amlodipine 5mg","Pfizer","CCB","Tab","&#x20B9;85/strip","5mg OD","Original brand amlodipine"],
-["Losar","Losartan 50mg","Cipla","ARB","Tab","&#x20B9;48/strip","50mg OD","HTN, cardioprotection, diabetic nephropathy"],
-["Telma","Telmisartan 40mg","Glenmark","ARB","Tab","&#x20B9;78/strip","40-80mg OD","HTN; 24hr coverage, renal protective"],
-["Micardis","Telmisartan 40mg","Boehringer","ARB","Tab","&#x20B9;165/strip","40-80mg OD","Original telmisartan; high CV risk"],
-["Rosuvas","Rosuvastatin 10mg","Sun","Statin","Tab","&#x20B9;98/strip","10-20mg nocte","High-potency statin; dyslipidaemia"],
-["Atorva","Atorvastatin 10mg","Zydus","Statin","Tab","&#x20B9;45/strip","10-80mg nocte","Most prescribed statin; LDL lowering"],
-["Storvas","Atorvastatin 20mg","Cipla","Statin","Tab","&#x20B9;68/strip","20mg OD nocte","HTN with dyslipidaemia"],
-["Cardace","Ramipril 5mg","Sanofi","ACE-I","Cap","&#x20B9;62/strip","5-10mg OD","HTN, post-MI, heart failure, CKD"],
-["Lasix","Furosemide 40mg","Sanofi","Diuretic","Tab","&#x20B9;12/strip","40mg OD-BD morning","Oedema, HTN, heart failure"],
-["Aldactone","Spironolactone 25mg","Pfizer","Diuretic","Tab","&#x20B9;35/strip","25-100mg OD","Oedema, heart failure, hyperaldosteronism"],
-["Ecosprin","Aspirin 75mg","USV","Antiplatelet","Tab","&#x20B9;15/strip","75mg OD after food","Low-dose antiplatelet; ACS, post-MI"],
-["Clopilet","Clopidogrel 75mg","Sun","Antiplatelet","Tab","&#x20B9;52/strip","75mg OD","ACS, stent, stroke prevention"],
-["Plavix","Clopidogrel 75mg","Sanofi","Antiplatelet","Tab","&#x20B9;195/strip","75mg OD","Original clopidogrel"],
-["Eliquis","Apixaban 5mg","BMS","Anticoagulant","Tab","&#x20B9;850/strip","5mg BD","NOAC; AF, DVT/PE prevention"],
-["Xarelto","Rivaroxaban 20mg","Bayer","Anticoagulant","Tab","&#x20B9;985/strip","20mg OD with dinner","NOAC; AF, VTE treatment"],
-["Warfarin","Warfarin 5mg","Various","Anticoagulant","Tab","&#x20B9;22/strip","Dose per INR target","AF, DVT, mechanical valves; monitor INR"],
-["Cordarone","Amiodarone 200mg","Sanofi","Antiarrhythmic","Tab","&#x20B9;185/strip","200mg OD maintenance","VF, VT; multiple side effects; TDM"],
-["Lanoxin","Digoxin 0.25mg","GSK","Cardiac glycoside","Tab","&#x20B9;28/strip","0.125-0.25mg OD","AF rate control, CHF; monitor levels"],
+["Betaloc","Metoprolol 25mg","AstraZeneca","Beta-blocker","Tab","₹55/strip","25-50mg BD","HTN, angina, CHF; cardioselective"],
+["Atenolol","Atenolol 50mg","Various","Beta-blocker","Tab","₹28/strip","50-100mg OD","HTN, angina, arrhythmia"],
+["Amlopress","Amlodipine 5mg","Cipla","CCB","Tab","₹25/strip","5mg OD","First-line HTN, Prinzmetal angina"],
+["Stamlo","Amlodipine 5mg","Dr.Reddy","CCB","Tab","₹30/strip","5-10mg OD","HTN, stable angina"],
+["Norvasc","Amlodipine 5mg","Pfizer","CCB","Tab","₹85/strip","5mg OD","Original brand amlodipine"],
+["Losar","Losartan 50mg","Cipla","ARB","Tab","₹48/strip","50mg OD","HTN, cardioprotection, diabetic nephropathy"],
+["Telma","Telmisartan 40mg","Glenmark","ARB","Tab","₹78/strip","40-80mg OD","HTN; 24hr coverage, renal protective"],
+["Micardis","Telmisartan 40mg","Boehringer","ARB","Tab","₹165/strip","40-80mg OD","Original telmisartan; high CV risk"],
+["Rosuvas","Rosuvastatin 10mg","Sun","Statin","Tab","₹98/strip","10-20mg nocte","High-potency statin; dyslipidaemia"],
+["Atorva","Atorvastatin 10mg","Zydus","Statin","Tab","₹45/strip","10-80mg nocte","Most prescribed statin; LDL lowering"],
+["Storvas","Atorvastatin 20mg","Cipla","Statin","Tab","₹68/strip","20mg OD nocte","HTN with dyslipidaemia"],
+["Cardace","Ramipril 5mg","Sanofi","ACE-I","Cap","₹62/strip","5-10mg OD","HTN, post-MI, heart failure, CKD"],
+["Lasix","Furosemide 40mg","Sanofi","Diuretic","Tab","₹12/strip","40mg OD-BD morning","Oedema, HTN, heart failure"],
+["Aldactone","Spironolactone 25mg","Pfizer","Diuretic","Tab","₹35/strip","25-100mg OD","Oedema, heart failure, hyperaldosteronism"],
+["Ecosprin","Aspirin 75mg","USV","Antiplatelet","Tab","₹15/strip","75mg OD after food","Low-dose antiplatelet; ACS, post-MI"],
+["Clopilet","Clopidogrel 75mg","Sun","Antiplatelet","Tab","₹52/strip","75mg OD","ACS, stent, stroke prevention"],
+["Plavix","Clopidogrel 75mg","Sanofi","Antiplatelet","Tab","₹195/strip","75mg OD","Original clopidogrel"],
+["Eliquis","Apixaban 5mg","BMS","Anticoagulant","Tab","₹850/strip","5mg BD","NOAC; AF, DVT/PE prevention"],
+["Xarelto","Rivaroxaban 20mg","Bayer","Anticoagulant","Tab","₹985/strip","20mg OD with dinner","NOAC; AF, VTE treatment"],
+["Warfarin","Warfarin 5mg","Various","Anticoagulant","Tab","₹22/strip","Dose per INR target","AF, DVT, mechanical valves; monitor INR"],
+["Cordarone","Amiodarone 200mg","Sanofi","Antiarrhythmic","Tab","₹185/strip","200mg OD maintenance","VF, VT; multiple side effects; TDM"],
+["Lanoxin","Digoxin 0.25mg","GSK","Cardiac glycoside","Tab","₹28/strip","0.125-0.25mg OD","AF rate control, CHF; monitor levels"],
 // ─── DIABETES ─────────────────────────────────────────────────────────────
-["Glycomet","Metformin 500mg","USV","Biguanide","Tab","&#x20B9;25/strip","500mg BD-TDS after food","First-line T2DM; weight neutral, cheap"],
-["Glucophage","Metformin 500mg","Merck","Biguanide","Tab","&#x20B9;68/strip","500mg BD","Original metformin"],
-["Januvia","Sitagliptin 100mg","MSD","DPP-4","Tab","&#x20B9;520/strip","100mg OD","T2DM; weight neutral, low hypo risk"],
-["Jalra","Vildagliptin 50mg","Novartis","DPP-4","Tab","&#x20B9;285/strip","50mg BD","T2DM; renal-safe with dose adjustment"],
-["Forxiga","Dapagliflozin 10mg","AstraZeneca","SGLT2","Tab","&#x20B9;720/strip","10mg OD morning","SGLT2; heart failure, DM, CKD benefit"],
-["Jardiance","Empagliflozin 10mg","Boehringer","SGLT2","Tab","&#x20B9;850/strip","10-25mg OD","CV outcome benefit in T2DM + HF"],
-["Ozempic","Semaglutide 0.5mg","Novo","GLP-1","Inj","&#x20B9;4200/pen","0.5-1mg SC weekly","GLP-1; weight loss, CV benefit"],
-["Victoza","Liraglutide 1.2mg","Novo","GLP-1","Inj","&#x20B9;3850/pen","0.6-1.8mg SC OD","GLP-1 RA; T2DM, obesity"],
-["Glimepiride","Glimepiride 2mg","Various","Sulphonylurea","Tab","&#x20B9;28/strip","1-4mg OD before breakfast","T2DM; risk of hypo, avoid elderly"],
-["Amaryl","Glimepiride 2mg","Sanofi","Sulphonylurea","Tab","&#x20B9;95/strip","1-4mg OD before breakfast","Original glimepiride"],
-["Pioglitazone","Pioglitazone 15mg","Various","Thiazolidinedione","Tab","&#x20B9;32/strip","15-30mg OD","Insulin sensitiser; avoid HF, bladder Ca"],
-["Lantus","Insulin Glargine 100U/ml","Sanofi","Insulin","Inj","&#x20B9;1200/vial","10-20U SC nocte","Basal insulin; once daily flat profile"],
-["Mixtard 30","Biphasic Insulin 30/70","Novo","Insulin","Inj","&#x20B9;185/vial","As per titration AC meals","Premixed insulin; T1DM, T2DM"],
-["Actrapid","Soluble Human Insulin","Novo","Insulin","Inj","&#x20B9;145/vial","4-8U AC meals","Short-acting insulin; meals"],
-["Humalog","Insulin Lispro","Lilly","Insulin","Inj","&#x20B9;980/vial","Rapid-acting 0-15min before meals","Fast-acting analogue; flexibility"],
+["Glycomet","Metformin 500mg","USV","Biguanide","Tab","₹25/strip","500mg BD-TDS after food","First-line T2DM; weight neutral, cheap"],
+["Glucophage","Metformin 500mg","Merck","Biguanide","Tab","₹68/strip","500mg BD","Original metformin"],
+["Januvia","Sitagliptin 100mg","MSD","DPP-4","Tab","₹520/strip","100mg OD","T2DM; weight neutral, low hypo risk"],
+["Jalra","Vildagliptin 50mg","Novartis","DPP-4","Tab","₹285/strip","50mg BD","T2DM; renal-safe with dose adjustment"],
+["Forxiga","Dapagliflozin 10mg","AstraZeneca","SGLT2","Tab","₹720/strip","10mg OD morning","SGLT2; heart failure, DM, CKD benefit"],
+["Jardiance","Empagliflozin 10mg","Boehringer","SGLT2","Tab","₹850/strip","10-25mg OD","CV outcome benefit in T2DM + HF"],
+["Ozempic","Semaglutide 0.5mg","Novo","GLP-1","Inj","₹4200/pen","0.5-1mg SC weekly","GLP-1; weight loss, CV benefit"],
+["Victoza","Liraglutide 1.2mg","Novo","GLP-1","Inj","₹3850/pen","0.6-1.8mg SC OD","GLP-1 RA; T2DM, obesity"],
+["Glimepiride","Glimepiride 2mg","Various","Sulphonylurea","Tab","₹28/strip","1-4mg OD before breakfast","T2DM; risk of hypo, avoid elderly"],
+["Amaryl","Glimepiride 2mg","Sanofi","Sulphonylurea","Tab","₹95/strip","1-4mg OD before breakfast","Original glimepiride"],
+["Pioglitazone","Pioglitazone 15mg","Various","Thiazolidinedione","Tab","₹32/strip","15-30mg OD","Insulin sensitiser; avoid HF, bladder Ca"],
+["Lantus","Insulin Glargine 100U/ml","Sanofi","Insulin","Inj","₹1200/vial","10-20U SC nocte","Basal insulin; once daily flat profile"],
+["Mixtard 30","Biphasic Insulin 30/70","Novo","Insulin","Inj","₹185/vial","As per titration AC meals","Premixed insulin; T1DM, T2DM"],
+["Actrapid","Soluble Human Insulin","Novo","Insulin","Inj","₹145/vial","4-8U AC meals","Short-acting insulin; meals"],
+["Humalog","Insulin Lispro","Lilly","Insulin","Inj","₹980/vial","Rapid-acting 0-15min before meals","Fast-acting analogue; flexibility"],
 // ─── RESPIRATORY ──────────────────────────────────────────────────────────
-["Asthalin","Salbutamol 100mcg","Cipla","Bronchodilator","Inhaler","&#x20B9;95/inhaler","2 puffs Q4-6H prn","Rescue inhaler; acute bronchospasm"],
-["Ventolin","Salbutamol 100mcg","GSK","Bronchodilator","Inhaler","&#x20B9;145/inhaler","2 puffs Q4-6H prn","Original salbutamol inhaler"],
-["Foracort","Formoterol+Budesonide","Cipla","ICS+LABA","Inhaler","&#x20B9;485/inhaler","1-2 puffs BD","Moderate-severe asthma, COPD"],
-["Seretide","Salmeterol+Fluticasone","GSK","ICS+LABA","Inhaler","&#x20B9;780/inhaler","2 puffs BD","Asthma, COPD maintenance"],
-["Symbicort","Formoterol+Budesonide","AstraZeneca","ICS+LABA","Inhaler","&#x20B9;895/inhaler","1-2 puffs BD","MART regimen; asthma/COPD"],
-["Tiova","Tiotropium 18mcg","Cipla","LAMA","Rotacap","&#x20B9;285/30cap","1 cap OD via handihaler","COPD maintenance; once daily"],
-["Omnacortil","Prednisolone 5mg","Macleods","Steroid","Tab","&#x20B9;12/strip","1-2mg/kg/d taper","Acute asthma, allergy, inflammation"],
-["Wysolone","Prednisolone 10mg","Pfizer","Steroid","Tab","&#x20B9;38/strip","Taper dose","Asthma exacerbation, COPD, allergy"],
-["Cetirizine","Cetirizine 10mg","Various","Antihistamine","Tab","&#x20B9;18/strip","10mg OD HS","Allergic rhinitis, urticaria; non-sedating"],
-["Allegra","Fexofenadine 120mg","Sanofi","Antihistamine","Tab","&#x20B9;98/strip","120mg OD","Non-sedating; allergic rhinitis"],
-["Levocet","Levocetirizine 5mg","UCB","Antihistamine","Tab","&#x20B9;28/strip","5mg OD HS","Allergic rhinitis, urticaria"],
-["Montair","Montelukast 10mg","Cipla","Leukotriene","Tab","&#x20B9;78/strip","10mg OD HS","Asthma, allergic rhinitis adjunct"],
-["Singulair","Montelukast 10mg","MSD","Leukotriene","Tab","&#x20B9;285/strip","10mg OD HS","Original montelukast"],
-["Alex","Levo+Guaifenesin","Glenmark","Cough","Syp","&#x20B9;78/100ml","10ml TDS","Mixed cough; antihistamine + expectorant"],
+["Asthalin","Salbutamol 100mcg","Cipla","Bronchodilator","Inhaler","₹95/inhaler","2 puffs Q4-6H prn","Rescue inhaler; acute bronchospasm"],
+["Ventolin","Salbutamol 100mcg","GSK","Bronchodilator","Inhaler","₹145/inhaler","2 puffs Q4-6H prn","Original salbutamol inhaler"],
+["Foracort","Formoterol+Budesonide","Cipla","ICS+LABA","Inhaler","₹485/inhaler","1-2 puffs BD","Moderate-severe asthma, COPD"],
+["Seretide","Salmeterol+Fluticasone","GSK","ICS+LABA","Inhaler","₹780/inhaler","2 puffs BD","Asthma, COPD maintenance"],
+["Symbicort","Formoterol+Budesonide","AstraZeneca","ICS+LABA","Inhaler","₹895/inhaler","1-2 puffs BD","MART regimen; asthma/COPD"],
+["Tiova","Tiotropium 18mcg","Cipla","LAMA","Rotacap","₹285/30cap","1 cap OD via handihaler","COPD maintenance; once daily"],
+["Omnacortil","Prednisolone 5mg","Macleods","Steroid","Tab","₹12/strip","1-2mg/kg/d taper","Acute asthma, allergy, inflammation"],
+["Wysolone","Prednisolone 10mg","Pfizer","Steroid","Tab","₹38/strip","Taper dose","Asthma exacerbation, COPD, allergy"],
+["Cetirizine","Cetirizine 10mg","Various","Antihistamine","Tab","₹18/strip","10mg OD HS","Allergic rhinitis, urticaria; non-sedating"],
+["Allegra","Fexofenadine 120mg","Sanofi","Antihistamine","Tab","₹98/strip","120mg OD","Non-sedating; allergic rhinitis"],
+["Levocet","Levocetirizine 5mg","UCB","Antihistamine","Tab","₹28/strip","5mg OD HS","Allergic rhinitis, urticaria"],
+["Montair","Montelukast 10mg","Cipla","Leukotriene","Tab","₹78/strip","10mg OD HS","Asthma, allergic rhinitis adjunct"],
+["Singulair","Montelukast 10mg","MSD","Leukotriene","Tab","₹285/strip","10mg OD HS","Original montelukast"],
+["Alex","Levo+Guaifenesin","Glenmark","Cough","Syp","₹78/100ml","10ml TDS","Mixed cough; antihistamine + expectorant"],
 // ─── CNS / NEURO ──────────────────────────────────────────────────────────
-["Eptoin","Phenytoin 100mg","Abbott","Anticonvulsant","Tab","&#x20B9;28/strip","300-400mg/d in divided doses","Epilepsy; TDM required, narrow TI"],
-["Tegretol","Carbamazepine 200mg","Novartis","Anticonvulsant","Tab","&#x20B9;45/strip","200mg BD titrate up","Epilepsy, trigeminal neuralgia, bipolar"],
-["Lonazep","Clonazepam 0.5mg","Sun","Benzodiazepine","Tab","&#x20B9;35/strip","0.5-2mg BD","Epilepsy, panic disorder; habit-forming"],
-["Lyrica","Pregabalin 75mg","Pfizer","Anticonvulsant","Cap","&#x20B9;185/strip","75-300mg BD","Neuropathic pain, fibromyalgia, epilepsy"],
-["Gabapentin","Gabapentin 300mg","Various","Anticonvulsant","Cap","&#x20B9;48/strip","300mg TDS","Neuropathic pain, epilepsy, restless legs"],
-["Valium","Diazepam 5mg","Roche","Benzodiazepine","Tab","&#x20B9;22/strip","2-10mg TDS prn","Anxiety, seizures, muscle spasm; habit-forming"],
-["Amitriptyline","Amitriptyline 25mg","Various","TCA","Tab","&#x20B9;15/strip","25-75mg HS","Depression, neuropathic pain, migraine"],
-["Sertraline","Sertraline 50mg","Various","SSRI","Tab","&#x20B9;48/strip","50-200mg OD morning","Depression, anxiety, OCD, PTSD"],
-["Venlift","Venlafaxine 75mg","Sun","SNRI","Tab","&#x20B9;95/strip","75-225mg OD","MDD, anxiety, neuropathic pain"],
-["Olanzapine","Olanzapine 5mg","Various","Antipsychotic","Tab","&#x20B9;38/strip","5-20mg OD","Schizophrenia, bipolar, agitation"],
-["Risperdal","Risperidone 2mg","J&J","Antipsychotic","Tab","&#x20B9;185/strip","2-6mg OD","Schizophrenia, bipolar, dementia agitation"],
-["Depakote","Valproate 250mg","Abbott","Mood stabiliser","Tab","&#x20B9;68/strip","500-2000mg/d BD","Bipolar, epilepsy, migraine prevention"],
-["Sumatriptan","Sumatriptan 50mg","Sun","Triptan","Tab","&#x20B9;185/strip","50mg at onset; repeat 2h","Acute migraine with/without aura"],
-["Syndopa","Levodopa+Carbidopa","Sun","Antiparkinsonian","Tab","&#x20B9;68/strip","25/100mg TDS titrate","Parkinson's disease"],
-["Vertin","Betahistine 8mg","Abbott","Antivertigo","Tab","&#x20B9;35/strip","8-16mg TDS","Meniere's, BPPV, vestibular vertigo"],
-["Donep","Donepezil 5mg","Sun","Cholinesterase-I","Tab","&#x20B9;185/strip","5-10mg OD HS","Alzheimer's disease; slow progression"],
-["Aricept","Donepezil 5mg","Eisai/Pfizer","Cholinesterase-I","Tab","&#x20B9;485/strip","5-10mg OD HS","Original donepezil"],
-["Stilnox","Zolpidem 10mg","Sanofi","Hypnotic","Tab","&#x20B9;95/strip","10mg HS prn","Insomnia; short-term only; dependence risk"],
-["Stemetil","Prochlorperazine 5mg","GSK","Antiemetic","Tab","&#x20B9;28/strip","5-10mg TDS","Nausea, vomiting, labyrinthitis, vertigo"],
+["Eptoin","Phenytoin 100mg","Abbott","Anticonvulsant","Tab","₹28/strip","300-400mg/d in divided doses","Epilepsy; TDM required, narrow TI"],
+["Tegretol","Carbamazepine 200mg","Novartis","Anticonvulsant","Tab","₹45/strip","200mg BD titrate up","Epilepsy, trigeminal neuralgia, bipolar"],
+["Lonazep","Clonazepam 0.5mg","Sun","Benzodiazepine","Tab","₹35/strip","0.5-2mg BD","Epilepsy, panic disorder; habit-forming"],
+["Lyrica","Pregabalin 75mg","Pfizer","Anticonvulsant","Cap","₹185/strip","75-300mg BD","Neuropathic pain, fibromyalgia, epilepsy"],
+["Gabapentin","Gabapentin 300mg","Various","Anticonvulsant","Cap","₹48/strip","300mg TDS","Neuropathic pain, epilepsy, restless legs"],
+["Valium","Diazepam 5mg","Roche","Benzodiazepine","Tab","₹22/strip","2-10mg TDS prn","Anxiety, seizures, muscle spasm; habit-forming"],
+["Amitriptyline","Amitriptyline 25mg","Various","TCA","Tab","₹15/strip","25-75mg HS","Depression, neuropathic pain, migraine"],
+["Sertraline","Sertraline 50mg","Various","SSRI","Tab","₹48/strip","50-200mg OD morning","Depression, anxiety, OCD, PTSD"],
+["Venlift","Venlafaxine 75mg","Sun","SNRI","Tab","₹95/strip","75-225mg OD","MDD, anxiety, neuropathic pain"],
+["Olanzapine","Olanzapine 5mg","Various","Antipsychotic","Tab","₹38/strip","5-20mg OD","Schizophrenia, bipolar, agitation"],
+["Risperdal","Risperidone 2mg","J&J","Antipsychotic","Tab","₹185/strip","2-6mg OD","Schizophrenia, bipolar, dementia agitation"],
+["Depakote","Valproate 250mg","Abbott","Mood stabiliser","Tab","₹68/strip","500-2000mg/d BD","Bipolar, epilepsy, migraine prevention"],
+["Sumatriptan","Sumatriptan 50mg","Sun","Triptan","Tab","₹185/strip","50mg at onset; repeat 2h","Acute migraine with/without aura"],
+["Syndopa","Levodopa+Carbidopa","Sun","Antiparkinsonian","Tab","₹68/strip","25/100mg TDS titrate","Parkinson's disease"],
+["Vertin","Betahistine 8mg","Abbott","Antivertigo","Tab","₹35/strip","8-16mg TDS","Meniere's, BPPV, vestibular vertigo"],
+["Donep","Donepezil 5mg","Sun","Cholinesterase-I","Tab","₹185/strip","5-10mg OD HS","Alzheimer's disease; slow progression"],
+["Aricept","Donepezil 5mg","Eisai/Pfizer","Cholinesterase-I","Tab","₹485/strip","5-10mg OD HS","Original donepezil"],
+["Stilnox","Zolpidem 10mg","Sanofi","Hypnotic","Tab","₹95/strip","10mg HS prn","Insomnia; short-term only; dependence risk"],
+["Stemetil","Prochlorperazine 5mg","GSK","Antiemetic","Tab","₹28/strip","5-10mg TDS","Nausea, vomiting, labyrinthitis, vertigo"],
 // ─── THYROID / ENDOCRINE ──────────────────────────────────────────────────
-["Thyronorm","Levothyroxine 50mcg","Abbott","Thyroid","Tab","&#x20B9;32/strip","50-100mcg OD fasting 30min before food","Hypothyroidism; titrate with TSH"],
-["Eltroxin","Levothyroxine 50mcg","GSK","Thyroid","Tab","&#x20B9;28/strip","50mcg OD fasting","Hypothyroid; small dose changes critical"],
-["Neomercazole","Carbimazole 5mg","Roche","Antithyroid","Tab","&#x20B9;32/strip","10-30mg/d divided doses","Hyperthyroidism, Graves' disease"],
-["Dexamethasone","Dexamethasone 0.5mg","Various","Steroid","Tab","&#x20B9;12/strip","Variable by indication","Anti-inflammatory, cerebral oedema, allergy"],
-["Medrol","Methylprednisolone 4mg","Pfizer","Steroid","Tab","&#x20B9;68/strip","4-48mg/d","Inflammatory, autoimmune conditions"],
+["Thyronorm","Levothyroxine 50mcg","Abbott","Thyroid","Tab","₹32/strip","50-100mcg OD fasting 30min before food","Hypothyroidism; titrate with TSH"],
+["Eltroxin","Levothyroxine 50mcg","GSK","Thyroid","Tab","₹28/strip","50mcg OD fasting","Hypothyroid; small dose changes critical"],
+["Neomercazole","Carbimazole 5mg","Roche","Antithyroid","Tab","₹32/strip","10-30mg/d divided doses","Hyperthyroidism, Graves' disease"],
+["Dexamethasone","Dexamethasone 0.5mg","Various","Steroid","Tab","₹12/strip","Variable by indication","Anti-inflammatory, cerebral oedema, allergy"],
+["Medrol","Methylprednisolone 4mg","Pfizer","Steroid","Tab","₹68/strip","4-48mg/d","Inflammatory, autoimmune conditions"],
 // ─── VITAMINS / SUPPLEMENTS ───────────────────────────────────────────────
-["Shelcal","Calcium+D3 500+250IU","Elder","Supplement","Tab","&#x20B9;95/strip","1 tab BD after food","Calcium deficiency, osteoporosis prevention"],
-["Calcirol","Cholecalciferol 60000IU","Cadila","Supplement","Sachet","&#x20B9;38/sachet","1 sachet weekly x12wk","Vitamin D deficiency; loading dose"],
-["Becosules","B-Complex+Vitamin C","Pfizer","Supplement","Cap","&#x20B9;55/strip","1 cap OD","Nutritional deficiency, wound healing"],
-["Revital","Multivitamin+Minerals","Ranbaxy","Supplement","Cap","&#x20B9;145/strip","1 cap OD morning","General wellness, fatigue, immunity"],
-["Folvite","Folic Acid 5mg","Pfizer","Supplement","Tab","&#x20B9;22/strip","5mg OD","Megaloblastic anaemia, pregnancy neural tube"],
-["Dexorange","Iron+B12+Folic","Franco-Indian","Supplement","Syp","&#x20B9;95/200ml","15ml TDS","Iron deficiency anaemia, pregnancy anaemia"],
-["Methylcobalamin","Methylcobalamin 500mcg","Various","Supplement","Tab","&#x20B9;48/strip","500mcg OD-BD","B12 deficiency, diabetic peripheral neuropathy"],
-["Nervijen","B1+B6+B12","Pfizer","Supplement","Tab","&#x20B9;65/strip","1 tab OD","Peripheral neuropathy, B-complex deficiency"],
-["Zincovit","Zinc+Multivitamin","Apex","Supplement","Tab","&#x20B9;85/strip","1 tab OD","Zinc deficiency, immunity, wound healing"],
-["Calcirol D3","Cholecalciferol+Calcium","Cadila","Supplement","Tab","&#x20B9;85/strip","1 tab BD after food","Combined bone health supplement"],
+["Shelcal","Calcium+D3 500+250IU","Elder","Supplement","Tab","₹95/strip","1 tab BD after food","Calcium deficiency, osteoporosis prevention"],
+["Calcirol","Cholecalciferol 60000IU","Cadila","Supplement","Sachet","₹38/sachet","1 sachet weekly x12wk","Vitamin D deficiency; loading dose"],
+["Becosules","B-Complex+Vitamin C","Pfizer","Supplement","Cap","₹55/strip","1 cap OD","Nutritional deficiency, wound healing"],
+["Revital","Multivitamin+Minerals","Ranbaxy","Supplement","Cap","₹145/strip","1 cap OD morning","General wellness, fatigue, immunity"],
+["Folvite","Folic Acid 5mg","Pfizer","Supplement","Tab","₹22/strip","5mg OD","Megaloblastic anaemia, pregnancy neural tube"],
+["Dexorange","Iron+B12+Folic","Franco-Indian","Supplement","Syp","₹95/200ml","15ml TDS","Iron deficiency anaemia, pregnancy anaemia"],
+["Methylcobalamin","Methylcobalamin 500mcg","Various","Supplement","Tab","₹48/strip","500mcg OD-BD","B12 deficiency, diabetic peripheral neuropathy"],
+["Nervijen","B1+B6+B12","Pfizer","Supplement","Tab","₹65/strip","1 tab OD","Peripheral neuropathy, B-complex deficiency"],
+["Zincovit","Zinc+Multivitamin","Apex","Supplement","Tab","₹85/strip","1 tab OD","Zinc deficiency, immunity, wound healing"],
+["Calcirol D3","Cholecalciferol+Calcium","Cadila","Supplement","Tab","₹85/strip","1 tab BD after food","Combined bone health supplement"],
 // ─── RHEUMATOLOGY / DMARDs ────────────────────────────────────────────────
-["Methotrexate","Methotrexate 7.5mg","Various","DMARD","Tab","&#x20B9;38/strip","7.5-25mg once weekly","RA, psoriasis; monitor LFT, CBC weekly"],
-["Hydroxychloroquine","HCQ 200mg","Various","DMARD","Tab","&#x20B9;55/strip","200-400mg OD","RA, SLE; annual eye monitoring"],
-["Plaquenil","HCQ 200mg","Sanofi","DMARD","Tab","&#x20B9;145/strip","200-400mg OD","RA, SLE, lupus nephritis"],
-["Sulfasalazine","Sulfasalazine 500mg","Various","DMARD","Tab","&#x20B9;22/strip","500mg BD titrate to 1g BD","RA, AS, IBD"],
-["Leflunomide","Leflunomide 10mg","Various","DMARD","Tab","&#x20B9;68/strip","10-20mg OD","RA; hepatotoxic, teratogenic warning"],
-["Fosamax","Alendronate 70mg","MSD","Bisphosphonate","Tab","&#x20B9;185/strip","70mg once weekly fasting","Osteoporosis; stay upright 30min post-dose"],
-["Allopurinol","Allopurinol 100mg","Various","Uricosuric","Tab","&#x20B9;22/strip","100-300mg OD after food","Gout prevention, hyperuricaemia"],
-["Febuxostat","Febuxostat 40mg","Various","Uricosuric","Tab","&#x20B9;85/strip","40-80mg OD","Gout; renal-safe alternative to allopurinol"],
-["Colchicine","Colchicine 0.5mg","Various","Antigout","Tab","&#x20B9;28/strip","0.5mg BD","Acute gout, FMF, pericarditis"],
+["Methotrexate","Methotrexate 7.5mg","Various","DMARD","Tab","₹38/strip","7.5-25mg once weekly","RA, psoriasis; monitor LFT, CBC weekly"],
+["Hydroxychloroquine","HCQ 200mg","Various","DMARD","Tab","₹55/strip","200-400mg OD","RA, SLE; annual eye monitoring"],
+["Plaquenil","HCQ 200mg","Sanofi","DMARD","Tab","₹145/strip","200-400mg OD","RA, SLE, lupus nephritis"],
+["Sulfasalazine","Sulfasalazine 500mg","Various","DMARD","Tab","₹22/strip","500mg BD titrate to 1g BD","RA, AS, IBD"],
+["Leflunomide","Leflunomide 10mg","Various","DMARD","Tab","₹68/strip","10-20mg OD","RA; hepatotoxic, teratogenic warning"],
+["Fosamax","Alendronate 70mg","MSD","Bisphosphonate","Tab","₹185/strip","70mg once weekly fasting","Osteoporosis; stay upright 30min post-dose"],
+["Allopurinol","Allopurinol 100mg","Various","Uricosuric","Tab","₹22/strip","100-300mg OD after food","Gout prevention, hyperuricaemia"],
+["Febuxostat","Febuxostat 40mg","Various","Uricosuric","Tab","₹85/strip","40-80mg OD","Gout; renal-safe alternative to allopurinol"],
+["Colchicine","Colchicine 0.5mg","Various","Antigout","Tab","₹28/strip","0.5mg BD","Acute gout, FMF, pericarditis"],
 // ─── DERMATOLOGY ──────────────────────────────────────────────────────────
-["Betnovate","Betamethasone 0.1%","GSK","Steroid","Cream","&#x20B9;45/tube","Apply BD","Eczema, psoriasis, dermatitis; avoid face"],
-["Candid","Clotrimazole 1%","Glenmark","Antifungal","Cream","&#x20B9;32/tube","Apply BD x2-4wk","Vaginal candidiasis, tinea, ringworm"],
-["Terbinafine","Terbinafine 1%","Various","Antifungal","Cream","&#x20B9;38/tube","Apply OD-BD x2-4wk","Tinea, ringworm, athlete's foot"],
-["Retino-A","Tretinoin 0.025%","Janssen","Retinoid","Cream","&#x20B9;95/tube","Apply nocte","Acne, photoaging, hyperpigmentation"],
-["Isotroin","Isotretinoin 20mg","Cipla","Retinoid","Cap","&#x20B9;285/strip","0.5-1mg/kg/d","Severe cystic acne; TERATOGENIC"],
-["Permethrin","Permethrin 5%","Various","Scabicide","Cream","&#x20B9;95/tube","Apply overnight x1; repeat 1wk","Scabies; treat all contacts simultaneously"],
-["Mometasone","Mometasone 0.1%","Various","Steroid","Cream","&#x20B9;55/tube","Apply OD","Eczema, psoriasis, allergic dermatitis"],
+["Betnovate","Betamethasone 0.1%","GSK","Steroid","Cream","₹45/tube","Apply BD","Eczema, psoriasis, dermatitis; avoid face"],
+["Candid","Clotrimazole 1%","Glenmark","Antifungal","Cream","₹32/tube","Apply BD x2-4wk","Vaginal candidiasis, tinea, ringworm"],
+["Terbinafine","Terbinafine 1%","Various","Antifungal","Cream","₹38/tube","Apply OD-BD x2-4wk","Tinea, ringworm, athlete's foot"],
+["Retino-A","Tretinoin 0.025%","Janssen","Retinoid","Cream","₹95/tube","Apply nocte","Acne, photoaging, hyperpigmentation"],
+["Isotroin","Isotretinoin 20mg","Cipla","Retinoid","Cap","₹285/strip","0.5-1mg/kg/d","Severe cystic acne; TERATOGENIC"],
+["Permethrin","Permethrin 5%","Various","Scabicide","Cream","₹95/tube","Apply overnight x1; repeat 1wk","Scabies; treat all contacts simultaneously"],
+["Mometasone","Mometasone 0.1%","Various","Steroid","Cream","₹55/tube","Apply OD","Eczema, psoriasis, allergic dermatitis"],
 // ─── GYNAECOLOGY ──────────────────────────────────────────────────────────
-["Duphaston","Dydrogesterone 10mg","Abbott","Progestogen","Tab","&#x20B9;195/strip","10mg BD x14d","Threatened abortion, irregular cycles, endometriosis"],
-["Susten","Progesterone 200mg","Sun","Progestogen","Cap","&#x20B9;180/strip","200mg OD-BD vaginally","Luteal phase support, recurrent miscarriage"],
-["Primolut-N","Norethisterone 5mg","Bayer","Progestogen","Tab","&#x20B9;68/strip","5mg TDS","Endometriosis, menorrhagia, cycle delay"],
-["Clomid","Clomiphene 50mg","Sanofi","Ovulation inducer","Tab","&#x20B9;85/strip","50-150mg D3-7","Anovulatory infertility, PCOS"],
-["Cabergoline","Cabergoline 0.5mg","Various","Dopamine agonist","Tab","&#x20B9;185/tab","0.5mg twice weekly","Hyperprolactinaemia, prolactinoma"],
-["Fefol","Iron+Folic acid","GSK","Supplement","Cap","&#x20B9;55/strip","1 cap OD","Anaemia in pregnancy; IDA prevention"],
+["Duphaston","Dydrogesterone 10mg","Abbott","Progestogen","Tab","₹195/strip","10mg BD x14d","Threatened abortion, irregular cycles, endometriosis"],
+["Susten","Progesterone 200mg","Sun","Progestogen","Cap","₹180/strip","200mg OD-BD vaginally","Luteal phase support, recurrent miscarriage"],
+["Primolut-N","Norethisterone 5mg","Bayer","Progestogen","Tab","₹68/strip","5mg TDS","Endometriosis, menorrhagia, cycle delay"],
+["Clomid","Clomiphene 50mg","Sanofi","Ovulation inducer","Tab","₹85/strip","50-150mg D3-7","Anovulatory infertility, PCOS"],
+["Cabergoline","Cabergoline 0.5mg","Various","Dopamine agonist","Tab","₹185/tab","0.5mg twice weekly","Hyperprolactinaemia, prolactinoma"],
+["Fefol","Iron+Folic acid","GSK","Supplement","Cap","₹55/strip","1 cap OD","Anaemia in pregnancy; IDA prevention"],
 // ─── OPHTHALMOLOGY ────────────────────────────────────────────────────────
-["Cipla Eye Drop","Ciprofloxacin 0.3%","Cipla","Antibiotic","Eye drops","&#x20B9;45/5ml","1-2 drops QID x7d","Bacterial conjunctivitis, corneal ulcer"],
-["Refresh Tears","Carboxymethylcellulose","Allergan","Lubricant","Eye drops","&#x20B9;125/10ml","1-2 drops QID-PRN","Dry eye syndrome; preservative-free preferred"],
-["Timolol","Timolol 0.5%","Various","Beta-blocker","Eye drops","&#x20B9;35/5ml","1 drop BD","Glaucoma, ocular hypertension"],
-["Latanoprost","Latanoprost 0.005%","Various","Prostaglandin","Eye drops","&#x20B9;185/2.5ml","1 drop OD HS","Open-angle glaucoma; first-line"],
-["Dilate","Tropicamide 1%","Cipla","Mydriatic","Eye drops","&#x20B9;38/5ml","1-2 drops; repeat 5min","Pupil dilation for fundoscopy"],
+["Cipla Eye Drop","Ciprofloxacin 0.3%","Cipla","Antibiotic","Eye drops","₹45/5ml","1-2 drops QID x7d","Bacterial conjunctivitis, corneal ulcer"],
+["Refresh Tears","Carboxymethylcellulose","Allergan","Lubricant","Eye drops","₹125/10ml","1-2 drops QID-PRN","Dry eye syndrome; preservative-free preferred"],
+["Timolol","Timolol 0.5%","Various","Beta-blocker","Eye drops","₹35/5ml","1 drop BD","Glaucoma, ocular hypertension"],
+["Latanoprost","Latanoprost 0.005%","Various","Prostaglandin","Eye drops","₹185/2.5ml","1 drop OD HS","Open-angle glaucoma; first-line"],
+["Dilate","Tropicamide 1%","Cipla","Mydriatic","Eye drops","₹38/5ml","1-2 drops; repeat 5min","Pupil dilation for fundoscopy"],
 // ─── UROLOGY ──────────────────────────────────────────────────────────────
-["Urimax","Tamsulosin 0.4mg","Cipla","Alpha-blocker","Tab","&#x20B9;68/strip","0.4mg OD HS","BPH symptoms, ureteric stone passage"],
-["Flotral","Alfuzosin 10mg","Intas","Alpha-blocker","Tab","&#x20B9;95/strip","10mg OD HS","BPH, urinary retention"],
-["Finasteride","Finasteride 5mg","Various","5-alpha RI","Tab","&#x20B9;58/strip","5mg OD","BPH; combine with alpha-blocker for better effect"],
-["Febuxostat","Febuxostat 40mg","Various","Uricosuric","Tab","&#x20B9;85/strip","40-80mg OD","Gout; renal-safe"],
+["Urimax","Tamsulosin 0.4mg","Cipla","Alpha-blocker","Tab","₹68/strip","0.4mg OD HS","BPH symptoms, ureteric stone passage"],
+["Flotral","Alfuzosin 10mg","Intas","Alpha-blocker","Tab","₹95/strip","10mg OD HS","BPH, urinary retention"],
+["Finasteride","Finasteride 5mg","Various","5-alpha RI","Tab","₹58/strip","5mg OD","BPH; combine with alpha-blocker for better effect"],
+["Febuxostat","Febuxostat 40mg","Various","Uricosuric","Tab","₹85/strip","40-80mg OD","Gout; renal-safe"],
 // ─── EMERGENCY ────────────────────────────────────────────────────────────
-["ORS","Oral Rehydration Salts","WHO/Various","Rehydration","Sachet","&#x20B9;5/sachet","1 sachet in 200ml water after each loose stool","Dehydration, diarrhoea, cholera"],
-["Adrenaline","Epinephrine 1mg/ml","Various","Sympathomimetic","Inj","&#x20B9;22/amp","0.3-0.5mg IM thigh","Anaphylaxis; auto-injector if available"],
-["Mannitol","Mannitol 20%","Various","Osmotic","Infusion","&#x20B9;85/bottle","0.25-2g/kg IV over 20min","Cerebral oedema, ICP elevation"],
-["Normal Saline","NaCl 0.9%","Various","IV Fluid","Infusion","&#x20B9;48/500ml","As clinically indicated","Volume replacement, dehydration, flushing"],
-["Glucose 25%","Dextrose 25%","Various","IV Glucose","Infusion","&#x20B9;38/100ml","50ml IV stat","Severe hypoglycaemia; follow with oral carbs"]
+["ORS","Oral Rehydration Salts","WHO/Various","Rehydration","Sachet","₹5/sachet","1 sachet in 200ml water after each loose stool","Dehydration, diarrhoea, cholera"],
+["Adrenaline","Epinephrine 1mg/ml","Various","Sympathomimetic","Inj","₹22/amp","0.3-0.5mg IM thigh","Anaphylaxis; auto-injector if available"],
+["Mannitol","Mannitol 20%","Various","Osmotic","Infusion","₹85/bottle","0.25-2g/kg IV over 20min","Cerebral oedema, ICP elevation"],
+["Normal Saline","NaCl 0.9%","Various","IV Fluid","Infusion","₹48/500ml","As clinically indicated","Volume replacement, dehydration, flushing"],
+["Glucose 25%","Dextrose 25%","Various","IV Glucose","Infusion","₹38/100ml","50ml IV stat","Severe hypoglycaemia; follow with oral carbs"]
 ];
 
 // ── CUSTOM BRANDS (localStorage) ──
-var KS_BRAND_CUSTOM = [];
-var ksBrandCurrentTab = 'all';
-var ksBrandEditId = null;
+let KS_BRAND_CUSTOM = [];
+let ksBrandCurrentTab = 'all';
+let ksBrandEditId = null;
 
 function ksLoadCustomBrands() {
   try { KS_BRAND_CUSTOM = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]'); }
@@ -3038,7 +3519,7 @@ function ksRenderBrandCards(results, highlightGeneric) {
   container.innerHTML = '';
   
   if (results.length === 0) {
-    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 20px;"><div style="font-size:48px;margin-bottom:12px;">&#x1F489;</div><p style="color:var(--text-light);font-size:1rem;">No brands found. Try a different search or <button onclick="openAddBrandModal()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.88rem;">Add Your Brand</button></p></div>';
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:48px 20px;"><div style="font-size:48px;margin-bottom:12px;">💉</div><p style="color:var(--text-light);font-size:1rem;">No brands found. Try a different search or <button onclick="openAddBrandModal()" style="background:var(--primary);color:#fff;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-size:0.88rem;">Add Your Brand</button></p></div>';
     return;
   }
   
@@ -3050,8 +3531,8 @@ function ksRenderBrandCards(results, highlightGeneric) {
     card.onmouseout = function(){this.style.boxShadow='none';};
     
     var customBadge = b._custom ? '<span style="background:#f39c12;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.7rem;font-weight:700;margin-left:6px;">MY BRAND</span>' : '';
-    var editBtn = b._custom ? '<button onclick="ksEditBrand(\''+ksEscapeId(b.brand)+'\')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:0.75rem;cursor:pointer;color:var(--text-light);" title="Edit">&#x270F;</button>' : '';
-    var delBtn = b._custom ? '<button onclick="ksDeleteBrand(\''+ksEscapeId(b.brand)+'\')" style="background:none;border:1px solid #e74c3c;border-radius:5px;padding:3px 8px;font-size:0.75rem;cursor:pointer;color:#e74c3c;" title="Delete">&#x1F5D1;</button>' : '';
+    var editBtn = b._custom ? '<button onclick="ksEditBrand(\''+ksEscapeId(b.brand)+'\')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:3px 8px;font-size:0.75rem;cursor:pointer;color:var(--text-light);" title="Edit">✏</button>' : '';
+    var delBtn = b._custom ? '<button onclick="ksDeleteBrand(\''+ksEscapeId(b.brand)+'\')" style="background:none;border:1px solid #e74c3c;border-radius:5px;padding:3px 8px;font-size:0.75rem;cursor:pointer;color:#e74c3c;" title="Delete">🗑</button>' : '';
     
     card.innerHTML = 
       '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">' +
@@ -3062,12 +3543,12 @@ function ksRenderBrandCards(results, highlightGeneric) {
         '</div>' +
         '<div style="display:flex;gap:5px;align-items:center;">' +
           editBtn + delBtn +
-          '<button onclick="ksAddBrandToRx('+JSON.stringify(b)+')" style="background:var(--primary);color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-weight:600;" title="Add to Prescription">&#x1F4DD; Rx</button>' +
+          '<button onclick="ksAddBrandToRx('+JSON.stringify(b)+')" style="background:var(--primary);color:#fff;border:none;border-radius:5px;padding:4px 10px;font-size:0.75rem;cursor:pointer;font-weight:600;" title="Add to Prescription">📝 Rx</button>' +
         '</div>' +
       '</div>' +
       '<div style="font-size:0.82rem;color:var(--text-light);margin-bottom:6px;">'+ksEsc(b.generic)+'</div>' +
       '<div style="display:flex;gap:10px;flex-wrap:wrap;font-size:0.8rem;margin-bottom:7px;">' +
-        (b.form ? '<span style="background:var(--light-bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;">&#x1F4E6; '+ksEsc(b.form)+'</span>' : '') +
+        (b.form ? '<span style="background:var(--light-bg);border:1px solid var(--border);border-radius:4px;padding:1px 7px;">📦 '+ksEsc(b.form)+'</span>' : '') +
         (b.price ? '<span style="background:#e8f5e9;color:#27ae60;border-radius:4px;padding:1px 7px;font-weight:600;">'+b.price+'</span>' : '') +
         (b.company ? '<span style="color:var(--text-light);">'+ksEsc(b.company)+'</span>' : '') +
       '</div>' +
@@ -3099,7 +3580,7 @@ function ksGetCatColor(cat) {
   return '#607d8b';
 }
 
-function ksEsc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function ksEsc(s) { return (s||'').replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>').replace(/"/g,'"'); }
 function ksEscapeId(s) { return (s||'').replace(/'/g,"\\'"); }
 
 function ksBrandUpdateStats() {
@@ -3113,10 +3594,10 @@ function ksBrandUpdateStats() {
   var statsEl = document.getElementById('brand-stats-row');
   if (!statsEl) return;
   statsEl.innerHTML = 
-    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;font-weight:600;color:var(--primary);">&#x1F48A; '+KSPIDER_BRAND_DB.length+' Built-in Brands</div>' +
-    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;font-weight:600;color:#f39c12;">&#x2B50; '+custom+' My Custom Brands</div>' +
-    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;color:var(--text-light);">&#x1F5C2; '+Object.keys(cats).length+' Drug Categories</div>' +
-    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;color:var(--text-light);">&#x1F50D; Search by brand, generic, company</div>';
+    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;font-weight:600;color:var(--primary);">💊 '+KSPIDER_BRAND_DB.length+' Built-in Brands</div>' +
+    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;font-weight:600;color:#f39c12;">⭐ '+custom+' My Custom Brands</div>' +
+    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;color:var(--text-light);">🗂 '+Object.keys(cats).length+' Drug Categories</div>' +
+    '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:0.85rem;color:var(--text-light);">🔍 Search by brand, generic, company</div>';
 }
 
 function quickBrandFilter(cat) {
@@ -3184,7 +3665,7 @@ function ksRenderRxPanel() {
         '<div style="font-size:0.78rem;color:var(--text-light);">'+ksEsc(b.generic)+'</div>' +
         (b.dose ? '<div style="font-size:0.75rem;color:#1a5276;margin-top:2px;">'+ksEsc(b.dose)+'</div>' : '') +
       '</div>' +
-      '<button onclick="ksAddBrandToRx('+JSON.stringify(b)+')" style="flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">&#x2795; Add to Rx</button>';
+      '<button onclick="ksAddBrandToRx('+JSON.stringify(b)+')" style="flex-shrink:0;background:var(--primary);color:#fff;border:none;border-radius:6px;padding:7px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">➕ Add to Rx</button>';
     panel.appendChild(row);
   });
 }
@@ -3200,17 +3681,17 @@ function ksAddBrandToRx(brand) {
     if (doseInput && brand.dose) doseInput.value = brand.dose;
     // Switch to create-rx section
     if (typeof saasSwitchSection === 'function') {
-      saasSwitchSection('create-rx','&#x1F4DD; OPD / Create Rx','Patient visit &amp; prescription',null);
+      saasSwitchSection('create-rx','📝 OPD / Create Rx','Patient visit & prescription',null);
     }
     setTimeout(function(){ if(medInput) medInput.focus(); }, 400);
-    if (typeof showToast === 'function') showToast('&#x2705; ' + brand.brand + ' added to prescription');
+    if (typeof showToast === 'function') showToast('✅ ' + brand.brand + ' added to prescription');
     else alert(brand.brand + ' - added! Go to Create Rx to complete prescription.');
   } else {
     // Copy brand info to clipboard
     var text = brand.brand + ' (' + brand.generic + ') - ' + (brand.dose||'') + ' - ' + (brand.price||'');
     if (navigator.clipboard) {
       navigator.clipboard.writeText(text).then(function(){
-        if (typeof showToast === 'function') showToast('&#x1F4CB; Copied: ' + brand.brand);
+        if (typeof showToast === 'function') showToast('📋 Copied: ' + brand.brand);
         else alert('Copied: ' + text);
       });
     } else {
@@ -3223,7 +3704,7 @@ function ksAddBrandToRx(brand) {
 function openAddBrandModal(editData) {
   ksBrandEditId = editData ? editData.brand : null;
   var titleEl = document.getElementById('brand-modal-title');
-  if (titleEl) titleEl.innerHTML = editData ? '&#x270F; Edit Brand' : '&#x2795; Add Custom Brand';
+  if (titleEl) titleEl.innerHTML = editData ? '✏ Edit Brand' : '➕ Add Custom Brand';
   
   var fields = {
     'bm-brand': editData ? editData.brand : '',
@@ -3280,7 +3761,7 @@ function saveBrandModal() {
   closeBrandModal();
   brandSearch();
   ksBrandUpdateStats();
-  if (typeof showToast === 'function') showToast('&#x2705; Brand saved: ' + brand);
+  if (typeof showToast === 'function') showToast('✅ Brand saved: ' + brand);
 }
 
 function ksEditBrand(brandName) {
@@ -3296,7 +3777,7 @@ function ksDeleteBrand(brandName) {
   ksSaveCustomBrands();
   brandSearch();
   ksBrandUpdateStats();
-  if (typeof showToast === 'function') showToast('&#x1F5D1; Brand removed: ' + brandName);
+  if (typeof showToast === 'function') showToast('🗑 Brand removed: ' + brandName);
 }
 
 // ── BRAND DB INIT ──
@@ -8854,7 +9335,7 @@ function openPrescriptionBuilder() {
       const dd = DISEASE_DB[name] || {};
       const badges = ['#1e3a8a','#7c3aed','#059669','#d97706','#dc2626'];
       const color = badges[i] || '#64748b';
-      dpHtml += `<div class="diag-select-card" data-name="${name.replace(/"/g,'&quot;')}" onclick="toggleDiagSelection('${name.replace(/'/g,"\\'")}', this)" style="flex:1;min-width:150px;max-width:230px;">
+      dpHtml += `<div class="diag-select-card" data-name="${name.replace(/"/g,'"')}" onclick="toggleDiagSelection('${name.replace(/'/g,"\\'")}', this)" style="flex:1;min-width:150px;max-width:230px;">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px;">
           <div>
             <div style="font-weight:800;font-size:12px;color:${color};margin-bottom:2px;">
@@ -9385,7 +9866,7 @@ function showDrugSuggestions(inp) {
     const cat  = dr[1] || '';
     const dose = dr[2] ? dr[2].split(';')[0].trim().substring(0,30) : '';
     const hi = name.replace(new RegExp('('+query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')', 'gi'), '<strong>$1</strong>');
-    return `<div class="drug-ac-item" data-idx="${idx}" data-name="${name.replace(/"/g,'&quot;')}" onmousedown="selectDrugAC(event,'${name.replace(/'/g,"\\'")}','${inp.id}')">
+    return `<div class="drug-ac-item" data-idx="${idx}" data-name="${name.replace(/"/g,'"')}" onmousedown="selectDrugAC(event,'${name.replace(/'/g,"\\'")}','${inp.id}')">
       ${hi} ${cat ? `<small style="color:#94a3b8;"> — ${cat}</small>` : ''}
       ${dose ? `<div style="font-size:10px;color:#94a3b8;">${dose}</div>` : ''}
     </div>`;
@@ -9831,7 +10312,7 @@ function buildPreview() {
   const symptoms = Array.from(document.querySelectorAll('#symptoms option:checked')).map(o => o.value);
 
   const rxHtml = buildRxHeader(doctor) +
-  '<!-- PRINT DISCLAIMER --><div style="border:2px solid #dc2626;padding:10px;margin:8px 0;font-size:9px;color:#000;background:#fff8f8;font-family:Arial,sans-serif;"><strong>⚠️ AI-GENERATED DOCUMENT:</strong> Pharmacist: Do NOT dispense without signed doctor prescription (Drugs &amp; Cosmetics Act 1940). Lab: No investigation without doctor written order. Doctor bears full clinical responsibility.</div>' +
+  '<!-- PRINT DISCLAIMER --><div style="border:2px solid #dc2626;padding:10px;margin:8px 0;font-size:9px;color:#000;background:#fff8f8;font-family:Arial,sans-serif;"><strong>⚠️ AI-GENERATED DOCUMENT:</strong> Pharmacist: Do NOT dispense without signed doctor prescription (Drugs & Cosmetics Act 1940). Lab: No investigation without doctor written order. Doctor bears full clinical responsibility.</div>' +
     '<div class="prescription-box" style="border-top:0;border-radius:0 0 8px 8px;">' +
   '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">' +
     '<div style="font-size:15px;font-weight:800;color:#1e3a8a;">⚕️ MEDICAL PRESCRIPTION</div>' +
@@ -10624,7 +11105,7 @@ function downloadWaPDF() {
   const date = new Date().toLocaleDateString('en-IN');
 
   const htmlStr = msg
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>')
     .replace(/\*([^*\n]+)\*/g,'<strong>$1</strong>')
     .replace(/_([^_\n]+)_/g,'<em>$1</em>')
     .replace(/\n/g,'<br>');
@@ -11016,7 +11497,7 @@ function searchDrug() {
         <div style="font-size:12px;color:var(--text-light);line-height:1.7;">
           <strong>Adult:</strong> ${d[2]}<br>
           <strong>Peds:</strong> ${d[3]}<br>
-          <strong>Pregnancy Cat:</strong> <span class="badge badge-${allergyColor}">${d[4]}</span> &nbsp;
+          <strong>Pregnancy Cat:</strong> <span class="badge badge-${allergyColor}">${d[4]}</span>  
           <strong>Elderly:</strong> ${d[5]}<br>
           <strong>Contraindications:</strong> <span style="color:var(--danger);">${d[6]}</span>
         </div>
@@ -11902,7 +12383,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Also handle clear patient form
-var _origClearPatient = window.clearPatientForm;
+let _origClearPatient = window.clearPatientForm;
 window.clearPatientForm = function() {
   if (confirm('Clear patient form?')) {
     ['patient_name','patient_age','patient_weight','patient_bp','patient_sugar','patient_spo2','patient_phone','chief_complaint','medical_history','allergies','current_meds','family_history'].forEach(function(id) {
@@ -11980,7 +12461,7 @@ function calculateEGFR() {
   const _egfrRs=document.getElementById('egfr-result'); if(_egfrRs) _egfrRs.innerHTML = `<div class="alert alert-${cls}">
     <strong>eGFR: ${eGFR.toFixed(1)} mL/min/1.73m²</strong><br>
     CKD Stage: ${stage}<br>
-    <small>Dose adjust renal-cleared drugs accordingly. Refer nephrology if eGFR &lt; 30.</small>
+    <small>Dose adjust renal-cleared drugs accordingly. Refer nephrology if eGFR < 30.</small>
   </div>`;
 }
 
@@ -12420,8 +12901,8 @@ function buildPrescriptionLang(patient, doctor, visitDate, rxNo, symptoms, histo
     '</div>' +
     '<div class="rx-section">' +
       '<strong>━━━ '+lbl.patient_info.toUpperCase()+' ━━━</strong><br>' +
-      '<strong>'+lbl.name_lbl+':</strong> '+(patient.name||'—')+' &nbsp;|&nbsp; <strong>'+lbl.age_lbl+':</strong> '+(patient.age||'—')+' yrs &nbsp;|&nbsp; <strong>'+lbl.gender_lbl+':</strong> '+(patient.gender||'—')+'<br>' +
-      '<strong>'+lbl.weight_lbl+':</strong> '+(patient.weight||'N/A')+' kg &nbsp;|&nbsp; <strong>'+lbl.bp_lbl+':</strong> '+(patient.bp||'N/A')+' mmHg &nbsp;|&nbsp; <strong>'+lbl.sugar_lbl+':</strong> '+(patient.sugar||'N/A')+' mg/dL<br>' +
+      '<strong>'+lbl.name_lbl+':</strong> '+(patient.name||'—')+'  |  <strong>'+lbl.age_lbl+':</strong> '+(patient.age||'—')+' yrs  |  <strong>'+lbl.gender_lbl+':</strong> '+(patient.gender||'—')+'<br>' +
+      '<strong>'+lbl.weight_lbl+':</strong> '+(patient.weight||'N/A')+' kg  |  <strong>'+lbl.bp_lbl+':</strong> '+(patient.bp||'N/A')+' mmHg  |  <strong>'+lbl.sugar_lbl+':</strong> '+(patient.sugar||'N/A')+' mg/dL<br>' +
       '<strong>Contact:</strong> '+(patient.phone||'N/A') +
     '</div>' +
     '<div class="rx-section">' +
@@ -13628,7 +14109,7 @@ function downloadPatientGuidePDF() {
 
   // ── Convert markdown → HTML ────────────────────────────────────────
   const htmlContent = _patientExplainText
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/&/g,'&').replace(/</g,'<').replace(/>/g,'>')
     .replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>')
     .replace(/^(🤒|🔍|📊|💊|🥗|🌅|⚠️|📅|🏥|👤|📋|💉|🩺)\s*(.+)$/gm, function(m, emoji, rest) {
       var colors = {'🤒':'#f59e0b','🔍':'#3b82f6','📊':'#10b981','💊':'#8b5cf6','🥗':'#34d399','🌅':'#fb923c','⚠️':'#ef4444','📅':'#38bdf8','🏥':'#1e3a8a','👤':'#7c3aed','📋':'#0891b2','💉':'#dc2626','🩺':'#059669'};
@@ -16209,9 +16690,9 @@ function erxGeneratePreview() {
     medsHTML += `<div style="margin-bottom:10px;padding-left:8px;border-left:3px solid #1a7bbf;">
       <strong style="font-size:14px;">${medCount}. ${name}</strong><br>
       <span style="font-size:12px;color:#374151;">
-        ${dose ? '📊 Dose: ' + dose + ' &nbsp;' : ''}
-        ${freq ? '🕐 ' + freq + ' &nbsp;' : ''}
-        ${dur  ? '📅 For ' + dur + ' &nbsp;' : ''}
+        ${dose ? '📊 Dose: ' + dose + '  ' : ''}
+        ${freq ? '🕐 ' + freq + '  ' : ''}
+        ${dur  ? '📅 For ' + dur + '  ' : ''}
         ${instr_m ? '<br>✅ ' + instr_m : ''}
       </span>
     </div>`;
@@ -16235,7 +16716,7 @@ function erxGeneratePreview() {
     </div>
     <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:14px;color:#374151;">
       <span><strong>Patient:</strong> ${ptName}${ptAge ? ', ' + ptAge + ' yr' : ''}${ptGender ? ' / ' + ptGender : ''}</span>
-      <span><strong>Date:</strong> ${rxDate} &nbsp;|&nbsp; <strong>Ref:</strong> ${refNo}</span>
+      <span><strong>Date:</strong> ${rxDate}  |  <strong>Ref:</strong> ${refNo}</span>
     </div>
     <div class="erx-preview-section">
       <div class="erx-preview-title">🔍 Diagnosis</div>
@@ -16941,7 +17422,7 @@ function advRenderInvoices() {
   if (q) list = list.filter(i => i.patient.toLowerCase().includes(q) || (i.invNo || '').toLowerCase().includes(q));
   if (!list.length) { el.innerHTML = '<div style="text-align:center;padding:24px;color:#94a3b8;font-size:12px;">🧾 No invoices yet.</div>'; return; }
   el.innerHTML = list.slice(0, 20).map(inv => `
-    <div class="invoice-card" onclick="advRenderInvoicePreview(${JSON.stringify(inv).replace(/"/g,'&quot;')})">
+    <div class="invoice-card" onclick="advRenderInvoicePreview(${JSON.stringify(inv).replace(/"/g,'"')})">
       <div style="flex:1;">
         <div style="font-size:13px;font-weight:700;color:#0b3c5d;">${inv.patient}</div>
         <div style="font-size:11px;color:#64748b;">${inv.invNo || ''} | ${new Date(inv.date).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})} | ${inv.payMode}</div>
@@ -18498,6 +18979,1296 @@ window.addEventListener('toggleDarkMode_v2', () => {
   const dark = document.body.classList.toggle('dark-mode');
   localStorage.setItem('kspider_dark', dark ? '1' : '0');
 });
+</script>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// KS PATIENT DATABASE ENGINE v1.0
+// UHID-linked: Patients → Prescriptions → Billing → Appointments → Vitals
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── STORAGE KEY ──
+const KS_PT_KEY = 'ks_patient_db_v1';
+let _ksPtEditUhid = null;  // current patient being edited in modal
+let _ksPtDetailUhid = null; // current patient in detail view
+let _ksPtDetailTab = 'info';
+
+// ── UHID GENERATOR ──
+function ksGenUHID() {
+  const d = new Date();
+  const yr = String(d.getFullYear()).slice(-2);
+  const mo = String(d.getMonth()+1).padStart(2,'0');
+  const rand = String(Math.floor(Math.random()*9000)+1000);
+  // Get existing count for sequence
+  const pts = ksPtGetAll();
+  const seq = String(pts.length + 1).padStart(4,'0');
+  return 'UHID-' + yr + mo + '-' + seq + rand.slice(-2);
+}
+
+// ── CRUD ──
+function ksPtGetAll() {
+  try { return JSON.parse(localStorage.getItem(KS_PT_KEY) || '[]'); }
+  catch(e) { return []; }
+}
+
+function ksPtSaveAll(pts) {
+  localStorage.setItem(KS_PT_KEY, JSON.stringify(pts));
+}
+
+function ksPtGetByUhid(uhid) {
+  return ksPtGetAll().find(function(p){ return p.uhid === uhid; }) || null;
+}
+
+// ── OPEN ADD MODAL ──
+function ksPtOpenModal(editUhid) {
+  _ksPtEditUhid = editUhid || null;
+  const modal = document.getElementById('ks-pt-modal');
+  const titleEl = document.getElementById('ks-pt-modal-title');
+  const uhidEl = document.getElementById('ks-pt-uhid-display');
+  if (!modal) return;
+
+  const fields = ['name','age','gender','dob','phone','phone2','blood','type','address','diagnosis','referred','allergies','chronic','insurance','occupation','notes'];
+  if (editUhid) {
+    // EDIT mode
+    const pt = ksPtGetByUhid(editUhid);
+    if (!pt) return;
+    if (titleEl) titleEl.innerHTML = '✏ Edit Patient - ' + pt.name;
+    if (uhidEl) uhidEl.textContent = pt.uhid;
+    fields.forEach(function(f){
+      const el = document.getElementById('ks-pt-'+f);
+      if (el) el.value = pt[f] || '';
+    });
+  } else {
+    // NEW mode
+    if (titleEl) titleEl.innerHTML = '➕ New Patient Registration';
+    const newUhid = ksGenUHID();
+    if (uhidEl) uhidEl.textContent = newUhid;
+    fields.forEach(function(f){
+      const el = document.getElementById('ks-pt-'+f);
+      if (el) { el.value = f==='gender'?'Male': f==='type'?'New Patient': ''; }
+    });
+  }
+  modal.style.display = 'flex';
+  setTimeout(function(){ const n=document.getElementById('ks-pt-name'); if(n) n.focus(); }, 100);
+}
+
+function ksPtCloseModal() {
+  const m = document.getElementById('ks-pt-modal');
+  if (m) m.style.display = 'none';
+  _ksPtEditUhid = null;
+}
+
+// ── SAVE PATIENT ──
+function ksPtSave() {
+  const name = (document.getElementById('ks-pt-name')||{value:''}).value.trim();
+  const phone = (document.getElementById('ks-pt-phone')||{value:''}).value.trim();
+  const age = (document.getElementById('ks-pt-age')||{value:''}).value.trim();
+  if (!name) { alert('Patient name is required.'); return; }
+
+  const pts = ksPtGetAll();
+  const uhidDisplay = document.getElementById('ks-pt-uhid-display');
+  let uhid = uhidDisplay ? uhidDisplay.textContent : ksGenUHID();
+
+  const now = new Date().toISOString();
+  const pt = {
+    uhid: _ksPtEditUhid ? _ksPtEditUhid : uhid,
+    name: name,
+    age: age,
+    gender: (document.getElementById('ks-pt-gender')||{value:'Male'}).value,
+    dob: (document.getElementById('ks-pt-dob')||{value:''}).value,
+    phone: phone,
+    phone2: (document.getElementById('ks-pt-phone2')||{value:''}).value.trim(),
+    blood: (document.getElementById('ks-pt-blood')||{value:''}).value,
+    type: (document.getElementById('ks-pt-type')||{value:'OPD'}).value,
+    address: (document.getElementById('ks-pt-address')||{value:''}).value.trim(),
+    diagnosis: (document.getElementById('ks-pt-diagnosis')||{value:''}).value.trim(),
+    referred: (document.getElementById('ks-pt-referred')||{value:''}).value.trim(),
+    allergies: (document.getElementById('ks-pt-allergies')||{value:''}).value.trim(),
+    chronic: (document.getElementById('ks-pt-chronic')||{value:''}).value.trim(),
+    insurance: (document.getElementById('ks-pt-insurance')||{value:''}).value.trim(),
+    occupation: (document.getElementById('ks-pt-occupation')||{value:''}).value.trim(),
+    notes: (document.getElementById('ks-pt-notes')||{value:''}).value.trim(),
+    registeredOn: _ksPtEditUhid ? (ksPtGetByUhid(_ksPtEditUhid)||{registeredOn:now}).registeredOn : now,
+    lastUpdated: now,
+    visits: _ksPtEditUhid ? (ksPtGetByUhid(_ksPtEditUhid)||{visits:[]}).visits : [],
+  };
+
+  if (_ksPtEditUhid) {
+    const idx = pts.findIndex(function(p){ return p.uhid === _ksPtEditUhid; });
+    if (idx >= 0) pts[idx] = pt;
+    else pts.unshift(pt);
+  } else {
+    pts.unshift(pt);
+  }
+
+  ksPtSaveAll(pts);
+  ksPtCloseModal();
+  ksPtRender();
+  ksPtUpdateStats();
+  if (typeof _showToast === 'function') _showToast('Patient saved: ' + name + ' [' + pt.uhid + ']', 'success');
+  else if (typeof showToast === 'function') showToast('Patient saved: ' + name);
+}
+
+// ── RENDER TABLE ──
+function ksPtRender() {
+  const tbody = document.getElementById('ks-pt-tbody');
+  if (!tbody) return;
+
+  const q = ((document.getElementById('ks-pt-search')||{value:''}).value||'').toLowerCase();
+  const gf = (document.getElementById('ks-pt-filter-gender')||{value:''}).value;
+  const tf = (document.getElementById('ks-pt-filter-type')||{value:''}).value;
+
+  let pts = ksPtGetAll();
+  if (q) pts = pts.filter(function(p){
+    return (p.name||'').toLowerCase().includes(q) ||
+           (p.uhid||'').toLowerCase().includes(q) ||
+           (p.phone||'').includes(q) ||
+           (p.diagnosis||'').toLowerCase().includes(q) ||
+           (p.address||'').toLowerCase().includes(q);
+  });
+  if (gf) pts = pts.filter(function(p){ return p.gender === gf; });
+  if (tf) pts = pts.filter(function(p){ return p.type === tf; });
+
+  const countEl = document.getElementById('ks-pt-count');
+  if (countEl) countEl.textContent = pts.length + ' patient' + (pts.length!==1?'s':'') + ' found';
+
+  if (!pts.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--text-light);">No patients found. Click "+ New Patient" to register.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = pts.slice(0,100).map(function(p) {
+    const lastVisit = p.visits && p.visits.length ? new Date(p.visits[p.visits.length-1].date).toLocaleDateString('en-IN') : new Date(p.registeredOn||Date.now()).toLocaleDateString('en-IN');
+    const bg = p.visits && p.visits.length ? '' : 'background:#fef9e7;';
+    return '<tr style="border-bottom:1px solid var(--border);cursor:pointer;'+bg+'" onclick="ksPtOpenDetail(\''+esc(p.uhid)+'\')" onmouseover="this.style.background=\'var(--light-bg)\'" onmouseout="this.style.background=\''+bg+'\'">' +
+      '<td style="padding:9px 12px;font-weight:700;color:var(--primary);white-space:nowrap;font-size:0.82rem;">'+esc(p.uhid)+'</td>' +
+      '<td style="padding:9px 12px;font-weight:600;">'+esc(p.name)+'</td>' +
+      '<td style="padding:9px 12px;font-size:0.82rem;">'+(p.age||'—')+' / '+(p.gender?p.gender[0]:'—')+'</td>' +
+      '<td style="padding:9px 12px;font-size:0.82rem;">'+esc(p.phone||'—')+'</td>' +
+      '<td style="padding:9px 12px;font-size:0.82rem;"><span style="background:'+(p.blood?'#e8f5e9':'var(--light-bg)')+';padding:2px 8px;border-radius:10px;">'+esc(p.blood||'—')+'</span></td>' +
+      '<td style="padding:9px 12px;font-size:0.82rem;">'+lastVisit+'</td>' +
+      '<td style="padding:9px 12px;font-size:0.82rem;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+esc(p.diagnosis||'—')+'</td>' +
+      '<td style="padding:9px 12px;font-size:0.82rem;"><span style="background:'+ksPtTypeColor(p.type)+';color:#fff;padding:2px 8px;border-radius:10px;font-size:0.75rem;">'+esc(p.type||'OPD')+'</span></td>' +
+      '<td style="padding:9px 12px;text-align:center;" onclick="event.stopPropagation()">' +
+        '<button onclick="ksPtOpenDetail(\''+esc(p.uhid)+'\')" style="background:var(--primary);color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:0.78rem;margin:2px;" title="View">👁</button>' +
+        '<button onclick="ksPtOpenModal(\''+esc(p.uhid)+'\')" style="background:#f39c12;color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:0.78rem;margin:2px;" title="Edit">✏</button>' +
+        '<button onclick="ksPtDelete(\''+esc(p.uhid)+'\')" style="background:#e74c3c;color:#fff;border:none;border-radius:5px;padding:4px 10px;cursor:pointer;font-size:0.78rem;margin:2px;" title="Delete">🗑</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function ksPtTypeColor(type) {
+  const m = {Emergency:'#e74c3c',IPD:'#8e44ad','New Patient':'#27ae60','Follow-up':'#2980b9',Referral:'#d35400'};
+  return m[type] || '#607d8b';
+}
+
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// ── UPDATE STATS ──
+function ksPtUpdateStats() {
+  const el = document.getElementById('ks-pt-stats');
+  if (!el) return;
+  const pts = ksPtGetAll();
+  const today = new Date().toDateString();
+  const todayPts = pts.filter(function(p){ return p.registeredOn && new Date(p.registeredOn).toDateString()===today; });
+  const totalVisits = pts.reduce(function(s,p){ return s+(p.visits?p.visits.length:0); },0);
+  el.innerHTML = [
+    ['🧑‍⚕️ Total Patients', pts.length, '#1a5276'],
+    ['📅 Registered Today', todayPts.length, '#27ae60'],
+    ['📋 Total Visits', totalVisits, '#8e44ad'],
+    ['💡 With Diagnosis', pts.filter(function(p){return p.diagnosis;}).length, '#e67e22'],
+  ].map(function(s){ return '<div style="background:var(--light-bg);border:1px solid var(--border);border-radius:8px;padding:10px 16px;"><div style="font-size:0.78rem;color:var(--text-light);">'+s[0]+'</div><div style="font-size:1.4rem;font-weight:800;color:'+s[2]+';">'+s[1]+'</div></div>'; }).join('');
+}
+
+// ── DELETE ──
+function ksPtDelete(uhid) {
+  const pt = ksPtGetByUhid(uhid);
+  if (!pt) return;
+  if (!confirm('Delete patient ' + pt.name + ' [' + uhid + ']? This cannot be undone.')) return;
+  const pts = ksPtGetAll().filter(function(p){ return p.uhid !== uhid; });
+  ksPtSaveAll(pts);
+  ksPtRender();
+  ksPtUpdateStats();
+}
+
+function ksPtClearSearch() {
+  ['ks-pt-search','ks-pt-filter-gender','ks-pt-filter-type'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value='';
+  });
+  ksPtRender();
+}
+
+// ── PATIENT DETAIL MODAL ──
+function ksPtOpenDetail(uhid) {
+  _ksPtDetailUhid = uhid;
+  const pt = ksPtGetByUhid(uhid);
+  if (!pt) return;
+
+  const modal = document.getElementById('ks-pt-detail-modal');
+  if (!modal) return;
+
+  const nameEl = document.getElementById('ks-ptd-name');
+  const uhidEl = document.getElementById('ks-ptd-uhid');
+  const subEl = document.getElementById('ks-ptd-sub');
+  if (nameEl) nameEl.textContent = pt.name;
+  if (uhidEl) uhidEl.textContent = 'UHID: ' + pt.uhid;
+  if (subEl) subEl.textContent = (pt.age||'—') + ' yrs | ' + (pt.gender||'—') + ' | ' + (pt.blood||'Blood group N/A') + (pt.phone ? ' | ' + pt.phone : '');
+
+  modal.style.display = 'flex';
+  ksPtdTab('info');
+}
+
+function ksPtCloseDetailModal() {
+  const m = document.getElementById('ks-pt-detail-modal');
+  if (m) m.style.display = 'none';
+  _ksPtDetailUhid = null;
+}
+
+function ksPtdTab(tab) {
+  _ksPtDetailTab = tab;
+  ['info','visits','rx','bills','vitals'].forEach(function(t){
+    const btn = document.getElementById('ks-ptd-t-'+t);
+    if (!btn) return;
+    if (t===tab) {
+      btn.style.color='var(--primary)'; btn.style.fontWeight='700';
+      btn.style.borderBottom='2px solid var(--primary)'; btn.style.marginBottom='-1px';
+    } else {
+      btn.style.color='var(--text-light)'; btn.style.fontWeight='400';
+      btn.style.borderBottom='none'; btn.style.marginBottom='0';
+    }
+  });
+  const content = document.getElementById('ks-ptd-content');
+  if (!content || !_ksPtDetailUhid) return;
+  const pt = ksPtGetByUhid(_ksPtDetailUhid);
+  if (!pt) return;
+
+  if (tab==='info') {
+    content.innerHTML = ksPtdRenderInfo(pt);
+  } else if (tab==='visits') {
+    content.innerHTML = ksPtdRenderVisits(pt);
+  } else if (tab==='rx') {
+    content.innerHTML = ksPtdRenderRx(pt);
+  } else if (tab==='bills') {
+    content.innerHTML = ksPtdRenderBills(pt);
+  } else if (tab==='vitals') {
+    content.innerHTML = ksPtdRenderVitals(pt);
+  }
+}
+
+function ksPtdRenderInfo(pt) {
+  const rows = [
+    ['UHID', pt.uhid],['Name', pt.name],['Age', pt.age],['Gender', pt.gender],
+    ['Date of Birth', pt.dob],['Phone', pt.phone],['Alt Phone', pt.phone2],
+    ['Blood Group', pt.blood],['Patient Type', pt.type],['Address', pt.address],
+    ['Primary Diagnosis', pt.diagnosis],['Chronic Conditions', pt.chronic],
+    ['Known Allergies', pt.allergies || '⚠ None recorded'],
+    ['Insurance/TPA', pt.insurance],['Occupation', pt.occupation],
+    ['Referred By', pt.referred],
+    ['Registered On', pt.registeredOn ? new Date(pt.registeredOn).toLocaleString('en-IN') : ''],
+    ['Notes', pt.notes],
+  ];
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">' +
+    rows.filter(function(r){ return r[1]; }).map(function(r){
+      return '<div style="background:var(--light-bg);border-radius:6px;padding:10px 12px;"><div style="font-size:0.74rem;color:var(--text-light);margin-bottom:2px;">'+r[0]+'</div><div style="font-size:0.88rem;font-weight:600;">'+r[1]+'</div></div>';
+    }).join('') + '</div>';
+}
+
+function ksPtdRenderVisits(pt) {
+  const visits = pt.visits || [];
+  if (!visits.length) return '<div style="text-align:center;padding:30px;color:var(--text-light);">No visit records yet. Visits are added automatically when prescriptions are created.</div>';
+  return '<div>' + visits.slice().reverse().map(function(v, i){
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;margin-bottom:6px;">' +
+        '<span style="font-weight:700;color:var(--primary);">Visit #'+(visits.length-i)+'</span>' +
+        '<span style="font-size:0.8rem;color:var(--text-light);">'+new Date(v.date).toLocaleString('en-IN')+'</span>' +
+      '</div>' +
+      (v.complaint?'<div style="font-size:0.83rem;margin-bottom:4px;"><strong>Chief Complaint:</strong> '+esc(v.complaint)+'</div>':'') +
+      (v.diagnosis?'<div style="font-size:0.83rem;margin-bottom:4px;"><strong>Diagnosis:</strong> '+esc(v.diagnosis)+'</div>':'') +
+      (v.bp?'<div style="font-size:0.82rem;color:var(--text-light);">BP: '+esc(v.bp)+' | Weight: '+(v.weight||'—')+' | SpO2: '+(v.spo2||'—')+'</div>':'') +
+      '</div>';
+  }).join('') + '</div>';
+}
+
+function ksPtdRenderRx(pt) {
+  // Link prescriptions from prescription_history by UHID or phone
+  let allRx = [];
+  try { allRx = JSON.parse(localStorage.getItem('prescription_history') || '[]'); } catch(e){}
+  const ptRx = allRx.filter(function(r){
+    return (r.uhid && r.uhid===pt.uhid) || (r.phone && r.phone===pt.phone);
+  });
+  if (!ptRx.length) return '<div style="text-align:center;padding:30px;color:var(--text-light);">No prescriptions linked to this UHID yet.</div>';
+  return ptRx.map(function(r){
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;">' +
+      '<div style="display:flex;justify-content:space-between;"><span style="font-weight:700;">'+(r.diagnosis||r.diag||'Rx')+'</span><span style="font-size:0.8rem;color:var(--text-light);">'+(r.date||'')+'</span></div>' +
+      '<div style="font-size:0.82rem;color:var(--text-light);margin-top:4px;">'+(r.meds||r.medicines||'No meds recorded')+'</div>' +
+      '</div>';
+  }).join('');
+}
+
+function ksPtdRenderBills(pt) {
+  // Link invoices from adv_invoices by UHID or name
+  let allBills = [];
+  try { allBills = JSON.parse(localStorage.getItem('adv_invoices') || '[]'); } catch(e){}
+  try { allBills = allBills.concat(JSON.parse(localStorage.getItem('saas_invoices') || '[]')); } catch(e){}
+  const ptBills = allBills.filter(function(b){
+    return (b.uhid && b.uhid===pt.uhid) || (b.patient && b.patient.toLowerCase()===pt.name.toLowerCase());
+  });
+  if (!ptBills.length) return '<div style="text-align:center;padding:30px;color:var(--text-light);">No bills linked. When you generate a bill with this patient\'s name, it will appear here.</div>';
+  const total = ptBills.reduce(function(s,b){ return s+(parseFloat(b.total)||0); }, 0);
+  return '<div style="margin-bottom:10px;font-weight:700;color:var(--primary);">Total: ₹' + total.toFixed(2) + '</div>' +
+    ptBills.map(function(b){
+      return '<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:flex;justify-content:space-between;">' +
+        '<div><div style="font-weight:600;">'+(b.invNo||b.id||'Invoice')+'</div><div style="font-size:0.8rem;color:var(--text-light);">'+(b.date||'')+'</div></div>' +
+        '<div style="text-align:right;"><div style="font-weight:700;color:#27ae60;">₹'+(b.total||'0')+'</div><div style="font-size:0.78rem;background:'+(b.status==='Paid'?'#27ae60':'#e74c3c')+';color:#fff;padding:1px 8px;border-radius:8px;">'+(b.status||'Pending')+'</div></div>' +
+        '</div>';
+    }).join('');
+}
+
+function ksPtdRenderVitals(pt) {
+  let allVitals = [];
+  try { allVitals = JSON.parse(localStorage.getItem('kspider_vitals') || '[]'); } catch(e){}
+  const ptVitals = allVitals.filter(function(v){
+    return (v.uhid && v.uhid===pt.uhid) || (v.patient && v.patient.toLowerCase()===pt.name.toLowerCase()) ||
+           (v.phone && v.phone===pt.phone);
+  });
+  if (!ptVitals.length) return '<div style="text-align:center;padding:30px;color:var(--text-light);">No vitals recorded for this patient yet.</div>';
+  return '<table style="width:100%;border-collapse:collapse;font-size:0.82rem;">' +
+    '<tr style="background:var(--light-bg);">'+['Date','BP','HR','SpO2','Temp','Sugar','Weight'].map(function(h){ return '<th style="padding:8px 10px;text-align:left;">'+h+'</th>'; }).join('')+'</tr>' +
+    ptVitals.slice().reverse().map(function(v){
+      return '<tr style="border-bottom:1px solid var(--border);">' +
+        ['<td>'+new Date(v.date||v.datetime||Date.now()).toLocaleDateString('en-IN')+'</td>',
+         '<td>'+(v.systolic&&v.diastolic?v.systolic+'/'+v.diastolic:'—')+'</td>',
+         '<td>'+(v.hr||'—')+'</td>',
+         '<td>'+(v.spo2||'—')+'</td>',
+         '<td>'+(v.temp||'—')+'</td>',
+         '<td>'+(v.sugar||'—')+'</td>',
+         '<td>'+(v.weight||'—')+'</td>'].map(function(td){ return td.replace(/<td>/,'<td style="padding:7px 10px;">'); }).join('') +
+        '</tr>';
+    }).join('') + '</table>';
+}
+
+// ── QUICK ACTIONS from Detail Modal ──
+function ksPtLoadToRx() {
+  const pt = ksPtGetByUhid(_ksPtDetailUhid);
+  if (!pt) return;
+  // Fill patient fields in create-rx section
+  ['patient_name','pt_name','erx-pt-name'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.name;
+  });
+  ['patient_age','pt_age','erx-pt-age'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.age;
+  });
+  ['patient_gender','pt_gender','erx-pt-gender'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.gender;
+  });
+  ['patient_phone','pt_phone'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.phone;
+  });
+  // Store UHID for linking
+  sessionStorage.setItem('ks_active_uhid', pt.uhid);
+  sessionStorage.setItem('ks_active_patient_name', pt.name);
+  ksPtCloseDetailModal();
+  if (typeof saasSwitchSection==='function') saasSwitchSection('create-rx','📝 OPD / Create Rx','Patient visit & prescription',null);
+  if (typeof _showToast==='function') _showToast('Patient loaded: ' + pt.name + ' [' + pt.uhid + ']', 'success');
+}
+
+function ksPtLoadToBill() {
+  const pt = ksPtGetByUhid(_ksPtDetailUhid);
+  if (!pt) return;
+  const billPt = document.getElementById('adv-bill-patient');
+  if (billPt) billPt.value = pt.name;
+  // Also set UHID field if exists
+  const uhidField = document.getElementById('adv-bill-uhid');
+  if (uhidField) uhidField.value = pt.uhid;
+  sessionStorage.setItem('ks_active_uhid', pt.uhid);
+  ksPtCloseDetailModal();
+  if (typeof saasSwitchSection==='function') saasSwitchSection('saas-billing','💰 Billing','Invoice & payment management',null);
+  if (typeof _showToast==='function') _showToast('Patient loaded for billing: ' + pt.name, 'success');
+}
+
+function ksPtLoadToAppt() {
+  const pt = ksPtGetByUhid(_ksPtDetailUhid);
+  if (!pt) return;
+  ['appt-name','saas-appt-name'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.name;
+  });
+  ['appt-phone'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.phone;
+  });
+  ['appt-age'].forEach(function(id){
+    const el = document.getElementById(id); if(el) el.value = pt.age;
+  });
+  ksPtCloseDetailModal();
+  if (typeof saasSwitchSection==='function') saasSwitchSection('adv-appointments','📅 Appointments','Manage patient appointments',null);
+}
+
+function ksPtEditFromDetail() {
+  const uhid = _ksPtDetailUhid;
+  ksPtCloseDetailModal();
+  ksPtOpenModal(uhid);
+}
+
+function ksPtDeleteFromDetail() {
+  const uhid = _ksPtDetailUhid;
+  ksPtCloseDetailModal();
+  ksPtDelete(uhid);
+}
+
+function ksPtExportSingleCSV() {
+  const pt = ksPtGetByUhid(_ksPtDetailUhid);
+  if (!pt) return;
+  const headers = ['UHID','Name','Age','Gender','DOB','Phone','Alt Phone','Blood Group','Type','Address','Diagnosis','Chronic','Allergies','Insurance','Occupation','Referred By','Registered On','Notes'];
+  const row = [pt.uhid,pt.name,pt.age,pt.gender,pt.dob,pt.phone,pt.phone2,pt.blood,pt.type,pt.address,pt.diagnosis,pt.chronic,pt.allergies,pt.insurance,pt.occupation,pt.referred,pt.registeredOn,pt.notes];
+  ksDownloadCSV([headers,row], 'Patient_' + pt.uhid + '.csv');
+}
+
+// ── CSV EXPORT ALL PATIENTS ──
+function ksPtExportCSV() {
+  const pts = ksPtGetAll();
+  if (!pts.length) { alert('No patients to export.'); return; }
+  const headers = ['UHID','Name','Age','Gender','DOB','Phone','Alt Phone','Blood Group','Type','Address','Diagnosis','Chronic Conditions','Known Allergies','Insurance/TPA','Occupation','Referred By','Registered On','Last Updated','Total Visits','Notes'];
+  const rows = [headers].concat(pts.map(function(p){
+    return [p.uhid,p.name,p.age,p.gender,p.dob,p.phone,p.phone2,p.blood,p.type,p.address,p.diagnosis,p.chronic,p.allergies,p.insurance,p.occupation,p.referred,p.registeredOn,p.lastUpdated,(p.visits||[]).length,p.notes];
+  }));
+  ksDownloadCSV(rows, 'KSpider_Patients_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof _showToast==='function') _showToast('Exported ' + pts.length + ' patients to CSV', 'success');
+}
+
+// ── CSV IMPORT PATIENTS ──
+function ksPtImportCSVClick() { const f=document.getElementById('ks-pt-csv-import'); if(f) f.click(); }
+
+function ksPtImportCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+    const headers = lines[0].split(',').map(function(h){ return h.replace(/"/g,'').trim().toLowerCase(); });
+    const pts = ksPtGetAll();
+    let added = 0, updated = 0;
+    lines.slice(1).forEach(function(line) {
+      const vals = ksCsvParseLine(line);
+      const obj = {};
+      headers.forEach(function(h,i){ obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+      if (!obj['name'] && !obj['patient name'] && !obj['full name']) return;
+      const name = obj['name'] || obj['patient name'] || obj['full name'] || '';
+      const uhid = obj['uhid'] || ksGenUHID();
+      const existing = pts.findIndex(function(p){ return p.uhid===uhid; });
+      const pt = {
+        uhid: uhid, name: name,
+        age: obj['age']||'', gender: obj['gender']||'Male', dob: obj['dob']||obj['date of birth']||'',
+        phone: obj['phone']||obj['mobile']||'', phone2: obj['alt phone']||'',
+        blood: obj['blood group']||obj['blood']||'', type: obj['type']||obj['patient type']||'OPD',
+        address: obj['address']||'', diagnosis: obj['diagnosis']||obj['primary diagnosis']||'',
+        chronic: obj['chronic conditions']||obj['chronic']||'',
+        allergies: obj['known allergies']||obj['allergies']||'',
+        insurance: obj['insurance/tpa']||obj['insurance']||'',
+        occupation: obj['occupation']||'', referred: obj['referred by']||obj['referred']||'',
+        notes: obj['notes']||'',
+        registeredOn: obj['registered on']||new Date().toISOString(),
+        lastUpdated: new Date().toISOString(), visits: []
+      };
+      if (existing>=0) { pts[existing]=pt; updated++; }
+      else { pts.push(pt); added++; }
+    });
+    ksPtSaveAll(pts);
+    ksPtRender(); ksPtUpdateStats();
+    alert('Import complete: ' + added + ' added, ' + updated + ' updated.');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function ksPtDownloadTemplate() {
+  const headers = ['UHID','Name','Age','Gender','DOB','Phone','Alt Phone','Blood Group','Type','Address','Diagnosis','Chronic Conditions','Known Allergies','Insurance/TPA','Occupation','Referred By','Notes'];
+  const sample = ['UHID-2501-0001','Ramesh Patel','45','Male','1980-05-15','9876543210','','B+','OPD','123 MG Road, Ahmedabad','Hypertension, Diabetes Type 2','DM HTN','Penicillin','Star Health','Farmer','Dr. Sharma','Patient on regular follow-up'];
+  ksDownloadCSV([headers, sample], 'KSpider_Patient_Template.csv');
+}
+
+// ── CSV EXPORTS (other data) ──
+function ksCsvExportBrands() {
+  let brands = [];
+  try { brands = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]'); } catch(e){}
+  // Include built-in
+  if (typeof KSPIDER_BRAND_DB !== 'undefined') {
+    KSPIDER_BRAND_DB.forEach(function(b){
+      brands.push({brand:b[0],generic:b[1],company:b[2],category:b[3],form:b[4],price:b[5],dose:b[6],notes:b[7],_custom:false});
+    });
+  }
+  const headers = ['Brand Name','Generic/Composition','Company','Category','Form','Price','Usual Dose','Clinical Notes','Custom'];
+  const rows = [headers].concat(brands.map(function(b){
+    return [b.brand,b.generic,b.company,b.category,b.form,b.price,b.dose,b.notes,b._custom?'Yes':'No'];
+  }));
+  ksDownloadCSV(rows, 'KSpider_BrandDB_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof _showToast==='function') _showToast('Exported ' + brands.length + ' brands to CSV', 'success');
+}
+
+function ksCsvImportBrandsClick() { const f=document.getElementById('ks-csv-brand-import'); if(f) f.click(); }
+
+function ksCsvImportBrands(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(function(l){ return l.trim(); });
+    const headers = lines[0].split(',').map(function(h){ return h.replace(/"/g,'').trim().toLowerCase(); });
+    let customs = [];
+    try { customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]'); } catch(e){}
+    let added = 0;
+    lines.slice(1).forEach(function(line) {
+      const vals = ksCsvParseLine(line);
+      const obj = {};
+      headers.forEach(function(h,i){ obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+      const name = obj['brand name'] || obj['brand'] || '';
+      if (!name) return;
+      const isCustom = (obj['custom']||'').toLowerCase() !== 'no';
+      if (!isCustom) return; // Skip built-in ones
+      const existing = customs.findIndex(function(b){ return b.brand===name; });
+      const brand = {
+        brand: name,
+        generic: obj['generic/composition']||obj['generic']||'',
+        company: obj['company']||'',
+        category: obj['category']||'Other',
+        form: obj['form']||'',
+        price: obj['price']||'',
+        dose: obj['usual dose']||obj['dose']||'',
+        notes: obj['clinical notes']||obj['notes']||'',
+        _custom: true
+      };
+      if (existing>=0) customs[existing]=brand;
+      else { customs.push(brand); added++; }
+    });
+    localStorage.setItem('ks_brand_custom_v3', JSON.stringify(customs));
+    if (typeof brandDBInit==='function') brandDBInit();
+    alert('Brand import complete: ' + added + ' custom brands imported.');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function ksCsvExportRx() {
+  let rx = [];
+  try { rx = JSON.parse(localStorage.getItem('prescription_history') || '[]'); } catch(e){}
+  if (!rx.length) { alert('No prescription history to export.'); return; }
+  const headers = ['Date','Patient Name','UHID','Age','Gender','Diagnosis','Medicines','Investigations','Follow-up','Doctor','Ref No'];
+  const rows = [headers].concat(rx.map(function(r){
+    return [r.date||'',r.name||r.patient||'',r.uhid||'',r.age||'',r.gender||'',r.diagnosis||r.diag||'',r.meds||r.medicines||'',r.investigations||r.inv||'',r.followup||r.fu||'',r.doctor||'',r.refno||r.ref||''];
+  }));
+  ksDownloadCSV(rows, 'KSpider_Prescriptions_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof _showToast==='function') _showToast('Exported ' + rx.length + ' prescriptions', 'success');
+}
+
+function ksCsvExportBilling() {
+  let bills = [];
+  try { bills = bills.concat(JSON.parse(localStorage.getItem('adv_invoices') || '[]')); } catch(e){}
+  try { bills = bills.concat(JSON.parse(localStorage.getItem('saas_invoices') || '[]')); } catch(e){}
+  if (!bills.length) { alert('No billing records to export.'); return; }
+  const headers = ['Invoice No','Patient Name','UHID','Date','Doctor','Items','Subtotal','Discount','Total','Payment Mode','Status'];
+  const rows = [headers].concat(bills.map(function(b){
+    return [b.invNo||b.id||'',b.patient||'',b.uhid||'',b.date||'',b.doctor||'',b.itemsSummary||'',b.subtotal||'',b.discAmt||b.discount||'0',b.total||'',b.payMode||b.paymode||'',b.status||''];
+  }));
+  ksDownloadCSV(rows, 'KSpider_Billing_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof _showToast==='function') _showToast('Exported ' + bills.length + ' invoices', 'success');
+}
+
+function ksCsvExportAppts() {
+  let appts = [];
+  try { appts = appts.concat(JSON.parse(localStorage.getItem('adv_appointments') || '[]')); } catch(e){}
+  try { appts = appts.concat(JSON.parse(localStorage.getItem('saas_appointments') || '[]')); } catch(e){}
+  if (!appts.length) { alert('No appointments to export.'); return; }
+  const headers = ['ID','Patient Name','UHID','Age','Phone','Date','Time','Type','Status','Notes'];
+  const rows = [headers].concat(appts.map(function(a){
+    return [a.id||'',a.name||a.patient||'',a.uhid||'',a.age||'',a.phone||'',a.date||'',a.time||a.timeSlot||'',a.type||'',a.status||'',a.notes||''];
+  }));
+  ksDownloadCSV(rows, 'KSpider_Appointments_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof _showToast==='function') _showToast('Exported ' + appts.length + ' appointments', 'success');
+}
+
+// ── FULL BACKUP ──
+function ksCsvFullBackup() {
+  const backup = {
+    version: '2.0', exportDate: new Date().toISOString(),
+    clinic: localStorage.getItem('kspider_clinic_name') || '',
+    patients: ksPtGetAll(),
+    prescriptions: (function(){ try { return JSON.parse(localStorage.getItem('prescription_history')||'[]'); } catch(e){ return []; } })(),
+    appointments: (function(){ try { return JSON.parse(localStorage.getItem('adv_appointments')||'[]').concat(JSON.parse(localStorage.getItem('saas_appointments')||'[]')); } catch(e){ return []; } })(),
+    invoices: (function(){ try { return JSON.parse(localStorage.getItem('adv_invoices')||'[]').concat(JSON.parse(localStorage.getItem('saas_invoices')||'[]')); } catch(e){ return []; } })(),
+    vitals: (function(){ try { return JSON.parse(localStorage.getItem('kspider_vitals')||'[]'); } catch(e){ return []; } })(),
+    customBrands: (function(){ try { return JSON.parse(localStorage.getItem('ks_brand_custom_v3')||'[]'); } catch(e){ return []; } })(),
+    doctorProfile: (function(){ try { return JSON.parse(localStorage.getItem('doctor_profile')||'{}'); } catch(e){ return {}; } })(),
+    rxTemplates: (function(){ try { return JSON.parse(localStorage.getItem('kspider_rx_templates')||'[]'); } catch(e){ return []; } })(),
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'KSpider_FullBackup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url);
+  if (typeof _showToast==='function') _showToast('Full backup downloaded!', 'success');
+}
+
+function ksCsvRestoreBackup() { const f=document.getElementById('ks-backup-restore-input'); if(f) f.click(); }
+
+function ksCsvDoRestore(input) {
+  const file = input.files[0]; if (!file) return;
+  if (!confirm('Restore from backup? This will OVERWRITE all current data. Proceed?')) { input.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const bk = JSON.parse(e.target.result);
+      if (bk.patients) ksPtSaveAll(bk.patients);
+      if (bk.prescriptions) localStorage.setItem('prescription_history', JSON.stringify(bk.prescriptions));
+      if (bk.invoices) localStorage.setItem('adv_invoices', JSON.stringify(bk.invoices));
+      if (bk.vitals) localStorage.setItem('kspider_vitals', JSON.stringify(bk.vitals));
+      if (bk.customBrands) localStorage.setItem('ks_brand_custom_v3', JSON.stringify(bk.customBrands));
+      if (bk.doctorProfile) localStorage.setItem('doctor_profile', JSON.stringify(bk.doctorProfile));
+      if (bk.rxTemplates) localStorage.setItem('kspider_rx_templates', JSON.stringify(bk.rxTemplates));
+      ksPtRender(); ksPtUpdateStats();
+      if (typeof brandDBInit==='function') brandDBInit();
+      alert('Backup restored successfully! Patients: ' + (bk.patients||[]).length + ', Prescriptions: ' + (bk.prescriptions||[]).length + ', Invoices: ' + (bk.invoices||[]).length);
+    } catch(err) {
+      alert('Invalid backup file: ' + err.message);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── CSV UTILS ──
+function ksDownloadCSV(rows, filename) {
+  const csv = rows.map(function(row){
+    return row.map(function(cell){
+      const s = String(cell||'').replace(/"/g,'""');
+      return (s.includes(',')||s.includes('"')||s.includes('\n')) ? '"'+s+'"' : s;
+    }).join(',');
+  }).join('\n');
+  const BOM = '\uFEFF'; // UTF-8 BOM for Excel compatibility
+  const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ksCsvParseLine(line) {
+  const result = [];
+  let inQuote = false;
+  let current = '';
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuote && line[i+1]==='"') { current += '"'; i++; }
+      else inQuote = !inQuote;
+    } else if (ch === ',' && !inQuote) {
+      result.push(current); current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+// ── HOOK INTO EXISTING SAVE FUNCTIONS ──
+// Patch: when prescription is saved, attach UHID from session
+(function() {
+  // Patch prescription save to include UHID
+  const origSaveRx = window.saveToHistory;
+  if (typeof origSaveRx === 'function') {
+    window.saveToHistory = function(rx) {
+      const activeUhid = sessionStorage.getItem('ks_active_uhid');
+      if (activeUhid && rx) rx.uhid = activeUhid;
+      return origSaveRx.call(this, rx);
+    };
+  }
+
+  // Patch: when appointment is booked, try to find UHID
+  const origApptBook = window.apptBook;
+  if (typeof origApptBook === 'function') {
+    window.apptBook = function() {
+      const nameEl = document.getElementById('appt-name');
+      if (nameEl && nameEl.value) {
+        const pts = ksPtGetAll();
+        const match = pts.find(function(p){ return p.name.toLowerCase()===nameEl.value.toLowerCase().trim(); });
+        if (match) sessionStorage.setItem('ks_active_uhid', match.uhid);
+      }
+      return origApptBook.call(this);
+    };
+  }
+})();
+
+// ── UHID FIELD in billing form ──
+// Add UHID field to billing form dynamically
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const billPatientField = document.getElementById('adv-bill-patient');
+    if (billPatientField && !document.getElementById('adv-bill-uhid')) {
+      const wrapper = document.createElement('div');
+      wrapper.style.cssText = 'margin-top:8px;';
+      wrapper.innerHTML = '<label style="font-size:0.8rem;color:#666;display:block;margin-bottom:3px;">UHID (auto-filled from Patient DB)</label><input id="adv-bill-uhid" type="text" placeholder="UHID or leave blank" style="width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:0.85rem;">';
+      billPatientField.parentNode && billPatientField.parentNode.insertAdjacentElement('afterend', wrapper);
+    }
+  });
+})();
+
+// ── INIT on section switch ──
+(function() {
+  const origSwitch = window.switchSection;
+  if (typeof origSwitch === 'function') {
+    window.switchSection = function(id, btn) {
+      const result = origSwitch.call(this, id, btn);
+      if (id === 'ks-patient-db') {
+        setTimeout(function(){ ksPtRender(); ksPtUpdateStats(); }, 50);
+      }
+      if (id === 'ks-csv-manager') { /* nothing to init */ }
+      return result;
+    };
+  }
+  
+  // Also via MutationObserver for the new sections
+  document.addEventListener('DOMContentLoaded', function() {
+    ksPtRender();
+    ksPtUpdateStats();
+    const ptSec = document.getElementById('ks-patient-db');
+    if (ptSec && typeof MutationObserver !== 'undefined') {
+      new MutationObserver(function(ml) {
+        ml.forEach(function(m) {
+          if (m.attributeName === 'class' && ptSec.classList.contains('active')) {
+            setTimeout(function(){ ksPtRender(); ksPtUpdateStats(); }, 30);
+          }
+        });
+      }).observe(ptSec, {attributes:true, attributeFilter:['class']});
+    }
+  });
+})();
+
+// ── CLOSE MODALS ON BACKDROP ──
+document.addEventListener('click', function(e) {
+  const ptModal = document.getElementById('ks-pt-modal');
+  if (ptModal && e.target === ptModal) ksPtCloseModal();
+  const detailModal = document.getElementById('ks-pt-detail-modal');
+  if (detailModal && e.target === detailModal) ksPtCloseDetailModal();
+});
+
+// ── CSS ──
+(function(){
+  const s = document.createElement('style');
+  s.textContent = '.ks-ptd-tab{background:none!important;border:none!important;}.ks-ptd-tab:hover{color:var(--primary)!important;}';
+  document.head.appendChild(s);
+})();
+
+</script>
+
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════════
+// KS DRUG & BRAND CSV MANAGEMENT SYSTEM v2.0
+// Drug DB: Export/Import 729 drugs as CSV
+// Brand DB: Add brand by searching DRUG_RAW for content auto-fill
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ── DRUG CSV EXPORT (all 729 built-in + custom) ──────────────────────────
+function ksDrugExportCSV() {
+  if (typeof DRUG_RAW === 'undefined') { alert('Drug database not loaded yet.'); return; }
+  const headers = ['Drug Name','Category','Adult Dose','Paediatric Dose','Pregnancy Category','Elderly Note','Contraindications'];
+  const rows = [headers].concat(DRUG_RAW.map(function(d) {
+    return [d[0], d[1], d[2], d[3], d[4], d[5], d[6]];
+  }));
+  // Also add custom drugs if any
+  let customDrugs = [];
+  try { customDrugs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
+  customDrugs.forEach(function(d) {
+    rows.push([d.name, d.category, d.adultDose, d.pedsDose, d.pregnancy, d.elderlyNote, d.contraindications]);
+  });
+  ksDownloadCSV(rows, 'KSpider_DrugDatabase_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof _showToast === 'function') _showToast('Exported ' + (rows.length-1) + ' drugs to CSV', 'success');
+  else if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' drugs');
+}
+
+// ── DRUG CSV IMPORT ───────────────────────────────────────────────────────
+function ksDrugImportCSVClick() {
+  let inp = document.getElementById('ks-drug-csv-import');
+  if (!inp) {
+    inp = document.createElement('input');
+    inp.type = 'file'; inp.accept = '.csv'; inp.id = 'ks-drug-csv-import';
+    inp.style.display = 'none';
+    inp.onchange = function() { ksDrugImportCSV(this); };
+    document.body.appendChild(inp);
+  }
+  inp.click();
+}
+
+function ksDrugImportCSV(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const lines = e.target.result.split('\n').filter(function(l) { return l.trim(); });
+    const headers = lines[0].split(',').map(function(h) { return h.replace(/"/g,'').trim().toLowerCase(); });
+    let customs = [];
+    try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
+    let added = 0, updated = 0;
+    lines.slice(1).forEach(function(line) {
+      const vals = ksCsvParseLine(line);
+      const obj = {};
+      headers.forEach(function(h, i) { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
+      const name = obj['drug name'] || obj['name'] || '';
+      if (!name) return;
+      // Check if it's in built-in DRUG_RAW
+      const builtIn = typeof DRUG_RAW !== 'undefined' && DRUG_RAW.find(function(d) { return d[0].toLowerCase() === name.toLowerCase(); });
+      if (builtIn) return; // Skip built-in drugs (read-only)
+      const drug = {
+        name: name,
+        category: obj['category'] || 'Other',
+        adultDose: obj['adult dose'] || '',
+        pedsDose: obj['paediatric dose'] || obj['peds dose'] || '',
+        pregnancy: obj['pregnancy category'] || obj['pregnancy'] || '',
+        elderlyNote: obj['elderly note'] || obj['elderly'] || '',
+        contraindications: obj['contraindications'] || ''
+      };
+      const idx = customs.findIndex(function(d) { return d.name.toLowerCase() === name.toLowerCase(); });
+      if (idx >= 0) { customs[idx] = drug; updated++; }
+      else { customs.push(drug); added++; }
+    });
+    localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customs));
+    alert('Drug import complete: ' + added + ' added, ' + updated + ' updated. Reload Drug DB to see changes.');
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+// ── DRUG SEARCH AUTOCOMPLETE (for Brand Add Modal) ────────────────────────
+function ksSearchDrugForBrand(query) {
+  var sugg = document.getElementById('ks-drug-suggestions');
+  if (!query || query.length < 2) {
+    if (sugg) sugg.style.display = 'none';
+    return;
+  }
+  if (typeof DRUG_RAW === 'undefined') return;
+  var q = query.toLowerCase();
+  var matches = DRUG_RAW.filter(function(d) {
+    return d[0].toLowerCase().indexOf(q) >= 0;
+  }).slice(0, 10);
+
+  if (!sugg) return;
+  if (!matches.length) { sugg.style.display = 'none'; return; }
+
+  sugg.innerHTML = '';
+  matches.forEach(function(d) {
+    var name = (d[0]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    var cat  = (d[1]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    var dose = ((d[2]||'').slice(0,40)).replace(/&/g,'&amp;').replace(/</g,'&lt;');
+    var item = document.createElement('div');
+    item.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;';
+    item.innerHTML = '<strong>' + name + '</strong><span style="color:var(--text-light);font-size:0.78rem;margin-left:8px;">' + cat + ' | Dose: ' + dose + '</span>';
+    item.onmouseover = function() { this.style.background = 'var(--light-bg)'; };
+    item.onmouseout  = function() { this.style.background = ''; };
+    item.onclick = function() { ksSelectDrugForBrand(d); };
+    sugg.appendChild(item);
+  });
+  sugg.style.display = 'block';
+}
+
+
+function ksSelectDrugFromAttr(el) {
+  try {
+    var d = JSON.parse(decodeURIComponent(el.getAttribute('data-drug')));
+    ksSelectDrugForBrand(d);
+  } catch(e) { console.error('Drug select error', e); }
+}
+
+
+function ksSelectDrugForBrand(drug) {
+  // drug = [Name, Category, AdultDose, PedsDose, Pregnancy, ElderlyNote, Contraindications]
+  const fields = {
+    'bm-generic': drug[0] + ' (' + drug[1] + ')',
+    'bm-category': drug[1],
+    'bm-dose': drug[2],
+    'bm-notes': (drug[5] ? 'Elderly: ' + drug[5] + '. ' : '') + (drug[6] ? 'CI: ' + drug[6].slice(0,100) : '')
+  };
+  Object.keys(fields).forEach(function(id) {
+    const el = document.getElementById(id); if (el) el.value = fields[id];
+  });
+  // Auto-fill brand name from drug if empty
+  const brandEl = document.getElementById('bm-brand');
+  if (brandEl && !brandEl.value) brandEl.value = drug[0];
+
+  const sugg = document.getElementById('ks-drug-suggestions');
+  if (sugg) sugg.style.display = 'none';
+}
+
+// ── ENHANCED BRAND ADD MODAL (with drug search) ────────────────────────────
+// Patch openAddBrandModal to inject drug search field
+const _origOpenAddBrand = window.openAddBrandModal;
+window.openAddBrandModal = function(editData) {
+  if (typeof _origOpenAddBrand === 'function') _origOpenAddBrand(editData);
+  // Inject drug search if not already present
+  setTimeout(function() {
+    const genericField = document.getElementById('bm-generic');
+    if (!genericField || document.getElementById('ks-drug-search-wrapper')) return;
+    const wrapper = document.createElement('div');
+    wrapper.id = 'ks-drug-search-wrapper';
+    wrapper.style.cssText = 'margin-bottom:12px;';
+    wrapper.innerHTML =
+      '<label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">🔍 Search Drug to Auto-fill Generic & Dose</label>' +
+      '<div style="position:relative;">' +
+        '<input id="ks-drug-brand-search" type="text" placeholder="Type drug name... (e.g. Amoxicillin, Metformin)" ' +
+          'oninput="ksSearchDrugForBrand(this.value)" autocomplete="off" ' +
+          'style="width:100%;padding:9px 12px;border:1.5px solid var(--primary);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">' +
+        '<div id="ks-drug-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:0 0 8px 8px;z-index:999;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.15);"></div>' +
+      '</div>' +
+      '<p style="font-size:0.75rem;color:var(--text-light);margin:4px 0 0;">Search 729 built-in drugs → auto-fills generic name, category, dose & notes</p>';
+    // Insert before the generic field label
+    const genericLabel = genericField.previousElementSibling;
+    if (genericLabel) genericLabel.parentNode.insertBefore(wrapper, genericLabel);
+    else genericField.parentNode.insertBefore(wrapper, genericField);
+  }, 80);
+};
+
+// ── DRUG DB SECTION ENHANCE: Show custom drugs too ────────────────────────
+const _origSearchDrug = window.searchDrug;
+window.searchDrug = function() {
+  if (typeof _origSearchDrug === 'function') _origSearchDrug();
+  // Append custom drugs to results if query matches
+  const query = ((document.getElementById('drug_search')||{value:''}).value || '').toLowerCase();
+  let customDrugs = [];
+  try { customDrugs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
+  if (!customDrugs.length) return;
+  const matches = customDrugs.filter(function(d) {
+    return !query || d.name.toLowerCase().indexOf(query) >= 0 || d.category.toLowerCase().indexOf(query) >= 0;
+  });
+  if (!matches.length) return;
+  const drugResult = document.getElementById('drug_result') || document.getElementById('drug-result');
+  if (!drugResult) return;
+
+  const customSection = document.createElement('div');
+  customSection.style.marginTop = '10px';
+  const customHeader = document.createElement('div');
+  customHeader.style.cssText = 'font-size:0.8rem;font-weight:700;color:#f39c12;margin-bottom:6px;';
+  customHeader.textContent = '⭐ My Custom Drugs';
+  customSection.appendChild(customHeader);
+
+  matches.forEach(function(d) {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:var(--card-bg);border:1px solid #f39c12;border-radius:8px;padding:12px;margin-bottom:8px;';
+
+    const row = document.createElement('div');
+    row.style.display = 'flex';
+    row.style.justifyContent = 'space-between';
+
+    const nameEl = document.createElement('strong');
+    nameEl.style.color = 'var(--primary)';
+    nameEl.textContent = d.name;
+    row.appendChild(nameEl);
+
+    const btnGroup = document.createElement('div');
+    btnGroup.style.cssText = 'display:flex;gap:5px;';
+
+    const editBtn = document.createElement('button');
+    editBtn.style.cssText = 'background:#f39c12;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;';
+    editBtn.textContent = 'Edit';
+    editBtn.onclick = (function(name){ return function(){ ksEditCustomDrug(name); }; })(d.name);
+    btnGroup.appendChild(editBtn);
+
+    const delBtn = document.createElement('button');
+    delBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;';
+    delBtn.textContent = 'Del';
+    delBtn.onclick = (function(name){ return function(){ ksDeleteCustomDrug(name); }; })(d.name);
+    btnGroup.appendChild(delBtn);
+
+    row.appendChild(btnGroup);
+    card.appendChild(row);
+
+    if (d.category) {
+      const catEl = document.createElement('div');
+      catEl.style.cssText = 'font-size:0.8rem;color:var(--text-light);';
+      catEl.textContent = d.category;
+      card.appendChild(catEl);
+    }
+    if (d.adultDose) {
+      const doseEl = document.createElement('div');
+      doseEl.style.cssText = 'font-size:0.8rem;margin-top:4px;';
+      doseEl.innerHTML = '<strong>Dose:</strong> ' + d.adultDose.replace(/&/g,'&amp;').replace(/</g,'&lt;');
+      card.appendChild(doseEl);
+    }
+    customSection.appendChild(card);
+  });
+  drugResult.appendChild(customSection);
+};
+
+function ksEditCustomDrug(name) {
+  let customs = [];
+  try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
+  const d = customs.find(function(x) { return x.name === name; });
+  if (!d) return;
+  ksOpenAddCustomDrugModal(d);
+}
+
+function ksDeleteCustomDrug(name) {
+  if (!confirm('Delete custom drug "' + name + '"?')) return;
+  let customs = [];
+  try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
+  customs = customs.filter(function(d) { return d.name !== name; });
+  localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customs));
+  if (typeof searchDrug === 'function') searchDrug();
+  if (typeof _showToast === 'function') _showToast('Custom drug deleted', 'success');
+}
+
+// ── ADD CUSTOM DRUG MODAL ─────────────────────────────────────────────────
+function ksOpenAddCustomDrugModal(editData) {
+  var modal = document.getElementById('ks-custom-drug-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ks-custom-drug-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;';
+    
+    var box = document.createElement('div');
+    box.style.cssText = 'background:var(--card-bg);border-radius:14px;padding:24px;max-width:550px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);';
+    
+    // Header row
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;';
+    var title = document.createElement('h3');
+    title.id = 'ks-cdrug-title';
+    title.style.cssText = 'margin:0;color:var(--primary);font-size:1.05rem;';
+    title.textContent = 'Add Custom Drug';
+    var closeBtn = document.createElement('button');
+    closeBtn.style.cssText = 'background:none;border:none;font-size:1.4rem;cursor:pointer;';
+    closeBtn.innerHTML = '&#x2715;';
+    closeBtn.onclick = function() { modal.style.display = 'none'; };
+    hdr.appendChild(title); hdr.appendChild(closeBtn);
+    box.appendChild(hdr);
+
+    // Form fields
+    var fields = [
+      {id:'ks-cd-name',  label:'Drug Name *',       type:'text',   placeholder:'e.g. Myodrug 500'},
+      {id:'ks-cd-cat',   label:'Category',           type:'text',   placeholder:'e.g. Antibiotic, NSAID', list:'ks-cd-cat-list'},
+      {id:'ks-cd-dose',  label:'Adult Dose',         type:'text',   placeholder:'e.g. 500mg TDS x5d'},
+      {id:'ks-cd-peds',  label:'Paediatric Dose',    type:'text',   placeholder:'e.g. 10mg/kg BD'},
+      {id:'ks-cd-elderly',label:'Elderly Note',      type:'text',   placeholder:'Dose adj / caution'},
+    ];
+    var form = document.createElement('div');
+    form.style.cssText = 'display:flex;flex-direction:column;gap:11px;';
+
+    fields.forEach(function(f) {
+      var wrap = document.createElement('div');
+      var lbl = document.createElement('label');
+      lbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px;';
+      lbl.textContent = f.label;
+      var inp = document.createElement('input');
+      inp.id = f.id; inp.type = f.type; inp.placeholder = f.placeholder;
+      inp.style.cssText = 'width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;';
+      if (f.list) inp.setAttribute('list', f.list);
+      wrap.appendChild(lbl); wrap.appendChild(inp);
+      form.appendChild(wrap);
+    });
+
+    // Datalist for category
+    var dl = document.createElement('datalist');
+    dl.id = 'ks-cd-cat-list';
+    ['Analgesic','Antibiotic','NSAID','Antacid','Antidiabetic','Antihypertensive','Cardiovascular','CNS','Respiratory','GI','Endocrine','Supplement','Antifungal','Antiparasitic','Other'].forEach(function(v) {
+      var opt = document.createElement('option'); opt.value = v; dl.appendChild(opt);
+    });
+    form.appendChild(dl);
+
+    // Pregnancy select + CI textarea row
+    var grid = document.createElement('div');
+    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;';
+    var pregWrap = document.createElement('div');
+    var pregLbl = document.createElement('label');
+    pregLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px;';
+    pregLbl.textContent = 'Pregnancy Cat.';
+    var pregSel = document.createElement('select');
+    pregSel.id = 'ks-cd-preg';
+    pregSel.style.cssText = 'width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);';
+    ['','A','B','C','D','X'].forEach(function(v) {
+      var opt = document.createElement('option'); opt.value = v; opt.textContent = v || 'Unknown'; pregSel.appendChild(opt);
+    });
+    pregWrap.appendChild(pregLbl); pregWrap.appendChild(pregSel);
+    grid.appendChild(pregWrap);
+    form.appendChild(grid);
+
+    var ciWrap = document.createElement('div');
+    var ciLbl = document.createElement('label');
+    ciLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px;';
+    ciLbl.textContent = 'Contraindications';
+    var ciTa = document.createElement('textarea');
+    ciTa.id = 'ks-cd-ci'; ciTa.rows = 2; ciTa.placeholder = 'Key contraindications...';
+    ciTa.style.cssText = 'width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);resize:vertical;box-sizing:border-box;';
+    ciWrap.appendChild(ciLbl); ciWrap.appendChild(ciTa);
+    form.appendChild(ciWrap);
+    box.appendChild(form);
+
+    // Buttons
+    var btnRow = document.createElement('div');
+    btnRow.style.cssText = 'display:flex;gap:10px;margin-top:18px;';
+    var saveBtn = document.createElement('button');
+    saveBtn.style.cssText = 'flex:1;padding:11px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:700;cursor:pointer;';
+    saveBtn.textContent = 'Save Drug';
+    saveBtn.onclick = ksSaveCustomDrug;
+    var cancelBtn = document.createElement('button');
+    cancelBtn.style.cssText = 'padding:11px 18px;background:var(--light-bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = function() { modal.style.display = 'none'; };
+    btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
+    box.appendChild(btnRow);
+    modal.appendChild(box);
+
+    modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
+    document.body.appendChild(modal);
+  }
+
+  var titleEl = document.getElementById('ks-cdrug-title');
+  if (editData) {
+    if (titleEl) titleEl.textContent = 'Edit Custom Drug';
+    var map = {'ks-cd-name':'name','ks-cd-cat':'category','ks-cd-dose':'adultDose','ks-cd-peds':'pedsDose','ks-cd-preg':'pregnancy','ks-cd-elderly':'elderlyNote','ks-cd-ci':'contraindications'};
+    Object.keys(map).forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.value = editData[map[id]] || '';
+    });
+    modal._editName = editData.name;
+  } else {
+    if (titleEl) titleEl.textContent = 'Add Custom Drug';
+    ['ks-cd-name','ks-cd-cat','ks-cd-dose','ks-cd-peds','ks-cd-elderly','ks-cd-ci'].forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+    var pregEl = document.getElementById('ks-cd-preg'); if (pregEl) pregEl.value = '';
+    modal._editName = null;
+  }
+  modal.style.display = 'flex';
+  setTimeout(function() { var n = document.getElementById('ks-cd-name'); if(n) n.focus(); }, 80);
+}
+
+
+function ksSaveCustomDrug() {
+  const name = (document.getElementById('ks-cd-name')||{value:''}).value.trim();
+  if (!name) { alert('Drug name is required.'); return; }
+
+  let customs = [];
+  try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
+  const modal = document.getElementById('ks-custom-drug-modal');
+  const editName = modal ? modal._editName : null;
+  if (editName) customs = customs.filter(function(d) { return d.name !== editName; });
+
+  customs.push({
+    name: name,
+    category: (document.getElementById('ks-cd-cat')||{value:'Other'}).value || 'Other',
+    adultDose: (document.getElementById('ks-cd-dose')||{value:''}).value.trim(),
+    pedsDose: (document.getElementById('ks-cd-peds')||{value:''}).value.trim(),
+    pregnancy: (document.getElementById('ks-cd-preg')||{value:''}).value,
+    elderlyNote: (document.getElementById('ks-cd-elderly')||{value:''}).value.trim(),
+    contraindications: (document.getElementById('ks-cd-ci')||{value:''}).value.trim()
+  });
+  localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customs));
+  if (modal) modal.style.display = 'none';
+  if (typeof searchDrug === 'function') searchDrug();
+  if (typeof _showToast === 'function') _showToast('Custom drug saved: ' + name, 'success');
+}
+
+// ── ADD BUTTONS TO DRUG-DB SECTION ───────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  // Add "Export CSV" and "Add Custom Drug" buttons to the Drug DB section header
+  const drugSection = document.getElementById('drug-db');
+  if (!drugSection) return;
+  // Find a suitable place - look for search bar or header
+  const drugHeader = drugSection.querySelector('h2, .section-header, [style*="font-size:1.3"], [style*="font-size: 1.3"]');
+  if (drugHeader) {
+    const btnBar = document.createElement('div');
+    btnBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;';
+    btnBar.innerHTML =
+      '<button onclick="ksDrugExportCSV()" style="background:#27ae60;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">📥 Export Drug DB CSV</button>' +
+      '<button onclick="ksDrugImportCSVClick()" style="background:#2980b9;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">📤 Import Custom Drugs CSV</button>' +
+      '<button onclick="ksOpenAddCustomDrugModal()" style="background:#8e44ad;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">➕ Add Custom Drug</button>' +
+      '<span style="font-size:0.78rem;color:var(--text-light);align-self:center;">729 built-in drugs | Custom drugs editable via CSV</span>';
+    const drugSearchArea = drugSection.querySelector('input[type="text"]') || drugSection.querySelector('input');
+    if (drugSearchArea && drugSearchArea.parentNode) {
+      drugSearchArea.parentNode.insertBefore(btnBar, drugSearchArea.parentNode.firstChild);
+    } else {
+      drugHeader.parentNode && drugHeader.parentNode.insertBefore(btnBar, drugHeader.nextSibling);
+    }
+  }
+});
+
+// ── MOBILE SIDEBAR CLOSE ON NAV CLICK ────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  // Add overlay div for mobile sidebar
+  if (!document.getElementById('ks-sidebar-overlay')) {
+    const overlay = document.createElement('div');
+    overlay.id = 'ks-sidebar-overlay';
+    overlay.onclick = function() {
+      document.body.classList.remove('sidebar-mobile-open');
+      document.body.classList.remove('sidebar-open');
+    };
+    document.body.appendChild(overlay);
+  }
+
+  // Close sidebar on nav item click (mobile)
+  document.querySelectorAll('.sidebar-nav-item').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      if (window.innerWidth < 1024) {
+        var sb = document.getElementById('saas-sidebar');
+        if (sb) sb.classList.remove('mobile-open');
+        document.body.classList.remove('sidebar-mobile-open');
+        document.body.classList.remove('sidebar-open');
+        var ov = document.getElementById('ks-sidebar-overlay');
+        var saasOv = document.getElementById('saas-sidebar-overlay');
+        if (ov) ov.style.display = 'none';
+        if (saasOv) saasOv.style.display = 'none';
+      }
+    });
+  });
+});
+
+// Patch saasSidebarToggleMobile to also toggle our overlay
+const _origToggleMobile = window.saasSidebarToggleMobile;
+window.saasSidebarToggleMobile = function() {
+  if (typeof _origToggleMobile === 'function') _origToggleMobile();
+  // Ensure our overlay also responds
+  const sb = document.getElementById('saas-sidebar');
+  if (sb) {
+    const isOpen = sb.classList.contains('mobile-open') || document.body.classList.contains('sidebar-mobile-open');
+    const overlay = document.getElementById('ks-sidebar-overlay');
+    if (overlay) overlay.style.display = isOpen ? 'block' : 'none';
+  }
+};
+
+// ── CSV DOWNLOAD HELPER (if not already defined by patient engine) ────────
+if (typeof ksDownloadCSV === 'undefined') {
+  window.ksDownloadCSV = function(rows, filename) {
+    const csv = rows.map(function(row) {
+      return row.map(function(cell) {
+        const s = String(cell||'').replace(/"/g,'""');
+        return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"'+s+'"' : s;
+      }).join(',');
+    }).join('\n');
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename; a.click();
+    URL.revokeObjectURL(url);
+  };
+}
+if (typeof ksCsvParseLine === 'undefined') {
+  window.ksCsvParseLine = function(line) {
+    const result = []; let inQuote = false; let current = '';
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { if (inQuote && line[i+1]==='"') { current += '"'; i++; } else inQuote = !inQuote; }
+      else if (ch === ',' && !inQuote) { result.push(current); current = ''; }
+      else { current += ch; }
+    }
+    result.push(current);
+    return result;
+  };
+}
+
+// ── ADD DRUG/BRAND EXPORT TO CSV MANAGER ─────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  // Add drug export button to CSV Manager section if it exists
+  const csvSection = document.getElementById('ks-csv-manager');
+  if (!csvSection) return;
+  // Find the drug & brand card and add export button if needed
+  // (already handled in patient_section.html)
+});
+
 </script>
 </body>
 </html>
