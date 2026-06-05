@@ -1,0 +1,333 @@
+<!--
+╔══════════════════════════════════════════════════════════════════════════╗
+║  K SPIDER AI — Ad Slot Integration Code  v10.0 (FINAL)                  ║
+║  www.kspiderai.in  |  By Gaurang Raval & Khush Raval  |  2026           ║
+║                                                                          ║
+║  YE FILE KYA HAI:                                                        ║
+║  Har tool page mein ads dikhane ke liye copy-paste ready code.           ║
+║  ks-ads.js ke saath kaam karta hai.                                      ║
+║                                                                          ║
+║  FIXES v10.0:                                                            ║
+║  ✅ onclick single-quote safe (&#39; escape — browser crash fix)         ║
+║  ✅ Firebase double-init guard (apps.length check)                       ║
+║  ✅ Firebase auto-inject (tool pages pe bhi kaam karta hai)              ║
+║  ✅ Impression + Click tracking (Firestore increment)                    ║
+║  ✅ data-ks-slot AND data-slot BOTH supported (backward compat)          ║
+║  ✅ .kspider-ad-slot class bhi support                                   ║
+║  ✅ kspideraimain Firebase project config                                ║
+╚══════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  METHOD 1 — KS-ADS.JS USE KARO (RECOMMENDED)
+  Agar ks-ads.js already tool page mein load hai:
+  Sirf ye DIV paste karo jahan ad dikhani ho:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
+
+<!-- ════════════════════════════════════════════
+     AD SLOT DIVS — copy karo jahan chahiye
+     ════════════════════════════════════════════ -->
+
+<!-- TOP BANNER (header ke neeche) -->
+<div data-ks-slot="top-banner" style="width:100%;text-align:center;margin:8px auto;"></div>
+
+<!-- SIDEBAR (left/right panel mein) -->
+<div data-ks-slot="sidebar-left" style="width:300px;max-width:100%;margin:8px auto;"></div>
+
+<!-- IN-CONTENT (steps ke beech mein) -->
+<div data-ks-slot="in-content" style="width:100%;text-align:center;margin:10px auto;"></div>
+
+<!-- AFTER-RESULT (output ke neeche) -->
+<div data-ks-slot="after-result" style="width:100%;text-align:center;margin:10px auto;"></div>
+
+<!-- BOTTOM BANNER (page ke bilkul neeche) -->
+<div data-ks-slot="bottom-banner" style="width:100%;text-align:center;margin:8px auto;"></div>
+
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  METHOD 2 — STANDALONE (bina ks-ads.js ke — old system compat)
+  Agar ks-ads.js load nahi hai, ye poora block paste karo before </body>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
+
+<!-- ① Firebase scripts (agar pehle se load nahi hain) -->
+<script>
+// Firebase auto-inject guard — double load se bachao
+(function(){
+  if(window.__ksFirebaseChecked) return;
+  window.__ksFirebaseChecked = true;
+  function _loadFb(src, cb){
+    if(document.querySelector('script[src="'+src+'"]')){ if(cb)cb(); return; }
+    var s=document.createElement('script'); s.src=src; s.async=false;
+    s.onload=cb||null; document.head.appendChild(s);
+  }
+  if(typeof firebase==='undefined'){
+    _loadFb('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js', function(){
+      _loadFb('https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js', function(){
+        window.__ksFbScriptsReady = true;
+      });
+    });
+  } else {
+    window.__ksFbScriptsReady = true;
+  }
+})();
+</script>
+
+<!-- ② Ad Slot HTML — change data-slot value as needed -->
+<!--
+  Available slot names:
+  top-banner     → Page ke top pe
+  sidebar-left   → Sidebar mein
+  in-content     → Content ke beech
+  after-result   → Output/result ke neeche
+  bottom-banner  → Page ke bilkul bottom pe
+-->
+<div class="kspider-ad-slot" data-slot="top-banner" style="width:100%;text-align:center;margin:8px auto;"></div>
+
+<!-- ③ Standalone Ad Loader — </body> se pehle paste karo (once per page) -->
+<script>
+(function(){
+  // ✅ FIX: Double-run guard
+  if(window.__kspiderAdLoaded) return;
+  window.__kspiderAdLoaded = true;
+
+  // ── Firebase Config (kspideraimain project) ──
+  var _cfg = {
+    apiKey:            "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+    authDomain:        "kspideraimain.firebaseapp.com",
+    projectId:         "kspideraimain",
+    storageBucket:     "kspideraimain.firebasestorage.app",
+    messagingSenderId: "940003391760",
+    appId:             "1:940003391760:web:8617000465b6991d348d95"
+  };
+
+  // ── Get / Init Firestore ──
+  function getDb(){
+    // ✅ FIX: Firebase double-init guard
+    try {
+      if(window.KS && window.KS.db) return window.KS.db;
+      if(typeof firebase !== 'undefined'){
+        if(!firebase.apps.length) firebase.initializeApp(_cfg);
+        return firebase.firestore();
+      }
+    } catch(e){}
+    return null;
+  }
+
+  // ── Wait for Firebase if scripts still loading ──
+  function waitForFirebase(cb, tries){
+    tries = tries || 0;
+    if(typeof firebase !== 'undefined') { cb(); return; }
+    if(tries > 20) { console.warn('[KSpider Ads] Firebase load timeout'); return; }
+    setTimeout(function(){ waitForFirebase(cb, tries+1); }, 300);
+  }
+
+  // ── HTML safe escape (onclick-safe) ──
+  function esc(s){
+    if(!s) return '';
+    return String(s)
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#39;'); // ✅ FIX: single quote — onclick attribute safe
+  }
+
+  // ── Standard ad sizes ──
+  var sizeMap = {
+    'auto'    : {w:'100%',   h:'auto'},
+    '728x90'  : {w:'728px',  h:'90px'},
+    '970x90'  : {w:'970px',  h:'90px'},
+    '970x250' : {w:'970px',  h:'250px'},
+    '300x250' : {w:'300px',  h:'250px'},
+    '336x280' : {w:'336px',  h:'280px'},
+    '250x250' : {w:'250px',  h:'250px'},
+    '200x200' : {w:'200px',  h:'200px'},
+    '160x600' : {w:'160px',  h:'600px'},
+    '120x600' : {w:'120px',  h:'600px'},
+    '300x600' : {w:'300px',  h:'600px'},
+    '300x1050': {w:'300px',  h:'1050px'},
+    '320x50'  : {w:'320px',  h:'50px'},
+    '320x100' : {w:'320px',  h:'100px'}
+  };
+
+  // ── Rotation state ──
+  var slotRotation = {};
+
+  // ── Render one ad into container ──
+  function renderAd(container, ad){
+    var sz       = sizeMap[ad.size||'auto'] || sizeMap['auto'];
+    var clickUrl = (ad.clickUrl || '').trim();
+    var hasLink  = !!(clickUrl && clickUrl !== '#');
+    var adId     = ad._id || '';
+    var wrapW    = 'display:block;width:'+sz.w+';'+(sz.h!=='auto'?'height:'+sz.h+';':'')+'overflow:hidden;border-radius:8px;';
+    var inner    = '';
+
+    if(ad.type === 'image' && ad.imgUrl){
+      inner = '<img src="'+esc(ad.imgUrl)+'" alt="'+esc(ad.imgAlt||'Advertisement')+'" ' +
+        'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy">';
+
+    } else if(ad.type === 'video' && ad.videoUrl){
+      var vurl  = ad.videoUrl;
+      var vplay = ad.videoPlay  === 'autoplay' ? 'autoplay loop playsinline' : '';
+      var vmute = ad.videoSound === 'muted'    ? 'muted' : '';
+      var vpst  = ad.videoPoster ? ' poster="'+esc(ad.videoPoster)+'"' : '';
+      if(/youtube\.com|youtu\.be/i.test(vurl)){
+        var ytId = vurl.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+        if(ytId){
+          var ytp = 'autoplay='+(ad.videoPlay==='autoplay'?'1':'0')+'&mute='+(ad.videoSound==='muted'?'1':'0')+'&loop=1&rel=0';
+          inner = '<div style="position:relative;width:100%;padding-top:56.25%"><iframe style="position:absolute;inset:0;width:100%;height:100%" src="https://www.youtube.com/embed/'+ytId[1]+'?'+ytp+'" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen></iframe></div>';
+        }
+      } else {
+        inner = '<video '+vplay+' '+vmute+vpst+' controls style="width:100%;max-height:280px;border-radius:8px;background:#000"><source src="'+esc(vurl)+'" type="video/mp4"></video>';
+      }
+
+    } else if(ad.type === 'text'){
+      var bg  = ad.bgColor || '#e8520a';
+      var hl  = esc(ad.headline || '');
+      var dsc = esc(ad.description || '');
+      var btn = esc(ad.btnText || 'Learn More');
+      inner = '<div style="background:'+bg+';border-radius:12px;padding:16px 18px;text-align:center;width:100%;box-sizing:border-box">'+
+        '<div style="font-size:1rem;font-weight:800;color:#fff;margin-bottom:4px">'+hl+'</div>'+
+        (dsc?'<div style="font-size:.8rem;color:rgba(255,255,255,.9);margin-bottom:8px">'+dsc+'</div>':'')+
+        '<span style="background:#fff;color:'+bg+';padding:5px 18px;border-radius:20px;font-size:.78rem;font-weight:700;display:inline-block">'+btn+'</span>'+
+        '</div>';
+
+    } else if(ad.type === 'html'){
+      container.style.display = 'block';
+      container.innerHTML = '<div style="width:100%">'+(ad.htmlCode||'')+'</div>';
+      _trackImpression(adId); return;
+
+    } else { return; }
+
+    // ✅ FIX: onclick uses &#39; for single quotes — safe in HTML attribute
+    var html = hasLink
+      ? '<a href="'+esc(clickUrl)+'" target="_blank" rel="noopener noreferrer sponsored" '+
+          'style="'+wrapW+'text-decoration:none;display:block" '+
+          'onclick="window.kspiderAdClick&&window.kspiderAdClick(&#39;'+esc(adId)+'&#39;)">'+inner+'</a>'
+      : '<div style="'+wrapW+'">'+inner+'</div>';
+
+    container.style.display = 'block';
+    container.innerHTML = html;
+    _trackImpression(adId);
+  }
+
+  // ── Tracking ──
+  function _trackImpression(id){
+    if(!id) return;
+    var db = getDb();
+    if(db) db.collection('ads').doc(id).update({impressions: firebase.firestore.FieldValue.increment(1)}).catch(function(){});
+  }
+
+  window.kspiderAdClick = function(id){
+    if(!id) return;
+    var db = getDb();
+    if(db) db.collection('ads').doc(id).update({clicks: firebase.firestore.FieldValue.increment(1)}).catch(function(){});
+  };
+  // Alias for ks-ads.js compatibility
+  window.ksAdTrackClick = window.kspiderAdClick;
+
+  // ── Load ads for one slot container ──
+  function loadSlot(container){
+    var db = getDb(); if(!db) return;
+    // Supports both data-slot and data-ks-slot attributes
+    var slot = container.getAttribute('data-slot') || container.getAttribute('data-ks-slot') || 'top-banner';
+    var nowStr = new Date().toISOString().split('T')[0];
+    var key = slot+'_'+(container.dataset.ksIdx||0);
+
+    db.collection('ads')
+      .where('status','==','active')
+      .where('slots','array-contains', slot)
+      .limit(10)
+      .get()
+      .then(function(snap){
+        var ads = [];
+        snap.forEach(function(doc){
+          var d = doc.data();
+          if(d.expiry && d.expiry < nowStr) return; // skip expired
+          d._id = doc.id;
+          ads.push(d);
+        });
+        if(!ads.length){ container.innerHTML=''; container.style.display='none'; return; }
+
+        // Rotate
+        var idx = (slotRotation[key]||0) % ads.length;
+        renderAd(container, ads[idx]);
+
+        // Auto-rotation
+        var interval = parseInt(ads[idx].interval)||0;
+        if(ads.length > 1 && interval > 0){
+          setTimeout(function(){
+            slotRotation[key] = (idx+1) % ads.length;
+            loadSlot(container);
+          }, interval * 1000);
+        }
+      })
+      .catch(function(e){ console.warn('[KSpider Ads]', e.message); });
+  }
+
+  // ── Init all slot containers ──
+  function initSlots(){
+    // Supports: data-ks-slot, data-slot, .kspider-ad-slot
+    var slots = document.querySelectorAll('[data-slot],[data-ks-slot],.kspider-ad-slot');
+    slots.forEach(function(el, i){
+      el.dataset.ksIdx = i;
+      el.style.cssText = 'display:none;width:100%;text-align:center;margin:0 auto;box-sizing:border-box;';
+      loadSlot(el);
+    });
+  }
+
+  // ── Boot ──
+  function boot(){
+    waitForFirebase(function(){
+      if(document.readyState==='loading'){
+        document.addEventListener('DOMContentLoaded', initSlots);
+      } else {
+        setTimeout(initSlots, 200);
+      }
+    });
+  }
+  boot();
+
+  console.log('[KSpider Ads Slot] v10.0 ready | kspiderai.in');
+})();
+</script>
+
+<!--
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ADMIN PANEL MEIN SLOTS FIELD MEIN YE NAMES DALO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  top-banner        → Sabhi pages ke top mein
+  sidebar-left      → Sidebar mein
+  in-content        → Content ke beech mein
+  after-result      → Output/result ke neeche
+  bottom-banner     → Page ke bilkul neeche
+  all-tools         → Sabhi tool pages pe
+  tool-india-fbook  → Sirf K Spider India F-Book pe
+  tool-whatsapp-bulk-sender → Sirf WhatsApp tool pe
+  (har tool ka slug admin mein set kar sakte ho)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  FIREBASE RULES (kspideraimain) — ads collection ke liye:
+  ─────────────────────────────────────────────────────────
+  match /ads/{adId} {
+    allow read:   if true;
+    allow create: if isAdmin();
+    allow update: if isAdmin()
+                  || request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['clicks','impressions']);
+    allow delete: if isAdmin();
+  }
+  match /adRequests/{docId} {
+    allow read:   if isAdmin();
+    allow create: if true;
+    allow update: if isAdmin()
+                  || request.resource.data.diff(resource.data)
+                       .affectedKeys().hasOnly(['status','updatedAt']);
+    allow delete: if isAdmin();
+  }
+  ─────────────────────────────────────────────────────────
+  ✅ Ye rules already kspideraimain ke Firebase Rules v8.0 mein hain.
+  Koi change karne ki zaroorat NAHI.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-->
