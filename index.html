@@ -1831,6 +1831,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
         </div>
 
         <!-- Menu Items -->
+        <a href="#" onclick="openProfileModal();closeProfileMenu();return false;" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--t2);font-size:.85rem;font-weight:500;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='var(--gold-s)'" onmouseout="this.style.background='transparent'">
+          <span>👤</span> My Profile
+          <span id="ks-profile-pct-badge" style="margin-left:auto;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:8px;background:var(--gold-s);color:var(--gold2);display:none"></span>
+        </a>
         <a href="#pricing" onclick="closeProfileMenu()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;color:var(--t2);font-size:.85rem;font-weight:500;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='var(--gold-s)'" onmouseout="this.style.background='transparent'">
           <span>⬆️</span> Upgrade Plan
         </a>
@@ -7061,10 +7065,33 @@ function ksCookieDecline(){
 
     var db = (typeof KS !== 'undefined' && KS.db) ? KS.db : (typeof _db !== 'undefined' ? _db : null);
     if (!db) {
-      if (typeof saveUser === 'function') saveUser(userData);
+      console.warn('[KSpider] Firestore not ready — saving Google user to localStorage only');
+      var localData = Object.assign({}, userData, {
+        email:      fbUser.email,
+        name:       fbUser.displayName || fbUser.email.split('@')[0],
+        photoURL:   fbUser.photoURL || '',
+        loginMethod:'google',
+        verified:   true,
+        loginCount: 1,
+        lastLogin:  new Date().toISOString(),
+        lastSeen:   new Date().toISOString()
+      });
+      if (typeof saveUser === 'function') saveUser(localData);
       if (typeof updateUW === 'function') updateUW();
       if (typeof closeM === 'function') closeM('reg-ov');
-      if (typeof toast === 'function') toast('🎉 Welcome, ' + userData.name + '!', 'success', 5000);
+      if (typeof toast === 'function') toast('🎉 Welcome, ' + localData.name + '!', 'success', 5000);
+      // Retry Firestore save after 3s (Firebase may still be loading)
+      setTimeout(function() {
+        var retryDb = (typeof KS !== 'undefined' && KS.db) ? KS.db : (typeof _db !== 'undefined' ? _db : null);
+        if (retryDb) {
+          var retryKey = fbUser.email.replace(/[.#$\/\[\]]/g, '_');
+          retryDb.collection('users').doc(retryKey).set(Object.assign({}, localData, {
+            updatedAt: new Date().toISOString()
+          }), { merge: true }).then(function(){
+            console.log('[KSpider] Retry Firestore save SUCCESS for:', fbUser.email);
+          }).catch(function(e){ console.warn('[KSpider] Retry Firestore save failed:', e.message); });
+        }
+      }, 3000);
       return;
     }
 
@@ -7089,36 +7116,60 @@ function ksCookieDecline(){
         updatedAt:     new Date().toISOString()
       });
 
-      db.collection('users').doc(key).set(mergedData, { merge: true }).then(function() {
-        if (typeof saveUser === 'function') saveUser(mergedData);
+      // Ensure all critical fields are explicitly present (fixes "Unknown" in admin)
+      var finalData = Object.assign({}, mergedData, {
+        email:       fbUser.email,
+        name:        mergedData.name || fbUser.displayName || fbUser.email.split('@')[0],
+        photoURL:    fbUser.photoURL || mergedData.photoURL || '',
+        loginMethod: 'google',
+        verified:    true
+      });
+
+      db.collection('users').doc(key).set(finalData, { merge: true }).then(function() {
+        if (typeof saveUser === 'function') saveUser(finalData);
         if (typeof updateUW === 'function') updateUW();
         if (typeof closeM === 'function') closeM('reg-ov');
         var greeting = isNew ? '🎉 Welcome to K Spider AI, ' : '🎉 Welcome back, ';
-        if (typeof toast === 'function') toast(greeting + mergedData.name + '!', 'success', 5000);
-        // Send admin notification for NEW users
+        if (typeof toast === 'function') toast(greeting + finalData.name + '!', 'success', 5000);
+        // Admin notification for NEW users
         if (isNew) {
-          var notifRef = db.collection('admin_notifications');
-          notifRef.add({
+          db.collection('admin_notifications').add({
             type:      'new_user',
-            name:      mergedData.name,
-            email:     mergedData.email,
+            name:      finalData.name,
+            email:     finalData.email,
             method:    'google',
-            photoURL:  mergedData.photoURL || '',
+            photoURL:  finalData.photoURL || '',
             createdAt: new Date().toISOString(),
             read:      false
           }).catch(function() {});
         }
-      }).catch(function() {
-        if (typeof saveUser === 'function') saveUser(mergedData);
+        console.log('[KSpider] Google user saved to Firestore:', finalData.email, 'key:', key);
+      }).catch(function(fsErr) {
+        console.error('[KSpider] Firestore save error:', fsErr.code, fsErr.message);
+        if (typeof saveUser === 'function') saveUser(finalData);
         if (typeof updateUW === 'function') updateUW();
         if (typeof closeM === 'function') closeM('reg-ov');
-        if (typeof toast === 'function') toast('🎉 Welcome, ' + mergedData.name + '!', 'success', 5000);
+        if (typeof toast === 'function') toast('🎉 Welcome, ' + finalData.name + '!', 'success', 5000);
       });
-    }).catch(function() {
-      if (typeof saveUser === 'function') saveUser(userData);
+    }).catch(function(readErr) {
+      console.warn('[KSpider] Firestore read error, saving as new user:', readErr.message);
+      // Save directly even if read failed
+      var fallbackData = Object.assign({}, userData, {
+        email:      fbUser.email,
+        name:       fbUser.displayName || fbUser.email.split('@')[0],
+        photoURL:   fbUser.photoURL || '',
+        loginMethod:'google',
+        verified:   true,
+        loginCount: 1,
+        lastLogin:  new Date().toISOString(),
+        lastSeen:   new Date().toISOString(),
+        updatedAt:  new Date().toISOString()
+      });
+      db.collection('users').doc(key).set(fallbackData, { merge: true }).catch(function(){});
+      if (typeof saveUser === 'function') saveUser(fallbackData);
       if (typeof updateUW === 'function') updateUW();
       if (typeof closeM === 'function') closeM('reg-ov');
-      if (typeof toast === 'function') toast('🎉 Welcome, ' + userData.name + '!', 'success', 5000);
+      if (typeof toast === 'function') toast('🎉 Welcome, ' + fallbackData.name + '!', 'success', 5000);
     });
   }
 
@@ -7277,5 +7328,386 @@ function ksCookieDecline(){
 })();
 </script>
 <!-- Proper closing tags -->
+
+<!-- ══════════════════════════════════════════════════════════════
+     USER PROFILE MODAL — K Spider AI
+     Professional profile with completion percentage
+     ══════════════════════════════════════════════════════════════ -->
+<div id="ks-profile-modal" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.65);backdrop-filter:blur(6px);overflow-y:auto;" onclick="if(event.target===this)closeProfileModal()">
+  <div style="max-width:560px;margin:40px auto;background:var(--bg2);border:1px solid var(--br2);border-radius:24px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);">
+
+    <!-- Header -->
+    <div style="background:linear-gradient(135deg,var(--gold),var(--gold2));padding:28px 28px 20px;position:relative;">
+      <button onclick="closeProfileModal()" style="position:absolute;top:14px;right:16px;background:rgba(255,255,255,.2);border:none;color:#fff;font-size:1.2rem;width:34px;height:34px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+      <div style="display:flex;align-items:center;gap:16px;">
+        <div id="ksp-avatar-wrap" style="width:68px;height:68px;border-radius:50%;border:3px solid rgba(255,255,255,.5);overflow:hidden;flex-shrink:0;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.8rem;font-weight:800;color:#fff;">U</div>
+        <div>
+          <div id="ksp-header-name" style="font-size:1.2rem;font-weight:800;color:#fff;">Your Profile</div>
+          <div id="ksp-header-email" style="font-size:.78rem;color:rgba(255,255,255,.8);margin-top:2px;"></div>
+          <div id="ksp-header-plan" style="margin-top:6px;display:inline-block;padding:3px 12px;background:rgba(255,255,255,.25);border-radius:20px;font-size:.7rem;font-weight:700;color:#fff;text-transform:uppercase;">Free Plan</div>
+        </div>
+      </div>
+      <!-- Completion bar -->
+      <div style="margin-top:18px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:.75rem;color:rgba(255,255,255,.9);font-weight:600;">Profile Completion</span>
+          <span id="ksp-pct-text" style="font-size:.8rem;font-weight:800;color:#fff;">0%</span>
+        </div>
+        <div style="background:rgba(255,255,255,.25);border-radius:20px;height:8px;overflow:hidden;">
+          <div id="ksp-pct-bar" style="height:100%;border-radius:20px;background:#fff;width:0%;transition:width .6s ease;"></div>
+        </div>
+        <div id="ksp-pct-msg" style="font-size:.68rem;color:rgba(255,255,255,.8);margin-top:5px;">Fill in your details to complete your profile</div>
+      </div>
+    </div>
+
+    <!-- Form Body -->
+    <div style="padding:24px 28px;">
+      <form onsubmit="saveProfileData(event)">
+
+        <!-- Row: Name + Mobile -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">Full Name <span style="color:#ef4444">*</span></label>
+            <input id="ksp-name" type="text" placeholder="Aapka poora naam" required
+              style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--br)'">
+          </div>
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">Mobile Number <span style="color:#ef4444">*</span></label>
+            <input id="ksp-mobile" type="tel" placeholder="10-digit number" maxlength="10"
+              style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--br)'">
+          </div>
+        </div>
+
+        <!-- Row: City + State -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">City</label>
+            <input id="ksp-city" type="text" placeholder="Aapka shahar"
+              style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--br)'">
+          </div>
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">State</label>
+            <select id="ksp-state"
+              style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--br)'">
+              <option value="">-- Select State --</option>
+              <option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option>
+              <option>Bihar</option><option>Chhattisgarh</option><option>Goa</option>
+              <option>Gujarat</option><option>Haryana</option><option>Himachal Pradesh</option>
+              <option>Jharkhand</option><option>Karnataka</option><option>Kerala</option>
+              <option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option>
+              <option>Meghalaya</option><option>Mizoram</option><option>Nagaland</option>
+              <option>Odisha</option><option>Punjab</option><option>Rajasthan</option>
+              <option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option>
+              <option>Tripura</option><option>Uttar Pradesh</option><option>Uttarakhand</option>
+              <option>West Bengal</option><option>Delhi</option><option>Jammu & Kashmir</option>
+              <option>Ladakh</option><option>Puducherry</option><option>Chandigarh</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Row: PIN + Language -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">PIN Code</label>
+            <input id="ksp-pin" type="text" placeholder="6-digit PIN" maxlength="6"
+              style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;transition:border-color .2s;"
+              onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--br)'">
+          </div>
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">Preferred Language</label>
+            <select id="ksp-lang"
+              style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;">
+              <option value="en">English</option><option value="hi">Hindi</option>
+              <option value="gu">Gujarati</option><option value="mr">Marathi</option>
+              <option value="ta">Tamil</option><option value="te">Telugu</option>
+              <option value="kn">Kannada</option><option value="ml">Malayalam</option>
+              <option value="bn">Bengali</option><option value="pa">Punjabi</option>
+              <option value="or">Odia</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Profession -->
+        <div style="margin-bottom:14px;">
+          <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">Profession / Occupation</label>
+          <select id="ksp-profession"
+            style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;">
+            <option value="">-- Select Profession --</option>
+            <option>Student</option><option>Doctor / Medical Professional</option>
+            <option>Business Owner</option><option>Freelancer</option>
+            <option>Government Employee</option><option>IT / Software</option>
+            <option>Teacher / Educator</option><option>Marketing / Sales</option>
+            <option>Finance / Accountant</option><option>Engineer</option>
+            <option>Pharmacist</option><option>Lawyer</option>
+            <option>Content Creator / Influencer</option><option>Other</option>
+          </select>
+        </div>
+
+        <!-- Bio -->
+        <div style="margin-bottom:20px;">
+          <label style="font-size:.72rem;font-weight:700;color:var(--t3);display:block;margin-bottom:5px;">Short Bio <span style="color:var(--t4);font-weight:400">(optional)</span></label>
+          <textarea id="ksp-bio" rows="2" placeholder="Apne baare mein kuch likho..."
+            style="width:100%;padding:10px 13px;background:var(--bg3);border:1.5px solid var(--br);border-radius:10px;color:var(--t1);font-size:.88rem;outline:none;box-sizing:border-box;resize:vertical;font-family:inherit;transition:border-color .2s;"
+            onfocus="this.style.borderColor='var(--gold)'" onblur="this.style.borderColor='var(--br)'"></textarea>
+        </div>
+
+        <!-- Completion tips -->
+        <div id="ksp-tips" style="background:var(--gold-s);border:1px solid var(--gold-b);border-radius:12px;padding:12px 14px;margin-bottom:18px;display:none;">
+          <div style="font-size:.72rem;font-weight:700;color:var(--gold2);margin-bottom:6px;">💡 Complete your profile to unlock full features:</div>
+          <ul id="ksp-tips-list" style="margin:0;padding-left:16px;font-size:.72rem;color:var(--t3);line-height:1.8;"></ul>
+        </div>
+
+        <!-- Save button -->
+        <button type="submit" id="ksp-save-btn"
+          style="width:100%;padding:13px;background:linear-gradient(135deg,var(--gold),var(--gold2));color:#fff;font-weight:800;font-size:.95rem;border:none;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:0 4px 16px rgba(180,130,40,.25);transition:opacity .2s;">
+          💾 Save Profile
+        </button>
+
+        <!-- Stats row -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:16px;text-align:center;">
+          <div style="background:var(--bg3);border-radius:12px;padding:12px 8px;">
+            <div id="ksp-stat-tools" style="font-size:1.3rem;font-weight:800;color:var(--gold2);">0</div>
+            <div style="font-size:.65rem;color:var(--t4);margin-top:2px;">Tools Used</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:12px;padding:12px 8px;">
+            <div id="ksp-stat-logins" style="font-size:1.3rem;font-weight:800;color:var(--gold2);">0</div>
+            <div style="font-size:.65rem;color:var(--t4);margin-top:2px;">Total Logins</div>
+          </div>
+          <div style="background:var(--bg3);border-radius:12px;padding:12px 8px;">
+            <div id="ksp-stat-since" style="font-size:.82rem;font-weight:800;color:var(--gold2);">—</div>
+            <div style="font-size:.65rem;color:var(--t4);margin-top:2px;">Member Since</div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   PROFILE MODAL JS — K Spider AI
+══════════════════════════════════════════════════════════════ */
+
+// Profile completion fields & weights
+var KSP_FIELDS = [
+  { id:'ksp-name',       label:'Full Name',   weight:20 },
+  { id:'ksp-mobile',     label:'Mobile',      weight:20 },
+  { id:'ksp-city',       label:'City',        weight:15 },
+  { id:'ksp-state',      label:'State',       weight:15 },
+  { id:'ksp-profession', label:'Profession',  weight:15 },
+  { id:'ksp-pin',        label:'PIN Code',    weight:10 },
+  { id:'ksp-bio',        label:'Bio',         weight:5  }
+];
+
+function calcProfilePct() {
+  var total = 0, filled = 0;
+  var tips = [];
+  KSP_FIELDS.forEach(function(f) {
+    total += f.weight;
+    var el = document.getElementById(f.id);
+    if (el && el.value && el.value.trim()) { filled += f.weight; }
+    else { tips.push(f.label); }
+  });
+  return { pct: Math.round((filled / total) * 100), missing: tips };
+}
+
+function updateProfileCompletion() {
+  var result = calcProfilePct();
+  var pct = result.pct;
+  var bar = document.getElementById('ksp-pct-bar');
+  var txt = document.getElementById('ksp-pct-text');
+  var msg = document.getElementById('ksp-pct-msg');
+  var badge = document.getElementById('ks-profile-pct-badge');
+  var tips = document.getElementById('ksp-tips');
+  var tipsList = document.getElementById('ksp-tips-list');
+  if (bar) bar.style.width = pct + '%';
+  if (txt) txt.textContent = pct + '%';
+  if (badge) {
+    if (pct < 100) { badge.style.display = 'inline-block'; badge.textContent = pct + '%'; }
+    else { badge.style.display = 'none'; }
+  }
+  if (msg) {
+    if (pct === 100) msg.textContent = '🎉 Profile 100% complete! You are all set.';
+    else if (pct >= 70) msg.textContent = 'Almost done! Fill remaining fields.';
+    else if (pct >= 40) msg.textContent = 'Good progress! Add more details.';
+    else msg.textContent = 'Fill in your details to complete your profile.';
+  }
+  if (tips && tipsList) {
+    if (result.missing.length > 0 && pct < 100) {
+      tips.style.display = 'block';
+      tipsList.innerHTML = result.missing.map(function(m){ return '<li>Add your ' + m + '</li>'; }).join('');
+    } else {
+      tips.style.display = 'none';
+    }
+  }
+}
+
+function openProfileModal() {
+  var modal = document.getElementById('ks-profile-modal');
+  if (!modal) return;
+  var u = (typeof getUser === 'function') ? getUser() : null;
+  if (!u) { if (typeof openM === 'function') openM('reg-ov'); return; }
+
+  // Populate fields
+  var set = function(id, val) { var el = document.getElementById(id); if(el) el.value = val || ''; };
+  set('ksp-name',       u.name || '');
+  set('ksp-mobile',     u.mobile || u.phone || '');
+  set('ksp-city',       u.city || '');
+  set('ksp-state',      u.state || '');
+  set('ksp-pin',        u.cityPin || u.pin || '');
+  set('ksp-lang',       u.language || 'en');
+  set('ksp-profession', u.profession || '');
+  set('ksp-bio',        u.bio || '');
+
+  // Avatar
+  var avEl = document.getElementById('ksp-avatar-wrap');
+  if (avEl) {
+    if (u.photoURL) {
+      var _initials = (u.name || 'U').charAt(0).toUpperCase();
+      avEl.innerHTML = '<img src="' + u.photoURL + '" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display=\'none\';this.parentElement.textContent=\''+_initials+'\'">';
+    } else {
+      avEl.textContent = (u.name || 'U').charAt(0).toUpperCase();
+    }
+  }
+
+  // Header info
+  var hname = document.getElementById('ksp-header-name');
+  var hemail = document.getElementById('ksp-header-email');
+  var hplan = document.getElementById('ksp-header-plan');
+  if (hname) hname.textContent = u.name || 'Your Profile';
+  if (hemail) hemail.textContent = u.email || '';
+  if (hplan) {
+    var planLabel = (u.planType === 'premium') ? '💎 Premium' : (u.planType === 'franchise') ? '👑 Franchise' : '🆓 Free Plan';
+    hplan.textContent = planLabel;
+  }
+
+  // Stats
+  var ss = document.getElementById('ksp-stat-tools');
+  var sl = document.getElementById('ksp-stat-logins');
+  var sd = document.getElementById('ksp-stat-since');
+  if (ss) ss.textContent = u.toolsUsed || 0;
+  if (sl) sl.textContent = u.loginCount || 0;
+  if (sd && u.registeredAt) {
+    sd.textContent = new Date(u.registeredAt).toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+  }
+
+  // Add live completion update listeners
+  KSP_FIELDS.forEach(function(f) {
+    var el = document.getElementById(f.id);
+    if (el) { el.oninput = updateProfileCompletion; el.onchange = updateProfileCompletion; }
+  });
+
+  updateProfileCompletion();
+  modal.style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeProfileModal() {
+  var modal = document.getElementById('ks-profile-modal');
+  if (modal) modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+function saveProfileData(e) {
+  if (e) e.preventDefault();
+  var u = (typeof getUser === 'function') ? getUser() : null;
+  if (!u) return;
+
+  var btn = document.getElementById('ksp-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Saving...'; }
+
+  var name     = (document.getElementById('ksp-name')       || {}).value || '';
+  var mobile   = (document.getElementById('ksp-mobile')     || {}).value || '';
+  var city     = (document.getElementById('ksp-city')       || {}).value || '';
+  var state    = (document.getElementById('ksp-state')      || {}).value || '';
+  var pin      = (document.getElementById('ksp-pin')        || {}).value || '';
+  var lang     = (document.getElementById('ksp-lang')       || {}).value || 'en';
+  var prof     = (document.getElementById('ksp-profession') || {}).value || '';
+  var bio      = (document.getElementById('ksp-bio')        || {}).value || '';
+
+  if (!name.trim()) {
+    if (typeof toast === 'function') toast('⚠️ Please enter your name', 'warn', 3000);
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Profile'; }
+    return;
+  }
+
+  var updates = {
+    name:       name.trim(),
+    mobile:     mobile.trim(),
+    city:       city.trim(),
+    state:      state.trim(),
+    cityPin:    pin.trim(),
+    language:   lang,
+    profession: prof,
+    bio:        bio.trim(),
+    updatedAt:  new Date().toISOString()
+  };
+
+  // Update localStorage
+  var updated = Object.assign({}, u, updates);
+  if (typeof saveUser === 'function') saveUser(updated);
+
+  // Update Firestore
+  var db = (typeof KS !== 'undefined' && KS.db) ? KS.db : (typeof _db !== 'undefined' ? _db : null);
+  if (db && u.email) {
+    var key = u.email.replace(/[.#$\/\[\]]/g, '_');
+    db.collection('users').doc(key).set(updates, { merge: true }).then(function() {
+      if (typeof toast === 'function') toast('✅ Profile saved successfully!', 'success', 4000);
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Save Profile'; }
+      updateProfileCompletion();
+      if (typeof updateUW === 'function') updateUW();
+      // Update modal header live
+      var hname = document.getElementById('ksp-header-name');
+      if (hname) hname.textContent = name.trim();
+    }).catch(function(err) {
+      console.warn('[KSpider] Profile save Firestore error:', err);
+      if (typeof toast === 'function') toast('✅ Profile saved locally!', 'success', 3000);
+      if (btn) { btn.disabled = false; btn.textContent = '💾 Save Profile'; }
+    });
+  } else {
+    if (typeof toast === 'function') toast('✅ Profile saved!', 'success', 3000);
+    if (btn) { btn.disabled = false; btn.textContent = '💾 Save Profile'; }
+  }
+}
+
+// Show profile completion badge on nav after login
+(function() {
+  function _kspBadgeCheck() {
+    var u = (typeof getUser === 'function') ? getUser() : null;
+    if (!u || !u.verified) { setTimeout(_kspBadgeCheck, 1500); return; }
+    // Temporarily set fields to calculate pct from user object
+    var tempSet = function(id, val) { var el = document.getElementById(id); if(el) { var old = el.value; el.value = val||''; return old; } return ''; };
+    var olds = KSP_FIELDS.map(function(f) {
+      return tempSet(f.id, f.id === 'ksp-name' ? u.name :
+                           f.id === 'ksp-mobile' ? (u.mobile||u.phone) :
+                           f.id === 'ksp-city' ? u.city :
+                           f.id === 'ksp-state' ? u.state :
+                           f.id === 'ksp-profession' ? u.profession :
+                           f.id === 'ksp-pin' ? (u.cityPin||u.pin) :
+                           f.id === 'ksp-bio' ? u.bio : '');
+    });
+    var result = calcProfilePct();
+    // Restore
+    KSP_FIELDS.forEach(function(f, i) { var el = document.getElementById(f.id); if(el) el.value = olds[i]||''; });
+    var badge = document.getElementById('ks-profile-pct-badge');
+    if (badge) {
+      if (result.pct < 100) { badge.style.display = 'inline-block'; badge.textContent = result.pct + '%'; }
+      else { badge.style.display = 'none'; }
+    }
+    // Prompt first-time users to fill profile
+    if (result.pct < 40 && u.loginCount <= 1) {
+      setTimeout(function() {
+        if (typeof toast === 'function') toast('👤 Profile ' + result.pct + '% complete — click My Profile to fill details!', 'info', 6000);
+      }, 2500);
+    }
+  }
+  setTimeout(_kspBadgeCheck, 3000);
+})();
+</script>
+
 </body>
 </html>
