@@ -4992,18 +4992,17 @@ function updateActiveTags() {
 }
 
 async function submitPost() {
-  // Must be logged in to post
+  // ── Guard: must be logged in ──
   if (!STATE.currentUser) {
     showToast('Please login to post', 'error');
-    const ov = document.getElementById('fb-auth-overlay');
-    if (ov) ov.classList.remove('hidden');
+    document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
     return;
   }
 
   const rawText = document.getElementById('post-text-input')?.value?.trim() || '';
   const text = (typeof sanitizeInput === 'function')
     ? sanitizeInput(rawText)
-    : rawText.replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#x27;'}[c]||c)).substring(0,2000);
+    : rawText.replace(/[<>&"']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#x27;'}[c]||c)).substring(0,2000);
   const visibility = document.getElementById('post-visibility')?.value || 'public';
 
   if (!text && !STATE.currentPostMedia) {
@@ -5013,99 +5012,152 @@ async function submitPost() {
 
   const btn = document.querySelector('.create-post-submit-btn') ||
               document.querySelector('[onclick*="submitPost"]');
-  if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
+  const resetBtn = () => { if(btn){btn.disabled=false;btn.textContent='Post';} };
+  if(btn){btn.disabled=true;btn.textContent='Posting...';}
 
-  const resetBtn = () => { if (btn) { btn.disabled = false; btn.textContent = 'Post'; } };
+  // ─────────────────────────────────────────────────────────────
+  // KEY FIX (Job Placement pattern):
+  // Use CLIENT-SIDE Date.now() as timestamp so orderBy works
+  // INSTANTLY without waiting for serverTimestamp() to resolve.
+  // serverTimestamp() returns null on client → post skipped in
+  // ordered query → post doesn't appear until page refresh.
+  // ─────────────────────────────────────────────────────────────
+  const nowMs = Date.now();
 
-  try {
-    if (window._FB_READY && STATE.currentUser.isFirebase) {
-      // ── FIREBASE PATH ──
-      const firebaseUser = window._currentUser;
-      if (!firebaseUser) {
-        resetBtn();
-        showToast('Session expired. Please login again.', 'error');
-        setTimeout(() => fbLogout(), 800);
-        return;
-      }
+  const hashtags = STATE.activeTags?.hashtags || [];
+  const postData = {
+    authorId:     STATE.currentUser.id || (window._currentUser?.uid),
+    authorName:   STATE.currentUser.name,
+    authorAvatar: STATE.currentUser.avatar,
+    authorHandle: STATE.currentUser.handle || '',
+    text:         text + (hashtags.length ? ' ' + hashtags.map(h=>'#'+h).join(' ') : ''),
+    image:        STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
+    video:        STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
+    feeling:      STATE.activeTags?.feeling || null,
+    location:     STATE.activeTags?.location || STATE.currentUser.city || null,
+    visibility,
+    likes:        0, comments: [], shares: 0, views: 0,
+    userCity:     STATE.currentUser.city   || null,
+    userSchool:   STATE.currentUser.school || null,
+    userCollege:  STATE.currentUser.college|| null,
+    // CLIENT timestamp — so orderBy works instantly (Job Placement pattern)
+    timestamp:    nowMs,
+    _ts:          nowMs
+  };
 
-      let imageURL = null, videoURL = null;
-      if (STATE.currentPostMedia) {
-        if (STATE.currentPostMediaType === 'image') {
-          showToast('Compressing image...', 'info');
-          const compressed = await compressImageTo100KB(STATE.currentPostMedia, 95);
-          if (window._fb?.storage||null) {
-            try {
-              imageURL = await uploadImageToStorage(
-                compressed, 'posts/' + firebaseUser.uid + '_' + Date.now() + '.jpg'
-              );
-            } catch(se) { imageURL = compressed; }
-          } else { imageURL = compressed; }
-        } else { videoURL = STATE.currentPostMedia; }
-      }
-
-      const hashtags = STATE.activeTags?.hashtags || [];
-      const postData = {
-        authorId: firebaseUser.uid,
-        authorName: STATE.currentUser.name,
-        authorAvatar: STATE.currentUser.avatar,
-        authorHandle: STATE.currentUser.handle || '',
-        text: text + (hashtags.length ? ' ' + hashtags.map(h=>'#'+h).join(' ') : ''),
-        image: imageURL, video: videoURL,
-        feeling: STATE.activeTags?.feeling || null,
-        location: STATE.activeTags?.location || STATE.currentUser.city || null,
-        visibility,
-        timestamp: window._fb.serverTimestamp(),
-        likes: 0, comments: [], shares: 0, views: 0,
-        userCity: STATE.currentUser.city || null,
-        userSchool: STATE.currentUser.school || null,
-        userCollege: STATE.currentUser.college || null,
-      };
-
-      const docRef = await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),postData);
-      STATE.posts.unshift({ id: docRef.id, ...postData, timestamp: Date.now(), isOwn: true });
-      showToast('Post shared! 🚀', 'success');
-
-    } else {
-      // ── LOCAL / GUEST PATH ──
-      const post = {
-        id: 'post_' + Date.now(),
-        authorId: STATE.currentUser.id,
-        authorName: STATE.currentUser.name,
-        authorAvatar: STATE.currentUser.avatar,
-        text: text + (STATE.activeTags?.hashtags?.length
-          ? ' ' + STATE.activeTags.hashtags.map(h=>'#'+h).join(' ') : ''),
-        image: STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
-        video: STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
-        feeling: STATE.activeTags?.feeling || null,
-        location: STATE.activeTags?.location || null,
-        visibility, timestamp: Date.now(),
-        likes: 0, comments: [], shares: 0, views: 1, isOwn: true, reaction: null,
-      };
-      STATE.posts.unshift(post);
-      showToast('Post published! 🚀', 'success');
-    }
-
-  } catch(e) {
-    console.error('submitPost error:', e.code, e.message);
-    const msg = (e.code === 'permission-denied' || e.code === 'PERMISSION_DENIED')
-      ? 'Permission denied. Please logout and login again.'
-      : (e.message || 'Post failed');
-    showToast('\u274c ' + msg, 'error');
-    resetBtn();
-    return;
-  }
-
-  // Reset form
+  // ── Reset form immediately (before await) ──
   document.getElementById('post-text-input').value = '';
   removeMedia();
   STATE.activeTags = {feeling:null, hashtags:[], location:null};
   updateActiveTags();
   closeEmojiPicker();
   resetBtn();
+
+  // ── LOCAL / GUEST PATH ──
+  if (!window._FB_READY || !STATE.currentUser.isFirebase) {
+    const localPost = { id: 'post_'+nowMs, ...postData, isOwn: true };
+    STATE.posts.unshift(localPost);
+    const pc = document.getElementById('posts-container');
+    if(pc){
+      const html = createPostHTML(localPost, 0);
+      pc.insertAdjacentHTML('afterbegin', html);
+    } else { renderPosts(); }
+    showToast('Post published! 🚀', 'success');
+    saveState();
+    updateProfileStats();
+    if(typeof awardPostPoints==='function') awardPostPoints();
+    return;
+  }
+
+  // ── FIREBASE PATH ──
+  const firebaseUser = window._currentUser;
+  if (!firebaseUser) {
+    showToast('Session expired. Please login again.', 'error');
+    setTimeout(() => fbLogout(), 800);
+    return;
+  }
+
+  // OPTIMISTIC INSERT — show post immediately (Job Placement pattern)
+  const tempId = 'temp_' + nowMs;
+  const tempPost = {
+    id: tempId,
+    ...postData,
+    authorId: firebaseUser.uid,
+    isOwn: true
+  };
+  STATE.posts.unshift(tempPost);
+  const pc = document.getElementById('posts-container');
+  if(pc){
+    const tempHTML = createPostHTML(tempPost, 0);
+    // Wrap in data-temp for cleanup when real doc arrives
+    const wrapper = document.createElement('div');
+    wrapper.innerHTML = tempHTML;
+    const postEl = wrapper.firstElementChild;
+    if(postEl){
+      postEl.setAttribute('data-temp', tempId);
+      postEl.style.opacity = '0.85';
+      pc.insertBefore(postEl, pc.firstChild);
+    }
+  }
+  showToast('✅ Post shared!', 'success');
+
+  // Save to Firebase in background
+  try {
+    let imageURL = null, videoURL = null;
+    if (STATE.currentPostMedia === null && tempPost.image) imageURL = tempPost.image;
+    if (STATE.currentPostMedia === null && tempPost.video) videoURL = tempPost.video;
+
+    // Compress image if still in postData
+    if (postData.image) {
+      try {
+        const compressed = await compressImageTo100KB(postData.image, 95);
+        imageURL = compressed;
+      } catch(ce) { imageURL = postData.image; }
+    }
+
+    const fbData = {
+      ...postData,
+      authorId:  firebaseUser.uid,
+      image:     imageURL || postData.image,
+      video:     videoURL || postData.video,
+      // Store BOTH client ms timestamp AND serverTimestamp
+      timestamp: nowMs,  // client ms — for instant orderBy
+      _serverTs: window._fb.serverTimestamp()  // server time for accuracy
+    };
+    delete fbData._ts;
+
+    const docRef = await window._fb.addDoc(
+      window._fb.collection(window._fb.db,'posts'),
+      fbData
+    );
+
+    // Update STATE with real ID
+    const idx = STATE.posts.findIndex(p=>p.id===tempId);
+    if(idx>-1) STATE.posts[idx] = {...STATE.posts[idx], id: docRef.id, isOwn: true};
+
+    // Remove temp element — subscribeToPostsRT will add the real one
+    setTimeout(()=>{
+      const tempEl = document.querySelector('[data-temp="'+tempId+'"]');
+      if(tempEl) tempEl.remove();
+    }, 2000);
+
+    // Update user post count
+    window._fb.updateDoc(
+      window._fb.doc(window._fb.db,'users',firebaseUser.uid),
+      {posts: window._fb.increment(1)}
+    ).catch(()=>{});
+
+  } catch(e) {
+    console.error('submitPost Firebase error:', e.code, e.message);
+    const errMsg = (e.code==='permission-denied')
+      ? 'Permission denied. Try logging out and back in.'
+      : (e.message || 'Post failed');
+    showToast('⚠️ Firebase save failed: '+errMsg+' (post shown locally)', 'error');
+  }
+
   saveState();
-  renderPosts();
   updateProfileStats();
-  if (typeof awardPostPoints === 'function') awardPostPoints();
+  if(typeof awardPostPoints==='function') awardPostPoints();
 }
 
 
@@ -5200,7 +5252,7 @@ function createPostHTML(post, idx = 0) {
     else if (sameCollege) nearbyBadge = `<span style="font-size:0.65rem;padding:2px 7px;border-radius:10px;background:rgba(139,92,246,0.12);color:#8B5CF6;border:1px solid rgba(139,92,246,0.3);margin-left:4px"><i class="fas fa-university"></i> Same College</span>`;
   }
   
-  return `<div class="post-card" id="post-${post.id}" style="animation-delay:${idx * 0.05}s">
+  return `<div class="post-card" id="post-${post.id}" data-post-id="${post.id}" style="animation-delay:${idx * 0.05}s">
     <div class="post-header">
       <div class="post-avatar" onclick="navigateTo('profile')">
         <img src="${post.authorAvatar}" alt="${post.authorName}" loading="lazy">
@@ -7159,64 +7211,124 @@ window.setupFirebaseUser = async function(firebaseUser){
 window.subscribeToPostsRT = function(){
   if(!window._fb?.db) return;
   if(_postsListener){try{_postsListener();}catch(e){}_postsListener=null;}
+
   const u=STATE.currentUser;
   const banner=document.getElementById('nearby-feed-banner');
   if(banner&&u&&(u.city||u.school||u.college||u.geo)){banner.style.display='flex';}
-  let first=true;
 
-  /* ── FIXED: orderBy timestamp desc — works for ALL users ──
-     Posts collection must have all docs with timestamp field.
-     Using onSnapshot so ALL users see real-time updates. */
-  const q=window._fb.query(
+  /* ── Job Placement pattern:
+     - orderBy('timestamp','desc') — posts saved with CLIENT timestamp so ordering works instantly
+     - includeMetadataChanges:false — only server-confirmed docs
+     - docChanges() — incremental updates, no full re-render flicker
+     - data-id attribute on each post card for dedup tracking ── */
+  const postsContainer = document.getElementById('posts-container');
+
+  const q = window._fb.query(
     window._fb.collection(window._fb.db,'posts'),
     window._fb.orderBy('timestamp','desc'),
     window._fb.limit(50)
   );
-  _postsListener=window._fb.onSnapshot(q,snap=>{
-    const pts=[];
-    const myUid=window._currentUser?.uid||null;
-    snap.forEach(d=>{
-      const data=d.data();
-      pts.push({
-        id:d.id,
-        ...data,
-        isOwn: myUid && data.authorId===myUid,
-        _ts: data.timestamp?.toMillis ? data.timestamp.toMillis() : (typeof data.timestamp === 'number' ? data.timestamp : Date.now())
+
+  _postsListener = window._fb.onSnapshot(q, {includeMetadataChanges: false}, snap => {
+    const myUid = window._currentUser?.uid || null;
+
+    // Remove any temp/optimistic posts that now have real Firebase counterparts
+    const realIds = new Set();
+    snap.forEach(d => realIds.add(d.id));
+    if(postsContainer){
+      postsContainer.querySelectorAll('[data-temp]').forEach(el => {
+        if(el.dataset.temp) el.remove();
       });
-    });
-    pts.sort((a,b)=>(b._ts||0)-(a._ts||0));
-    STATE.posts=pts;
-    renderPosts();
-    if(!first){const el=document.getElementById('rt-indicator');if(el){el.classList.add('show');setTimeout(()=>el.classList.remove('show'),4000);}}
-    first=false;
-  },err=>{
-    console.warn('Posts listener error:',err.message,err.code);
-    // If index error: fallback to simple query without orderBy
-    if(err.code==='failed-precondition'||err.message?.includes('index')||err.message?.includes('requires an index')){
-      console.warn('[KSpider] Creating fallback query (no orderBy) — please create Firestore index');
-      const qFallback=window._fb.query(
-        window._fb.collection(window._fb.db,'posts'),
-        window._fb.limit(50)
-      );
-      _postsListener=window._fb.onSnapshot(qFallback,snap2=>{
-        const pts2=[];
-        const myUid2=window._currentUser?.uid||null;
-        snap2.forEach(d=>{
-          const data=d.data();
+    }
+
+    // Is this the very first load?
+    const isFirstLoad = !postsContainer?.querySelector('[data-post-id]');
+
+    if(isFirstLoad){
+      // First load: build STATE.posts and full render
+      const pts = [];
+      snap.forEach(d => {
+        const data = d.data();
+        pts.push({
+          id: d.id, ...data,
+          isOwn: myUid && data.authorId === myUid,
+          _ts: data.timestamp?.toMillis ? data.timestamp.toMillis() :
+               (typeof data.timestamp === 'number' ? data.timestamp : Date.now())
+        });
+      });
+      pts.sort((a,b) => (b._ts||0) - (a._ts||0));
+      STATE.posts = pts;
+      renderPosts();
+    } else {
+      // Subsequent updates: only add NEW posts at top (docChanges pattern)
+      const renderedIds = new Set();
+      if(postsContainer){
+        postsContainer.querySelectorAll('[data-post-id]').forEach(el => renderedIds.add(el.dataset.postId));
+      }
+
+      const newPosts = [];
+      snap.docChanges().forEach(change => {
+        const data = change.doc.data();
+        const pid  = change.doc.id;
+        if(change.type === 'added' && !renderedIds.has(pid)){
+          newPosts.push({
+            id: pid, ...data,
+            isOwn: myUid && data.authorId === myUid,
+            _ts: data.timestamp?.toMillis ? data.timestamp.toMillis() :
+                 (typeof data.timestamp === 'number' ? data.timestamp : Date.now())
+          });
+          // Also update STATE.posts
+          if(!STATE.posts.find(p => p.id === pid)){
+            STATE.posts.unshift({id: pid, ...data, isOwn: myUid && data.authorId === myUid});
+          }
+        }
+        if(change.type === 'modified'){
+          // Update existing post in STATE
+          const idx = STATE.posts.findIndex(p => p.id === pid);
+          if(idx > -1) STATE.posts[idx] = {...STATE.posts[idx], ...data};
+        }
+        if(change.type === 'removed'){
+          STATE.posts = STATE.posts.filter(p => p.id !== pid);
+          const el = postsContainer?.querySelector('[data-post-id="'+pid+'"]');
+          if(el) el.remove();
+        }
+      });
+
+      if(newPosts.length > 0 && postsContainer){
+        newPosts.sort((a,b) => (b._ts||0) - (a._ts||0));
+        newPosts.forEach(post => {
+          const html = createPostHTML(post, 0);
+          postsContainer.insertAdjacentHTML('afterbegin', html);
+        });
+        // Show RT indicator
+        const el = document.getElementById('rt-indicator');
+        if(el){el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000);}
+      }
+    }
+
+  }, err => {
+    console.warn('Posts listener error:', err.message, err.code);
+    // Fallback: no orderBy (works without index)
+    if(err.code==='failed-precondition' || (err.message||'').includes('index')){
+      console.warn('[KSpider] Using fallback query (no orderBy)');
+      const qFb = window._fb.query(window._fb.collection(window._fb.db,'posts'), window._fb.limit(50));
+      _postsListener = window._fb.onSnapshot(qFb, {includeMetadataChanges:false}, snap2 => {
+        const myUid2 = window._currentUser?.uid || null;
+        const pts2 = [];
+        snap2.forEach(d => {
+          const data = d.data();
           pts2.push({id:d.id,...data,isOwn:myUid2&&data.authorId===myUid2,
             _ts:data.timestamp?.toMillis?data.timestamp.toMillis():(typeof data.timestamp==='number'?data.timestamp:Date.now())});
         });
-        pts2.sort((a,b)=>(b._ts||0)-(a._ts||0));
-        STATE.posts=pts2;
+        pts2.sort((a,b) => (b._ts||0)-(a._ts||0));
+        STATE.posts = pts2;
         renderPosts();
-        first=false;
-      },e2=>console.warn('Fallback posts listener error:',e2.message));
+      }, e2 => console.warn('Fallback error:', e2.message));
     } else {
-      // Other errors: retry
-      setTimeout(()=>{ if(window._FB_READY) window.subscribeToPostsRT(); },3000);
+      setTimeout(() => { if(window._FB_READY) window.subscribeToPostsRT(); }, 3000);
     }
   });
-};
+};;
 
 /* ── PRESENCE SETUP ── */
 window.setupPresence = function(uid,name,avatar){
