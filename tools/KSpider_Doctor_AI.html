@@ -1251,7 +1251,13 @@ body.saas-mode .container { max-width: 100%; padding: 0; margin: 0; }
   min-height: 100vh;
   background: var(--saas-content-bg);
 }
-body.saas-mode #saas-shell { display: flex; }
+body.saas-mode #saas-shell {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 body.saas-mode > .header,
 body.saas-mode > div:not(#saas-shell):not(#pwa-banner):not(.modal-overlay):not(#prescription-modal):not(#wa-modal):not(#whatsapp-modal):not(#inv-master-panel) {
   display: none !important;
@@ -1259,7 +1265,7 @@ body.saas-mode > div:not(#saas-shell):not(#pwa-banner):not(.modal-overlay):not(#
 
 /* ── Sidebar ── */
 #saas-sidebar {
-  width: var(--saas-sidebar-width);
+  width: var(--saas-sidebar-width, 240px);
   background: var(--saas-sidebar-bg);
   min-height: 100vh;
   position: fixed;
@@ -1379,9 +1385,9 @@ body.saas-mode > div:not(#saas-shell):not(#pwa-banner):not(.modal-overlay):not(#
 #saas-topbar {
   position: fixed;
   top: 0;
-  left: var(--saas-sidebar-width);
+  left: var(--saas-sidebar-width, 240px);
   right: 0;
-  height: var(--saas-topbar-height);
+  height: var(--saas-topbar-height, 60px);
   background: var(--saas-topbar-bg);
   border-bottom: 1px solid #e8edf5;
   z-index: 1050;
@@ -1421,11 +1427,11 @@ body.sidebar-collapsed #saas-topbar { left: 64px; }
 
 /* ── Main Content Area ── */
 #saas-main {
-  margin-left: var(--saas-sidebar-width);
-  padding-top: var(--saas-topbar-height);
+  margin-left: var(--saas-sidebar-width, 240px);
+  padding-top: var(--saas-topbar-height, 60px);
   min-height: 100vh;
-  flex: 1;
-  transition: margin-left 0.3s ease;
+  width: calc(100% - var(--saas-sidebar-width, 240px));
+  transition: margin-left 0.3s ease, width 0.3s ease;
   background: var(--saas-content-bg);
   width: calc(100% - var(--saas-sidebar-width));
 }
@@ -1617,6 +1623,21 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
     --saas-sidebar-width: 0px;
     --saas-topbar-height: 56px;
   }
+  /* Hide fixed sidebars/widgets on mobile */
+  #dr-yt-sidebar,
+  #dr-yt-tab { display: none !important; }
+  #float-wa-btn {
+    bottom: 16px !important;
+    right: 16px !important;
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 22px !important;
+  }
+  /* Fix saas-main full width on mobile */
+  #saas-main {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
   /* Sidebar: slide off-screen by default */
   #saas-sidebar {
     width: 270px !important;
@@ -1735,6 +1756,8 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
   .saas-overview-grid { grid-template-columns: repeat(2,1fr) !important; }
   .grid-4 { grid-template-columns: repeat(2,1fr) !important; }
   #brand-list { grid-template-columns: repeat(auto-fill,minmax(270px,1fr)) !important; }
+  /* Hide vertical sidebar widget on tablet */
+  #dr-yt-sidebar, #dr-yt-tab { display: none !important; }
 }
 
 /* ═══ COLLAPSED SIDEBAR (desktop) ══════════════════════════════ */
@@ -1745,6 +1768,9 @@ body.sidebar-collapsed #saas-main { margin-left: 64px; width: calc(100% - 64px);
     width: calc(100% - 64px) !important;
   }
   body.sidebar-collapsed #saas-topbar { left: 64px !important; }
+  /* Desktop: show dr-yt-sidebar and float button properly */
+  #dr-yt-sidebar { pointer-events: none; }
+  #float-wa-btn { bottom: 24px; right: 24px; }
 }
 
 /* ═══ TOUCH DEVICES ════════════════════════════════════════════ */
