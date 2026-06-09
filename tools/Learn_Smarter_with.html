@@ -1416,7 +1416,22 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
           <span class="chip" onclick="startGrandTest('NEET PG Grand Test 1',200)" style="border-color:rgba(14,165,233,.5);background:rgba(14,165,233,.08);font-weight:700;flex:1;min-width:160px;"><span class="ck">▶</span>🏆 1st Grand Test (200Q) — Attempt Free</span>
           <button onclick="shareGrandTest('NEET PG Grand Test 1',200)" style="background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.4);border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:700;color:#22c55e;cursor:pointer;white-space:nowrap;">📤 Share Test</button>
         </div>
-        <span class="chip" onclick="toast('Coming soon — more Grand Tests on the way!','i')" style="opacity:.6;"><span class="ck">▶</span>🏆 2nd Grand Test <span style="font-size:.65rem;">(coming soon)</span></span>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+          <span class="chip" onclick="startGrandTest('NEET PG Grand Test 2',200)" style="border-color:rgba(14,165,233,.5);background:rgba(14,165,233,.08);font-weight:700;flex:1;min-width:160px;"><span class="ck">▶</span>🏆 2nd Grand Test (200Q) — Attempt Free</span>
+          <button onclick="shareGrandTest('NEET PG Grand Test 2',200)" style="background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.4);border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:700;color:#22c55e;cursor:pointer;white-space:nowrap;">📤 Share Test</button>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+          <span class="chip" onclick="startGrandTest('NEET PG Grand Test 3',200)" style="border-color:rgba(14,165,233,.5);background:rgba(14,165,233,.08);font-weight:700;flex:1;min-width:160px;"><span class="ck">▶</span>🏆 3rd Grand Test (200Q) — Attempt Free</span>
+          <button onclick="shareGrandTest('NEET PG Grand Test 3',200)" style="background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.4);border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:700;color:#22c55e;cursor:pointer;white-space:nowrap;">📤 Share Test</button>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+          <span class="chip" onclick="startGrandTest('NEET PG Grand Test 4',200)" style="border-color:rgba(14,165,233,.5);background:rgba(14,165,233,.08);font-weight:700;flex:1;min-width:160px;"><span class="ck">▶</span>🏆 4th Grand Test (200Q) — Attempt Free</span>
+          <button onclick="shareGrandTest('NEET PG Grand Test 4',200)" style="background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.4);border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:700;color:#22c55e;cursor:pointer;white-space:nowrap;">📤 Share Test</button>
+        </div>
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;">
+          <span class="chip" onclick="startGrandTest('INI-CET Grand Test 1',200)" style="border-color:rgba(14,165,233,.5);background:rgba(14,165,233,.08);font-weight:700;flex:1;min-width:160px;"><span class="ck">▶</span>🏆 INI-CET 1st Grand Test (200Q) — Attempt Free</span>
+          <button onclick="shareGrandTest('INI-CET Grand Test 1',200)" style="background:rgba(37,211,102,.12);border:1.5px solid rgba(37,211,102,.4);border-radius:20px;padding:6px 14px;font-size:.75rem;font-weight:700;color:#22c55e;cursor:pointer;white-space:nowrap;">📤 Share Test</button>
+        </div>
       </div>
     </div>
     <!-- NEET UG -->
@@ -2296,7 +2311,9 @@ const KS_SHEETS_ENABLED = true; // ✅ LIVE — K Spider Question Bank
 // =====================================================================
 
 // ── Per-topic GID URLs (each maps to a specific sheet tab) ──────────
-const KS_MASTER_BASE = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0rJfs6_hrYNlm5g7JVtWitLgI0g0HcSWubP4_cRigbt2U0n1vBtLTwcE4biOhu2ZlA-X8tUhJCmhy/pub';
+const KS_MASTER_BASE    = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0rJfs6_hrYNlm5g7JVtWitLgI0g0HcSWubP4_cRigbt2U0n1vBtLTwcE4biOhu2ZlA-X8tUhJCmhy/pub';
+// Secondary question sheet — all subjects combined in one tab
+const KS_SECONDARY_Q_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSYlNuMi4IZ5XDp9ACT0z0UYyolEUKZXAHdzRBQ41VUTWm-Tf1U0_1URpJviImHDtOqzi965Em0gbby/pub?output=csv';
 function gidUrl(gid) { return KS_MASTER_BASE + '?gid=' + gid + '&single=true&output=csv'; }
 
 const KS_SHEET_URLS = {
@@ -2517,60 +2534,110 @@ const KS_SHEET_CACHE = {};
 var KS_MASTER_CACHE        = null;
 var KS_MASTER_LOAD_PROMISE = null;
 
-// ── Parse Grand Test CSV (extended column format) ────────────────
-// Columns: Q_No|Subject|Topic|Sub_Topic|Question_Type|Difficulty|Question|OptionA|OptionB|OptionC|OptionD|Answer|Explanation
+// ── Grand Test CSV Parser — auto-detects column format from header ─
+// Handles Format A: Q_No|Subject|Topic|Sub_Topic|QType|Difficulty|Q|OptA-D|Answer|Exp|...
+// Handles Format B: Subject|Topic|QType|Q|OptA-D|Answer(0-3)|Exp|Ref|Difficulty
+// Handles Format C: Q_No|Subject|Difficulty|Q|OptA-D|CorrectIndex|CorrectLetter|Exp
 function parseGrandTestCSV(csvText, topicLabel) {
   try {
-    const lines = csvText.trim().split('\n');
+    var lines = csvText.trim().split('\n');
     if (lines.length < 2) return [];
-    const questions = [];
-    for (let i = 1; i < lines.length; i++) {
-      const row = parseCSVRow(lines[i]);
-      if (!row || row.length < 12) continue;
-      const subject     = (row[1] || '').trim();
-      const topic       = (row[2] || '').trim();
-      const subTopic    = (row[3] || '').trim();
-      const qType       = (row[4] || '').trim();
-      const difficulty  = (row[5] || '').trim();
-      const q           = (row[6] || '').trim();
-      const optA        = (row[7] || '').trim();
-      const optB        = (row[8] || '').trim();
-      const optC        = (row[9] || '').trim();
-      const optD        = (row[10] || '').trim();
-      let   ansRaw      = (row[11] || '').trim();
-      const exp         = (row[12] || '').trim();
-      if (!q) continue;
-      let ans;
-      if (/^[A-Da-d]$/.test(ansRaw)) { ans = 'ABCDabcd'.indexOf(ansRaw) % 4; }
-      else { ans = parseInt(parseFloat(ansRaw)); }
+    var hdr = parseCSVRow(lines[0]).map(function(h){
+      return (h||'').trim().toLowerCase().replace(/[\s_\-()]+/g,'');
+    });
+    var iCol = function(names) {
+      for (var x=0;x<names.length;x++){var i=hdr.indexOf(names[x]);if(i>=0)return i;}
+      return -1;
+    };
+    var qC   = iCol(['question','questions','q']);
+    var aC   = iCol(['optiona','option_a','opta','opt_a']);
+    var bC   = iCol(['optionb','option_b','optb','opt_b']);
+    var cC   = iCol(['optionc','option_c','optc','opt_c']);
+    var dC   = iCol(['optiond','option_d','optd','opt_d']);
+    var ansC = iCol(['correctanswer','correct_answer','correctanswerindex','correctanswer03','answer03','answer03','answer']);
+    var expC = iCol(['explanation','explain']);
+    var topC = iCol(['topic']);
+    var subC = iCol(['subject']);
+    var stC  = iCol(['subtopic','sub_topic']);
+    var qtC  = iCol(['questiontype','question_type','qtype','questiontype']);
+    var difC = iCol(['difficulty','difficultylevel']);
+    var refC = iCol(['reference','pyqreference','pyq_reference','ref']);
+    if (qC < 0 || aC < 0) {
+      console.warn('[KSpider] Grand Test: header not recognized:', hdr.slice(0,8));
+      return [];
+    }
+    var questions = [];
+    for (var i = 1; i < lines.length; i++) {
+      var row = parseCSVRow(lines[i]);
+      if (!row || row.length < Math.max(qC, aC, ansC) + 1) continue;
+      var q    = (row[qC]  || '').trim();
+      var optA = String(row[aC] || '').trim();
+      var optB = bC >= 0 ? String(row[bC] || '').trim() : '';
+      var optC2 = cC >= 0 ? String(row[cC] || '').trim() : '';
+      var optD = dC >= 0 ? String(row[dC] || '').trim() : '';
+      if (!q || !optA) continue;
+      var ansRaw = ansC >= 0 ? (row[ansC] || '').toString().trim() : '';
+      var ans;
+      if (/^[A-Da-d]$/.test(ansRaw))    { ans = 'ABCDabcd'.indexOf(ansRaw) % 4; }
+      else if (/^[0-3]$/.test(ansRaw))  { ans = parseInt(ansRaw); }
+      else                               { ans = parseInt(parseFloat(ansRaw)); }
       if (isNaN(ans) || ans < 0 || ans > 3) continue;
       questions.push({
-        q, opts: [optA, optB, optC, optD], ans, exp,
-        topic: topic || subject || topicLabel,
-        subject, subTopic, qType, difficulty,
-        yr: 'Grand Test',
+        q:          q,
+        opts:       [optA, optB, optC2, optD],
+        ans:        ans,
+        exp:        expC >= 0 ? (row[expC] || '').trim() : '',
+        topic:      topC >= 0 ? (row[topC] || topicLabel).trim() : topicLabel,
+        subject:    subC >= 0 ? (row[subC] || '').trim() : '',
+        subTopic:   stC  >= 0 ? (row[stC]  || '').trim() : '',
+        qType:      qtC  >= 0 ? (row[qtC]  || '').trim() : '',
+        difficulty: difC >= 0 ? (row[difC] || '').trim() : '',
+        reference:  refC >= 0 ? (row[refC] || '').trim() : '',
+        yr:         'Grand Test',
         isGrandTest: true,
-        fromSheet: true
+        fromSheet:  true
       });
     }
     return questions;
-  } catch(e) { console.warn('Grand Test parse error:', e); return []; }
+  } catch(e) { console.warn('[KSpider] Grand Test parse error:', e); return []; }
 }
 
-// ── Fetch Grand Test questions for a topic ────────────────────────
-async function fetchGrandTestQs(topic) {
+// ── Fetch Grand Test — GID nameMap + cache ─────────────────────────
+async function fetchGrandTestQs(topicKey) {
   if (!KS_SHEETS_ENABLED) return [];
-  const url = KS_SHEET_URLS[topic];
-  if (!url) return [];
-  if (KS_SHEET_CACHE[topic]) return KS_SHEET_CACHE[topic].slice();
+  if (KS_SHEET_CACHE[topicKey] && KS_SHEET_CACHE[topicKey].length > 0)
+    return KS_SHEET_CACHE[topicKey].slice();
+  // Map friendly name → exact Google Sheet tab GID
+  var nameToGid = {
+    'NEET PG Grand Test 1':      '1727921525',
+    'NEET PG Grand Test 2':      '1936248704',
+    'NEET PG Grand Test 3':      '855652086',
+    'NEET PG Grand Test 4':      '1479657668',
+    'INI-CET Grand Test 1':      '1338586492',
+    'NEET UG Grand Test 1':      '',
+    'JEE Mains Grand Test 1':    '',
+    'JEE Advanced Grand Test 1': '',
+    'GPSC Grand Test 1':         '',
+    'UPSC Grand Test 1':         '',
+  };
+  var gid = nameToGid[topicKey] || '';
+  if (!gid) {
+    console.warn('[KSpider] GID not set for Grand Test:', topicKey);
+    return [];
+  }
   try {
-    const csv = await sheetFetchCSV(url);
-    const qs  = parseGrandTestCSV(csv, topic);
-    for(let i=qs.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[qs[i],qs[j]]=[qs[j],qs[i]];}
-    KS_SHEET_CACHE[topic] = qs;
+    var url = gidUrl(gid);
+    var csv = await sheetFetchCSV(url);
+    var qs  = parseGrandTestCSV(csv, topicKey);
+    if (qs.length > 0) {
+      KS_SHEET_CACHE[topicKey] = qs;
+      console.log('[KSpider] Grand Test loaded:', topicKey, '|', qs.length, 'questions | Format detected via header');
+    } else {
+      console.warn('[KSpider] 0 questions parsed for', topicKey, '— check CSV header/format in Google Sheet');
+    }
     return qs;
   } catch(e) {
-    console.warn('[KSpider] Grand Test fetch failed:', topic, e.message);
+    console.warn('[KSpider] Grand Test fetch failed:', topicKey, e.message);
     return [];
   }
 }
@@ -2650,13 +2717,23 @@ function parseCSVRow(line) {
 
 // CORS proxy fallback
 async function sheetFetchCSV(url) {
-  try { var r = await fetch(url, {mode:'cors'}); if(r.ok){var t=await r.text();if(t&&t.length>20)return t;} } catch(e) {}
+  // 1. Plain fetch (no CORS mode — works for Google published sheets in browser)
+  try { var r0 = await fetch(url); if(r0.ok){var t0=await r0.text();if(t0&&t0.length>20)return t0;} } catch(e0) {}
+  // 2. Explicit CORS mode
+  try { var r1 = await fetch(url,{mode:'cors',credentials:'omit'}); if(r1.ok){var t1=await r1.text();if(t1&&t1.length>20)return t1;} } catch(e1) {}
+  // 3-7. Proxy cascade — 5 independent proxies
   var proxies = [
     'https://corsproxy.io/?'+encodeURIComponent(url),
-    'https://api.allorigins.win/raw?url='+encodeURIComponent(url)
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
+    'https://thingproxy.freeboard.io/fetch/'+url,
+    'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url),
+    'https://crossorigin.me/'+url
   ];
   for(var pi=0;pi<proxies.length;pi++){
-    try{var pr=await fetch(proxies[pi]);if(pr.ok){var txt=await pr.text();if(txt&&txt.length>20)return txt;}}catch(e2){}
+    try{
+      var pr=await fetch(proxies[pi],{cache:'no-store'});
+      if(pr.ok){var txt=await pr.text();if(txt&&txt.length>20)return txt;}
+    }catch(e2){}
   }
   throw new Error('Fetch failed: '+url.slice(0,80));
 }
@@ -2687,6 +2764,21 @@ async function loadMasterSheet() {
         grouped[t].push(q);
       });
     });
+    // Also load from secondary question sheet (all subjects in one tab)
+    try {
+      const secCsv = await sheetFetchCSV(KS_SECONDARY_Q_URL);
+      const secQs  = parseSheetCSV(secCsv, 'General');
+      secQs.forEach(function(q) {
+        const t = (q.topic || 'General').trim();
+        if (!grouped[t]) grouped[t] = [];
+        // Only add if not already loaded (avoid duplicates by checking question text)
+        var exists = grouped[t].some(function(ex){ return ex.q === q.q; });
+        if (!exists) grouped[t].push(q);
+      });
+      console.log('[KSpider] Secondary sheet loaded — added topics:', [...new Set(secQs.map(q=>q.topic))].join(', '));
+    } catch(e) {
+      console.warn('[KSpider] Secondary sheet failed (will use primary only):', e.message);
+    }
     KS_MASTER_CACHE = grouped;
     console.log('[KSpider] Master cache loaded. Topics:', Object.keys(grouped).join(', '));
     return grouped;
@@ -2846,7 +2938,9 @@ function gtCopyMsg() {
 }
 function gtShareWa() {
   var msg = document.getElementById('gt-share-msg').textContent;
-  window.open('https://wa.me/?text=' + encodeURIComponent(msg), '_blank');
+  var testUrl = 'https://kspiderai.in?test=' + encodeURIComponent(document.getElementById('gt-share-title').textContent);
+  var msgWithLink = msg + '\n🔗 Direct Link: ' + testUrl;
+  window.open('https://wa.me/?text=' + encodeURIComponent(msgWithLink), '_blank');
   document.getElementById('gt-share-modal').classList.remove('open');
 }
 function gtShareTg() {
@@ -4248,68 +4342,167 @@ function renderTranslatedQ(translated, idx){
 
 // ===================== GOVT SCHEME PROMOTIONAL MARKETING =====================
 // Google Sheet columns: Scheme Name | Ministry/Dept | Benefits | Eligibility | How to Apply | Website | Type(Gujarat/Central)
+// ── Govt Scheme Configuration ────────────────────────────────────
+// Try 3 URL variations of the scheme sheet; use fallback if all fail
 const GOVT_SCHEME_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdo3ydRseddlSOQ_Ufe_ny8yoGYHpNgcQM2d7HdpQLMdfpEaO3DlgunL1EMy8SKS42L4l7w5Ux0Tql/pub?gid=0&single=true&output=csv';
+const GOVT_SCHEME_URLS = [
+  GOVT_SCHEME_SHEET_URL,
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdo3ydRseddlSOQ_Ufe_ny8yoGYHpNgcQM2d7HdpQLMdfpEaO3DlgunL1EMy8SKS42L4l7w5Ux0Tql/pub?output=csv',
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vQdo3ydRseddlSOQ_Ufe_ny8yoGYHpNgcQM2d7HdpQLMdfpEaO3DlgunL1EMy8SKS42L4l7w5Ux0Tql/pub?single=true&output=csv'
+];
 let KS_ALL_SCHEMES = [];
 let KS_SCHEME_IDX = 0;
 
-// Try direct fetch first, then CORS proxies if it fails
+// ── Hardcoded fallback schemes — ALWAYS available, no network needed ─
+const KS_SCHEME_FALLBACK = [
+  {name:'PM Kisan Samman Nidhi',dept:'Ministry of Agriculture & Farmers Welfare',
+   benefits:'₹6,000 per year direct benefit transfer to small & marginal farmers in 3 equal installments of ₹2,000',
+   eligibility:'Small and marginal farmers with less than 2 hectares of land. Family income criteria applies.',
+   apply:'Apply at CSC center, PM-Kisan portal (pmkisan.gov.in) or via Kisan Corner app',
+   website:'pmkisan.gov.in', type:'Central'},
+  {name:'Ayushman Bharat PM-JAY',dept:'Ministry of Health & Family Welfare',
+   benefits:'₹5 lakh per year health insurance cover per family for secondary and tertiary hospitalisation',
+   eligibility:'Families listed in SECC 2011 database. Bottom 40% of India\'s population covered.',
+   apply:'Visit nearest empanelled hospital or Ayushman Bharat Kendra. No premium required.',
+   website:'pmjay.gov.in', type:'Central'},
+  {name:'Pradhan Mantri Awas Yojana (Urban)',dept:'Ministry of Housing & Urban Affairs',
+   benefits:'Interest subsidy up to ₹2.67 lakh on home loans for EWS/LIG/MIG categories',
+   eligibility:'EWS (income up to ₹3L), LIG (₹3-6L), MIG-I (₹6-12L), MIG-II (₹12-18L). First-time homebuyers.',
+   apply:'Apply through banks, housing finance companies or pmaymis.gov.in',
+   website:'pmaymis.gov.in', type:'Central'},
+  {name:'PM Ujjwala Yojana 2.0',dept:'Ministry of Petroleum & Natural Gas',
+   benefits:'Free LPG connection with first refill free + stove. Clean cooking fuel for BPL families.',
+   eligibility:'Women from BPL households not having LPG connection. Age 18+. SC/ST/OBC/Migrants eligible.',
+   apply:'Apply at nearest LPG distributor with Aadhaar, BPL ration card and bank account.',
+   website:'pmuy.gov.in', type:'Central'},
+  {name:'Pradhan Mantri Mudra Yojana',dept:'Ministry of Finance — MUDRA',
+   benefits:'Loans up to ₹10 lakh (Shishu: ₹50K | Kishore: ₹5L | Tarun: ₹10L) for non-farm businesses',
+   eligibility:'Any Indian citizen starting/expanding small/micro business. No collateral for Shishu & Kishore.',
+   apply:'Apply at any bank, MFI, NBFC or mudra.org.in portal. No processing fee.',
+   website:'mudra.org.in', type:'Central'},
+  {name:'Jan Dhan Yojana (PMJDY)',dept:'Ministry of Finance — DFS',
+   benefits:'Zero balance bank account + RuPay debit card + ₹2L accident insurance + ₹30K life cover + OD facility',
+   eligibility:'Any Indian citizen without bank account. No minimum balance required.',
+   apply:'Visit any bank branch with Aadhaar or voter ID. Account opened same day.',
+   website:'pmjdy.gov.in', type:'Central'},
+  {name:'Sukanya Samriddhi Yojana',dept:'Ministry of Finance — Post Office/Banks',
+   benefits:'8.2% interest rate (highest among small savings). Tax exemption under 80C. Maturity at 21 years.',
+   eligibility:'Girl child below 10 years. One account per girl. Maximum 2 accounts per family.',
+   apply:'Open at any post office or authorized bank with birth certificate + guardian ID proof.',
+   website:'india.gov.in/sukanya-samriddhi-yojna', type:'Central'},
+  {name:'PM Scholarship Scheme',dept:'Ministry of Defence (Ex-Servicemen Welfare)',
+   benefits:'₹3,000/month for boys, ₹3,500/month for girls pursuing professional degree courses',
+   eligibility:'Wards of ex-servicemen/coast guard. Minimum 60% in Class 12. For 1st year professional degree.',
+   apply:'Apply online at ksb.gov.in. Documents: marks certificate, ex-servicemen certificate, bank details.',
+   website:'ksb.gov.in', type:'Central'},
+  {name:'Skill India Mission (PMKVY)',dept:'Ministry of Skill Development & Entrepreneurship',
+   benefits:'Free skill training + ₹500/day stipend + ₹8,000 reward on assessment pass + job placement support',
+   eligibility:'Indian citizens aged 15-45 years. Priority to school dropouts, rural youth.',
+   apply:'Register at skillindia.gov.in or nearest PMKVY Training Center.',
+   website:'skillindia.gov.in', type:'Central'},
+  {name:'Startup India Scheme',dept:'DPIIT — Ministry of Commerce & Industry',
+   benefits:'3-year income tax exemption + 80% patent fee rebate + easy winding up + ₹10K Cr Fund of Funds',
+   eligibility:'Startup registered in India, less than 10 years old, annual turnover < ₹100 Cr, innovative.',
+   apply:'Self-certify at startupindia.gov.in. Get DPIIT recognition certificate.',
+   website:'startupindia.gov.in', type:'Central'},
+  {name:'PM Fasal Bima Yojana',dept:'Ministry of Agriculture & Farmers Welfare',
+   benefits:'Maximum 2% premium for Kharif, 1.5% for Rabi. Full compensation for crop loss due to natural calamity.',
+   eligibility:'All farmers — loanee farmers compulsorily, non-loanee voluntarily. All food crops covered.',
+   apply:'Apply through bank/CSC at time of crop loan or by 31 July (Kharif) / 31 Dec (Rabi).',
+   website:'pmfby.gov.in', type:'Central'},
+  {name:'Beti Bachao Beti Padhao',dept:'Ministry of Women & Child Development',
+   benefits:'Financial incentives for girl education, awareness programs, conditional cash transfers in low CSR districts.',
+   eligibility:'Families with girl children in selected 405 districts. Especially for SC/ST/minority communities.',
+   apply:'Contact District Collector office or WCD Department. Register girl child at birth.',
+   website:'wcddel.in', type:'Central'},
+  {name:'Vahali Dikri Yojana (Gujarat)',dept:'Gujarat Government — Women & Child Development',
+   benefits:'₹4,000 on 1st std admission + ₹6,000 on 9th std + ₹1 lakh at 18 years or marriage/graduation.',
+   eligibility:'First 2 daughters in BPL/APL families in Gujarat. Annual family income up to ₹2 lakh.',
+   apply:'Apply at Anganwadi Center within 3 years of girl\'s birth. Documents: birth cert, income cert, ration card.',
+   website:'wcd.gujarat.gov.in', type:'Gujarat'},
+  {name:'Namo Lakshmi Yojana (Gujarat)',dept:'Gujarat Government — Education Department',
+   benefits:'₹10,000/year for Class 9-10 girls + ₹15,000/year for Class 11-12 girls studying Science stream.',
+   eligibility:'Girls studying in Class 9-12 in Government/Grant-in-Aid schools in Gujarat.',
+   apply:'Register through school. Head teacher submits application to DEO.',
+   website:'gujarat.gov.in', type:'Gujarat'},
+  {name:'Kisan Suryoday Yojana (Gujarat)',dept:'Gujarat Government — Energy Department',
+   benefits:'3-phase power supply to farms from 5 AM to 9 PM. Solar energy, reliable supply for irrigation pumps.',
+   eligibility:'Farmers in Gujarat who have applied for agricultural 3-phase electricity connection.',
+   apply:'Apply at PGVCL/DGVCL/UGVCL/MGVCL office or online at their respective portals.',
+   website:'guj.gov.in/agriculturepower', type:'Gujarat'},
+  {name:'PM Employment Generation Programme (PMEGP)',dept:'Ministry of MSME — KVIC',
+   benefits:'25-35% subsidy on project cost up to ₹50 lakh (manufacturing) / ₹20 lakh (service). Creates 8-10 jobs.',
+   eligibility:'Age 18+. VIII pass for projects above ₹10L. Existing units not eligible. One per household.',
+   apply:'Apply at KVIC/KVIB/DIC office or online at kviconline.gov.in/pmegp.',
+   website:'kviconline.gov.in', type:'Central'},
+  {name:'National Scholarship Portal (NSP)',dept:'Ministry of Education — NIC',
+   benefits:'Central & State scholarships from ₹5,000 to ₹1,20,000/year for students of all categories.',
+   eligibility:'Students from Class 1 to PhD. SC/ST/OBC/Minorities/Disabled/Meritorious students.',
+   apply:'Register at scholarships.gov.in before deadline (usually Oct-Nov every year).',
+   website:'scholarships.gov.in', type:'Central'},
+  {name:'Namo Saraswati Vigyan Sadhana Yojana (Gujarat)',dept:'Gujarat Government — Education',
+   benefits:'₹10,000 per year for students in Science stream (Class 11-12) to support NEET/JEE preparation.',
+   eligibility:'Students admitted to Science stream in Class 11 in Gujarat government schools.',
+   apply:'Automatic enrollment for eligible students. Apply through school.',
+   website:'gujarat.gov.in', type:'Gujarat'}
+];
+
+// ── Try fetching from sheet, fall back to hardcoded schemes ──────
 async function schemeFetchCSV() {
-  var direct = GOVT_SCHEME_SHEET_URL;
-  var proxies = [
-    'https://corsproxy.io/?' + encodeURIComponent(direct),
-    'https://api.allorigins.win/raw?url=' + encodeURIComponent(direct),
-    'https://cors-anywhere.herokuapp.com/' + direct
-  ];
-  // Try direct first
-  try {
-    var r = await fetch(direct, {mode:'cors'});
-    if (r.ok) return await r.text();
-  } catch(e) {}
-  // Fallback: try proxies one by one
-  for (var pi = 0; pi < proxies.length; pi++) {
+  var lastErr = '';
+  for (var ui = 0; ui < GOVT_SCHEME_URLS.length; ui++) {
     try {
-      var pr = await fetch(proxies[pi]);
-      if (pr.ok) { var txt = await pr.text(); if (txt && txt.length > 10) return txt; }
-    } catch(e) {}
+      var csv = await sheetFetchCSV(GOVT_SCHEME_URLS[ui]);
+      if (csv && csv.length > 50) return csv;
+    } catch(e) { lastErr = e.message; }
   }
-  throw new Error('All fetch attempts failed');
+  throw new Error(lastErr || 'All scheme URLs failed');
+}
+
+function parseSchemeCSV(csv) {
+  var lines = csv.trim().split('\n');
+  var schemes = [];
+  for (var i = 1; i < lines.length; i++) {
+    var row = parseCSVRow(lines[i]);
+    if (!row || !row[0] || !row[0].trim()) continue;
+    schemes.push({
+      name:(row[0]||'').trim(), dept:(row[1]||'').trim(),
+      benefits:(row[2]||'').trim(), eligibility:(row[3]||'').trim(),
+      apply:(row[4]||'').trim(), website:(row[5]||'').trim(),
+      type:(row[6]||'Central').trim()
+    });
+  }
+  return schemes;
 }
 
 async function schemeInit() {
-  var loadEl = document.getElementById('scheme-loading');
+  var loadEl    = document.getElementById('scheme-loading');
   var contentEl = document.getElementById('scheme-content');
-  var errorEl = document.getElementById('scheme-error');
-  if (loadEl) loadEl.style.display = '';
+  var errorEl   = document.getElementById('scheme-error');
+  if (loadEl)    loadEl.style.display = '';
   if (contentEl) contentEl.style.display = 'none';
-  if (errorEl) errorEl.style.display = 'none';
+  if (errorEl)   errorEl.style.display  = 'none';
+
+  // ── Try live sheet first ──────────────────────────────────────
   try {
-    var csv = await schemeFetchCSV();
-    var lines = csv.trim().split('\n');
-    if (lines.length < 2) throw new Error('No data rows');
-    KS_ALL_SCHEMES = [];
-    for (var i = 1; i < lines.length; i++) {
-      var row = parseCSVRow(lines[i]);
-      if (!row || !row[0] || !row[0].trim()) continue;
-      KS_ALL_SCHEMES.push({
-        name:        (row[0] || '').trim(),
-        dept:        (row[1] || '').trim(),
-        benefits:    (row[2] || '').trim(),
-        eligibility: (row[3] || '').trim(),
-        apply:       (row[4] || '').trim(),
-        website:     (row[5] || '').trim(),
-        type:        (row[6] || 'Central').trim()
-      });
+    var csv    = await schemeFetchCSV();
+    var parsed = parseSchemeCSV(csv);
+    if (parsed.length > 0) {
+      KS_ALL_SCHEMES = parsed;
+      var now = new Date();
+      KS_SCHEME_IDX  = Math.floor((now - new Date(now.getFullYear(),0,0))/86400000) % KS_ALL_SCHEMES.length;
+      schemeDisplay(KS_SCHEME_IDX);
+      return;
     }
-    if (KS_ALL_SCHEMES.length === 0) throw new Error('No valid schemes found');
-    var now = new Date();
-    var dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000);
-    KS_SCHEME_IDX = dayOfYear % KS_ALL_SCHEMES.length;
-    schemeDisplay(KS_SCHEME_IDX);
-  } catch (e) {
-    if (loadEl) loadEl.style.display = 'none';
-    if (errorEl) errorEl.style.display = '';
-    console.warn('Scheme load error:', e.message);
+  } catch(e) {
+    // Sheet unavailable — silently use fallback (no console warning shown to end user)
   }
+
+  // ── Fallback: hardcoded schemes — always available ────────────
+  KS_ALL_SCHEMES = KS_SCHEME_FALLBACK;
+  var now3 = new Date();
+  KS_SCHEME_IDX  = Math.floor((now3 - new Date(now3.getFullYear(),0,0))/86400000) % KS_ALL_SCHEMES.length;
+  schemeDisplay(KS_SCHEME_IDX);
 }
 
 function schemeDisplay(idx) {
@@ -4499,20 +4692,18 @@ function nativeShrTl(){
     document.querySelectorAll('img').forEach(function(img){img.setAttribute('draggable','false');img.style.cssText+=';user-select:none;-webkit-user-select:none;';if(!img.closest('button')&&!img.onclick&&!img.getAttribute('onclick')&&!img.closest('[onclick]')&&!img.closest('a')&&!img.id.match(/result|cert|output/i)){img.style.pointerEvents='none';}img.addEventListener('contextmenu',function(e){e.preventDefault();return false;});});
     document.querySelectorAll('p,h1,h2,h3,h4,h5,h6,span,div,li,td,th').forEach(function(el){el.style.userSelect='none';el.style.webkitUserSelect='none';});
   });
-  var _dO=false,_dT=160;
-  function checkDT(){var wd=window.outerWidth-window.innerWidth,hd=window.outerHeight-window.innerHeight;if(wd>_dT||hd>_dT){if(!_dO){_dO=true;document.body.style.filter='blur(8px)';document.body.style.pointerEvents='none';showSW();}}else{if(_dO){_dO=false;document.body.style.filter='';document.body.style.pointerEvents='';var w=document.getElementById('ks-security-warn');if(w)w.remove();}}}
-  setInterval(checkDT,800);
-  function showSW(){if(document.getElementById('ks-security-warn'))return;var w=document.createElement('div');w.id='ks-security-warn';w.style.cssText='position:fixed;inset:0;z-index:2147483647;background:rgba(10,15,46,.97);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:-apple-system,sans-serif;pointer-events:all';w.innerHTML='<div style="font-size:4rem">🔐</div><div style="font-size:1.4rem;font-weight:800;color:#1546D0">Security Alert</div><div style="font-size:.95rem;color:#888;text-align:center;max-width:320px;line-height:1.6">Developer tools are not allowed on K Spider AI.<br>Please close DevTools to continue.</div><div style="font-size:.75rem;color:#555;margin-top:8px">© K Spider AI Tool — kspiderai.in</div>';document.body.appendChild(w);}
-  try{console.log=function(){};console.warn=function(){};console.error=function(){};console.info=function(){};console.debug=function(){};console.table=function(){};console.dir=function(){};}catch(e){}
+  // DevTools detection — passive only, NO DOM manipulation (AdSense-safe)
+  // Removed: blur/overlay/hide triggers that caused full-screen blinking
+  // Console overrides removed — were interfering with error detection
   try{if(window.top!==window.self){if(window.location.protocol!=='file:'&&window.location.hostname!==''){try{window.top.location.href=window.self.location.href;}catch(e){document.body.style.display='none';}}}}catch(e){}
-  if(window.location.protocol!=='file:'){setInterval(function(){try{(function(d){if((''+d/d).length!==1||d%20===0){(function(){}).constructor('debugger')();}else{(function(){}).constructor('debugger')();}}(+new Date()));}catch(e){}},3000);}
+  // Debugger injection removed — was causing periodic JS execution pauses
   Object.defineProperty(document,'oncontextmenu',{value:function(){return false;},writable:false});
   window.addEventListener('beforeprint',function(e){e.preventDefault();document.body.style.display='none';setTimeout(function(){document.body.style.display='';},1000);});
   document.addEventListener('keyup',function(e){if(e.key==='PrintScreen'){navigator.clipboard&&navigator.clipboard.writeText('© K Spider AI Tool — kspiderai.in — Unauthorized use prohibited');}});
   var _rc=0,_rw=Date.now();window.KS_rateLimit=function(){var now=Date.now();if(now-_rw>60000){_rc=0;_rw=now;}_rc++;return _rc<=30;};
   setTimeout(function(){try{console.log('%c🕷️ K Spider AI Tool','color:#1546D0;font-size:2rem;font-weight:900;');console.log('%c⛔ WARNING: Secured zone.','color:#dc2626;font-size:.9rem;font-weight:700;background:#fff0f0;padding:8px;');console.log('%c© 2025 K Spider for Kreation | www.kspiderai.in','color:#888;font-size:.8rem;');}catch(e){}},100);
   var SK='ks_session_start',SM=8*60*60*1000;if(!sessionStorage.getItem(SK))sessionStorage.setItem(SK,Date.now().toString());setInterval(function(){var st=parseInt(sessionStorage.getItem(SK)||'0');if(st&&(Date.now()-st>SM)){sessionStorage.clear();localStorage.removeItem('ks_u');window.location.reload();}},60000);
-  if(window.location.protocol!=='file:'){var _hd=false;['mousemove','touchstart','keypress','scroll','click'].forEach(function(ev){document.addEventListener(ev,function(){_hd=true;},{once:true,passive:true});});setTimeout(function(){if(!_hd){document.body.style.display='none';setTimeout(function(){document.body.style.display='';},5000);}},3000);}
+  // Body-hide-on-no-interaction removed — was causing black screen on page load
 })();
 
 
