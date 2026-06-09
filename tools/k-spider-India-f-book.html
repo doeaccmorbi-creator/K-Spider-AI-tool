@@ -4992,7 +4992,7 @@ function updateActiveTags() {
 }
 
 async function submitPost() {
-  // ── Guard: must be logged in ──
+  // ── Guard ──
   if (!STATE.currentUser) {
     showToast('Please login to post', 'error');
     document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
@@ -5015,56 +5015,38 @@ async function submitPost() {
   const resetBtn = () => { if(btn){btn.disabled=false;btn.textContent='Post';} };
   if(btn){btn.disabled=true;btn.textContent='Posting...';}
 
-  // ─────────────────────────────────────────────────────────────
-  // KEY FIX (Job Placement pattern):
-  // Use CLIENT-SIDE Date.now() as timestamp so orderBy works
-  // INSTANTLY without waiting for serverTimestamp() to resolve.
-  // serverTimestamp() returns null on client → post skipped in
-  // ordered query → post doesn't appear until page refresh.
-  // ─────────────────────────────────────────────────────────────
-  const nowMs = Date.now();
-
-  const hashtags = STATE.activeTags?.hashtags || [];
-  const postData = {
-    authorId:     STATE.currentUser.id || (window._currentUser?.uid),
-    authorName:   STATE.currentUser.name,
-    authorAvatar: STATE.currentUser.avatar,
-    authorHandle: STATE.currentUser.handle || '',
-    text:         text + (hashtags.length ? ' ' + hashtags.map(h=>'#'+h).join(' ') : ''),
-    image:        STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
-    video:        STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
-    feeling:      STATE.activeTags?.feeling || null,
-    location:     STATE.activeTags?.location || STATE.currentUser.city || null,
-    visibility,
-    likes:        0, comments: [], shares: 0, views: 0,
-    userCity:     STATE.currentUser.city   || null,
-    userSchool:   STATE.currentUser.school || null,
-    userCollege:  STATE.currentUser.college|| null,
-    // CLIENT timestamp — so orderBy works instantly (Job Placement pattern)
-    timestamp:    nowMs,
-    _ts:          nowMs
-  };
-
-  // ── Reset form immediately (before await) ──
+  // Reset form immediately (good UX — don't wait for Firebase)
+  const mediaBackup     = STATE.currentPostMedia;
+  const mediaTypeBackup = STATE.currentPostMediaType;
   document.getElementById('post-text-input').value = '';
   removeMedia();
   STATE.activeTags = {feeling:null, hashtags:[], location:null};
-  updateActiveTags();
-  closeEmojiPicker();
+  if(typeof updateActiveTags === 'function') updateActiveTags();
+  if(typeof closeEmojiPicker === 'function') closeEmojiPicker();
   resetBtn();
+
+  const nowMs    = Date.now();
+  const hashtags = STATE.activeTags?.hashtags || [];
 
   // ── LOCAL / GUEST PATH ──
   if (!window._FB_READY || !STATE.currentUser.isFirebase) {
-    const localPost = { id: 'post_'+nowMs, ...postData, isOwn: true };
+    const localPost = {
+      id:           'post_' + nowMs,
+      authorId:     STATE.currentUser.id || 'local',
+      authorName:   STATE.currentUser.name,
+      authorAvatar: STATE.currentUser.avatar,
+      authorHandle: STATE.currentUser.handle || '',
+      text:         text,
+      image:        mediaTypeBackup === 'image' ? mediaBackup : null,
+      video:        mediaTypeBackup === 'video' ? mediaBackup : null,
+      feeling:      null, location: null, visibility,
+      likes:0, comments:[], shares:0, views:1,
+      timestamp:    nowMs, _ts: nowMs, isOwn: true
+    };
     STATE.posts.unshift(localPost);
-    const pc = document.getElementById('posts-container');
-    if(pc){
-      const html = createPostHTML(localPost, 0);
-      pc.insertAdjacentHTML('afterbegin', html);
-    } else { renderPosts(); }
+    renderPosts();
     showToast('Post published! 🚀', 'success');
-    saveState();
-    updateProfileStats();
+    saveState(); updateProfileStats();
     if(typeof awardPostPoints==='function') awardPostPoints();
     return;
   }
@@ -5077,87 +5059,123 @@ async function submitPost() {
     return;
   }
 
-  // OPTIMISTIC INSERT — show post immediately (Job Placement pattern)
-  const tempId = 'temp_' + nowMs;
+  /* ════════════════════════════════════════════════════════
+     OPTIMISTIC INSERT (Job Placement pattern):
+     1. Show post in DOM immediately with temp ID
+     2. Save to Firebase in background
+     3. subscribeToPostsRT onSnapshot replaces temp with real data
+     KEY FIX: store timestamp as window._fb.serverTimestamp() ONLY
+     in Firestore. For local display use _ts:nowMs.
+     This avoids mixed-type orderBy issues in Firestore.
+     ════════════════════════════════════════════════════════ */
+  const tempId   = 'temp_' + nowMs;
   const tempPost = {
-    id: tempId,
-    ...postData,
-    authorId: firebaseUser.uid,
-    isOwn: true
+    id:           tempId,
+    authorId:     firebaseUser.uid,
+    authorName:   STATE.currentUser.name,
+    authorAvatar: STATE.currentUser.avatar,
+    authorHandle: STATE.currentUser.handle || '',
+    text,
+    image:        mediaTypeBackup === 'image' ? mediaBackup : null,
+    video:        mediaTypeBackup === 'video' ? mediaBackup : null,
+    feeling:      null, location: STATE.currentUser.city || null,
+    visibility,
+    likes:0, comments:[], shares:0, views:0,
+    timestamp:    nowMs, _ts: nowMs, isOwn: true,
+    userCity:     STATE.currentUser.city    || null,
+    userSchool:   STATE.currentUser.school  || null,
+    userCollege:  STATE.currentUser.college || null,
   };
+
+  // Add to STATE and DOM immediately
   STATE.posts.unshift(tempPost);
   const pc = document.getElementById('posts-container');
-  if(pc){
+  if(pc) {
     const tempHTML = createPostHTML(tempPost, 0);
-    // Wrap in data-temp for cleanup when real doc arrives
-    const wrapper = document.createElement('div');
-    wrapper.innerHTML = tempHTML;
-    const postEl = wrapper.firstElementChild;
-    if(postEl){
+    const div      = document.createElement('div');
+    div.innerHTML  = tempHTML;
+    const postEl   = div.firstElementChild;
+    if(postEl) {
       postEl.setAttribute('data-temp', tempId);
-      postEl.style.opacity = '0.85';
+      postEl.style.opacity = '0.75';
       pc.insertBefore(postEl, pc.firstChild);
     }
   }
   showToast('✅ Post shared!', 'success');
 
-  // Save to Firebase in background
+  // ── FIREBASE SAVE (background) ──
   try {
-    let imageURL = null, videoURL = null;
-    if (STATE.currentPostMedia === null && tempPost.image) imageURL = tempPost.image;
-    if (STATE.currentPostMedia === null && tempPost.video) videoURL = tempPost.video;
+    let imageURL = mediaTypeBackup === 'image' ? mediaBackup : null;
+    let videoURL = mediaTypeBackup === 'video' ? mediaBackup : null;
 
-    // Compress image if still in postData
-    if (postData.image) {
-      try {
-        const compressed = await compressImageTo100KB(postData.image, 95);
-        imageURL = compressed;
-      } catch(ce) { imageURL = postData.image; }
+    // Compress image
+    if(imageURL && typeof compressImageTo100KB === 'function') {
+      try { imageURL = await compressImageTo100KB(imageURL, 95); } catch(e) {}
     }
 
+    /* CRITICAL FIX: Use window._fb.serverTimestamp() for Firestore storage.
+       This ensures ALL posts have the same Timestamp type in Firestore,
+       so orderBy('timestamp','desc') works correctly for ALL users.
+       The temp post already shows instantly in DOM via optimistic insert. */
     const fbData = {
-      ...postData,
-      authorId:  firebaseUser.uid,
-      image:     imageURL || postData.image,
-      video:     videoURL || postData.video,
-      // Store BOTH client ms timestamp AND serverTimestamp
-      timestamp: nowMs,  // client ms — for instant orderBy
-      _serverTs: window._fb.serverTimestamp()  // server time for accuracy
+      authorId:     firebaseUser.uid,
+      authorName:   STATE.currentUser.name,
+      authorAvatar: STATE.currentUser.avatar,
+      authorHandle: STATE.currentUser.handle || '',
+      text,
+      image:        imageURL,
+      video:        videoURL,
+      feeling:      null,
+      location:     STATE.currentUser.city || null,
+      visibility,
+      likes:        0, comments: [], shares: 0, views: 0,
+      timestamp:    nowMs, // ← CLIENT timestamp (ms) ensures orderBy works instantly for all users
+      userCity:     STATE.currentUser.city    || null,
+      userSchool:   STATE.currentUser.school  || null,
+      userCollege:  STATE.currentUser.college || null,
     };
-    delete fbData._ts;
 
     const docRef = await window._fb.addDoc(
-      window._fb.collection(window._fb.db,'posts'),
+      window._fb.collection(window._fb.db, 'posts'),
       fbData
     );
 
-    // Update STATE with real ID
-    const idx = STATE.posts.findIndex(p=>p.id===tempId);
-    if(idx>-1) STATE.posts[idx] = {...STATE.posts[idx], id: docRef.id, isOwn: true};
-
-    // Remove temp element — subscribeToPostsRT will add the real one
-    setTimeout(()=>{
+    // Update STATE: replace temp with real ID
+    const idx = STATE.posts.findIndex(p => p.id === tempId);
+    if(idx > -1) {
+      STATE.posts[idx] = { ...STATE.posts[idx], id: docRef.id, isOwn: true };
+      // Update DOM element id too
       const tempEl = document.querySelector('[data-temp="'+tempId+'"]');
-      if(tempEl) tempEl.remove();
-    }, 2000);
+      if(tempEl) {
+        tempEl.id = 'post-' + docRef.id;
+        tempEl.setAttribute('data-post-id', docRef.id);
+        tempEl.removeAttribute('data-temp');
+        tempEl.style.opacity = '1';
+      }
+    }
 
-    // Update user post count
+    // onSnapshot will fire and fully re-render — temp will be replaced cleanly
     window._fb.updateDoc(
       window._fb.doc(window._fb.db,'users',firebaseUser.uid),
-      {posts: window._fb.increment(1)}
+      { posts: window._fb.increment(1) }
     ).catch(()=>{});
 
   } catch(e) {
     console.error('submitPost Firebase error:', e.code, e.message);
-    const errMsg = (e.code==='permission-denied')
-      ? 'Permission denied. Try logging out and back in.'
-      : (e.message || 'Post failed');
-    showToast('⚠️ Firebase save failed: '+errMsg+' (post shown locally)', 'error');
+    if(e.code === 'permission-denied') {
+      showToast('Permission denied — please logout and login again.', 'error');
+    } else {
+      showToast('⚠️ Save failed: ' + (e.message||'Unknown error'), 'error');
+      // Remove temp post from STATE and DOM on failure
+      STATE.posts = STATE.posts.filter(p => p.id !== tempId);
+      document.querySelector('[data-temp="'+tempId+'"]')?.remove();
+      renderPosts();
+    }
   }
 
   saveState();
   updateProfileStats();
-  if(typeof awardPostPoints==='function') awardPostPoints();
+  if(typeof awardPostPoints === 'function') awardPostPoints();
 }
 
 
@@ -5196,10 +5214,14 @@ function sortPostsForFeed(posts) {
   return [...posts].sort((a, b) => {
     const sa = getNearbyScore(a), sb = getNearbyScore(b);
     if (sa !== sb) return sb - sa;
-    // Fallback: newest first
-    const ta = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.timestamp || 0);
-    const tb = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.timestamp || 0);
-    return tb - ta;
+    // Normalize timestamp — handles Firestore Timestamp objects AND ms numbers
+    const toMs = t => {
+      if(!t) return 0;
+      if(typeof t.toMillis === 'function') return t.toMillis();
+      if(typeof t === 'number') return t;
+      return 0;
+    };
+    return toMs(b.timestamp) - toMs(a.timestamp);
   });
 }
 
@@ -5225,7 +5247,9 @@ function renderPosts(container = 'posts-container', posts = STATE.posts) {
 }
 
 function createPostHTML(post, idx = 0) {
-  const timeAgo = getTimeAgo(post.timestamp);
+  // Normalize timestamp for display — handles both Firestore Timestamp and ms number
+  const tsMs = post.timestamp?.toMillis ? post.timestamp.toMillis() : (post.timestamp || post._ts || Date.now());
+  const timeAgo = getTimeAgo(tsMs);
   const isLiked = STATE.likedPosts.has(post.id);
   const isSaved = STATE.savedPosts.has(post.id);
   const reaction = STATE.reactions[post.id];
@@ -7210,19 +7234,21 @@ window.setupFirebaseUser = async function(firebaseUser){
 /* ── POSTS REAL-TIME LISTENER ── */
 window.subscribeToPostsRT = function(){
   if(!window._fb?.db) return;
+  // Unsubscribe previous listener
   if(_postsListener){try{_postsListener();}catch(e){}_postsListener=null;}
 
   const u=STATE.currentUser;
   const banner=document.getElementById('nearby-feed-banner');
   if(banner&&u&&(u.city||u.school||u.college||u.geo)){banner.style.display='flex';}
 
-  /* ── Job Placement pattern:
-     - orderBy('timestamp','desc') — posts saved with CLIENT timestamp so ordering works instantly
-     - includeMetadataChanges:false — only server-confirmed docs
-     - docChanges() — incremental updates, no full re-render flicker
-     - data-id attribute on each post card for dedup tracking ── */
-  const postsContainer = document.getElementById('posts-container');
-
+  /* ════════════════════════════════════════════════════════════
+     SIMPLE RELIABLE PATTERN (based on KSpider Job Placement):
+     - Always rebuild STATE.posts from Firestore snapshot
+     - Always call renderPosts() after state update
+     - Remove any optimistic temp posts before rendering
+     - Use client-side sort since mixed timestamp types possible
+     - includeMetadataChanges:false = only server-confirmed data
+     ════════════════════════════════════════════════════════════ */
   const q = window._fb.query(
     window._fb.collection(window._fb.db,'posts'),
     window._fb.orderBy('timestamp','desc'),
@@ -7232,103 +7258,77 @@ window.subscribeToPostsRT = function(){
   _postsListener = window._fb.onSnapshot(q, {includeMetadataChanges: false}, snap => {
     const myUid = window._currentUser?.uid || null;
 
-    // Remove any temp/optimistic posts that now have real Firebase counterparts
-    const realIds = new Set();
-    snap.forEach(d => realIds.add(d.id));
-    if(postsContainer){
-      postsContainer.querySelectorAll('[data-temp]').forEach(el => {
-        if(el.dataset.temp) el.remove();
-      });
-    }
-
-    // Is this the very first load?
-    const isFirstLoad = !postsContainer?.querySelector('[data-post-id]');
-
-    if(isFirstLoad){
-      // First load: build STATE.posts and full render
-      const pts = [];
-      snap.forEach(d => {
-        const data = d.data();
-        pts.push({
-          id: d.id, ...data,
-          isOwn: myUid && data.authorId === myUid,
-          _ts: data.timestamp?.toMillis ? data.timestamp.toMillis() :
-               (typeof data.timestamp === 'number' ? data.timestamp : Date.now())
-        });
-      });
-      pts.sort((a,b) => (b._ts||0) - (a._ts||0));
-      STATE.posts = pts;
-      renderPosts();
-    } else {
-      // Subsequent updates: only add NEW posts at top (docChanges pattern)
-      const renderedIds = new Set();
-      if(postsContainer){
-        postsContainer.querySelectorAll('[data-post-id]').forEach(el => renderedIds.add(el.dataset.postId));
+    // Build fresh STATE.posts from Firestore data
+    const pts = [];
+    snap.forEach(d => {
+      const data = d.data();
+      // Normalize timestamp to milliseconds for reliable sorting
+      let tsMs;
+      if(data.timestamp && typeof data.timestamp.toMillis === 'function'){
+        tsMs = data.timestamp.toMillis(); // Firestore Timestamp object
+      } else if(typeof data.timestamp === 'number'){
+        tsMs = data.timestamp; // already ms number (our client timestamp)
+      } else {
+        tsMs = Date.now();
       }
-
-      const newPosts = [];
-      snap.docChanges().forEach(change => {
-        const data = change.doc.data();
-        const pid  = change.doc.id;
-        if(change.type === 'added' && !renderedIds.has(pid)){
-          newPosts.push({
-            id: pid, ...data,
-            isOwn: myUid && data.authorId === myUid,
-            _ts: data.timestamp?.toMillis ? data.timestamp.toMillis() :
-                 (typeof data.timestamp === 'number' ? data.timestamp : Date.now())
-          });
-          // Also update STATE.posts
-          if(!STATE.posts.find(p => p.id === pid)){
-            STATE.posts.unshift({id: pid, ...data, isOwn: myUid && data.authorId === myUid});
-          }
-        }
-        if(change.type === 'modified'){
-          // Update existing post in STATE
-          const idx = STATE.posts.findIndex(p => p.id === pid);
-          if(idx > -1) STATE.posts[idx] = {...STATE.posts[idx], ...data};
-        }
-        if(change.type === 'removed'){
-          STATE.posts = STATE.posts.filter(p => p.id !== pid);
-          const el = postsContainer?.querySelector('[data-post-id="'+pid+'"]');
-          if(el) el.remove();
-        }
+      pts.push({
+        id:    d.id,
+        ...data,
+        isOwn: !!(myUid && data.authorId === myUid),
+        _ts:   tsMs
       });
+    });
 
-      if(newPosts.length > 0 && postsContainer){
-        newPosts.sort((a,b) => (b._ts||0) - (a._ts||0));
-        newPosts.forEach(post => {
-          const html = createPostHTML(post, 0);
-          postsContainer.insertAdjacentHTML('afterbegin', html);
-        });
-        // Show RT indicator
-        const el = document.getElementById('rt-indicator');
-        if(el){el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000);}
-      }
+    // Sort by timestamp descending (handles mixed Timestamp + number types)
+    pts.sort((a,b) => (b._ts||0) - (a._ts||0));
+
+    // Replace STATE.posts with fresh Firebase data
+    STATE.posts = pts;
+
+    // Remove any optimistic temp posts from DOM
+    document.querySelectorAll('[data-temp]').forEach(el => el.remove());
+
+    // Render everything fresh
+    renderPosts();
+
+    // Show real-time indicator (not on first load)
+    if(window._subscribeToPostsRT_firstLoad === false){
+      const el = document.getElementById('rt-indicator');
+      if(el){el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000);}
     }
+    window._subscribeToPostsRT_firstLoad = false;
 
   }, err => {
     console.warn('Posts listener error:', err.message, err.code);
-    // Fallback: no orderBy (works without index)
+    // Fallback: no orderBy (avoids index requirement)
     if(err.code==='failed-precondition' || (err.message||'').includes('index')){
-      console.warn('[KSpider] Using fallback query (no orderBy)');
-      const qFb = window._fb.query(window._fb.collection(window._fb.db,'posts'), window._fb.limit(50));
+      console.warn('[KSpider] No Firestore index — using fallback query');
+      const qFb = window._fb.query(
+        window._fb.collection(window._fb.db,'posts'),
+        window._fb.limit(50)
+      );
       _postsListener = window._fb.onSnapshot(qFb, {includeMetadataChanges:false}, snap2 => {
         const myUid2 = window._currentUser?.uid || null;
         const pts2 = [];
         snap2.forEach(d => {
           const data = d.data();
-          pts2.push({id:d.id,...data,isOwn:myUid2&&data.authorId===myUid2,
-            _ts:data.timestamp?.toMillis?data.timestamp.toMillis():(typeof data.timestamp==='number'?data.timestamp:Date.now())});
+          let tsMs;
+          if(data.timestamp && typeof data.timestamp.toMillis==='function') tsMs=data.timestamp.toMillis();
+          else if(typeof data.timestamp==='number') tsMs=data.timestamp;
+          else tsMs=Date.now();
+          pts2.push({id:d.id,...data,isOwn:!!(myUid2&&data.authorId===myUid2),_ts:tsMs});
         });
-        pts2.sort((a,b) => (b._ts||0)-(a._ts||0));
+        pts2.sort((a,b)=>(b._ts||0)-(a._ts||0));
         STATE.posts = pts2;
+        document.querySelectorAll('[data-temp]').forEach(el=>el.remove());
         renderPosts();
-      }, e2 => console.warn('Fallback error:', e2.message));
+      }, e2 => console.warn('Fallback posts error:', e2.message));
     } else {
-      setTimeout(() => { if(window._FB_READY) window.subscribeToPostsRT(); }, 3000);
+      setTimeout(()=>{ if(window._FB_READY) window.subscribeToPostsRT(); }, 3000);
     }
   });
-};;
+  window._subscribeToPostsRT_firstLoad = true;
+};;;
 
 /* ── PRESENCE SETUP ── */
 window.setupPresence = function(uid,name,avatar){
