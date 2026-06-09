@@ -396,18 +396,24 @@
         /* Start rotation if multiple ads */
         if (ads.length > 1) {
           var ms = Math.max(3000, (parseInt(ads[0].interval) || 10) * 1000);
-          state.timer = setInterval(function() {
-            /* Lock height after first successful render */
-            if (!state.heightLocked && inner.offsetHeight > 0) {
-              inner.style.minHeight  = inner.offsetHeight + 'px';
-              state.heightLocked = true;
-            }
+          /* Measure all banner heights and lock to max — prevents any jump */
+        setTimeout(function(){
+          var maxH = inner.offsetHeight || 0;
+          var probe = document.createElement('div');
+          probe.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;'+
+            'width:'+(inner.offsetWidth||300)+'px;left:-9999px;top:0;';
+          document.body.appendChild(probe);
+          ads.forEach(function(ad){ probe.innerHTML=''; renderAd(probe,ad); var h=probe.offsetHeight; if(h>maxH)maxH=h; });
+          probe.parentNode.removeChild(probe);
+          if(maxH>0){ inner.style.minHeight=maxH+'px'; state.heightLocked=true; }
+        }, 500);
+
+        state.timer = setInterval(function() {
             /* Fade out */
             inner.classList.add('ks-fading');
             setTimeout(function() {
               state.idx = (state.idx + 1) % state.ads.length;
               renderAd(inner, state.ads[state.idx]);
-              /* Fade in */
               inner.classList.remove('ks-fading');
             }, 300);
           }, ms);
