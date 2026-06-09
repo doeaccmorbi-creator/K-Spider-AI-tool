@@ -1,0 +1,72 @@
+<!--
+  K SPIDER AI — Ad Screen Jump Prevention Patch
+  ks-ad-nojump-patch.html  v1.0  |  kspiderai.in
+  
+  COPY KAR LO YE SECTION APNE TOOL KI CSS MEIN:
+  (before </style> ya apne .ad-banner CSS ke saath)
+-->
+<style>
+/* ── KSpider Ad No-Jump Patch — tool pages ke liye ── */
+.ad-banner, .ad-top, .ad-after-tool, .ad-bottom, .ad-content, .ad-inline, .ad-sidebar {
+  contain: layout style; /* isolate layout — banner size change page shift nahi karega */
+}
+[data-ks-slot] {
+  transition: opacity 0.32s ease;
+  will-change: opacity;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+[data-ks-slot].ks-fading { opacity: 0; }
+
+/* Slot type min-heights — page never collapses while loading */
+.ad-top         [data-ks-slot] { min-height: 90px; }
+.ad-after-tool  [data-ks-slot] { min-height: 90px; }
+.ad-bottom      [data-ks-slot] { min-height: 90px; }
+.ad-content     [data-ks-slot] { min-height: 120px; }
+.ad-inline      [data-ks-slot] { min-height: 60px; }
+.ad-sidebar     [data-ks-slot] { min-height: 250px; }
+</style>
+
+<!--
+  YE SCRIPT TAG APNE TOOL MEIN ks-ads.js KE BAAD PASTE KARO:
+  <script src="ks-ads.js"></script>    ← already hoga
+  [paste below script here]            ← yahan paste karo
+-->
+<script>
+(function(){
+  function applyNoJumpPatch(){
+    var slots = document.querySelectorAll('[data-ks-slot]');
+    slots.forEach(function(slot){
+      if(slot.dataset.noJumpPatched) return;
+      slot.dataset.noJumpPatched = '1';
+      var locked = false;
+      /* MutationObserver — jab bhi content change ho, height lock karo */
+      var obs = new MutationObserver(function(){
+        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
+          slot.style.minHeight = slot.offsetHeight + 'px';
+          locked = true;
+          obs.disconnect();
+        }
+      });
+      obs.observe(slot, {childList:true, subtree:true});
+    });
+  }
+  /* Run after DOM ready + small delay for ks-ads.js to init */
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
+  } else {
+    setTimeout(applyNoJumpPatch, 400);
+  }
+  /* Also expose for manual call */
+  window.ksAdNoJumpPatch = applyNoJumpPatch;
+})();
+</script>
+<!--
+  INSTRUCTIONS:
+  1. CSS section → apne tool ki <style> tag ke andar paste karo
+  2. Script section → ks-ads.js ke BAAD paste karo (before </body>)
+  3. Done — screen jump permanently fixed!
+  
+  Yahi approach SABHI tools mein karo:
+  kspider-doctor-ai-v3.html, WA-Broadcast-Pro.html, etc.
+-->
