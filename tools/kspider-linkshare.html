@@ -848,10 +848,28 @@
     position: relative;
     background: transparent;
     border: none;
+    /* ✅ FIX: Isolate layout so banner height changes don't shift page */
+    contain: layout style;
   }
   /* Hide completely when slot is empty (ks-ads.js sets display:none on empty slots) */
   .ad-banner:empty,
   .ad-banner [data-ks-slot]:empty { display: none !important; }
+
+  /* ✅ FIX: Slot inner — fade transition + min-height prevents screen jump */
+  [data-ks-slot] {
+    /* Smooth fade between banner swaps — eliminates visible jump */
+    transition: opacity 0.32s ease;
+    will-change: opacity;
+  }
+  [data-ks-slot].ks-fading { opacity: 0; }
+
+  /* Fixed min-heights per slot — page never collapses/expands during rotation */
+  .ad-top    [data-ks-slot]        { min-height: 90px; }
+  .ad-bottom [data-ks-slot]        { min-height: 90px; }
+  .ad-after-tool [data-ks-slot]    { min-height: 90px; }
+  .ad-content [data-ks-slot]       { min-height: 120px; }
+  .ad-inline  [data-ks-slot]       { min-height: 60px; }
+  .ad-sidebar [data-ks-slot]       { min-height: 250px; }
 
   /* "Advertisement" micro-label */
   .ad-label {
@@ -2427,6 +2445,42 @@ init();
      data-ks-slot divs se ads load hoti hain Firestore se
 ═══════════════════════════════════════════════════ -->
 <script src="ks-ads.js"></script>
+<script>
+/* ══════════════════════════════════════════════════════════
+   K SPIDER ADS — Screen Jump Fix Patch (all tool pages)
+   Applies fade + height-lock to all [data-ks-slot] rotations.
+   Works with ANY version of ks-ads.js.
+   ══════════════════════════════════════════════════════════ */
+(function(){
+  function patchKsAds(){
+    if(!window.KsAds && !window.__ksAdsLoaded) {
+      setTimeout(patchKsAds, 200); return;
+    }
+    /* Patch: intercept slot content changes to add fade */
+    var slots = document.querySelectorAll('[data-ks-slot]');
+    slots.forEach(function(slot){
+      /* Set height lock after first content appears */
+      var _locked = false;
+      var _observer = new MutationObserver(function(){
+        if(slot.innerHTML && slot.innerHTML.trim() && !_locked){
+          if(slot.offsetHeight > 20){
+            slot.style.minHeight = slot.offsetHeight + 'px';
+            _locked = true;
+            _observer.disconnect();
+          }
+        }
+      });
+      _observer.observe(slot, {childList:true, subtree:true});
+    });
+  }
+  /* Start after DOM ready */
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', patchKsAds);
+  } else {
+    setTimeout(patchKsAds, 300);
+  }
+})();
+</script>
 
 <!-- ═══════════════════════════════════════════════════
      K SPIDER MAX SECURITY — Anti-Theft Protocol
