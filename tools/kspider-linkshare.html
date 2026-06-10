@@ -848,28 +848,10 @@
     position: relative;
     background: transparent;
     border: none;
-    /* ✅ FIX: Isolate layout so banner height changes don't shift page */
-    contain: layout style;
   }
   /* Hide completely when slot is empty (ks-ads.js sets display:none on empty slots) */
   .ad-banner:empty,
   .ad-banner [data-ks-slot]:empty { display: none !important; }
-
-  /* ✅ FIX: Slot inner — fade transition + min-height prevents screen jump */
-  [data-ks-slot] {
-    /* Smooth fade between banner swaps — eliminates visible jump */
-    transition: opacity 0.32s ease;
-    will-change: opacity;
-  }
-  [data-ks-slot].ks-fading { opacity: 0; }
-
-  /* Fixed min-heights per slot — page never collapses/expands during rotation */
-  .ad-top    [data-ks-slot]        { min-height: 90px; }
-  .ad-bottom [data-ks-slot]        { min-height: 90px; }
-  .ad-after-tool [data-ks-slot]    { min-height: 90px; }
-  .ad-content [data-ks-slot]       { min-height: 120px; }
-  .ad-inline  [data-ks-slot]       { min-height: 60px; }
-  .ad-sidebar [data-ks-slot]       { min-height: 250px; }
 
   /* "Advertisement" micro-label */
   .ad-label {
@@ -1222,16 +1204,113 @@
   }
   .legal-body h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
   .legal-body a { color: var(--accent); }
+
 </style>
 
 <!-- ✅ Two-Layer Anti-Bypass Guard -->
 <script src="/tool-guard.js"></script>
 <script src="../ks-guard.js"></script>
 
-<!-- ✅ Firebase SDK (required for ks-ads.js Admin Ad Manager) -->
+
+
+<!-- ✅ K Spider Admin API Router — Firestore keys, safe deferred Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  var _FB={
+    apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+    authDomain:"kspideraimain.firebaseapp.com",
+    projectId:"kspideraimain",
+    storageBucket:"kspideraimain.firebasestorage.app",
+    messagingSenderId:"940003391760",
+    appId:"1:940003391760:web:8617000465b6991d348d95"
+  };
+  // Deferred init — runs after DOM ready to avoid "firebase not defined"
+  function _ksInit(){
+    try{ if(typeof firebase!=='undefined'&&!firebase.apps.length) firebase.initializeApp(_FB); }
+    catch(e){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_ksInit);
+  else _ksInit();
 
+  // Fetch admin API keys safely
+  window._ksFetchAdminKeys = function(){
+    return new Promise(function(resolve){
+      function doFetch(){
+        try{
+          if(typeof firebase==='undefined'){ resolve([]); return; }
+          if(!firebase.apps.length) _ksInit();
+          firebase.firestore().collection('admin').doc('api_keys').get()
+            .then(function(doc){
+              if(!doc||!doc.exists){ resolve([]); return; }
+              var d=doc.data(), r=[];
+              ['groq','gemini','claude','gai'].forEach(function(p){
+                (d[p]||[]).filter(function(k){return k.active!==false&&k.key;})
+                  .forEach(function(k){ r.push({provider:p,key:k.key}); });
+              });
+              resolve(r);
+            }).catch(function(){ resolve([]); });
+        }catch(e){ resolve([]); }
+      }
+      if(typeof firebase!=='undefined'){ doFetch(); return; }
+      var att=0,t=setInterval(function(){
+        att++;
+        if(typeof firebase!=='undefined'){ clearInterval(t); doFetch(); }
+        else if(att>20){ clearInterval(t); resolve([]); }
+      },300);
+    });
+  };
+  window._ksCallGroq=async function(k,s,m,t){
+    var msgs=[]; if(s) msgs.push({role:'system',content:s}); msgs.push(...m);
+    var r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:t||800,messages:msgs,temperature:0.7})});
+    var d=await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.choices?.[0]?.message?.content||'';
+  };
+  window._ksCallGemini=async function(k,s,m,t){
+    var gc=m.map(function(x){return{role:x.role==='assistant'?'model':'user',parts:[{text:x.content}]};});
+    var b={contents:gc,generationConfig:{maxOutputTokens:t||800,temperature:0.7}};
+    if(s) b.systemInstruction={parts:[{text:s}]};
+    var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key='+k,
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+    var d=await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  };
+  window._ksCallClaude=async function(k,s,m,t){
+    var b={model:'claude-sonnet-4-20250514',max_tokens:t||800,messages:m};
+    if(s) b.system=s;
+    var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':k,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify(b)});
+    var d=await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.content?.[0]?.text||'';
+  };
+  window.ksAICall=async function(sys,msgs,maxT){
+    maxT=maxT||800;
+    try{
+      var ak=await window._ksFetchAdminKeys();
+      for(var i=0;i<ak.length;i++){
+        var inf=ak[i];
+        try{
+          if(inf.provider==='groq') return await window._ksCallGroq(inf.key,sys,msgs,maxT);
+          if(inf.provider==='gemini'||inf.provider==='gai') return await window._ksCallGemini(inf.key,sys,msgs,maxT);
+          if(inf.provider==='claude') return await window._ksCallClaude(inf.key,sys,msgs,maxT);
+        }catch(e){ console.warn('[KS]',inf.provider,'failed:',e.message); }
+      }
+    }catch(e){}
+    throw new Error('No API key available. Please contact admin.');
+  };
+  // XSS sanitize helper
+  window.ksSanitize=function(str){
+    var d=document.createElement('div');
+    d.appendChild(document.createTextNode(str||''));
+    return d.innerHTML;
+  };
+})();
+</script>
 </head>
 <body>
 
@@ -2445,40 +2524,31 @@ init();
      data-ks-slot divs se ads load hoti hain Firestore se
 ═══════════════════════════════════════════════════ -->
 <script src="ks-ads.js"></script>
+<!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
 <script>
-/* ══════════════════════════════════════════════════════════
-   K SPIDER ADS — Screen Jump Fix Patch (all tool pages)
-   Applies fade + height-lock to all [data-ks-slot] rotations.
-   Works with ANY version of ks-ads.js.
-   ══════════════════════════════════════════════════════════ */
 (function(){
-  function patchKsAds(){
-    if(!window.KsAds && !window.__ksAdsLoaded) {
-      setTimeout(patchKsAds, 200); return;
-    }
-    /* Patch: intercept slot content changes to add fade */
+  function applyNoJumpPatch(){
     var slots = document.querySelectorAll('[data-ks-slot]');
     slots.forEach(function(slot){
-      /* Set height lock after first content appears */
-      var _locked = false;
-      var _observer = new MutationObserver(function(){
-        if(slot.innerHTML && slot.innerHTML.trim() && !_locked){
-          if(slot.offsetHeight > 20){
-            slot.style.minHeight = slot.offsetHeight + 'px';
-            _locked = true;
-            _observer.disconnect();
-          }
+      if(slot.dataset.noJumpPatched) return;
+      slot.dataset.noJumpPatched = '1';
+      var locked = false;
+      var obs = new MutationObserver(function(){
+        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
+          slot.style.minHeight = slot.offsetHeight + 'px';
+          locked = true;
+          obs.disconnect();
         }
       });
-      _observer.observe(slot, {childList:true, subtree:true});
+      obs.observe(slot, {childList:true, subtree:true});
     });
   }
-  /* Start after DOM ready */
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', patchKsAds);
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
   } else {
-    setTimeout(patchKsAds, 300);
+    setTimeout(applyNoJumpPatch, 400);
   }
+  window.ksAdNoJumpPatch = applyNoJumpPatch;
 })();
 </script>
 
