@@ -1562,6 +1562,7 @@ textarea:focus-visible{
   .msg{max-width:70%}
 }
 /* 768px handled by full responsive system above */
+
 </style>
 
 <!-- ── GOOGLE ANALYTICS ── -->
@@ -1577,9 +1578,6 @@ textarea:focus-visible{
 <script src="/tool-guard.js"></script>
 <script src="../ks-guard.js"></script>
 
-<!-- ✅ Firebase SDK — Required for ks-ads.js Admin Ad Manager -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -2363,6 +2361,7 @@ function sanitizeInput(str) {
     .trim()
     .substring(0, 4000);
 }
+window.ksSanitize = sanitizeInput; // XSS helper alias
 function validateInput(el) {
   if (!el) return '';
   var val = el.value || '';
@@ -3328,6 +3327,33 @@ function toggleFS(){
 </script>
 <!-- ── K SPIDER ADMIN AD MANAGER ── -->
 <script src="ks-ads.js"></script>
+<!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
+<script>
+(function(){
+  function applyNoJumpPatch(){
+    var slots = document.querySelectorAll('[data-ks-slot]');
+    slots.forEach(function(slot){
+      if(slot.dataset.noJumpPatched) return;
+      slot.dataset.noJumpPatched = '1';
+      var locked = false;
+      var obs = new MutationObserver(function(){
+        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
+          slot.style.minHeight = slot.offsetHeight + 'px';
+          locked = true;
+          obs.disconnect();
+        }
+      });
+      obs.observe(slot, {childList:true, subtree:true});
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
+  } else {
+    setTimeout(applyNoJumpPatch, 400);
+  }
+  window.ksAdNoJumpPatch = applyNoJumpPatch;
+})();
+</script>
 
 <!-- ── K SPIDER MAX SECURITY ── -->
 <script>
