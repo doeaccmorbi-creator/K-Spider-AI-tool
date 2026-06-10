@@ -31,7 +31,7 @@
   <meta property="og:url" content="https://www.kspiderai.in/tools/RTO-Exam-Pro-Tool-KSpider.html">
   <meta property="og:type" content="website">
   <!-- Google AdSense: Apna approved ca-pub ID aane ke baad niche ki line uncomment karein -->
-  <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script> -->
+  <!-- <!-- AdSense disabled — using KSpider Admin Ad Manager --> -->
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="keywords" content="RTO exam 2026 free, driving licence test India 2026, RTO mock test free India, learner licence test online free, DL exam practice India, traffic rules India 2026, road signs India test, motor vehicle act 2019 questions, RTO exam Hindi, RTO exam Gujarati, RTO exam Marathi, driving test questions India free, free RTO practice app India, RTO exam preparation 2026, learner driving licence India free, RTO question bank India, driving licence mock test free India, RTO exam 9 languages, K Spider AI, kspiderai.in, Gaurang Raval, Khush Raval, free RTO PWA app India">
   <meta name="author" content="K Spider AI — Gaurang Raval & Khush Raval">
@@ -968,6 +968,7 @@ body.exam-mode .site-header { display: none !important; }
     /* Exam + Practice mode: hide bottom sticky agent banner */
     body.exam-mode .apb-bottom-banner { display: none !important; }
     body.practice-mode .apb-bottom-banner { display: none !important; }
+
 </style>
 
 <!-- ── GOOGLE ANALYTICS ── -->
@@ -983,9 +984,105 @@ gtag('config', 'G-PLBHWMHEC1');
 <script src="/tool-guard.js"></script>
 <script src="../ks-guard.js"></script>
 
-<!-- ✅ Firebase SDK — Required for ks-ads.js Admin Ad Manager -->
+
+<!-- ✅ K Spider Admin API Router — Firestore keys, safe deferred Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+(function(){
+  var _FB={
+    apiKey:"AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8",
+    authDomain:"kspideraimain.firebaseapp.com",
+    projectId:"kspideraimain",
+    storageBucket:"kspideraimain.firebasestorage.app",
+    messagingSenderId:"940003391760",
+    appId:"1:940003391760:web:8617000465b6991d348d95"
+  };
+  // Deferred init — runs after DOM ready to avoid "firebase not defined"
+  function _ksInit(){
+    try{ if(typeof firebase!=='undefined'&&!firebase.apps.length) firebase.initializeApp(_FB); }
+    catch(e){}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',_ksInit);
+  else _ksInit();
+
+  // Fetch admin API keys safely
+  window._ksFetchAdminKeys = function(){
+    return new Promise(function(resolve){
+      function doFetch(){
+        try{
+          if(typeof firebase==='undefined'){ resolve([]); return; }
+          if(!firebase.apps.length) _ksInit();
+          firebase.firestore().collection('admin').doc('api_keys').get()
+            .then(function(doc){
+              if(!doc||!doc.exists){ resolve([]); return; }
+              var d=doc.data(), r=[];
+              ['groq','gemini','claude','gai'].forEach(function(p){
+                (d[p]||[]).filter(function(k){return k.active!==false&&k.key;})
+                  .forEach(function(k){ r.push({provider:p,key:k.key}); });
+              });
+              resolve(r);
+            }).catch(function(){ resolve([]); });
+        }catch(e){ resolve([]); }
+      }
+      if(typeof firebase!=='undefined'){ doFetch(); return; }
+      var att=0,t=setInterval(function(){
+        att++;
+        if(typeof firebase!=='undefined'){ clearInterval(t); doFetch(); }
+        else if(att>20){ clearInterval(t); resolve([]); }
+      },300);
+    });
+  };
+  window._ksCallGroq=async function(k,s,m,t){
+    var msgs=[]; if(s) msgs.push({role:'system',content:s}); msgs.push(...m);
+    var r=await fetch('https://api.groq.com/openai/v1/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+k},
+      body:JSON.stringify({model:'llama-3.3-70b-versatile',max_tokens:t||800,messages:msgs,temperature:0.7})});
+    var d=await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.choices?.[0]?.message?.content||'';
+  };
+  window._ksCallGemini=async function(k,s,m,t){
+    var gc=m.map(function(x){return{role:x.role==='assistant'?'model':'user',parts:[{text:x.content}]};});
+    var b={contents:gc,generationConfig:{maxOutputTokens:t||800,temperature:0.7}};
+    if(s) b.systemInstruction={parts:[{text:s}]};
+    var r=await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key='+k,
+      {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+    var d=await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  };
+  window._ksCallClaude=async function(k,s,m,t){
+    var b={model:'claude-sonnet-4-20250514',max_tokens:t||800,messages:m};
+    if(s) b.system=s;
+    var r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':k,
+        'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify(b)});
+    var d=await r.json(); if(d.error) throw new Error(d.error.message);
+    return d.content?.[0]?.text||'';
+  };
+  window.ksAICall=async function(sys,msgs,maxT){
+    maxT=maxT||800;
+    try{
+      var ak=await window._ksFetchAdminKeys();
+      for(var i=0;i<ak.length;i++){
+        var inf=ak[i];
+        try{
+          if(inf.provider==='groq') return await window._ksCallGroq(inf.key,sys,msgs,maxT);
+          if(inf.provider==='gemini'||inf.provider==='gai') return await window._ksCallGemini(inf.key,sys,msgs,maxT);
+          if(inf.provider==='claude') return await window._ksCallClaude(inf.key,sys,msgs,maxT);
+        }catch(e){ console.warn('[KS]',inf.provider,'failed:',e.message); }
+      }
+    }catch(e){}
+    throw new Error('No API key available. Please contact admin.');
+  };
+  // XSS sanitize helper
+  window.ksSanitize=function(str){
+    var d=document.createElement('div');
+    d.appendChild(document.createTextNode(str||''));
+    return d.innerHTML;
+  };
+})();
+</script>
 </head>
 <body>
 
@@ -4497,6 +4594,33 @@ updateTestInfo();
      data-ks-slot divs se Firestore ads load hoti hain
 ══════════════════════════════════════════════════════════ -->
 <script src="ks-ads.js"></script>
+<!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
+<script>
+(function(){
+  function applyNoJumpPatch(){
+    var slots = document.querySelectorAll('[data-ks-slot]');
+    slots.forEach(function(slot){
+      if(slot.dataset.noJumpPatched) return;
+      slot.dataset.noJumpPatched = '1';
+      var locked = false;
+      var obs = new MutationObserver(function(){
+        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
+          slot.style.minHeight = slot.offsetHeight + 'px';
+          locked = true;
+          obs.disconnect();
+        }
+      });
+      obs.observe(slot, {childList:true, subtree:true});
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
+  } else {
+    setTimeout(applyNoJumpPatch, 400);
+  }
+  window.ksAdNoJumpPatch = applyNoJumpPatch;
+})();
+</script>
 
 <!-- ══════════════════════════════════════════════════════════
      K SPIDER MAX SECURITY PROTOCOL
