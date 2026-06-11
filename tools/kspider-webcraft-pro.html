@@ -1806,6 +1806,7 @@ h1, h2, h3 {
               <button class="wb-tab-btn" onclick="wbSwitchTab('typo',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">🔤 Style</button>
               <button class="wb-tab-btn" onclick="wbSwitchTab('layout',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">📐 Layout</button>
               <button class="wb-tab-btn" onclick="wbSwitchTab('advanced',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">⚡ Live</button>
+              <button class="wb-tab-btn" onclick="wbSwitchTab('sheet',this)" style="flex:1;padding:5px;font-size:.6rem;font-weight:700;border:none;background:var(--surface);color:var(--text);cursor:pointer;">📊 Sheet</button>
             </div>
 
             <!-- ── TAB: INFO ── -->
@@ -2332,6 +2333,122 @@ Social Media, 2000, 📱" oninput="updatePreview()" style="min-height:90px;"></t
               <button class="btn btn-outline" onclick="saveWebsiteData()" style="font-size:.85rem;min-height:44px;">💾 Save Data</button>
             </div>
           </div>
+
+            <!-- ══════════════════════════════════════════════
+                 📊 TAB: GOOGLE SHEET IMPORT & FORM GENERATOR
+                 ══════════════════════════════════════════════ -->
+            <div id="wb-tab-sheet" class="wb-tab-panel" style="display:none;">
+
+              <!-- ── Sheet URL Input ── -->
+              <div class="section-field">
+                <label>📊 Google Sheet CSV URL</label>
+                <input type="url" id="gs-csv-url" class="inp"
+                  placeholder="https://docs.google.com/spreadsheets/d/YOUR_ID/export?format=csv"
+                  style="font-size:.72rem;" oninput="gsValidateUrl()">
+                <div style="font-size:.58rem;color:var(--muted);margin-top:3px;line-height:1.5;">
+                  Sheet → File → Share → Anyone with link (Viewer) → copy link, then change <code style="background:rgba(255,107,0,.1);padding:1px 3px;border-radius:3px;">/edit</code> to <code style="background:rgba(255,107,0,.1);padding:1px 3px;border-radius:3px;">/export?format=csv</code>
+                </div>
+              </div>
+
+              <!-- ── Fetch Button ── -->
+              <button class="btn-p" onclick="gsFetchSheet()" id="gs-fetch-btn"
+                style="width:100%;padding:9px;margin-bottom:8px;font-size:.78rem;display:flex;align-items:center;justify-content:center;gap:6px;">
+                &#9729;&#65039; Fetch All Records from Sheet
+              </button>
+
+              <!-- ── Status Bar ── -->
+              <div id="gs-status" style="display:none;font-size:.65rem;font-family:'Space Mono',monospace;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;line-height:1.6;"></div>
+
+              <!-- ── Records Navigator ── -->
+              <div id="gs-navigator" style="display:none;">
+                <div style="background:linear-gradient(135deg,rgba(255,107,0,.08),rgba(255,61,0,.04));border:1.5px solid rgba(255,107,0,.2);border-radius:10px;padding:10px 12px;margin-bottom:8px;">
+                  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+                    <div style="font-family:'Plus Jakarta Sans','Syne',sans-serif;font-weight:800;font-size:.78rem;color:var(--text);">
+                      &#128203; Record <span id="gs-cur-idx">1</span> / <span id="gs-total">0</span>
+                    </div>
+                    <div style="font-size:.62rem;color:var(--muted);font-family:'Space Mono',monospace;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" id="gs-record-name">—</div>
+                  </div>
+                  <div style="display:flex;gap:6px;margin-bottom:8px;">
+                    <button class="btn-s" onclick="gsNavigate(-1)" id="gs-prev-btn"
+                      style="flex:1;padding:8px;font-size:.72rem;">&#8592; Prev</button>
+                    <button class="btn-s" onclick="gsNavigate(1)" id="gs-next-btn"
+                      style="flex:1;padding:8px;font-size:.72rem;">Next &#8594;</button>
+                  </div>
+                  <button class="btn-p" onclick="gsApplyRecord()"
+                    style="width:100%;padding:9px;font-size:.76rem;background:linear-gradient(135deg,#059669,#047857);display:flex;align-items:center;justify-content:center;gap:6px;">
+                    &#9989; Apply Record &amp; Generate Website
+                  </button>
+                </div>
+                <div id="gs-record-preview" style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:.6rem;color:var(--text2);line-height:1.9;max-height:150px;overflow-y:auto;font-family:'Space Mono',monospace;word-break:break-word;"></div>
+                <button class="btn-s" onclick="gsToggleAllRecords()"
+                  style="width:100%;padding:7px;font-size:.68rem;margin-bottom:6px;">
+                  &#128203; View All Records
+                </button>
+              </div>
+              <div id="gs-all-records" style="display:none;max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:.65rem;"></div>
+
+              <div style="margin:10px 0 8px;border-top:1px solid var(--border);padding-top:10px;">
+                <div style="font-family:'Plus Jakarta Sans','Syne',sans-serif;font-weight:800;font-size:.78rem;color:var(--text);margin-bottom:6px;">
+                  &#128221; Client Form Generator
+                </div>
+                <div style="font-size:.6rem;color:var(--muted);margin-bottom:8px;line-height:1.6;">
+                  Ek shareable HTML form banao. Client fill kare → data aapke Sheet mein auto-add ho.
+                </div>
+                <div class="section-field">
+                  <label>Apps Script Web App URL</label>
+                  <input type="url" id="gs-script-url" class="inp"
+                    placeholder="https://script.google.com/macros/s/YOUR_ID/exec"
+                    style="font-size:.72rem;">
+                </div>
+                <div class="section-field">
+                  <label>Form Title</label>
+                  <input type="text" id="gs-form-title" class="inp"
+                    value="Website Order Form — K Spider AI" style="font-size:.72rem;">
+                </div>
+                <details style="margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+                  <summary style="font-size:.65rem;font-weight:700;color:var(--p);cursor:pointer;padding:7px 10px;list-style:none;">&#128203; Google Apps Script Code — Copy &amp; Paste</summary>
+                  <div style="position:relative;padding:8px 10px;">
+                    <textarea id="gs-script-code" readonly style="width:100%;min-height:140px;font-size:.52rem;font-family:monospace;background:var(--bg);border:none;outline:none;resize:vertical;line-height:1.6;color:var(--text2);">function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  if(sheet.getLastRow() === 0) {
+    sheet.appendRow(['Timestamp','Business Name','Tagline','About',
+      'Phone','WhatsApp','Email','City/Address','UPI ID','Business Type',
+      'Services','Offer','Working Hours','CTA Text',
+      'Instagram','Facebook','YouTube',
+      'Logo URL','Hero Image URL','UPI QR URL',
+      'Portfolio Images (URLs)','Service Icon URLs',
+      'Website Color','Language']);
+  }
+  sheet.appendRow([
+    new Date().toLocaleString('en-IN'),
+    data.name||'', data.tagline||'', data.about||'', data.phone||'',
+    data.wa||'', data.email||'', data.city||'', data.upiId||'',
+    data.type||'', data.services||'', data.offer||'', data.hours||'',
+    data.cta||'', data.insta||'', data.fb||'', data.yt||'',
+    data.logo||'', data.heroImg||'', data.upiImg||'',
+    data.portfolioImgs||'', data.serviceIcons||'',
+    data.color||'', data.lang||''
+  ]);
+  return ContentService
+    .createTextOutput(JSON.stringify({status:'ok'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}</textarea>
+                    <button class="btn-s" onclick="gsCopyScript()" style="margin-top:5px;width:100%;font-size:.65rem;padding:5px;">&#128203; Copy Script Code</button>
+                  </div>
+                </details>
+                <button class="btn-p" onclick="gsGenerateForm()"
+                  style="width:100%;padding:9px;font-size:.76rem;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:6px;">
+                  &#128640; Generate &amp; Download Client Form
+                </button>
+                <div style="font-size:.58rem;color:var(--muted);line-height:1.6;padding:5px 8px;background:rgba(66,133,244,.05);border-radius:6px;border-left:2px solid #4285F4;">
+                  Form download hogi &#8594; WhatsApp ya email se share karo &#8594; client fill kare &#8594; Sheet mein auto-add
+                </div>
+              </div>
+
+            </div>
+            <!-- ══ END SHEET TAB ══ -->
+
         </div>
       </div>
 
@@ -4125,7 +4242,7 @@ function wbClearAllMedia() {
 
 // ── PANEL TAB SWITCHER ──
 function wbSwitchTab(tab, btn) {
-  ['info','media','typo','layout','advanced'].forEach(function(t) {
+  ['info','media','typo','layout','advanced','sheet'].forEach(function(t) {
     var el = document.getElementById('wb-tab-'+t);
     if(el) el.style.display = (t===tab) ? 'block' : 'none';
   });
@@ -8396,6 +8513,494 @@ details summary { transition: background .2s; }
     init();
   }
 })();
+</script>
+
+<script>
+
+// ════════════════════════════════════════════════════════════
+// 📊 K SPIDER WEBCRAFT PRO — GOOGLE SHEET IMPORT SYSTEM
+// Handles: CSV fetch, multi-record navigation, form generation
+// ════════════════════════════════════════════════════════════
+(function() {
+  'use strict';
+
+  // ── State ──
+  var GS = {
+    records: [],      // All fetched rows as objects
+    headers: [],      // Column headers from row 1
+    currentIdx: 0,    // Current record index (0-based)
+    scriptUrl: '',    // Apps Script URL for form submission
+  };
+
+  // ── Expose to global ──
+  window.gsFetchSheet     = gsFetchSheet;
+  window.gsNavigate       = gsNavigate;
+  window.gsApplyRecord    = gsApplyRecord;
+  window.gsToggleAllRecords = gsToggleAllRecords;
+  window.gsGenerateForm   = gsGenerateForm;
+  window.gsCopyScript     = gsCopyScript;
+  window.gsValidateUrl    = gsValidateUrl;
+
+  // ── Column → field ID mapping ──
+  // Sheet column headers (case-insensitive) → biz- input IDs
+  var COL_MAP = {
+    'business name':    'biz-name',
+    'name':             'biz-name',
+    'tagline':          'biz-tagline',
+    'about':            'biz-about',
+    'about us':         'biz-about',
+    'phone':            'biz-phone',
+    'whatsapp':         'biz-wa',
+    'wa':               'biz-wa',
+    'whatsapp number':  'biz-wa',
+    'email':            'biz-email',
+    'city':             'biz-city',
+    'city / address':   'biz-city',
+    'city/address':     'biz-city',
+    'address':          'biz-city',
+    'upi id':           'biz-upi-id',
+    'upi':              'biz-upi-id',
+    'business type':    'biz-type',
+    'type':             'biz-type',
+    'services':         'biz-services',
+    'offer':            'biz-offer',
+    'working hours':    'biz-hours',
+    'hours':            'biz-hours',
+    'cta':              'biz-cta',
+    'cta text':         'biz-cta',
+    'instagram':        'biz-insta',
+    'instagram url':    'biz-insta',
+    'facebook':         'biz-fb',
+    'facebook url':     'biz-fb',
+    'youtube':          'biz-yt',
+    'youtube url':      'biz-yt',
+    'logo url':         'biz-logo',
+    'hero image url':   'biz-hero-img',
+    'upi qr url':       'biz-upi-img',
+    'language':         'wb-lang',
+    'website color':    '__color__',
+    'color':            '__color__',
+  };
+
+  // ── Validate URL field ──
+  function gsValidateUrl() {
+    var url = (document.getElementById('gs-csv-url') || {}).value || '';
+    var btn = document.getElementById('gs-fetch-btn');
+    if (!btn) return;
+    if (url.includes('spreadsheets') && url.includes('export')) {
+      btn.style.opacity = '1';
+      btn.disabled = false;
+    } else if (url.includes('spreadsheets') && url.includes('/edit')) {
+      gsStatus('⚠️ URL mein /edit ko /export?format=csv se replace karo', 'warning');
+    }
+  }
+
+  // ── Show status message ──
+  function gsStatus(msg, type) {
+    var el = document.getElementById('gs-status');
+    if (!el) return;
+    el.style.display = 'block';
+    var colors = { success:'#059669', error:'#DC2626', info:'#2563EB', warning:'#D97706' };
+    el.style.borderColor = colors[type] || colors.info;
+    el.style.color = colors[type] || colors.info;
+    el.innerHTML = msg;
+  }
+
+  // ── Fetch CSV from Google Sheet ──
+  function gsFetchSheet() {
+    var urlEl = document.getElementById('gs-csv-url');
+    var url = urlEl ? urlEl.value.trim() : '';
+    if (!url) { gsStatus('❌ Pehle CSV URL daalo!', 'error'); return; }
+
+    // Auto-fix common URL mistakes
+    if (url.includes('/edit')) {
+      url = url.replace(/\/edit[^]*$/, '/export?format=csv');
+      if (urlEl) urlEl.value = url;
+    }
+    if (!url.includes('export?format=csv')) {
+      // Try appending export param
+      url = url.replace(/\?.*$/, '') + '/export?format=csv';
+      if (urlEl) urlEl.value = url;
+    }
+
+    var btn = document.getElementById('gs-fetch-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Fetching...'; }
+    gsStatus('🔄 Sheet se data fetch ho raha hai...', 'info');
+
+    // Use a CORS proxy for Google Sheets (they block direct fetch from localhost/other origins)
+    // Google Sheets export URLs work directly when the sheet is public
+    fetch(url)
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.text();
+      })
+      .then(function(csv) {
+        var parsed = gsParseCSV(csv);
+        if (!parsed || parsed.length < 2) {
+          gsStatus('⚠️ Sheet mein koi data nahi mila. Rows: ' + parsed.length, 'warning');
+          if (btn) { btn.disabled = false; btn.innerHTML = '&#9729;&#65039; Fetch All Records from Sheet'; }
+          return;
+        }
+        GS.headers = parsed[0];
+        GS.records = parsed.slice(1).filter(function(r) {
+          return r.some(function(c) { return c.trim() !== ''; });
+        });
+        GS.currentIdx = 0;
+        gsStatus('✅ ' + GS.records.length + ' records mile! Headers: ' + GS.headers.slice(0,4).join(', ') + '...', 'success');
+        gsShowNavigator();
+        gsRenderRecord(0);
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#9729;&#65039; Re-fetch Sheet'; }
+      })
+      .catch(function(err) {
+        gsStatus('❌ Fetch failed: ' + err.message + '<br>Sheet public hai? Anyone with link → Viewer set karo.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = '&#9729;&#65039; Fetch All Records from Sheet'; }
+      });
+  }
+
+  // ── Parse CSV (handles quoted fields with commas) ──
+  function gsParseCSV(text) {
+    var rows = [];
+    var lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+    for (var i = 0; i < lines.length; i++) {
+      var line = lines[i];
+      if (!line.trim()) continue;
+      var row = [];
+      var inQ = false;
+      var cur = '';
+      for (var j = 0; j < line.length; j++) {
+        var ch = line[j];
+        if (ch === '"') {
+          if (inQ && line[j+1] === '"') { cur += '"'; j++; }
+          else inQ = !inQ;
+        } else if (ch === ',' && !inQ) {
+          row.push(cur.trim()); cur = '';
+        } else {
+          cur += ch;
+        }
+      }
+      row.push(cur.trim());
+      rows.push(row);
+    }
+    return rows;
+  }
+
+  // ── Show the navigator UI ──
+  function gsShowNavigator() {
+    var nav = document.getElementById('gs-navigator');
+    if (nav) nav.style.display = 'block';
+    var total = document.getElementById('gs-total');
+    if (total) total.textContent = GS.records.length;
+  }
+
+  // ── Render a specific record in the preview ──
+  function gsRenderRecord(idx) {
+    if (!GS.records.length) return;
+    idx = Math.max(0, Math.min(idx, GS.records.length - 1));
+    GS.currentIdx = idx;
+
+    var rec = GS.records[idx];
+    var curEl = document.getElementById('gs-cur-idx');
+    if (curEl) curEl.textContent = idx + 1;
+
+    // Get business name for label
+    var nameColIdx = GS.headers.findIndex(function(h) {
+      return h.toLowerCase().includes('name') || h.toLowerCase().includes('business');
+    });
+    var recName = (nameColIdx >= 0 && rec[nameColIdx]) ? rec[nameColIdx] : ('Record ' + (idx+1));
+    var nameEl = document.getElementById('gs-record-name');
+    if (nameEl) nameEl.textContent = recName;
+
+    // Build preview HTML
+    var previewEl = document.getElementById('gs-record-preview');
+    if (previewEl) {
+      var html = '';
+      GS.headers.forEach(function(h, i) {
+        var val = rec[i] || '';
+        if (!val || !h) return;
+        var short = val.length > 50 ? val.substring(0, 47) + '...' : val;
+        html += '<div style="display:flex;gap:6px;padding:2px 0;border-bottom:1px solid rgba(0,0,0,.05);">'
+              + '<span style="color:var(--p);font-weight:700;min-width:90px;flex-shrink:0;">' + esc(h) + '</span>'
+              + '<span style="color:var(--text);word-break:break-all;">' + esc(short) + '</span>'
+              + '</div>';
+      });
+      previewEl.innerHTML = html || '<span style="opacity:.5">No data</span>';
+    }
+
+    // Update prev/next button states
+    var prevBtn = document.getElementById('gs-prev-btn');
+    var nextBtn = document.getElementById('gs-next-btn');
+    if (prevBtn) prevBtn.disabled = (idx === 0);
+    if (nextBtn) nextBtn.disabled = (idx === GS.records.length - 1);
+  }
+
+  // ── Navigate to prev/next record ──
+  function gsNavigate(dir) {
+    gsRenderRecord(GS.currentIdx + dir);
+  }
+
+  // ── Apply current record to all builder fields ──
+  function gsApplyRecord() {
+    if (!GS.records.length) { gsStatus('❌ Pehle sheet fetch karo!', 'error'); return; }
+    var rec = GS.records[GS.currentIdx];
+
+    GS.headers.forEach(function(header, colIdx) {
+      var val = (rec[colIdx] || '').trim();
+      if (!val || !header) return;
+      var key = header.toLowerCase().trim();
+      var fieldId = COL_MAP[key];
+
+      if (!fieldId) return;
+
+      if (fieldId === '__color__') {
+        // Apply website color
+        if (typeof setWebsiteColor === 'function') setWebsiteColor(val, val, null);
+        return;
+      }
+
+      // Handle select elements (biz-type, wb-lang)
+      var el = document.getElementById(fieldId);
+      if (!el) return;
+
+      if (el.tagName === 'SELECT') {
+        // Try to match option value or text
+        var matched = false;
+        for (var i = 0; i < el.options.length; i++) {
+          if (el.options[i].value.toLowerCase() === val.toLowerCase() ||
+              el.options[i].text.toLowerCase().includes(val.toLowerCase())) {
+            el.selectedIndex = i;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched && el.options.length > 0) el.selectedIndex = 0;
+      } else if (el.type === 'hidden') {
+        // Image URL fields — set value and show URL as preview text
+        el.value = val;
+        var prevId = fieldId.replace('biz-logo', 'logo-preview')
+                            .replace('biz-hero-img', 'hero-img-preview')
+                            .replace('biz-upi-img', 'upi-preview');
+        var prevEl = document.getElementById(prevId);
+        if (prevEl && val.startsWith('http')) {
+          prevEl.innerHTML = '<img src="' + val + '" style="max-width:100%;max-height:60px;border-radius:4px;object-fit:contain;" onerror="this.style.display=\'none\'">'
+                           + '<div style="font-size:.5rem;color:var(--muted);word-break:break-all;margin-top:2px;">' + val.substring(0,50) + '</div>';
+        }
+      } else {
+        el.value = val;
+      }
+
+      // Trigger oninput/onchange to update preview
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+
+    // Trigger full preview rebuild
+    if (typeof buildPreview === 'function') buildPreview();
+    if (typeof updatePreview === 'function') updatePreview();
+
+    var nameEl = document.getElementById('gs-record-name');
+    var name = nameEl ? nameEl.textContent : ('Record ' + (GS.currentIdx + 1));
+    gsStatus('✅ "' + name + '" ka data apply ho gaya! Preview dekho.', 'success');
+    if (typeof showToast === 'function') showToast('✅ Sheet record applied: ' + name, 'success');
+  }
+
+  // ── Toggle all records list ──
+  function gsToggleAllRecords() {
+    var el = document.getElementById('gs-all-records');
+    if (!el) return;
+    if (el.style.display !== 'none') { el.style.display = 'none'; return; }
+
+    var html = '';
+    GS.records.forEach(function(rec, i) {
+      var nameColIdx = GS.headers.findIndex(function(h) {
+        return h.toLowerCase().includes('name') || h.toLowerCase().includes('business');
+      });
+      var name = (nameColIdx >= 0 && rec[nameColIdx]) ? rec[nameColIdx] : ('Record ' + (i+1));
+      var active = i === GS.currentIdx ? 'background:rgba(255,107,0,.1);border-color:var(--p);' : '';
+      html += '<div onclick="gsSelectRecord(' + i + ')" style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);' + active + 'transition:background .15s;" '
+            + 'onmouseover="this.style.background=\'rgba(255,107,0,.07)\'" '
+            + 'onmouseout="this.style.background=\'' + (i===GS.currentIdx ? 'rgba(255,107,0,.1)' : '') + '\'">'
+            + '<span style="font-weight:700;font-size:.68rem;color:var(--text);">' + (i+1) + '. ' + esc(name) + '</span>'
+            + '</div>';
+    });
+    el.innerHTML = html || '<div style="padding:10px;text-align:center;font-size:.65rem;color:var(--muted);">No records</div>';
+    el.style.display = 'block';
+  }
+
+  // ── Select record from list ──
+  window.gsSelectRecord = function(idx) {
+    gsRenderRecord(idx);
+    var el = document.getElementById('gs-all-records');
+    if (el) el.style.display = 'none';
+  };
+
+  // ── Copy Apps Script code ──
+  function gsCopyScript() {
+    var el = document.getElementById('gs-script-code');
+    if (!el) return;
+    el.select();
+    try {
+      document.execCommand('copy');
+      if (typeof showToast === 'function') showToast('✅ Script code copied!', 'success');
+    } catch(e) {
+      navigator.clipboard && navigator.clipboard.writeText(el.value).then(function() {
+        if (typeof showToast === 'function') showToast('✅ Script code copied!', 'success');
+      });
+    }
+  }
+
+  // ── HTML escape helper ──
+  function esc(s) {
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // 📝 CLIENT INTAKE FORM GENERATOR
+  // Generates a standalone HTML form that POSTs to Apps Script
+  // ════════════════════════════════════════════════════════════
+  function gsGenerateForm() {
+    var scriptUrl = (document.getElementById('gs-script-url') || {}).value || '';
+    var formTitle = (document.getElementById('gs-form-title') || {}).value || 'Website Order Form — K Spider AI';
+
+    var formHtml = '<!DOCTYPE html>\n<html lang="en">\n<head>\n'
+      + '<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">\n'
+      + '<title>' + esc(formTitle) + '</title>\n'
+      + '<style>\n'
+      + '*{box-sizing:border-box;margin:0;padding:0;}\n'
+      + 'body{font-family:"Segoe UI",system-ui,sans-serif;background:#f4f6fb;color:#1a1a2e;min-height:100vh;padding:0;}\n'
+      + '.header{background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;padding:28px 20px 24px;text-align:center;position:relative;overflow:hidden;}\n'
+      + '.header::before{content:"🕷";position:absolute;right:-10px;bottom:-15px;font-size:100px;opacity:.07;}\n'
+      + '.header h1{font-size:1.35rem;font-weight:800;letter-spacing:-.02em;margin-bottom:4px;}\n'
+      + '.header p{font-size:.82rem;opacity:.88;}\n'
+      + '.form-wrap{max-width:540px;margin:0 auto;padding:20px 16px 40px;}\n'
+      + '.card{background:#fff;border-radius:14px;padding:20px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,.08);border:1.5px solid #e8ecf3;}\n'
+      + '.card-title{font-size:.82rem;font-weight:800;color:#FF6B00;margin-bottom:12px;padding-bottom:8px;border-bottom:1.5px solid #f0f0f0;letter-spacing:.3px;text-transform:uppercase;}\n'
+      + '.field{margin-bottom:12px;}\n'
+      + '.field label{display:block;font-size:.74rem;font-weight:700;color:#374151;margin-bottom:4px;}\n'
+      + '.field input,.field textarea,.field select{width:100%;padding:9px 11px;border:1.5px solid #d1d5db;border-radius:8px;font-size:.82rem;font-family:inherit;color:#1a1a2e;background:#fafafa;transition:border .2s,box-shadow .2s;outline:none;}\n'
+      + '.field input:focus,.field textarea:focus,.field select:focus{border-color:#FF6B00;box-shadow:0 0 0 3px rgba(255,107,0,.12);background:#fff;}\n'
+      + '.field textarea{min-height:80px;resize:vertical;}\n'
+      + '.field small{font-size:.62rem;color:#6b7280;margin-top:3px;display:block;line-height:1.4;}\n'
+      + '.required::after{content:" *";color:#DC2626;}\n'
+      + '.submit-btn{width:100%;padding:14px;background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;border:none;border-radius:10px;font-size:.92rem;font-weight:800;cursor:pointer;letter-spacing:.3px;transition:all .3s;margin-top:6px;}\n'
+      + '.submit-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(255,107,0,.4);}\n'
+      + '.submit-btn:active{transform:scale(.98);}\n'
+      + '.submit-btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}\n'
+      + '#success-msg{display:none;background:#d1fae5;border:1.5px solid #059669;border-radius:10px;padding:16px;text-align:center;margin-bottom:14px;}\n'
+      + '#success-msg h3{color:#059669;font-size:1rem;margin-bottom:4px;}\n'
+      + '#success-msg p{color:#065f46;font-size:.8rem;}\n'
+      + '#error-msg{display:none;background:#fee2e2;border:1.5px solid #DC2626;border-radius:10px;padding:12px 16px;margin-bottom:14px;color:#7f1d1d;font-size:.78rem;}\n'
+      + '.footer-credit{text-align:center;font-size:.62rem;color:#9ca3af;padding-top:10px;}\n'
+      + '.footer-credit a{color:#FF6B00;text-decoration:none;font-weight:600;}\n'
+      + '.img-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:7px 10px;font-size:.62rem;color:#1e40af;margin-top:4px;line-height:1.5;}\n'
+      + '</style>\n</head>\n<body>\n'
+      + '<div class="header"><h1>🕷 ' + esc(formTitle) + '</h1>'
+      + '<p>Apna business data fill karo — website ready ho jaegi!</p></div>\n'
+      + '<div class="form-wrap">\n'
+      + '<div id="success-msg"><h3>✅ Data submitted!</h3><p>Aapka data successfully save ho gaya. Hum jald hi aapki website banayenge!</p></div>\n'
+      + '<div id="error-msg"></div>\n'
+      + '<form id="kspider-form" onsubmit="submitForm(event)">\n'
+
+      // ── Card 1: Business Info ──
+      + '<div class="card"><div class="card-title">📋 Business Information</div>\n'
+      + '<div class="field"><label class="required">Business Name</label><input type="text" name="name" required placeholder="Raj Digital Studio"></div>\n'
+      + '<div class="field"><label>Tagline</label><input type="text" name="tagline" placeholder="Sabse acha kaam, best price!"></div>\n'
+      + '<div class="field"><label class="required">About Your Business</label><textarea name="about" required placeholder="Hamara business 2015 se chal raha hai..."></textarea></div>\n'
+      + '<div class="field"><label>Business Type</label><select name="type"><option value="Business">Business</option><option value="Shop">Shop / Retail</option><option value="Restaurant">Restaurant / Food</option><option value="Clinic">Clinic / Doctor</option><option value="Academy">Academy / Coaching</option><option value="Salon">Salon / Beauty</option><option value="Tech">Tech / IT</option><option value="Freelancer">Freelancer</option><option value="NGO">NGO / Trust</option><option value="Other">Other</option></select></div>\n'
+      + '</div>\n'
+
+      // ── Card 2: Contact ──
+      + '<div class="card"><div class="card-title">📞 Contact Details</div>\n'
+      + '<div class="field"><label class="required">Phone Number</label><input type="tel" name="phone" required placeholder="+91 98765 43210"></div>\n'
+      + '<div class="field"><label class="required">WhatsApp Number</label><input type="tel" name="wa" required placeholder="9876543210"><small>Without +91, without spaces</small></div>\n'
+      + '<div class="field"><label>Email</label><input type="email" name="email" placeholder="info@business.com"></div>\n'
+      + '<div class="field"><label class="required">City / Full Address</label><input type="text" name="city" required placeholder="Surat, Gujarat"></div>\n'
+      + '<div class="field"><label>Working Hours</label><input type="text" name="hours" placeholder="Mon-Sat: 9AM–7PM"></div>\n'
+      + '</div>\n'
+
+      // ── Card 3: Services ──
+      + '<div class="card"><div class="card-title">⚙️ Services &amp; Offer</div>\n'
+      + '<div class="field"><label class="required">Services (one per line: Name, Price, Emoji)</label>'
+      + '<textarea name="services" required placeholder="Website Design, 5000, 🌐\nLogo Design, 1500, 🎨\nSEO, 3000, 🔍"></textarea>'
+      + '<small>Format: Service Name, Price, Emoji (optional)</small></div>\n'
+      + '<div class="field"><label>Special Offer</label><input type="text" name="offer" placeholder="20% OFF — Abhi contact karo!"></div>\n'
+      + '<div class="field"><label>Call to Action Button Text</label><input type="text" name="cta" placeholder="Get Free Quote"></div>\n'
+      + '</div>\n'
+
+      // ── Card 4: Payments & Social ──
+      + '<div class="card"><div class="card-title">💳 Payments &amp; Social</div>\n'
+      + '<div class="field"><label>UPI ID</label><input type="text" name="upiId" placeholder="yourname@upi"></div>\n'
+      + '<div class="field"><label>Instagram URL</label><input type="url" name="insta" placeholder="https://instagram.com/..."></div>\n'
+      + '<div class="field"><label>Facebook URL</label><input type="url" name="fb" placeholder="https://facebook.com/..."></div>\n'
+      + '<div class="field"><label>YouTube URL</label><input type="url" name="yt" placeholder="https://youtube.com/..."></div>\n'
+      + '</div>\n'
+
+      // ── Card 5: Images (URL-based) ──
+      + '<div class="card"><div class="card-title">🖼️ Images (URL-based)</div>\n'
+      + '<div class="img-note">📌 Images directly upload nahi hoti. Pehle Google Drive / ImgBB / Cloudinary pe upload karo, phir public URL daalo.</div>\n'
+      + '<div class="field" style="margin-top:10px;"><label>Logo Image URL</label><input type="url" name="logo" placeholder="https://drive.google.com/uc?id=..."></div>\n'
+      + '<div class="field"><label>Hero / Banner Image URL</label><input type="url" name="heroImg" placeholder="https://..."></div>\n'
+      + '<div class="field"><label>UPI QR Code Image URL</label><input type="url" name="upiImg" placeholder="https://..."></div>\n'
+      + '<div class="field"><label>Portfolio / Gallery Image URLs</label><textarea name="portfolioImgs" placeholder="https://img1.com\nhttps://img2.com\nhttps://img3.com"></textarea><small>One URL per line, max 6</small></div>\n'
+      + '<div class="field"><label>Service Icon Image URLs</label><textarea name="serviceIcons" placeholder="https://icon1.com\nhttps://icon2.com"></textarea><small>One URL per line, max 6</small></div>\n'
+      + '</div>\n'
+
+      // ── Card 6: Preferences ──
+      + '<div class="card"><div class="card-title">🎨 Website Preferences</div>\n'
+      + '<div class="field"><label>Preferred Language</label><select name="lang"><option value="hinglish">Hinglish (Default)</option><option value="en">English</option><option value="hi">Hindi</option><option value="gu">Gujarati</option><option value="mr">Marathi</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="kn">Kannada</option><option value="ml">Malayalam</option><option value="pa">Punjabi</option><option value="bn">Bengali</option></select></div>\n'
+      + '<div class="field"><label>Brand Color</label><input type="color" name="color" value="#FF6B00" style="width:60px;height:36px;padding:2px 3px;cursor:pointer;border-radius:6px;border:1.5px solid #d1d5db;"></div>\n'
+      + '<div class="field"><label>Any Special Requirements</label><textarea name="notes" placeholder="Dark theme chahiye, map section add karo, etc."></textarea></div>\n'
+      + '</div>\n'
+
+      + '<button type="submit" class="submit-btn" id="submit-btn">🚀 Submit Website Order</button>\n'
+      + '</form>\n'
+      + '<div class="footer-credit">Powered by <a href="https://www.kspiderai.in" target="_blank">K Spider AI</a> · Created by Gaurang Raval &amp; Khush Raval</div>\n'
+      + '</div>\n'
+
+      // ── JavaScript ──
+      + '<script>\n'
+      + 'var SCRIPT_URL = "' + (scriptUrl || '') + '";\n'
+      + 'function submitForm(e) {\n'
+      + '  e.preventDefault();\n'
+      + '  if (!SCRIPT_URL) { showError("⚠️ Apps Script URL not configured. Developer se contact karo."); return; }\n'
+      + '  var btn = document.getElementById("submit-btn");\n'
+      + '  btn.disabled = true; btn.textContent = "⏳ Submitting...";\n'
+      + '  document.getElementById("error-msg").style.display = "none";\n'
+      + '  var fd = new FormData(e.target);\n'
+      + '  var data = {};\n'
+      + '  fd.forEach(function(v,k) { data[k] = v; });\n'
+      + '  fetch(SCRIPT_URL, {\n'
+      + '    method: "POST",\n'
+      + '    headers: { "Content-Type": "application/json" },\n'
+      + '    body: JSON.stringify(data)\n'
+      + '  }).then(function(r) { return r.json(); })\n'
+      + '  .then(function(res) {\n'
+      + '    if (res.status === "ok" || res.status === "success") {\n'
+      + '      document.getElementById("kspider-form").style.display = "none";\n'
+      + '      document.getElementById("success-msg").style.display = "block";\n'
+      + '      window.scrollTo({top:0, behavior:"smooth"});\n'
+      + '    } else { showError("Server error: " + JSON.stringify(res)); btn.disabled=false; btn.textContent="🚀 Submit Website Order"; }\n'
+      + '  }).catch(function(err) {\n'
+      + '    showError("❌ Submit failed: " + err.message + " — Check Apps Script URL aur CORS settings."); btn.disabled=false; btn.textContent="🚀 Submit Website Order";\n'
+      + '  });\n'
+      + '}\n'
+      + 'function showError(msg) { var el=document.getElementById("error-msg"); el.innerHTML=msg; el.style.display="block"; window.scrollTo({top:0,behavior:"smooth"}); }\n'
+      + '<\/script>\n'
+      + '</body></html>';
+
+    // Download the form
+    var blob = new Blob([formHtml], { type: 'text/html;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'kspider-client-intake-form.html';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    if (typeof showToast === 'function') showToast('✅ Client form downloaded! Share kar do.', 'success');
+  }
+
+})(); // End KSpider Google Sheet Module
+
 </script>
 
 <script>
