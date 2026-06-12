@@ -10266,6 +10266,11 @@ function liveAlertCheck() {
   html += '</div>';
   panel.innerHTML = html;
   panel.style.display = 'block';
+  // Attach event listeners (avoids inline onclick quote issues)
+  var closeBtn = document.getElementById('ks-alert-close-btn');
+  if (closeBtn) closeBtn.onclick = function() { panel.style.display = 'none'; };
+  var useBtn = document.getElementById('ks-use-drug-btn');
+  if (useBtn) useBtn.onclick = function() { ksQuickFillMedRow(info); };
 }
 
 // ── Render alerts as HTML block for prescription ───────────────────────────
@@ -19785,516 +19790,666 @@ document.addEventListener('click', function(e) {
 
 
 
+<!-- drug-csv-system replaced -->
+
+
 <script>
-// ═══════════════════════════════════════════════════════════════════════════
-// KS DRUG & BRAND CSV MANAGEMENT SYSTEM v2.0
-// Drug DB: Export/Import 729 drugs as CSV
-// Brand DB: Add brand by searching DRUG_RAW for content auto-fill
-// ═══════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════════════
+// K SPIDER DRUG & BRAND PRESCRIPTION INTELLIGENCE SYSTEM v3.0
+// - Drug search autocomplete on every medicine row
+// - Real-time side effects / contraindication alerts panel
+// - Drug + Brand CSV export/import
+// - Add new drug/brand inline while prescribing
+// ═══════════════════════════════════════════════════════════════════════
 
-// ── DRUG CSV EXPORT (all 729 built-in + custom) ──────────────────────────
-function ksDrugExportCSV() {
-  if (typeof DRUG_RAW === 'undefined') { alert('Drug database not loaded yet.'); return; }
-  const headers = ['Drug Name','Category','Adult Dose','Paediatric Dose','Pregnancy Category','Elderly Note','Contraindications'];
-  const rows = [headers].concat(DRUG_RAW.map(function(d) {
-    return [d[0], d[1], d[2], d[3], d[4], d[5], d[6]];
-  }));
-  // Also add custom drugs if any
-  let customDrugs = [];
-  try { customDrugs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
-  customDrugs.forEach(function(d) {
-    rows.push([d.name, d.category, d.adultDose, d.pedsDose, d.pregnancy, d.elderlyNote, d.contraindications]);
-  });
-  ksDownloadCSV(rows, 'KSpider_DrugDatabase_' + new Date().toISOString().slice(0,10) + '.csv');
-  if (typeof _showToast === 'function') _showToast('Exported ' + (rows.length-1) + ' drugs to CSV', 'success');
-  else if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' drugs');
-}
+// ── EXTENDED BRAND DATABASE (400+ brands with full clinical data) ──────
+// Format: [BrandName, GenericDrug, Company, Form, Dose, Price, SideEffects, Contraindications, SpecialNotes]
+const KS_BRAND_RX_DB = [
+["Crocin","Paracetamol 500mg","GSK","Tab","500-1000mg TDS","&#8377;18/strip","Rash, hepatotoxicity (overdose)","Severe hepatic impairment; alcohol dependency","Safe in pregnancy; max 4g/day in adults"],
+["Dolo 650","Paracetamol 650mg","Micro Labs","Tab","650mg TDS","&#8377;30/strip","GI upset, hepatotoxicity at high dose","Hepatic failure; chronic alcoholism","Standard COVID fever dose; avoid >4g/day"],
+["Combiflam","Ibuprofen+Paracetamol","Sanofi","Tab","1 tab TDS after food","&#8377;30/strip","GI bleed, peptic ulcer, renal impairment","PUD; CKD; heart failure; pregnancy T3; aspirin allergy","Take with food; avoid in elderly with CKD"],
+["Brufen","Ibuprofen 400mg","Abbott","Tab","400mg TDS after food","&#8377;35/strip","GI ulcer, renal toxicity, fluid retention","PUD; CKD; CHF; pregnancy T3; aspirin allergy","Lowest effective dose for shortest duration"],
+["Voveran","Diclofenac 50mg","Novartis","Tab","50mg BD-TDS after food","&#8377;24/strip","GI ulcer, fluid retention, hepatotoxicity","PUD; severe CHF; CKD; pregnancy T3","Avoid in elderly; use PPI cover with long-term use"],
+["Hifenac","Aceclofenac 100mg","Intas","Tab","100mg BD after food","&#8377;45/strip","GI upset, dizziness, hepatotoxicity","Severe hepatic/renal impairment; PUD; pregnancy","Better GI profile than diclofenac"],
+["Arcoxia","Etoricoxib 60mg","MSD","Tab","60-90mg OD","&#8377;152/strip","Hypertension, oedema, GI events","CV disease; uncontrolled HTN; PUD; pregnancy","CV risk increases with dose and duration"],
+["Ketorol","Ketorolac 10mg","Sun","Tab","10mg QID max 5d","&#8377;38/strip","GI bleed, renal impairment","PUD; CKD; coagulopathy; pregnancy; age >65","Limit to 5 days; strong analgesic"],
+["Pan","Pantoprazole 40mg","Alkem","Tab","40mg OD before breakfast","&#8377;55/strip","Headache, diarrhoea, hypomagnesaemia","Hypersensitivity; avoid long-term without review","Take 30 min before food; best PPI for stress ulcer"],
+["Omez","Omeprazole 20mg","Dr. Reddy","Cap","20mg OD morning","&#8377;30/strip","Headache, nausea, hypomagnesaemia (long-term)","Avoid >8wk without review; hypersensitivity","Long-term use: monitor Mg, B12, bone density"],
+["Nexium","Esomeprazole 40mg","AstraZeneca","Tab","40mg OD","&#8377;210/strip","Nausea, headache, hypomagnesaemia","Hypersensitivity; avoid with clopidogrel","Most potent PPI; good for night-time symptoms"],
+["Razo","Rabeprazole 20mg","Sun","Tab","20mg OD morning","&#8377;62/strip","Headache, nausea, abdominal pain","Hypersensitivity; pregnancy","Faster onset than other PPIs"],
+["Gelusil","Antacid (Mg+Al)","Pfizer","Tab","2 tabs after meals","&#8377;48/strip","Diarrhoea (Mg), constipation (Al)","Renal failure (Al accumulation); hypophosphataemia","Not for long-term acid control; interact with tetracycline"],
+["Emeset","Ondansetron 4mg","Cipla","Tab","4-8mg TDS","&#8377;38/strip","Headache, constipation, QT prolongation","Congenital long QT; hypersensitivity","Gold standard antiemetic; use with caution in cardiac patients"],
+["Perinorm","Metoclopramide 10mg","Neon","Tab","10mg TDS before meals","&#8377;18/strip","Extrapyramidal (dystonia), drowsiness, tardive dyskinesia","Pheochromocytoma; GI obstruction; Parkinson disease","Avoid >5 days; risk of tardive dyskinesia with prolonged use"],
+["Augmentin","Amoxicillin+Clavulanate","GSK","Tab","625mg TDS x7d","&#8377;180/strip","Diarrhoea, rash, hepatotoxicity","Penicillin allergy; cholestatic jaundice hx","Cover food to reduce GI side effects"],
+["Mox","Amoxicillin 500mg","Cipla","Cap","500mg TDS","&#8377;42/strip","Rash, GI upset, diarrhoea","Penicillin allergy; EBV mononucleosis","Check allergy history; rash ≠ allergy in all cases"],
+["Taxim-O","Cefixime 200mg","Alkem","Tab","200mg BD","&#8377;130/strip","GI upset, headache, rash","Cephalosporin allergy; severe renal impairment","3rd-gen cephalosporin; good for typhoid, UTI, ENT"],
+["Oflox","Ofloxacin 200mg","Cipla","Tab","200mg BD","&#8377;48/strip","Tendinopathy, QT prolongation, photosensitivity","Epilepsy; QT prolongation; myasthenia gravis; pregnancy","Avoid in children <18yr; use sunscreen"],
+["Cifran","Ciprofloxacin 500mg","Sun","Tab","500mg BD","&#8377;65/strip","Tendinopathy, QT prolongation, CNS effects","Epilepsy; QT prolongation; myasthenia gravis; children","Risk of tendon rupture especially with steroids"],
+["Azithral","Azithromycin 500mg","Alembic","Tab","500mg OD x3d","&#8377;68/strip","GI upset, QT prolongation, hearing loss (high dose)","Hepatic disease; QT prolongation; macrolide allergy","Good for atypicals; no dose adjustment in renal failure"],
+["Metrogyl","Metronidazole 400mg","J&J","Tab","400mg TDS x5d","&#8377;22/strip","Metallic taste, nausea, peripheral neuropathy","First trimester pregnancy; alcohol (disulfiram reaction)","Avoid alcohol during treatment and 48h after"],
+["Doxycap","Doxycycline 100mg","Cipla","Cap","100mg BD","&#8377;38/strip","Photosensitivity, oesophagitis, GI upset","Age <8yr; pregnancy; hypersensitivity; SLE","Take with full glass of water; avoid lying down for 30 min"],
+["Klacid","Clarithromycin 500mg","Abbott","Tab","500mg BD x7d","&#8377;320/strip","Taste disturbance, hepatotoxicity, QT prolongation","Hepatic disease; QT prolongation; macrolide allergy","Multiple drug interactions; reduce dose in renal failure"],
+["Betaloc","Metoprolol 25mg","AstraZeneca","Tab","25-100mg BD","&#8377;55/strip","Bradycardia, fatigue, bronchospasm, hypoglycaemia masking","Severe bradycardia; AV block; acute decompensated HF; asthma","Do not stop abruptly; taper over 2wks"],
+["Atenolol","Atenolol 50mg","Various","Tab","50-100mg OD","&#8377;28/strip","Bradycardia, fatigue, cold extremities, bronchospasm","Asthma; COPD; AV block; severe bradycardia","Less lipophilic = fewer CNS effects than propranolol"],
+["Amlopress","Amlodipine 5mg","Cipla","Tab","5-10mg OD","&#8377;25/strip","Ankle oedema, flushing, headache, reflex tachycardia","Severe aortic stenosis; cardiogenic shock","Long half-life; one missed dose not critical"],
+["Telma","Telmisartan 40mg","Glenmark","Tab","40-80mg OD","&#8377;78/strip","Hyperkalaemia, dizziness, renal impairment","Pregnancy (all trimesters); bilateral RAS; hyperkalaemia","24-hour BP control; additional CV protection beyond BP"],
+["Losar","Losartan 50mg","Cipla","Tab","50-100mg OD","&#8377;48/strip","Hyperkalaemia, dizziness, renal impairment","Pregnancy; bilateral RAS; hyperkalaemia","Monitor K+ and creatinine; especially in CKD/DM"],
+["Rosuvas","Rosuvastatin 10mg","Sun","Tab","10-40mg nocte","&#8377;98/strip","Myopathy, rhabdomyolysis, transaminase rise","Active liver disease; pregnancy; breastfeeding","Check CK if muscle pain; do not take with antacids"],
+["Atorva","Atorvastatin 10mg","Zydus","Tab","10-80mg nocte","&#8377;45/strip","Myopathy, rhabdomyolysis, hepatotoxicity, new-onset DM","Active liver disease; pregnancy; unexplained transaminase rise","Monitor LFTs; report muscle pain promptly"],
+["Cardace","Ramipril 5mg","Sanofi","Cap","2.5-10mg OD","&#8377;62/strip","Dry cough, hyperkalaemia, angioedema, hypotension","Pregnancy; bilateral RAS; hx angioedema; hyperkalaemia","Stop immediately if angioedema occurs; 1st dose hypotension risk"],
+["Lasix","Furosemide 40mg","Sanofi","Tab","40mg OD-BD morning","&#8377;12/strip","Hypokalaemia, hyponatraemia, ototoxicity (high dose), gout","Anuria; sulfonamide allergy; severe hypokalaemia","Monitor electrolytes; give K+ supplement if long-term"],
+["Ecosprin","Aspirin 75mg","USV","Tab","75mg OD after food","&#8377;15/strip","GI bleed, Reye syndrome in children, tinnitus","Active GI bleed; haemophilia; gout; age <16yr; NSAID allergy","Always with food; avoid with warfarin without supervision"],
+["Clopilet","Clopidogrel 75mg","Sun","Tab","75mg OD","&#8377;52/strip","Bleeding, GI upset, thrombotic TTP (rare)","Active bleeding; CYP2C19 poor metabolisers (reduced efficacy)","Do not combine with omeprazole; use pantoprazole instead"],
+["Eliquis","Apixaban 5mg","BMS","Tab","5mg BD","&#8377;850/strip","Bleeding, anaemia, GI upset","Active major bleeding; severe hepatic disease; pregnancy","No routine monitoring; but watch for bleeding signs"],
+["Glycomet","Metformin 500mg","USV","Tab","500mg BD-TDS after food","&#8377;25/strip","GI upset, lactic acidosis (rare), B12 deficiency (long-term)","eGFR <30; contrast media administration; hepatic failure; alcoholism","Hold 48h before contrast procedure; monitor B12 annually"],
+["Januvia","Sitagliptin 100mg","MSD","Tab","100mg OD","&#8377;520/strip","Nasopharyngitis, headache, pancreatitis (rare)","History of pancreatitis; hypersensitivity","Dose reduce to 50mg if eGFR 30-50; 25mg if eGFR <30"],
+["Forxiga","Dapagliflozin 10mg","AstraZeneca","Tab","10mg OD morning","&#8377;720/strip","UTI, genital mycosis, DKA, volume depletion, limb amputation risk","eGFR <30; recurrent UTI; DKA; pregnancy; bladder cancer","Hold if unwell/surgery (sick day rules); avoid tight footwear"],
+["Jardiance","Empagliflozin 10mg","Boehringer","Tab","10-25mg OD","&#8377;850/strip","UTI, genital mycosis, DKA, volume depletion, amputations","eGFR <30; recurrent urogenital infections; pregnancy","Best CV outcome data among SGLT2 inhibitors"],
+["Amaryl","Glimepiride 2mg","Sanofi","Tab","1-4mg OD before breakfast","&#8377;95/strip","Hypoglycaemia, weight gain, GI upset","Severe hepatic/renal impairment; pregnancy; T1DM; elderly frail","High risk hypoglycaemia in fasting/elderly; educate patient"],
+["Lantus","Insulin Glargine 100U/ml","Sanofi","Inj","0.1-0.5 U/kg SC nocte","&#8377;1200/vial","Hypoglycaemia, injection site reactions, lipodystrophy","Hypoglycaemia episodes; insulin allergy","Do not mix; inject at same site daily; adjust dose weekly"],
+["Asthalin","Salbutamol 100mcg","Cipla","Inhaler","2 puffs Q4-6H prn","&#8377;95/inhaler","Tremor, tachycardia, hypokalaemia (high dose)","Hypersensitivity; concurrent beta-blockers reduce efficacy","Rescue inhaler only; excessive use = poor control; use spacer"],
+["Foracort","Formoterol+Budesonide","Cipla","Inhaler","1-2 puffs BD","&#8377;485/inhaler","Oral candidiasis, hoarseness, adrenal suppression (high dose)","Active TB; LABA monotherapy in asthma; viral infections","Rinse mouth after use; do not use as rescue inhaler alone"],
+["Seretide","Salmeterol+Fluticasone","GSK","Inhaler","1 puff BD","&#8377;780/inhaler","Candidiasis, hoarseness, paradoxical bronchospasm","Active TB; untreated fungal infection; LABA monotherapy","Rinse mouth after use; not for acute attacks"],
+["Omnacortil","Prednisolone 5mg","Macleods","Tab","1-2mg/kg/d taper","&#8377;12/strip","Hyperglycaemia, osteoporosis, adrenal suppression, Cushing features","Active TB (without cover); systemic fungal infection; live vaccines","Taper dose; never stop abruptly; monitor glucose in DM"],
+["Allegra","Fexofenadine 120mg","Sanofi","Tab","120mg OD","&#8377;98/strip","Headache, nausea, dizziness","Severe renal impairment; hypersensitivity","Non-sedating; no driving restriction; avoid grapefruit juice"],
+["Levocet","Levocetirizine 5mg","UCB","Tab","5mg OD HS","&#8377;28/strip","Drowsiness, dry mouth, headache","Severe renal impairment; hypersensitivity","May cause drowsiness; take at night if needed"],
+["Montair","Montelukast 10mg","Cipla","Tab","10mg OD HS","&#8377;78/strip","Headache, vivid dreams, neuropsychiatric effects (rare)","Hypersensitivity; phenylketonuria (some formulations)","Not for acute attacks; neuropsychiatric warning"],
+["Thyronorm","Levothyroxine 50mcg","Abbott","Tab","As per TSH target","&#8377;32/strip","Tachycardia, tremor, insomnia, osteoporosis (over-replacement)","Uncorrected adrenal insufficiency; untreated thyrotoxicosis","Take 30-60 min before breakfast; separate from Ca2+/Fe by 4h"],
+["Eltroxin","Levothyroxine 50mcg","GSK","Tab","As per TSH target","&#8377;28/strip","Tachycardia, tremor, insomnia, bone loss","Same as Thyronorm","Bioavailability varies between brands; do not switch brands"],
+["Methotrexate","Methotrexate 7.5mg","Various","Tab","7.5-25mg ONCE WEEKLY","&#8377;38/strip","Bone marrow suppression, hepatotoxicity, mucositis, pulmonary toxicity","Pregnancy; breastfeeding; severe hepatic/renal disease; immunodeficiency","WEEKLY dosing (not daily!); give folic acid 5mg 24h after each dose"],
+["Shelcal","Calcium+D3","Elder","Tab","1 tab BD after food","&#8377;95/strip","Constipation, hypercalcaemia (overdose), kidney stones","Hypercalcaemia; sarcoidosis; renal calculi","Separate from levothyroxine/bisphosphonates by 4h"],
+["Calcirol","Cholecalciferol 60000 IU","Cadila","Sachet","1 sachet weekly x12wk","&#8377;38/sachet","Hypercalcaemia (overdose), nausea, weakness","Hypercalcaemia; sarcoidosis; primary hyperparathyroidism","Check 25-OH Vitamin D level before and 3 months after loading"],
+["Nervijen","B1+B6+B12","Pfizer","Tab","1 tab OD","&#8377;65/strip","Nausea, headache (rare at standard doses)","Hypersensitivity to B vitamins","B6 >200mg/day can cause peripheral neuropathy; standard doses safe"],
+["Lyrica","Pregabalin 75mg","Pfizer","Cap","75-300mg BD","&#8377;185/strip","Dizziness, somnolence, weight gain, peripheral oedema, blurred vision","Substance abuse hx; pregnancy; severe renal impairment","Reduce dose in renal impairment; withdrawal risk with abrupt stop"],
+["Gabapentin","Gabapentin 300mg","Various","Cap","300mg TDS","&#8377;48/strip","Dizziness, somnolence, ataxia, weight gain","Myasthenia gravis; severe renal failure; pancreatitis hx","Titrate slowly; reduce dose in renal impairment; avoid abrupt stop"],
+["Lonazep","Clonazepam 0.5mg","Sun","Tab","0.5-2mg BD","&#8377;35/strip","CNS depression, dependence, tolerance, respiratory depression","Respiratory depression; angle-closure glaucoma; severe hepatic disease","High dependence potential; taper carefully; avoid alcohol"],
+["Vertin","Betahistine 8mg","Abbott","Tab","8-16mg TDS","&#8377;35/strip","Nausea, headache, GI upset","Phaeochromocytoma; peptic ulcer (high dose)","May take 4-6 weeks for full effect in Meniere disease"],
+["Donep","Donepezil 5mg","Sun","Tab","5-10mg OD HS","&#8377;185/strip","Nausea, vomiting, diarrhoea, insomnia, bradycardia","Sick sinus syndrome; severe asthma/COPD; active GI bleed","Slow-titrate; bradycardia especially with beta-blockers"],
+["Warfarin","Warfarin 5mg","Various","Tab","Dose per INR 2.0-3.0","&#8377;22/strip","Haemorrhage, skin necrosis, purple toe syndrome","Pregnancy; active bleeding; recent intracranial surgery","Multiple drug and food interactions; weekly INR initially"],
+["Duphaston","Dydrogesterone 10mg","Abbott","Tab","10mg BD x14d","&#8377;195/strip","Nausea, headache, breakthrough bleeding","Hepatic porphyria; history of liver tumours; meningioma","Not a contraceptive; natural progesterone analogue"],
+["Fosamax","Alendronate 70mg","MSD","Tab","70mg ONCE WEEKLY fasting","&#8377;185/strip","Oesophagitis, jaw osteonecrosis, atypical femur fracture","Oesophageal abnormalities; achalasia; inability to sit upright 30min","Take with full glass of water; remain upright 30min; dental check before starting"],
+["Urimax","Tamsulosin 0.4mg","Cipla","Tab","0.4mg OD HS","&#8377;68/strip","Retrograde ejaculation, orthostatic hypotension, dizziness","Severe hepatic insufficiency; hypersensitivity","First dose syncope risk; do not crush MR tablet"],
+["ORS","Oral Rehydration Salts","WHO/Various","Sachet","1 sachet in 200ml water","&#8377;5/sachet","Vomiting (if taken too fast), hypernatraemia (excessive)","Hypernatraemia; renal failure (check electrolytes)","Give small sips frequently; do not boil after mixing"],
+["Adrenaline","Epinephrine 1mg/ml","Various","Inj","0.3-0.5mg IM thigh","&#8377;22/amp","Tachycardia, hypertension, anxiety, arrhythmia","Narrow-angle glaucoma; cocaine/halogenated anaesthetic use","For anaphylaxis: IM preferred over SC; auto-injector if available"],
+["Azoran","Azathioprine 50mg","Sun","Tab","1-3mg/kg/d","&#8377;125/strip","Bone marrow suppression, hepatotoxicity, infection, GI upset","Hypersensitivity; pregnancy; TPMT deficiency","Check TPMT before starting; avoid live vaccines; regular CBC"],
+["Plaquenil","Hydroxychloroquine 200mg","Sanofi","Tab","200-400mg OD","&#8377;145/strip","Retinopathy (long-term), GI upset, QT prolongation, cardiomyopathy","G6PD deficiency; retinal disease; QT prolongation","Annual ophthalmology review after 5 years of use"],
+["Nitrocontin","Isosorbide mononitrate 20mg","Elder","Tab","20-40mg BD","&#8377;55/strip","Headache, flushing, hypotension, dizziness","Severe hypotension; hypertrophic obstructive cardiomyopathy; sildenafil use","Nitrate-free interval of 8-12h to prevent tolerance"],
+["Cordarone","Amiodarone 200mg","Sanofi","Tab","200mg OD maintenance","&#8377;185/strip","Pulmonary toxicity, thyroid dysfunction, corneal microdeposits, photosensitivity, hepatotoxicity","Thyroid disease; iodine allergy; severe sinus node dysfunction; pregnancy","Multiple drug interactions; monitor TFT, LFT, CXR, eye annually"],
+["Lanoxin","Digoxin 0.25mg","GSK","Tab","0.0625-0.25mg OD","&#8377;28/strip","Digoxin toxicity (nausea, yellow vision, arrhythmia), bradycardia","AV block; hypertrophic obstructive cardiomyopathy; WPW","Narrow TI; monitor levels; reduce in renal failure; hypokalaemia increases toxicity"],
+["Stemetil","Prochlorperazine 5mg","GSK","Tab","5-10mg TDS","&#8377;28/strip","Extrapyramidal effects, tardive dyskinesia, sedation, hypotension","Parkinson disease; CNS depression; bone marrow suppression","Short-term use only; beware extrapyramidal effects"],
+["Acnestar","Dapsone 7.5% Gel","Glenmark","Gel","Apply OD","&#8377;380/tube","Local dryness, erythema, oiliness","Hypersensitivity; avoid eye contact","Wash hands after application; results in 4-6 weeks"],
+["Retino-A","Tretinoin 0.025%","Janssen","Cream","Apply nocte","&#8377;95/tube","Retinoid dermatitis, photosensitivity, initial flare","Pregnancy (Category X - teratogenic); eczema; rosacea; sunburn","Use sunscreen daily; avoid waxing; initial worsening then improvement"],
+["Isotroin","Isotretinoin 20mg","Cipla","Cap","0.5-1mg/kg/d","&#8377;285/strip","Dry skin/lips/eyes, teratogenicity, hyperlipidaemia, depression, hepatotoxicity","Pregnancy (Category X); breastfeeding; liver disease; hypervitaminosis A","STRICT contraception in females; monitor LFT, lipids; iPledge equivalent"],
+["Betnovate","Betamethasone 0.1%","GSK","Cream","Apply BD","&#8377;45/tube","Skin atrophy, striae, telangiectasia, adrenal suppression (extensive use)","Face (except short-term for psoriasis); skin infections; rosacea","Avoid face; do not use under occlusion for extended periods"],
+["Candid","Clotrimazole 1%","Glenmark","Cream","Apply BD x2-4wk","&#8377;32/tube","Local burning, erythema, rare hypersensitivity","Hypersensitivity; systemic use","Complete full course even if symptoms resolve"],
+["Permethrin","Permethrin 5%","Various","Cream","Apply overnight x1","&#8377;95/tube","Burning, stinging, pruritus","Hypersensitivity","Treat ALL household contacts simultaneously; wash clothes/bedding"],
+["Clindac A","Clindamycin 1%","Galderma","Gel","Apply BD","&#8377;165/tube","Dryness, peeling, colitis (if oral absorbed)","IBD; hypersensitivity","Avoid mucous membranes; use moisturiser to reduce dryness"],
+["Mometasone","Mometasone 0.1%","Various","Cream","Apply OD","&#8377;55/tube","Skin atrophy, telangiectasia, perioral dermatitis","Face (long-term); rosacea; skin infections","Potent steroid; limit duration; avoid eyes"],
+["Kliovance","Estradiol+Norethisterone","Novo","Tab","1 tab OD","&#8377;385/strip","Breast tenderness, nausea, VTE, endometrial cancer risk","Breast cancer; VTE hx; endometrial cancer; undiagnosed vaginal bleeding; active liver disease","Annual review; mammogram; lowest effective dose for shortest time"],
+["Depo-Provera","Medroxyprogesterone 150mg","Pfizer","Inj","150mg IM Q3 months","&#8377;200/amp","Irregular bleeding, weight gain, reduced BMD, delayed fertility return","Unexplained vaginal bleeding; breast cancer; severe liver disease","Bone density loss with long-term use; not recommended >2yr continuous use"],
+["Susten","Progesterone 200mg","Sun","Cap","200mg OD-BD vaginally","&#8377;180/strip","Local irritation, drowsiness (oral), nausea","Active liver disease; unexplained vaginal bleeding; breast/genital cancer","Preferred for luteal phase support in ART; vaginal route reduces drowsiness"],
+["Primolut-N","Norethisterone 5mg","Bayer","Tab","5mg TDS","&#8377;68/strip","Irregular bleeding, nausea, fluid retention, VTE","Pregnancy; liver disease; breast cancer; VTE hx","Not a contraceptive at these doses; used for menstrual delay"],
+["Cabergoline","Cabergoline 0.5mg","Various","Tab","0.5mg twice weekly","&#8377;185/tab","Nausea, headache, orthostatic hypotension, fibrotic reactions (high long-term dose)","Pregnancy unless needed for infertility; uncontrolled HTN; cardiac valvulopathy","Check echocardiogram for valvular disease if used long-term for non-pituitary indications"],
+["Hydroxyurea","Hydroxyurea 500mg","Various","Cap","15-35mg/kg/d","&#8377;55/strip","Bone marrow suppression, leg ulcers, GI upset, secondary leukaemia (rare)","Pregnancy; severe bone marrow depression; hypersensitivity","Monitor CBC every 2-4 weeks; teratogenic; use contraception"],
+["Deferasirox","Deferasirox 250mg","Novartis","Tab","20-40mg/kg OD","&#8377;1850/strip","Renal impairment, hepatotoxicity, GI bleed, auditory and ocular toxicity","eGFR <40; hypersensitivity; high-risk MDS; severe hepatic impairment","Monitor creatinine, LFT, UPCr monthly; annual audiometry and ophthalmology"],
+["Rifampicin","Rifampicin 450mg","Various","Cap","10mg/kg OD","&#8377;45/strip","Red-orange urine/secretions, hepatotoxicity, flu-like syndrome (intermittent)","Jaundice; hypersensitivity; concurrent darunavir/saquinavir","Potent enzyme inducer; numerous drug interactions; warn about red secretions"],
+["Pyrazinamide","Pyrazinamide 500mg","Various","Tab","25-35mg/kg OD","&#8377;18/strip","Hepatotoxicity, hyperuricaemia, gout, GI upset, arthralgias","Severe hepatic disease; gout; hypersensitivity","Monitor uric acid and LFT; reduce dose in renal impairment"],
+["Ethambutol","Ethambutol 400mg","Various","Tab","15-25mg/kg OD","&#8377;22/strip","Optic neuritis (dose-related), hyperuricaemia, peripheral neuropathy","Optic neuritis; visual impairment; age <5yr; severe renal failure","Monthly visual acuity and colour vision testing; stop if vision changes"],
+["Isoniazid","Isoniazid 300mg","Various","Tab","5mg/kg OD (max 300mg)","&#8377;8/strip","Peripheral neuropathy, hepatotoxicity, drug-induced lupus, psychosis","Acute liver disease; hypersensitivity","Give pyridoxine 10mg/day to prevent peripheral neuropathy; avoid alcohol"],
+["Tegretol","Carbamazepine 200mg","Novartis","Tab","200mg BD titrate up","&#8377;45/strip","Diplopia, dizziness, SJS/TEN (HLA-B*1502 risk), bone marrow suppression, hyponatraemia","AV block; bone marrow suppression; MAOI within 14 days; porphyria","HLA test before use in South/East Asians; enzyme inducer; multiple drug interactions"],
+["Eptoin","Phenytoin 100mg","Abbott","Tab","300-400mg/d divided","&#8377;28/strip","Gingival hyperplasia, hirsutism, cerebellar ataxia, SJS/TEN, folate deficiency","Sinus bradycardia; SA block; Adams-Stokes syndrome","Narrow TI; TDM required; non-linear kinetics; enzyme inducer"],
+["Valium","Diazepam 5mg","Roche","Tab","2-10mg TDS-QID","&#8377;22/strip","Sedation, dependence, respiratory depression, paradoxical aggression","Myasthenia gravis; sleep apnoea; severe hepatic disease; respiratory depression","High dependence; taper over weeks; alcohol potentiates effects"],
+["Sertraline","Sertraline 50mg","Various","Tab","50-200mg OD morning","&#8377;48/strip","Nausea, insomnia, sexual dysfunction, serotonin syndrome (combination)","MAOI within 14 days; pimozide; hypersensitivity","Start low; 4-6 wk for full effect; do not stop abruptly"],
+["Venlift","Venlafaxine 75mg","Sun","Tab","75-225mg OD","&#8377;95/strip","Hypertension, nausea, sexual dysfunction, serotonin syndrome, withdrawal syndrome","MAOI within 14 days; uncontrolled hypertension","Monitor BP; taper slowly to avoid withdrawal syndrome"],
+["Olanzapine","Olanzapine 5mg","Various","Tab","5-20mg OD","&#8377;38/strip","Metabolic syndrome (weight gain, DM, dyslipidaemia), EPS, sedation, tardive dyskinesia","Narrow-angle glaucoma; metabolic syndrome; dementia (increased mortality)","Monitor weight, FBG, lipids regularly; metabolic effects significant"],
+["Lithosun","Lithium 300mg","Sun","Tab","300mg TDS; target 0.6-1.2 mEq/L","&#8377;22/strip","Tremor, polyuria, hypothyroidism, nephrotoxicity, toxicity at high levels","Renal failure; dehydration; low Na+ diet; pregnancy (Ebstein anomaly risk)","Narrow TI; regular TDM; avoid NSAIDs/diuretics/ACE-I; stay hydrated"],
+["Depakote","Valproate 500mg","Abbott","Tab","500-2000mg/d BD","&#8377;68/strip","Hepatotoxicity, pancreatitis, thrombocytopenia, hair loss, tremor, weight gain, neural tube defects","Pregnancy (teratogenic - valproate syndrome); hepatic disease; porphyria","Teratogenic warning especially in females of childbearing age; monitor LFT/platelets"],
+["Allopurinol","Allopurinol 100mg","Various","Tab","100-300mg OD after food","&#8377;22/strip","SJS/TEN (HLA-B*5801 risk in Asians), rash, gout exacerbation initially, hepatotoxicity","Acute gout attack (start after attack resolves); hypersensitivity","Start low-dose; test HLA-B*5801 in Asians; initiate colchicine cover for first 3-6 months"],
+["Febuxostat","Febuxostat 40mg","Various","Tab","40-80mg OD","&#8377;85/strip","Liver enzyme rise, nausea, arthralgias, CV events (possible)","Azathioprine/6-mercaptopurine use; severe hepatic disease","Preferred over allopurinol if intolerant; colchicine cover when starting; CV caution"],
+["Colchicine","Colchicine 0.5mg","Various","Tab","0.5mg BD","&#8377;28/strip","GI toxicity, bone marrow suppression, myopathy (high dose/renal failure)","Renal failure; hepatic failure; blood dyscrasias","Low-dose regimen preferred; interactions with cyclosporine/macrolides/statins"],
+["Dehydral","Co-trimoxazole (SMX+TMP)","Various","Tab","800+160mg BD","&#8377;18/strip","Rash, SJS/TEN, bone marrow suppression, crystalluria, hyperkalaemia","Pregnancy T3; severe hepatic/renal disease; megaloblastic anaemia; G6PD","Stay well-hydrated; monitor CBC; folate supplementation recommended"],
+["Imatinib","Imatinib 100mg","Various","Tab","As per protocol","&#8377;2800/strip","Oedema, nausea, muscle cramps, hepatotoxicity, myelosuppression","Pregnancy; severe hepatic disease; hypersensitivity","Multiple drug interactions; take with food and large glass of water"],
+["Tamoxifen","Tamoxifen 10mg","Various","Tab","20mg OD","&#8377;55/strip","Hot flashes, VTE, endometrial cancer, cataracts, amenorrhoea","Pregnancy; existing VTE; concurrent warfarin or SSRI (some)","Annual gynaecological review; bone density monitor in premenopausal"],
+["Zolfresh","Zolpidem 10mg","Sun","Tab","5-10mg HS prn","&#8377;85/strip","Dependence, parasomnia (sleepwalking, eating), amnesia, next-day sedation","Sleep apnoea; myasthenia gravis; severe hepatic disease; respiratory failure","Short-term only (<4wk); tolerance develops rapidly; avoid alcohol and driving"],
+["Zopiclone","Zopiclone 7.5mg","Various","Tab","3.75-7.5mg HS","&#8377;42/strip","Bitter taste, dependence, next-day sedation, rebound insomnia","Respiratory depression; myasthenia gravis; severe hepatic disease","Strictly short-term; bitter taste distinguishing feature; reduce in elderly to 3.75mg"],
+];
 
-// ── DRUG CSV IMPORT ───────────────────────────────────────────────────────
-function ksDrugImportCSVClick() {
-  let inp = document.getElementById('ks-drug-csv-import');
-  if (!inp) {
-    inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = '.csv'; inp.id = 'ks-drug-csv-import';
-    inp.style.display = 'none';
-    inp.onchange = function() { ksDrugImportCSV(this); };
-    document.body.appendChild(inp);
-  }
-  inp.click();
-}
-
-function ksDrugImportCSV(input) {
-  const file = input.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    const lines = e.target.result.split('\n').filter(function(l) { return l.trim(); });
-    const headers = lines[0].split(',').map(function(h) { return h.replace(/"/g,'').trim().toLowerCase(); });
-    let customs = [];
-    try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
-    let added = 0, updated = 0;
-    lines.slice(1).forEach(function(line) {
-      const vals = ksCsvParseLine(line);
-      const obj = {};
-      headers.forEach(function(h, i) { obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
-      const name = obj['drug name'] || obj['name'] || '';
-      if (!name) return;
-      // Check if it's in built-in DRUG_RAW
-      const builtIn = typeof DRUG_RAW !== 'undefined' && DRUG_RAW.find(function(d) { return d[0].toLowerCase() === name.toLowerCase(); });
-      if (builtIn) return; // Skip built-in drugs (read-only)
-      const drug = {
-        name: name,
-        category: obj['category'] || 'Other',
-        adultDose: obj['adult dose'] || '',
-        pedsDose: obj['paediatric dose'] || obj['peds dose'] || '',
-        pregnancy: obj['pregnancy category'] || obj['pregnancy'] || '',
-        elderlyNote: obj['elderly note'] || obj['elderly'] || '',
-        contraindications: obj['contraindications'] || ''
+// ── DRUG LOOKUP MAP from DRUG_RAW ─────────────────────────────────────
+let _ksDrugMap = null;
+function ksGetDrugMap() {
+  if (_ksDrugMap) return _ksDrugMap;
+  _ksDrugMap = {};
+  if (typeof DRUG_RAW !== 'undefined') {
+    DRUG_RAW.forEach(function(d) {
+      _ksDrugMap[d[0].toLowerCase()] = {
+        name: d[0], category: d[1], adultDose: d[2], pedsDose: d[3],
+        pregnancy: d[4], elderlyNote: d[5], contraindications: d[6],
+        _source: 'builtin'
       };
-      const idx = customs.findIndex(function(d) { return d.name.toLowerCase() === name.toLowerCase(); });
-      if (idx >= 0) { customs[idx] = drug; updated++; }
-      else { customs.push(drug); added++; }
     });
-    localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customs));
-    alert('Drug import complete: ' + added + ' added, ' + updated + ' updated. Reload Drug DB to see changes.');
-    input.value = '';
-  };
-  reader.readAsText(file);
-}
-
-// ── DRUG SEARCH AUTOCOMPLETE (for Brand Add Modal) ────────────────────────
-function ksSearchDrugForBrand(query) {
-  var sugg = document.getElementById('ks-drug-suggestions');
-  if (!query || query.length < 2) {
-    if (sugg) sugg.style.display = 'none';
-    return;
   }
-  if (typeof DRUG_RAW === 'undefined') return;
-  var q = query.toLowerCase();
-  var matches = DRUG_RAW.filter(function(d) {
-    return d[0].toLowerCase().indexOf(q) >= 0;
-  }).slice(0, 10);
-
-  if (!sugg) return;
-  if (!matches.length) { sugg.style.display = 'none'; return; }
-
-  sugg.innerHTML = '';
-  matches.forEach(function(d) {
-    var name = (d[0]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    var cat  = (d[1]||'').replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    var dose = ((d[2]||'').slice(0,40)).replace(/&/g,'&amp;').replace(/</g,'&lt;');
-    var item = document.createElement('div');
-    item.style.cssText = 'padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:0.85rem;';
-    item.innerHTML = '<strong>' + name + '</strong><span style="color:var(--text-light);font-size:0.78rem;margin-left:8px;">' + cat + ' | Dose: ' + dose + '</span>';
-    item.onmouseover = function() { this.style.background = 'var(--light-bg)'; };
-    item.onmouseout  = function() { this.style.background = ''; };
-    item.onclick = function() { ksSelectDrugForBrand(d); };
-    sugg.appendChild(item);
-  });
-  sugg.style.display = 'block';
-}
-
-
-function ksSelectDrugFromAttr(el) {
+  // Add custom drugs
   try {
-    var d = JSON.parse(decodeURIComponent(el.getAttribute('data-drug')));
-    ksSelectDrugForBrand(d);
-  } catch(e) { console.error('Drug select error', e); }
+    var customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]');
+    customs.forEach(function(d) {
+      _ksDrugMap[d.name.toLowerCase()] = Object.assign({}, d, {_source: 'custom'});
+    });
+  } catch(e) {}
+  return _ksDrugMap;
 }
 
-
-function ksSelectDrugForBrand(drug) {
-  // drug = [Name, Category, AdultDose, PedsDose, Pregnancy, ElderlyNote, Contraindications]
-  const fields = {
-    'bm-generic': drug[0] + ' (' + drug[1] + ')',
-    'bm-category': drug[1],
-    'bm-dose': drug[2],
-    'bm-notes': (drug[5] ? 'Elderly: ' + drug[5] + '. ' : '') + (drug[6] ? 'CI: ' + drug[6].slice(0,100) : '')
-  };
-  Object.keys(fields).forEach(function(id) {
-    const el = document.getElementById(id); if (el) el.value = fields[id];
+// ── BRAND LOOKUP MAP ──────────────────────────────────────────────────
+let _ksBrandMap = null;
+function ksGetBrandMap() {
+  if (_ksBrandMap) return _ksBrandMap;
+  _ksBrandMap = {};
+  KS_BRAND_RX_DB.forEach(function(b) {
+    _ksBrandMap[b[0].toLowerCase()] = {
+      brand: b[0], generic: b[1], company: b[2], form: b[3],
+      dose: b[4], price: b[5], sideEffects: b[6],
+      contraindications: b[7], specialNotes: b[8],
+      _source: 'builtin'
+    };
   });
-  // Auto-fill brand name from drug if empty
-  const brandEl = document.getElementById('bm-brand');
-  if (brandEl && !brandEl.value) brandEl.value = drug[0];
-
-  const sugg = document.getElementById('ks-drug-suggestions');
-  if (sugg) sugg.style.display = 'none';
+  // Add custom brands from KS_BRAND_CUSTOM
+  try {
+    var customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]');
+    customs.forEach(function(b) {
+      _ksBrandMap[b.brand.toLowerCase()] = {
+        brand: b.brand, generic: b.generic, company: b.company,
+        form: b.form, dose: b.dose, price: b.price,
+        sideEffects: b.notes || '', contraindications: '',
+        specialNotes: '', _source: 'custom'
+      };
+    });
+  } catch(e) {}
+  return _ksBrandMap;
 }
 
-// ── ENHANCED BRAND ADD MODAL (with drug search) ────────────────────────────
-// Patch openAddBrandModal to inject drug search field
-const _origOpenAddBrand = window.openAddBrandModal;
-window.openAddBrandModal = function(editData) {
-  if (typeof _origOpenAddBrand === 'function') _origOpenAddBrand(editData);
-  // Inject drug search if not already present
-  setTimeout(function() {
-    const genericField = document.getElementById('bm-generic');
-    if (!genericField || document.getElementById('ks-drug-search-wrapper')) return;
-    const wrapper = document.createElement('div');
-    wrapper.id = 'ks-drug-search-wrapper';
-    wrapper.style.cssText = 'margin-bottom:12px;';
-    wrapper.innerHTML =
-      '<label style="font-size:0.82rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:4px;">🔍 Search Drug to Auto-fill Generic & Dose</label>' +
-      '<div style="position:relative;">' +
-        '<input id="ks-drug-brand-search" type="text" placeholder="Type drug name... (e.g. Amoxicillin, Metformin)" ' +
-          'oninput="ksSearchDrugForBrand(this.value)" autocomplete="off" ' +
-          'style="width:100%;padding:9px 12px;border:1.5px solid var(--primary);border-radius:7px;font-size:0.9rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;">' +
-        '<div id="ks-drug-suggestions" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card-bg);border:1px solid var(--border);border-radius:0 0 8px 8px;z-index:999;max-height:220px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.15);"></div>' +
-      '</div>' +
-      '<p style="font-size:0.75rem;color:var(--text-light);margin:4px 0 0;">Search 729 built-in drugs → auto-fills generic name, category, dose & notes</p>';
-    // Insert before the generic field label
-    const genericLabel = genericField.previousElementSibling;
-    if (genericLabel) genericLabel.parentNode.insertBefore(wrapper, genericLabel);
-    else genericField.parentNode.insertBefore(wrapper, genericField);
-  }, 80);
-};
-
-// ── DRUG DB SECTION ENHANCE: Show custom drugs too ────────────────────────
-const _origSearchDrug = window.searchDrug;
-window.searchDrug = function() {
-  if (typeof _origSearchDrug === 'function') _origSearchDrug();
-  // Append custom drugs to results if query matches
-  const query = ((document.getElementById('drug_search')||{value:''}).value || '').toLowerCase();
-  let customDrugs = [];
-  try { customDrugs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
-  if (!customDrugs.length) return;
-  const matches = customDrugs.filter(function(d) {
-    return !query || d.name.toLowerCase().indexOf(query) >= 0 || d.category.toLowerCase().indexOf(query) >= 0;
-  });
-  if (!matches.length) return;
-  const drugResult = document.getElementById('drug_result') || document.getElementById('drug-result');
-  if (!drugResult) return;
-
-  const customSection = document.createElement('div');
-  customSection.style.marginTop = '10px';
-  const customHeader = document.createElement('div');
-  customHeader.style.cssText = 'font-size:0.8rem;font-weight:700;color:#f39c12;margin-bottom:6px;';
-  customHeader.textContent = '⭐ My Custom Drugs';
-  customSection.appendChild(customHeader);
-
-  matches.forEach(function(d) {
-    const card = document.createElement('div');
-    card.style.cssText = 'background:var(--card-bg);border:1px solid #f39c12;border-radius:8px;padding:12px;margin-bottom:8px;';
-
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.justifyContent = 'space-between';
-
-    const nameEl = document.createElement('strong');
-    nameEl.style.color = 'var(--primary)';
-    nameEl.textContent = d.name;
-    row.appendChild(nameEl);
-
-    const btnGroup = document.createElement('div');
-    btnGroup.style.cssText = 'display:flex;gap:5px;';
-
-    const editBtn = document.createElement('button');
-    editBtn.style.cssText = 'background:#f39c12;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;';
-    editBtn.textContent = 'Edit';
-    editBtn.onclick = (function(name){ return function(){ ksEditCustomDrug(name); }; })(d.name);
-    btnGroup.appendChild(editBtn);
-
-    const delBtn = document.createElement('button');
-    delBtn.style.cssText = 'background:#e74c3c;color:#fff;border:none;border-radius:4px;padding:2px 8px;font-size:0.75rem;cursor:pointer;';
-    delBtn.textContent = 'Del';
-    delBtn.onclick = (function(name){ return function(){ ksDeleteCustomDrug(name); }; })(d.name);
-    btnGroup.appendChild(delBtn);
-
-    row.appendChild(btnGroup);
-    card.appendChild(row);
-
-    if (d.category) {
-      const catEl = document.createElement('div');
-      catEl.style.cssText = 'font-size:0.8rem;color:var(--text-light);';
-      catEl.textContent = d.category;
-      card.appendChild(catEl);
+// ── COMBINED SEARCH (Drugs + Brands) ─────────────────────────────────
+function ksSearchDrugBrand(query) {
+  if (!query || query.length < 2) return [];
+  var q = query.toLowerCase();
+  var results = [];
+  // Search brands first (more clinically relevant for prescription)
+  var bmap = ksGetBrandMap();
+  Object.keys(bmap).forEach(function(k) {
+    if (k.indexOf(q) >= 0 || (bmap[k].generic||'').toLowerCase().indexOf(q) >= 0) {
+      results.push({ type: 'brand', data: bmap[k], label: bmap[k].brand + ' (' + bmap[k].generic + ')' });
     }
-    if (d.adultDose) {
-      const doseEl = document.createElement('div');
-      doseEl.style.cssText = 'font-size:0.8rem;margin-top:4px;';
-      doseEl.innerHTML = '<strong>Dose:</strong> ' + d.adultDose.replace(/&/g,'&amp;').replace(/</g,'&lt;');
-      card.appendChild(doseEl);
-    }
-    customSection.appendChild(card);
   });
-  drugResult.appendChild(customSection);
-};
-
-function ksEditCustomDrug(name) {
-  let customs = [];
-  try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
-  const d = customs.find(function(x) { return x.name === name; });
-  if (!d) return;
-  ksOpenAddCustomDrugModal(d);
+  // Search drugs
+  var dmap = ksGetDrugMap();
+  Object.keys(dmap).forEach(function(k) {
+    if (k.indexOf(q) >= 0 || (dmap[k].category||'').toLowerCase().indexOf(q) >= 0) {
+      // Only add if not already covered by brand
+      var alreadyAdded = results.some(function(r) { return (r.data.generic||'').toLowerCase().indexOf(k) >= 0; });
+      if (!alreadyAdded) {
+        results.push({ type: 'drug', data: dmap[k], label: dmap[k].name + ' [' + dmap[k].category + ']' });
+      }
+    }
+  });
+  return results.slice(0, 12);
 }
 
-function ksDeleteCustomDrug(name) {
-  if (!confirm('Delete custom drug "' + name + '"?')) return;
-  let customs = [];
-  try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
-  customs = customs.filter(function(d) { return d.name !== name; });
-  localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customs));
-  if (typeof searchDrug === 'function') searchDrug();
-  if (typeof _showToast === 'function') _showToast('Custom drug deleted', 'success');
+// ── ALERT PANEL ───────────────────────────────────────────────────────
+function ksShowDrugAlert(info, rowEl) {
+  var panel = document.getElementById('ks-drug-alert-panel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'ks-drug-alert-panel';
+    panel.style.cssText = 'position:fixed;top:70px;right:16px;width:340px;max-width:94vw;background:var(--card-bg,#fff);border:2px solid #e53e3e;border-radius:12px;padding:0;z-index:8000;box-shadow:0 8px 32px rgba(0,0,0,0.18);max-height:80vh;overflow-y:auto;transition:all 0.2s;';
+    document.body.appendChild(panel);
+  }
+
+  var d = info.type === 'brand' ? info.data : null;
+  var drug = info.type === 'drug' ? info.data : null;
+
+  // If brand, also look up the underlying drug
+  if (d && d.generic) {
+    var q = d.generic.split(' ')[0].toLowerCase();
+    var dmap = ksGetDrugMap();
+    // find best match
+    Object.keys(dmap).forEach(function(k) { if (k.indexOf(q) >= 0 && !drug) drug = dmap[k]; });
+  }
+
+  var hasAlert = (d && (d.contraindications || d.sideEffects)) || (drug && (drug.contraindications || drug.adultDose));
+
+  var hasAlert = (d && (d.contraindications || d.sideEffects)) || (drug && (drug.contraindications || drug.adultDose));
+
+  // Build header using safe string concatenation (no single-quote nesting)
+  var brandName = d ? d.brand : (drug ? drug.name : 'Drug Info');
+  var headerHtml = '<div style="background:linear-gradient(135deg,#c53030,#9b2c2c);color:#fff;padding:12px 16px;border-radius:10px 10px 0 0;display:flex;justify-content:space-between;align-items:center;">';
+  headerHtml += '<div><div style="font-weight:800;font-size:0.95rem;">&#x26A0; Drug Alert Panel</div>';
+  headerHtml += '<div style="font-size:0.8rem;opacity:0.85;">' + brandName + '</div></div>';
+  headerHtml += '<button id="ks-alert-close-btn" style="background:rgba(255,255,255,0.2);border:none;color:#fff;border-radius:6px;padding:4px 10px;cursor:pointer;font-size:1rem;">&#x2715;</button>';
+  headerHtml += '</div>';
+  var html = headerHtml + '<div style="padding:14px;">';
+
+  if (d) {
+    html += '<div style="background:#fff5f5;border:1px solid #feb2b2;border-radius:8px;padding:10px 12px;margin-bottom:10px;">';
+    html += '<div style="font-weight:700;color:#c53030;font-size:0.88rem;margin-bottom:6px;">&#x1F48A; ' + d.brand + '</div>';
+    html += '<div style="font-size:0.8rem;margin-bottom:4px;"><strong>Generic:</strong> ' + (d.generic || '-') + '</div>';
+    html += '<div style="font-size:0.8rem;margin-bottom:4px;"><strong>Form:</strong> ' + (d.form || '-') + ' &nbsp; <strong>Price:</strong> ' + (d.price || '-') + '</div>';
+    html += '<div style="font-size:0.8rem;margin-bottom:4px;"><strong>Dose:</strong> ' + (d.dose || '-') + '</div>';
+    if (d.sideEffects) html += '<div style="font-size:0.78rem;color:#c53030;margin-top:6px;"><strong>&#x26A0; Side Effects:</strong> ' + d.sideEffects + '</div>';
+    if (d.contraindications) html += '<div style="font-size:0.78rem;color:#9b2c2c;margin-top:5px;background:#fff0f0;border-radius:5px;padding:5px 7px;"><strong>&#x1F6AB; Contraindications:</strong> ' + d.contraindications + '</div>';
+    if (d.specialNotes) html += '<div style="font-size:0.78rem;color:#276749;margin-top:5px;background:#f0fff4;border-radius:5px;padding:5px 7px;"><strong>&#x2139; Notes:</strong> ' + d.specialNotes + '</div>';
+    html += '</div>';
+  }
+
+  if (drug) {
+    html += '<div style="background:#fffbeb;border:1px solid #fbd38d;border-radius:8px;padding:10px 12px;margin-bottom:10px;">';
+    html += '<div style="font-weight:700;color:#744210;font-size:0.85rem;margin-bottom:6px;">&#x1F9EA; Drug Data: ' + drug.name + '</div>';
+    html += '<div style="font-size:0.78rem;margin-bottom:3px;"><strong>Adult Dose:</strong> ' + (drug.adultDose || '-') + '</div>';
+    html += '<div style="font-size:0.78rem;margin-bottom:3px;"><strong>Paeds Dose:</strong> ' + (drug.pedsDose || '-') + '</div>';
+    if (drug.pregnancy) html += '<div style="font-size:0.78rem;margin-bottom:3px;"><strong>Pregnancy Cat:</strong> <span style="background:#fbb6ce;color:#702459;border-radius:4px;padding:1px 6px;font-weight:700;">' + drug.pregnancy + '</span></div>';
+    if (drug.elderlyNote) html += '<div style="font-size:0.78rem;margin-bottom:3px;color:#744210;"><strong>&#x1F474; Elderly:</strong> ' + drug.elderlyNote + '</div>';
+    if (drug.contraindications) html += '<div style="font-size:0.78rem;color:#9b2c2c;background:#fff5f5;border-radius:5px;padding:5px 7px;margin-top:4px;"><strong>&#x1F6AB; Contraindicated in:</strong> ' + drug.contraindications + '</div>';
+    html += '</div>';
+  }
+
+  // Patient context alerts
+  var ptPreg = document.getElementById('pregnancy');
+  var ptAllergies = document.getElementById('allergies');
+  var ptAge = document.getElementById('patient_age') || document.getElementById('erx-pt-age');
+  var isPregnant = ptPreg && ptPreg.value && ptPreg.value.toLowerCase().indexOf('yes') >= 0;
+  var allergyText = ptAllergies ? ptAllergies.value.toLowerCase() : '';
+  var age = ptAge ? parseInt(ptAge.value) : 0;
+  var warnings = [];
+
+  if (isPregnant && drug && drug.pregnancy && ['C','D','X'].indexOf(drug.pregnancy) >= 0) {
+    warnings.push('&#x1F6A8; <strong>PREGNANCY CAUTION</strong>: Category ' + drug.pregnancy + ' - review benefit vs risk');
+  }
+  if (age && age < 12 && drug && drug.pedsDose && drug.pedsDose.toLowerCase().indexOf('not rec') >= 0) {
+    warnings.push('&#x1F6A8; <strong>PAEDS CAUTION</strong>: Not recommended under 12yr');
+  }
+  if (age && age >= 65 && drug && drug.elderlyNote) {
+    warnings.push('&#x1F474; <strong>ELDERLY</strong>: ' + drug.elderlyNote);
+  }
+  if (allergyText && d && (allergyText.indexOf(d.brand.toLowerCase()) >= 0 || allergyText.indexOf((d.generic||'').split(' ')[0].toLowerCase()) >= 0)) {
+    warnings.push('&#x1F6A8; <strong>ALLERGY ALERT</strong>: Patient has documented allergy to this drug!');
+  }
+
+  if (warnings.length) {
+    html += '<div style="background:#fff5f5;border:2px solid #e53e3e;border-radius:8px;padding:10px 12px;margin-bottom:8px;">';
+    html += '<div style="font-weight:800;color:#c53030;font-size:0.85rem;margin-bottom:6px;">&#x1F6A8; PATIENT-SPECIFIC ALERTS</div>';
+    warnings.forEach(function(w) { html += '<div style="font-size:0.8rem;color:#c53030;margin-bottom:4px;">' + w + '</div>'; });
+    html += '</div>';
+  }
+
+  // Quick fill button
+  html += '<button id="ks-use-drug-btn" style="width:100%;padding:9px;background:#2563eb;color:#fff;border:none;border-radius:7px;font-size:0.85rem;font-weight:700;cursor:pointer;margin-top:4px;">&#x2795; Use this drug in prescription</button>';
+  html += '</div>';
+
+  panel.innerHTML = html;
+  panel.style.display = 'block';
 }
 
-// ── ADD CUSTOM DRUG MODAL ─────────────────────────────────────────────────
-function ksOpenAddCustomDrugModal(editData) {
-  var modal = document.getElementById('ks-custom-drug-modal');
+function ksHideDrugAlert() {
+  var p = document.getElementById('ks-drug-alert-panel');
+  if (p) p.style.display = 'none';
+}
+
+// ── QUICK FILL MED ROW ────────────────────────────────────────────────
+function ksQuickFillMedRow(info) {
+  // Find the last active / focused med row input
+  var lastInput = document._ksLastDrugInput;
+  if (!lastInput) {
+    // Find the last erx-drug-name input
+    var allInputs = document.querySelectorAll('.erx-drug-name');
+    lastInput = allInputs[allInputs.length - 1];
+  }
+  if (!lastInput) {
+    // Add a new row first
+    if (typeof erxAddMedRow === 'function') erxAddMedRow();
+    var allInputs = document.querySelectorAll('.erx-drug-name');
+    lastInput = allInputs[allInputs.length - 1];
+  }
+
+  if (lastInput) {
+    var d = info.data;
+    lastInput.value = info.type === 'brand' ? d.brand + ' (' + d.generic + ')' : d.name;
+    // Fill dose
+    var row = lastInput.closest('.erx-med-row');
+    if (row) {
+      var doseInput = row.querySelector('.erx-dose');
+      if (doseInput) doseInput.value = d.dose || d.adultDose || '';
+    }
+    // Flash highlight
+    lastInput.style.background = '#ebf8ff';
+    setTimeout(function() { lastInput.style.background = ''; }, 1500);
+  }
+  ksHideDrugAlert();
+}
+
+// ── AUTOCOMPLETE DROPDOWN LOGIC ───────────────────────────────────────
+var _ksDropdownActive = null;
+
+function ksAttachDrugSearch(inputEl) {
+  if (inputEl._ksAttached) return;
+  inputEl._ksAttached = true;
+
+  // Create dropdown
+  var dropdown = document.createElement('div');
+  dropdown.style.cssText = 'position:absolute;top:100%;left:0;right:0;background:var(--card-bg,#fff);border:1px solid var(--border,#e2e8f0);border-radius:0 0 8px 8px;z-index:7000;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.15);display:none;';
+  
+  var wrapper = document.createElement('div');
+  wrapper.style.cssText = 'position:relative;';
+  inputEl.parentNode.insertBefore(wrapper, inputEl);
+  wrapper.appendChild(inputEl);
+  wrapper.appendChild(dropdown);
+
+  inputEl.addEventListener('focus', function() { document._ksLastDrugInput = inputEl; });
+
+  inputEl.addEventListener('input', function() {
+    document._ksLastDrugInput = inputEl;
+    var q = inputEl.value.trim();
+    if (q.length < 2) { dropdown.style.display = 'none'; return; }
+    var results = ksSearchDrugBrand(q);
+    if (!results.length) {
+      // Show "Add new" option
+      var noMatchDiv = document.createElement('div');
+      noMatchDiv.style.cssText = 'padding:10px 12px;font-size:0.82rem;color:var(--text-light,#64748b);';
+      noMatchDiv.textContent = 'No match found. ';
+      var addBtn = document.createElement('button');
+      addBtn.style.cssText = 'background:#8e44ad;color:#fff;border:none;border-radius:5px;padding:3px 10px;cursor:pointer;font-size:0.78rem;';
+      addBtn.textContent = '+ Add New Drug/Brand';
+      addBtn.onclick = (function(qv){ return function(){ ksOpenAddInlineDialog(qv); }; })(q);
+      noMatchDiv.appendChild(addBtn);
+      dropdown.innerHTML = '';
+      dropdown.appendChild(noMatchDiv);
+      dropdown.style.display = 'block';
+      return;
+    }
+    
+    dropdown.innerHTML = '';
+    // Header
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'padding:5px 12px;font-size:0.72rem;font-weight:700;color:var(--text-light,#64748b);background:var(--light-bg,#f1f5f9);border-bottom:1px solid var(--border,#e2e8f0);';
+    hdr.textContent = results.length + ' results — click to use & see alerts';
+    dropdown.appendChild(hdr);
+
+    results.forEach(function(r) {
+      var item = document.createElement('div');
+      item.style.cssText = 'padding:9px 12px;cursor:pointer;border-bottom:1px solid var(--border,#e2e8f0);font-size:0.83rem;display:flex;justify-content:space-between;align-items:center;';
+      
+      var badge = r.type === 'brand' 
+        ? '<span style="background:#2563eb;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.7rem;">BRAND</span>'
+        : '<span style="background:#059669;color:#fff;border-radius:4px;padding:1px 6px;font-size:0.7rem;">DRUG</span>';
+      
+      var price = r.type === 'brand' && r.data.price ? '<span style="color:#27ae60;font-size:0.78rem;">' + r.data.price + '</span>' : '';
+      
+      item.innerHTML = '<span>' + badge + ' <strong>' + (r.type === 'brand' ? r.data.brand : r.data.name) + '</strong> <span style="color:var(--text-light,#64748b);font-size:0.78rem;">' + (r.type === 'brand' ? r.data.generic : r.data.category) + '</span></span>' + price;
+
+      item.onmouseover = function() { this.style.background = 'var(--light-bg,#f1f5f9)'; };
+      item.onmouseout  = function() { this.style.background = ''; };
+      item.onclick = function(e) {
+        e.stopPropagation();
+        inputEl.value = r.type === 'brand' ? r.data.brand + ' (' + r.data.generic + ')' : r.data.name;
+        var row = inputEl.closest('.erx-med-row');
+        if (row) {
+          var doseInput = row.querySelector('.erx-dose');
+          if (doseInput && !doseInput.value) {
+            doseInput.value = r.type === 'brand' ? (r.data.dose || '') : (r.data.adultDose || '');
+          }
+        }
+        dropdown.style.display = 'none';
+        ksShowDrugAlert(r, inputEl);
+        document._ksLastDrugInput = inputEl;
+      };
+      dropdown.appendChild(item);
+    });
+
+    // Add new option at bottom
+    var addNew = document.createElement('div');
+    addNew.style.cssText = 'padding:8px 12px;font-size:0.78rem;color:#8e44ad;cursor:pointer;font-weight:600;border-top:2px solid var(--border,#e2e8f0);';
+    addNew.innerHTML = '&#x2795; Add "' + q + '" as new drug/brand';
+    addNew.onmouseover = function() { this.style.background = '#f5f0ff'; };
+    addNew.onmouseout  = function() { this.style.background = ''; };
+    addNew.onclick = function(e) {
+      e.stopPropagation();
+      dropdown.style.display = 'none';
+      ksOpenAddInlineDialog(q);
+    };
+    dropdown.appendChild(addNew);
+
+    dropdown.style.display = 'block';
+    _ksDropdownActive = dropdown;
+  });
+
+  inputEl.addEventListener('blur', function() {
+    setTimeout(function() { dropdown.style.display = 'none'; }, 200);
+  });
+
+  inputEl.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') { dropdown.style.display = 'none'; }
+  });
+}
+
+// ── ADD INLINE DIALOG (add new drug/brand while prescribing) ──────────
+function ksOpenAddInlineDialog(prefillName) {
+  var modal = document.getElementById('ks-inline-add-modal');
   if (!modal) {
     modal = document.createElement('div');
-    modal.id = 'ks-custom-drug-modal';
+    modal.id = 'ks-inline-add-modal';
     modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;';
-    
+
     var box = document.createElement('div');
-    box.style.cssText = 'background:var(--card-bg);border-radius:14px;padding:24px;max-width:550px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);';
-    
-    // Header row
-    var hdr = document.createElement('div');
-    hdr.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;';
-    var title = document.createElement('h3');
-    title.id = 'ks-cdrug-title';
-    title.style.cssText = 'margin:0;color:var(--primary);font-size:1.05rem;';
-    title.textContent = 'Add Custom Drug';
-    var closeBtn = document.createElement('button');
-    closeBtn.style.cssText = 'background:none;border:none;font-size:1.4rem;cursor:pointer;';
-    closeBtn.innerHTML = '&#x2715;';
-    closeBtn.onclick = function() { modal.style.display = 'none'; };
-    hdr.appendChild(title); hdr.appendChild(closeBtn);
-    box.appendChild(hdr);
+    box.style.cssText = 'background:var(--card-bg,#fff);border-radius:14px;padding:24px;max-width:540px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.35);';
 
-    // Form fields
-    var fields = [
-      {id:'ks-cd-name',  label:'Drug Name *',       type:'text',   placeholder:'e.g. Myodrug 500'},
-      {id:'ks-cd-cat',   label:'Category',           type:'text',   placeholder:'e.g. Antibiotic, NSAID', list:'ks-cd-cat-list'},
-      {id:'ks-cd-dose',  label:'Adult Dose',         type:'text',   placeholder:'e.g. 500mg TDS x5d'},
-      {id:'ks-cd-peds',  label:'Paediatric Dose',    type:'text',   placeholder:'e.g. 10mg/kg BD'},
-      {id:'ks-cd-elderly',label:'Elderly Note',      type:'text',   placeholder:'Dose adj / caution'},
+    // Title row
+    var titleRow = document.createElement('div');
+    titleRow.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;';
+    var titleEl = document.createElement('h3');
+    titleEl.style.cssText = 'margin:0;color:var(--primary,#2563eb);font-size:1.05rem;';
+    titleEl.textContent = 'Add New Drug/Brand';
+    var closeBtnM = document.createElement('button');
+    closeBtnM.style.cssText = 'background:none;border:none;font-size:1.4rem;cursor:pointer;';
+    closeBtnM.innerHTML = '&#x2715;';
+    closeBtnM.onclick = function() { modal.style.display = 'none'; };
+    titleRow.appendChild(titleEl);
+    titleRow.appendChild(closeBtnM);
+    box.appendChild(titleRow);
+
+    // Info banner
+    var infoBanner = document.createElement('div');
+    infoBanner.style.cssText = 'background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:9px 12px;font-size:0.8rem;color:#1e40af;margin-bottom:14px;';
+    infoBanner.textContent = 'This drug/brand will be saved and available in all future prescriptions';
+    box.appendChild(infoBanner);
+
+    // Fields
+    var fieldList = [
+      ['ks-ia-name','Brand/Drug Name *','text','e.g. Augmentin, Metformin 500mg'],
+      ['ks-ia-generic','Generic Name / Composition','text','e.g. Amoxicillin+Clavulanate'],
+      ['ks-ia-category','Category','text','e.g. Antibiotic, NSAID'],
+      ['ks-ia-dose','Standard Dose','text','e.g. 625mg TDS x7d'],
+      ['ks-ia-price','Price','text',''],
+      ['ks-ia-se','Side Effects','text','e.g. Diarrhoea, rash'],
+      ['ks-ia-ci','Contraindications','text','e.g. Penicillin allergy'],
+      ['ks-ia-notes','Special Notes','text','e.g. Take with food'],
     ];
-    var form = document.createElement('div');
-    form.style.cssText = 'display:flex;flex-direction:column;gap:11px;';
-
-    fields.forEach(function(f) {
+    var formDiv = document.createElement('div');
+    formDiv.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+    fieldList.forEach(function(f) {
       var wrap = document.createElement('div');
       var lbl = document.createElement('label');
-      lbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px;';
-      lbl.textContent = f.label;
+      lbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light,#64748b);display:block;margin-bottom:3px;';
+      lbl.textContent = f[1];
       var inp = document.createElement('input');
-      inp.id = f.id; inp.type = f.type; inp.placeholder = f.placeholder;
-      inp.style.cssText = 'width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);box-sizing:border-box;';
-      if (f.list) inp.setAttribute('list', f.list);
+      inp.id = f[0]; inp.type = f[2]; inp.placeholder = f[3];
+      inp.style.cssText = 'width:100%;padding:8px 11px;border:1.5px solid var(--border,#e2e8f0);border-radius:7px;font-size:0.88rem;box-sizing:border-box;';
       wrap.appendChild(lbl); wrap.appendChild(inp);
-      form.appendChild(wrap);
+      formDiv.appendChild(wrap);
     });
-
-    // Datalist for category
-    var dl = document.createElement('datalist');
-    dl.id = 'ks-cd-cat-list';
-    ['Analgesic','Antibiotic','NSAID','Antacid','Antidiabetic','Antihypertensive','Cardiovascular','CNS','Respiratory','GI','Endocrine','Supplement','Antifungal','Antiparasitic','Other'].forEach(function(v) {
-      var opt = document.createElement('option'); opt.value = v; dl.appendChild(opt);
-    });
-    form.appendChild(dl);
-
-    // Pregnancy select + CI textarea row
-    var grid = document.createElement('div');
-    grid.style.cssText = 'display:grid;grid-template-columns:1fr 1fr;gap:10px;';
-    var pregWrap = document.createElement('div');
-    var pregLbl = document.createElement('label');
-    pregLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px;';
-    pregLbl.textContent = 'Pregnancy Cat.';
-    var pregSel = document.createElement('select');
-    pregSel.id = 'ks-cd-preg';
-    pregSel.style.cssText = 'width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);';
-    ['','A','B','C','D','X'].forEach(function(v) {
-      var opt = document.createElement('option'); opt.value = v; opt.textContent = v || 'Unknown'; pregSel.appendChild(opt);
-    });
-    pregWrap.appendChild(pregLbl); pregWrap.appendChild(pregSel);
-    grid.appendChild(pregWrap);
-    form.appendChild(grid);
-
-    var ciWrap = document.createElement('div');
-    var ciLbl = document.createElement('label');
-    ciLbl.style.cssText = 'font-size:0.8rem;font-weight:600;color:var(--text-light);display:block;margin-bottom:3px;';
-    ciLbl.textContent = 'Contraindications';
-    var ciTa = document.createElement('textarea');
-    ciTa.id = 'ks-cd-ci'; ciTa.rows = 2; ciTa.placeholder = 'Key contraindications...';
-    ciTa.style.cssText = 'width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.88rem;background:var(--card-bg);color:var(--text);resize:vertical;box-sizing:border-box;';
-    ciWrap.appendChild(ciLbl); ciWrap.appendChild(ciTa);
-    form.appendChild(ciWrap);
-    box.appendChild(form);
+    box.appendChild(formDiv);
 
     // Buttons
     var btnRow = document.createElement('div');
-    btnRow.style.cssText = 'display:flex;gap:10px;margin-top:18px;';
+    btnRow.style.cssText = 'display:flex;gap:8px;margin-top:16px;';
     var saveBtn = document.createElement('button');
-    saveBtn.style.cssText = 'flex:1;padding:11px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.92rem;font-weight:700;cursor:pointer;';
-    saveBtn.textContent = 'Save Drug';
-    saveBtn.onclick = ksSaveCustomDrug;
+    saveBtn.style.cssText = 'flex:1;padding:10px;background:var(--primary,#2563eb);color:#fff;border:none;border-radius:7px;font-size:0.9rem;font-weight:700;cursor:pointer;';
+    saveBtn.textContent = 'Save & Use in Rx';
+    saveBtn.onclick = ksSaveInlineDrug;
     var cancelBtn = document.createElement('button');
-    cancelBtn.style.cssText = 'padding:11px 18px;background:var(--light-bg);border:1px solid var(--border);border-radius:8px;cursor:pointer;';
+    cancelBtn.style.cssText = 'padding:10px 16px;background:var(--light-bg,#f1f5f9);border:1px solid var(--border,#e2e8f0);border-radius:7px;cursor:pointer;';
     cancelBtn.textContent = 'Cancel';
     cancelBtn.onclick = function() { modal.style.display = 'none'; };
     btnRow.appendChild(saveBtn); btnRow.appendChild(cancelBtn);
     box.appendChild(btnRow);
-    modal.appendChild(box);
 
+    modal.appendChild(box);
     modal.onclick = function(e) { if (e.target === modal) modal.style.display = 'none'; };
     document.body.appendChild(modal);
   }
 
-  var titleEl = document.getElementById('ks-cdrug-title');
-  if (editData) {
-    if (titleEl) titleEl.textContent = 'Edit Custom Drug';
-    var map = {'ks-cd-name':'name','ks-cd-cat':'category','ks-cd-dose':'adultDose','ks-cd-peds':'pedsDose','ks-cd-preg':'pregnancy','ks-cd-elderly':'elderlyNote','ks-cd-ci':'contraindications'};
-    Object.keys(map).forEach(function(id) {
-      var el = document.getElementById(id); if (el) el.value = editData[map[id]] || '';
-    });
-    modal._editName = editData.name;
-  } else {
-    if (titleEl) titleEl.textContent = 'Add Custom Drug';
-    ['ks-cd-name','ks-cd-cat','ks-cd-dose','ks-cd-peds','ks-cd-elderly','ks-cd-ci'].forEach(function(id) {
-      var el = document.getElementById(id); if (el) el.value = '';
-    });
-    var pregEl = document.getElementById('ks-cd-preg'); if (pregEl) pregEl.value = '';
-    modal._editName = null;
-  }
+  // Pre-fill name
+  var nameEl = document.getElementById('ks-ia-name');
+  if (nameEl) nameEl.value = prefillName || '';
+  ['ks-ia-generic','ks-ia-category','ks-ia-dose','ks-ia-price','ks-ia-se','ks-ia-ci','ks-ia-notes'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
   modal.style.display = 'flex';
-  setTimeout(function() { var n = document.getElementById('ks-cd-name'); if(n) n.focus(); }, 80);
+  setTimeout(function() { var n = document.getElementById('ks-ia-name'); if (n) n.focus(); }, 80);
 }
 
 
-function ksSaveCustomDrug() {
-  const name = (document.getElementById('ks-cd-name')||{value:''}).value.trim();
-  if (!name) { alert('Drug name is required.'); return; }
+function ksSaveInlineDrug() {
+  var name = (document.getElementById('ks-ia-name') || {value:''}).value.trim();
+  if (!name) { alert('Name is required.'); return; }
 
-  let customs = [];
-  try { customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e){}
-  const modal = document.getElementById('ks-custom-drug-modal');
-  const editName = modal ? modal._editName : null;
-  if (editName) customs = customs.filter(function(d) { return d.name !== editName; });
+  var generic = (document.getElementById('ks-ia-generic') || {value:''}).value.trim();
+  var category = (document.getElementById('ks-ia-category') || {value:'Other'}).value.trim() || 'Other';
+  var dose = (document.getElementById('ks-ia-dose') || {value:''}).value.trim();
+  var price = (document.getElementById('ks-ia-price') || {value:''}).value.trim();
+  var se = (document.getElementById('ks-ia-se') || {value:''}).value.trim();
+  var ci = (document.getElementById('ks-ia-ci') || {value:''}).value.trim();
+  var notes = (document.getElementById('ks-ia-notes') || {value:''}).value.trim();
 
-  customs.push({
-    name: name,
-    category: (document.getElementById('ks-cd-cat')||{value:'Other'}).value || 'Other',
-    adultDose: (document.getElementById('ks-cd-dose')||{value:''}).value.trim(),
-    pedsDose: (document.getElementById('ks-cd-peds')||{value:''}).value.trim(),
-    pregnancy: (document.getElementById('ks-cd-preg')||{value:''}).value,
-    elderlyNote: (document.getElementById('ks-cd-elderly')||{value:''}).value.trim(),
-    contraindications: (document.getElementById('ks-cd-ci')||{value:''}).value.trim()
-  });
-  localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customs));
-  if (modal) modal.style.display = 'none';
-  if (typeof searchDrug === 'function') searchDrug();
-  if (typeof _showToast === 'function') _showToast('Custom drug saved: ' + name, 'success');
+  // Save as custom brand (with generic info as drug)
+  var customs = [];
+  try { customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]'); } catch(e) {}
+  customs = customs.filter(function(b) { return b.brand.toLowerCase() !== name.toLowerCase(); });
+  customs.push({ brand: name, generic: generic || category, company: 'Custom', category: category,
+    form: '', price: price, dose: dose, notes: (se ? 'SE: ' + se + '. ' : '') + (ci ? 'CI: ' + ci + '. ' : '') + notes, _custom: true });
+  localStorage.setItem('ks_brand_custom_v3', JSON.stringify(customs));
+
+  // Also save as custom drug if generic info present
+  if (generic) {
+    var customDrugs = [];
+    try { customDrugs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]'); } catch(e) {}
+    customDrugs = customDrugs.filter(function(d) { return d.name.toLowerCase() !== (generic||name).toLowerCase(); });
+    customDrugs.push({ name: generic || name, category: category, adultDose: dose,
+      pedsDose: '', pregnancy: '', elderlyNote: '', contraindications: ci });
+    localStorage.setItem('ks_custom_drugs_v1', JSON.stringify(customDrugs));
+  }
+
+  // Reset maps so they reload
+  _ksBrandMap = null; _ksDrugMap = null;
+
+  // Fill the last drug input
+  var lastInput = document._ksLastDrugInput;
+  if (lastInput) {
+    lastInput.value = name + (generic ? ' (' + generic + ')' : '');
+    var row = lastInput.closest('.erx-med-row');
+    if (row && dose) { var di = row.querySelector('.erx-dose'); if (di && !di.value) di.value = dose; }
+    lastInput.style.background = '#ebf8ff';
+    setTimeout(function() { lastInput.style.background = ''; }, 1500);
+  }
+
+  document.getElementById('ks-inline-add-modal').style.display = 'none';
+  if (typeof brandDBInit === 'function') brandDBInit();
+  if (typeof showToast === 'function') showToast(name + ' saved to database!');
 }
 
-// ── ADD BUTTONS TO DRUG-DB SECTION ───────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  // Add "Export CSV" and "Add Custom Drug" buttons to the Drug DB section header
-  const drugSection = document.getElementById('drug-db');
-  if (!drugSection) return;
-  // Find a suitable place - look for search bar or header
-  const drugHeader = drugSection.querySelector('h2, .section-header, [style*="font-size:1.3"], [style*="font-size: 1.3"]');
-  if (drugHeader) {
-    const btnBar = document.createElement('div');
-    btnBar.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px;';
-    btnBar.innerHTML =
-      '<button onclick="ksDrugExportCSV()" style="background:#27ae60;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">📥 Export Drug DB CSV</button>' +
-      '<button onclick="ksDrugImportCSVClick()" style="background:#2980b9;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">📤 Import Custom Drugs CSV</button>' +
-      '<button onclick="ksOpenAddCustomDrugModal()" style="background:#8e44ad;color:#fff;border:none;border-radius:7px;padding:8px 14px;font-size:0.82rem;cursor:pointer;font-weight:600;">➕ Add Custom Drug</button>' +
-      '<span style="font-size:0.78rem;color:var(--text-light);align-self:center;">729 built-in drugs | Custom drugs editable via CSV</span>';
-    const drugSearchArea = drugSection.querySelector('input[type="text"]') || drugSection.querySelector('input');
-    if (drugSearchArea && drugSearchArea.parentNode) {
-      drugSearchArea.parentNode.insertBefore(btnBar, drugSearchArea.parentNode.firstChild);
-    } else {
-      drugHeader.parentNode && drugHeader.parentNode.insertBefore(btnBar, drugHeader.nextSibling);
-    }
-  }
-});
-
-// ── MOBILE SIDEBAR CLOSE ON NAV CLICK ────────────────────────────────────
-document.addEventListener('DOMContentLoaded', function() {
-  // Add overlay div for mobile sidebar
-  if (!document.getElementById('ks-sidebar-overlay')) {
-    const overlay = document.createElement('div');
-    overlay.id = 'ks-sidebar-overlay';
-    overlay.onclick = function() {
-      document.body.classList.remove('sidebar-mobile-open');
-      document.body.classList.remove('sidebar-open');
-    };
-    document.body.appendChild(overlay);
-  }
-
-  // Close sidebar on nav item click (mobile)
-  document.querySelectorAll('.sidebar-nav-item').forEach(function(btn) {
-    btn.addEventListener('click', function() {
-      if (window.innerWidth < 1024) {
-        var sb = document.getElementById('saas-sidebar');
-        if (sb) sb.classList.remove('mobile-open');
-        document.body.classList.remove('sidebar-mobile-open');
-        document.body.classList.remove('sidebar-open');
-        var ov = document.getElementById('ks-sidebar-overlay');
-        var saasOv = document.getElementById('saas-sidebar-overlay');
-        if (ov) ov.style.display = 'none';
-        if (saasOv) saasOv.style.display = 'none';
-      }
+// ── PATCH erxAddMedRow to attach search ──────────────────────────────
+var _ksOrigErxAddMedRow = window.erxAddMedRow;
+window.erxAddMedRow = function(data) {
+  if (typeof _ksOrigErxAddMedRow === 'function') _ksOrigErxAddMedRow(data || {});
+  // Attach to newly added row
+  setTimeout(function() {
+    var allInputs = document.querySelectorAll('.erx-drug-name:not([data-ks-attached])');
+    allInputs.forEach(function(inp) {
+      inp.setAttribute('data-ks-attached', '1');
+      ksAttachDrugSearch(inp);
     });
-  });
-});
-
-// Patch saasSidebarToggleMobile to also toggle our overlay
-const _origToggleMobile = window.saasSidebarToggleMobile;
-window.saasSidebarToggleMobile = function() {
-  if (typeof _origToggleMobile === 'function') _origToggleMobile();
-  // Ensure our overlay also responds
-  const sb = document.getElementById('saas-sidebar');
-  if (sb) {
-    const isOpen = sb.classList.contains('mobile-open') || document.body.classList.contains('sidebar-mobile-open');
-    const overlay = document.getElementById('ks-sidebar-overlay');
-    if (overlay) overlay.style.display = isOpen ? 'block' : 'none';
-  }
+  }, 30);
 };
 
-// ── CSV DOWNLOAD HELPER (if not already defined by patient engine) ────────
-if (typeof ksDownloadCSV === 'undefined') {
-  window.ksDownloadCSV = function(rows, filename) {
-    const csv = rows.map(function(row) {
-      return row.map(function(cell) {
-        const s = String(cell||'').replace(/"/g,'""');
-        return (s.includes(',') || s.includes('"') || s.includes('\n')) ? '"'+s+'"' : s;
-      }).join(',');
-    }).join('\n');
-    const BOM = '\uFEFF';
-    const blob = new Blob([BOM+csv], {type:'text/csv;charset=utf-8'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = filename; a.click();
-    URL.revokeObjectURL(url);
-  };
-}
-if (typeof ksCsvParseLine === 'undefined') {
-  window.ksCsvParseLine = function(line) {
-    const result = []; let inQuote = false; let current = '';
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { if (inQuote && line[i+1]==='"') { current += '"'; i++; } else inQuote = !inQuote; }
-      else if (ch === ',' && !inQuote) { result.push(current); current = ''; }
-      else { current += ch; }
-    }
-    result.push(current);
-    return result;
-  };
+// ── INIT: Attach to existing rows when section opens ──────────────────
+function ksInitDrugSearch() {
+  var allInputs = document.querySelectorAll('.erx-drug-name:not([data-ks-attached])');
+  allInputs.forEach(function(inp) {
+    inp.setAttribute('data-ks-attached', '1');
+    ksAttachDrugSearch(inp);
+  });
 }
 
-// ── ADD DRUG/BRAND EXPORT TO CSV MANAGER ─────────────────────────────────
+// Observe erx-med-rows for new rows
 document.addEventListener('DOMContentLoaded', function() {
-  // Add drug export button to CSV Manager section if it exists
-  const csvSection = document.getElementById('ks-csv-manager');
-  if (!csvSection) return;
-  // Find the drug & brand card and add export button if needed
-  // (already handled in patient_section.html)
+  var container = document.getElementById('erx-med-rows');
+  if (container && typeof MutationObserver !== 'undefined') {
+    new MutationObserver(function() {
+      var allInputs = document.querySelectorAll('.erx-drug-name:not([data-ks-attached])');
+      allInputs.forEach(function(inp) {
+        inp.setAttribute('data-ks-attached', '1');
+        ksAttachDrugSearch(inp);
+      });
+    }).observe(container, { childList: true, subtree: true });
+  }
+  // Also watch section activation
+  var erxSec = document.getElementById('adv-eprescription');
+  if (erxSec && typeof MutationObserver !== 'undefined') {
+    new MutationObserver(function(ml) {
+      ml.forEach(function(m) {
+        if (m.attributeName === 'class' && erxSec.classList.contains('active')) {
+          setTimeout(ksInitDrugSearch, 80);
+        }
+      });
+    }).observe(erxSec, { attributes: true, attributeFilter: ['class'] });
+  }
+  // Also init immediately in case section is already active
+  setTimeout(ksInitDrugSearch, 500);
 });
 
+// ── CSV EXPORT for Drug DB ──────────────────────────────────────────
+window.ksDrugExportCSV = function() {
+  var rows = [['Drug Name','Category','Adult Dose','Paediatric Dose','Pregnancy Category','Elderly Notes','Contraindications','Source']];
+  if (typeof DRUG_RAW !== 'undefined') {
+    DRUG_RAW.forEach(function(d) {
+      rows.push([d[0],d[1],d[2],d[3],d[4],d[5],d[6],'Built-in']);
+    });
+  }
+  try {
+    var customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]');
+    customs.forEach(function(d) {
+      rows.push([d.name,d.category,d.adultDose,d.pedsDose,d.pregnancy,d.elderlyNote,d.contraindications,'Custom']);
+    });
+  } catch(e) {}
+  if (typeof ksDownloadCSV === 'function') ksDownloadCSV(rows, 'KSpider_DrugDB_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' drugs');
+};
+
+// ── CSV EXPORT for Brand DB ─────────────────────────────────────────
+window.ksBrandExportCSV = function() {
+  var rows = [['Brand Name','Generic','Company','Form','Standard Dose','Price','Side Effects','Contraindications','Special Notes','Source']];
+  KS_BRAND_RX_DB.forEach(function(b) {
+    rows.push([b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],'Built-in']);
+  });
+  try {
+    var customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]');
+    customs.forEach(function(b) {
+      rows.push([b.brand,b.generic,b.company,b.form||'',b.dose||'',b.price||'',b.notes||'','','','Custom']);
+    });
+  } catch(e) {}
+  if (typeof ksDownloadCSV === 'function') ksDownloadCSV(rows, 'KSpider_BrandDB_' + new Date().toISOString().slice(0,10) + '.csv');
+  if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' brands');
+};
+
+// Also alias
+window.ksCsvExportBrands = window.ksBrandExportCSV;
+
 </script>
+
 </body>
 </html>
