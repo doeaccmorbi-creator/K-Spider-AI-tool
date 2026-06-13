@@ -3070,6 +3070,7 @@ Frontend Intern | TechNova | June–Aug 2023
           <div class="fg"><label class="fl">Industry</label><select class="fc" id="jind" onchange="previewJob()"><option>IT / Software</option><option>Finance</option><option>Healthcare</option><option>Education</option><option>E-Commerce</option><option>Other</option></select></div>
         </div>
         <div class="fg"><label class="fl">Required Skills</label><input type="text" class="fc" id="jsk" placeholder="React.js, Node.js, Firebase" oninput="previewJob()"></div>
+        <div class="fg"><label class="fl">📱 WhatsApp Apply Number <span style="color:var(--t3);font-weight:400;">(optional)</span></label><input type="tel" class="fc" id="jwa" placeholder="+91 98765 43210" oninput="previewJob()"></div>
         <div class="fg"><label class="fl">Job Description *</label><textarea class="fc" rows="3" id="jdesc" placeholder="Describe role, responsibilities, requirements…" oninput="previewJob()"></textarea></div>
         <div style="background:var(--pl);border-radius:var(--rs);padding:8px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;">
           <span style="font-size:11px;color:var(--primary);">🤖 AI Generate Description</span>
@@ -4159,6 +4160,7 @@ function renderJobCard(j){
       ${desc?`<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.6;">${desc}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="bap" onclick="openApply('${t}','${co}','${sal}','${exp}','${typ}','${jId}','${rId}')">⚡ Easy Apply</button>
+        ${j.whatsappApply?`<button class="bap" style="background:#25D366;border-color:#25D366;" onclick="applyViaWhatsApp('${jId}','${t}','${co}','${loc}','${validateInput(j.whatsappApply)}')">💬 WhatsApp Apply</button>`:''}
         <button class="bsv" onclick="saveJob(this,'${jId}')" title="Save Job">🔖</button>
         <button class="bsv" onclick="shareJob('${t}','${co}','${loc}','${jId}')" title="Share" style="font-size:14px;">📤</button>
       </div>
@@ -4409,6 +4411,7 @@ async function submitJob(){
     workMode:$('jwm')?$('jwm').value:'',
     industry:$('jind')?$('jind').value:'',
     skills:$('jsk').value,
+    whatsappApply:$('jwa')?$('jwa').value.trim():'',  // Task #3: WhatsApp Direct Apply number
     recruiterId:_user?_user.uid:'',
     recruiterName:_up?.name||'',
     applications:0,
@@ -4788,6 +4791,89 @@ function showBoostNudge(jobTitle){
     var el=document.getElementById('boostNudgeBanner');
     if(el) el.remove();
   },10000);
+}
+
+// ══════════════════════════════════════
+// WHATSAPP DIRECT APPLY — Task #3
+// Opens WhatsApp with a pre-filled professional application message
+// ══════════════════════════════════════
+async function applyViaWhatsApp(jobId,jobTitle,company,location,waNumber){
+  if(!waNumber) return showToast('⚠️ WhatsApp number not available for this job.');
+
+  // Clean WhatsApp number: strip spaces/dashes, keep leading +
+  var cleanNum=waNumber.replace(/[^\d+]/g,'').replace(/^\+/,'');
+  if(!cleanNum) return showToast('⚠️ Invalid WhatsApp number.');
+
+  // Build applicant details from profile if logged in
+  var name=(_up&&_up.name)||(_user&&_user.displayName)||'';
+  var mobile=(_up&&_up.phone)||'';
+  var email=(_user&&_user.email)||(_up&&_up.email)||'';
+  var skills=(_up&&_up.skills)||'';
+  var experience=(_up&&_up.experience)||'';
+  var education=(_up&&(_up.qualification||_up.education))||'';
+  var profileLink='https://kspiderai.in/tools/KSpider_Job_Placement.html';
+  var resumeLink=(_up&&_up.resumeLink)||'';
+
+  // If profile fields are empty, prompt user for minimal details (non-blocking, optional)
+  if(!name){
+    var entered=prompt('Your Name (for WhatsApp application):');
+    if(entered) name=entered.trim();
+  }
+
+  // ── Build professional message exactly per master template ──
+  var lines=[];
+  lines.push('Hello Sir/Madam,');
+  lines.push('');
+  lines.push('I have read your advertisement on KSpider Connect — India\'s most trusted largest AI-powered Job Placement Platform.');
+  lines.push('');
+  lines.push('I would like to apply for the following position:');
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('JOB DETAILS');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('Job Title: '+(jobTitle||''));
+  lines.push('Company: '+(company||''));
+  lines.push('Location: '+(location||''));
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('APPLICANT DETAILS');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('Name: '+(name||'—'));
+  lines.push('Mobile: '+(mobile||'—'));
+  lines.push('Email: '+(email||'—'));
+  lines.push('Skills: '+(skills||'—'));
+  lines.push('Experience: '+(experience||'—'));
+  lines.push('Education: '+(education||'—'));
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('PROFILE LINKS');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('KSpider Connect Profile: '+profileLink);
+  if(resumeLink) lines.push('Resume Link: '+resumeLink);
+  lines.push('');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('POWERED BY');
+  lines.push('━━━━━━━━━━━━━━');
+  lines.push('KSpider Connect: https://www.kspiderai.in');
+  lines.push('');
+  lines.push('YouTube: https://www.youtube.com/@KSpider4Kreation');
+  lines.push('');
+  lines.push('Thank you.');
+
+  var message=lines.join('\n');
+  var waUrl='https://wa.me/'+cleanNum+'?text='+encodeURIComponent(message);
+
+  // ── Log application event for recruiter analytics (non-blocking) ──
+  if(window._fb&&_user&&jobId){
+    try{
+      window._fb.updateDoc(window._fb.doc(window._fb.db,'jobs',jobId),{
+        applications:window._fb.increment(1)
+      }).catch(function(){});
+    }catch(e){}
+  }
+
+  window.open(waUrl,'_blank');
+  showToast('💬 Opening WhatsApp with your application…');
 }
 
 function shareJob(title,company,location){
