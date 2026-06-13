@@ -318,7 +318,26 @@ onAuthStateChanged(_auth,async user=>{
   }else if(!window._isGuest){
     if(window.STATE){window.STATE.currentUser=null;window.STATE.posts=[];}
     localStorage.removeItem("kspider_user");
-    document.getElementById("fb-auth-overlay")?.classList.remove("hidden");
+    const ov=document.getElementById("fb-auth-overlay");
+    if(ov){
+      ov.classList.remove("hidden");
+      const lf=document.getElementById("auth-login-form");
+      const rf=document.getElementById("auth-register-form");
+      const tl=document.getElementById("tab-login");
+      const tr=document.getElementById("tab-register");
+      if(lf)lf.style.display="block";
+      if(rf)rf.style.display="none";
+      if(tl)tl.classList.add("active");
+      if(tr)tr.classList.remove("active");
+      const errEl=document.getElementById("auth-err");
+      if(errEl){errEl.textContent="";errEl.classList.remove("show");}
+      ["login-email","login-password","reg-fname","reg-lname","reg-email","reg-password"].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.value="";
+      });
+      if(typeof window.resetGoogleBtn==="function") window.resetGoogleBtn();
+      const lb=document.getElementById("login-btn");if(lb){lb.disabled=false;lb.textContent="🚀 Login to K Spider AI";}
+      const rb=document.getElementById("reg-btn");if(rb){rb.disabled=false;rb.textContent="🎉 Create Account";}
+    }
     if(typeof window.renderPosts==="function")window.renderPosts();
   }
 });
@@ -2709,6 +2728,7 @@ ul { list-style: none; }
   padding: 32px 28px; width: 100%; max-width: 420px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.35);
   animation: fbSlideUp .4s cubic-bezier(.34,1.56,.64,1);
+  max-height: 95vh; overflow-y: auto;
 }
 @keyframes fbSlideUp { from{opacity:0;transform:translateY(30px) scale(.96)} to{opacity:1;transform:none} }
 .fb-auth-logo {
@@ -5081,7 +5101,7 @@ async function submitPost() {
     feeling:      null, location: STATE.currentUser.city || null,
     visibility,
     likes:0, comments:[], shares:0, views:0,
-    timestamp:    nowMs, _ts: nowMs, isOwn: true,
+    timestamp:    nowMs, _clientTs: nowMs, _ts: nowMs, isOwn: true,
     userCity:     STATE.currentUser.city    || null,
     userSchool:   STATE.currentUser.school  || null,
     userCollege:  STATE.currentUser.college || null,
@@ -5129,7 +5149,8 @@ async function submitPost() {
       location:     STATE.currentUser.city || null,
       visibility,
       likes:        0, comments: [], shares: 0, views: 0,
-      timestamp:    nowMs, // ← CLIENT timestamp (ms) ensures orderBy works instantly for all users
+      timestamp:    window._fb.serverTimestamp(), // ← serverTimestamp for consistency with old docs
+      _clientTs:    nowMs,  // ← client ms for instant, reliable client-side sorting
       userCity:     STATE.currentUser.city    || null,
       userSchool:   STATE.currentUser.school  || null,
       userCollege:  STATE.currentUser.college || null,
@@ -5214,14 +5235,17 @@ function sortPostsForFeed(posts) {
   return [...posts].sort((a, b) => {
     const sa = getNearbyScore(a), sb = getNearbyScore(b);
     if (sa !== sb) return sb - sa;
-    // Normalize timestamp — handles Firestore Timestamp objects AND ms numbers
-    const toMs = t => {
+    // Normalize timestamp — _clientTs first (instant), then Firestore Timestamp, then number
+    const toMs = (post) => {
+      if(typeof post._clientTs === 'number' && post._clientTs > 0) return post._clientTs;
+      if(typeof post._ts === 'number' && post._ts > 0) return post._ts;
+      const t = post.timestamp;
       if(!t) return 0;
       if(typeof t.toMillis === 'function') return t.toMillis();
       if(typeof t === 'number') return t;
       return 0;
     };
-    return toMs(b.timestamp) - toMs(a.timestamp);
+    return toMs(b) - toMs(a);
   });
 }
 
@@ -5247,8 +5271,11 @@ function renderPosts(container = 'posts-container', posts = STATE.posts) {
 }
 
 function createPostHTML(post, idx = 0) {
-  // Normalize timestamp for display — handles both Firestore Timestamp and ms number
-  const tsMs = post.timestamp?.toMillis ? post.timestamp.toMillis() : (post.timestamp || post._ts || Date.now());
+  // Normalize timestamp for display — _clientTs > _ts > serverTimestamp > number > now
+  const tsMs = (typeof post._clientTs==='number'&&post._clientTs>0) ? post._clientTs :
+               (typeof post._ts==='number'&&post._ts>0) ? post._ts :
+               post.timestamp?.toMillis ? post.timestamp.toMillis() :
+               (typeof post.timestamp==='number'&&post.timestamp>0) ? post.timestamp : Date.now();
   const timeAgo = getTimeAgo(tsMs);
   const isLiked = STATE.likedPosts.has(post.id);
   const isSaved = STATE.savedPosts.has(post.id);
@@ -7264,10 +7291,12 @@ window.subscribeToPostsRT = function(){
       const data = d.data();
       // Normalize timestamp to milliseconds for reliable sorting
       let tsMs;
-      if(data.timestamp && typeof data.timestamp.toMillis === 'function'){
+      if(typeof data._clientTs === 'number' && data._clientTs > 0){
+        tsMs = data._clientTs; // our client ms — most reliable
+      } else if(data.timestamp && typeof data.timestamp.toMillis === 'function'){
         tsMs = data.timestamp.toMillis(); // Firestore Timestamp object
       } else if(typeof data.timestamp === 'number'){
-        tsMs = data.timestamp; // already ms number (our client timestamp)
+        tsMs = data.timestamp; // old posts saved as number
       } else {
         tsMs = Date.now();
       }
@@ -7313,7 +7342,8 @@ window.subscribeToPostsRT = function(){
         snap2.forEach(d => {
           const data = d.data();
           let tsMs;
-          if(data.timestamp && typeof data.timestamp.toMillis==='function') tsMs=data.timestamp.toMillis();
+          if(typeof data._clientTs==='number'&&data._clientTs>0) tsMs=data._clientTs;
+          else if(data.timestamp&&typeof data.timestamp.toMillis==='function') tsMs=data.timestamp.toMillis();
           else if(typeof data.timestamp==='number') tsMs=data.timestamp;
           else tsMs=Date.now();
           pts2.push({id:d.id,...data,isOwn:!!(myUid2&&data.authorId===myUid2),_ts:tsMs});
@@ -7426,10 +7456,19 @@ async function fbRegister(){
 }
 
 /* ── AUTH: GOOGLE LOGIN ── */
+/* ── GOOGLE BUTTON RESET HELPER ── */
+const _GOOGLE_BTN_HTML = '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.5 20-21 0-1.4-.2-2.7-.5-4z"/></svg> Continue with Google';
+
+function resetGoogleBtn() {
+  const btn = document.getElementById('google-login-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = _GOOGLE_BTN_HTML; }
+}
+window.resetGoogleBtn = resetGoogleBtn;
+
 async function fbGoogleLogin(){
   if(!window._fb||!window._FB_READY){showAuthError('Firebase connecting... Please wait and try again.');return;}
   const btn=document.getElementById('google-login-btn');
-  if(btn){btn.disabled=true;btn.innerHTML='Opening Google...';}
+  if(btn){btn.disabled=true;btn.innerHTML='⏳ Opening Google...';}
   try{
     try{await window._fb.signInWithPopup(window._fb.auth,window._fb.gp);}
     catch(pe){
@@ -7439,7 +7478,7 @@ async function fbGoogleLogin(){
     }
   }catch(e){
     showAuthError('Google login failed: '+(e.message||e.code));
-    if(btn){btn.disabled=false;btn.innerHTML='<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 29.8 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 5.1 29.6 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.5 20-21 0-1.4-.2-2.7-.5-4z"/></svg> Continue with Google';}
+    resetGoogleBtn();
   }
 }
 
@@ -7469,7 +7508,29 @@ async function fbLogout(){
     STATE.currentUser=null; STATE.posts=[];
     localStorage.removeItem('kspider_user'); localStorage.removeItem('kspider_posts');
     if(window._fb?.auth)await window._fb.signOut(window._fb.auth);
-    setTimeout(()=>{document.getElementById('fb-auth-overlay')?.classList.remove('hidden');},150);
+    setTimeout(()=>{
+      const ov = document.getElementById('fb-auth-overlay');
+      if(ov){
+        ov.classList.remove('hidden');
+        const loginForm = document.getElementById('auth-login-form');
+        const regForm   = document.getElementById('auth-register-form');
+        const tabLogin  = document.getElementById('tab-login');
+        const tabReg    = document.getElementById('tab-register');
+        if(loginForm) loginForm.style.display = 'block';
+        if(regForm)   regForm.style.display   = 'none';
+        if(tabLogin)  tabLogin.classList.add('active');
+        if(tabReg)    tabReg.classList.remove('active');
+        const errEl = document.getElementById('auth-err');
+        if(errEl) { errEl.textContent=''; errEl.classList.remove('show'); }
+        ['login-email','login-password','reg-fname','reg-lname','reg-email','reg-password'].forEach(id=>{
+          const el = document.getElementById(id);
+          if(el) el.value = '';
+        });
+        if(typeof resetGoogleBtn==='function') resetGoogleBtn();
+        const lb=document.getElementById('login-btn'); if(lb){lb.disabled=false;lb.textContent='🚀 Login to K Spider AI';}
+        const rb=document.getElementById('reg-btn');   if(rb){rb.disabled=false;rb.textContent='🎉 Create Account';}
+      }
+    },150);
     document.getElementById('nav-user-chip')?.style.setProperty('display','none');
     document.getElementById('logout-btn')?.style.setProperty('display','none');
     const ol=document.getElementById('online-list');
