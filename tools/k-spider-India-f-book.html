@@ -78,11 +78,60 @@ document.addEventListener('DOMContentLoaded', () => {
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <!-- Emoji Picker -->
 <script src="https://cdn.jsdelivr.net/npm/emoji-mart@latest/dist/browser.js"></script>
-<!-- Firebase v9 compat -->
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+<!-- Firebase v10 Modular SDK -->
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,addDoc,getDocs,getDoc,setDoc,doc,updateDoc,deleteDoc,onSnapshot,query,orderBy,limit,where,serverTimestamp,increment,arrayUnion,arrayRemove}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getDatabase,ref as dbRef,set as dbSet,remove as dbRemove,onValue}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+const _cfg={apiKey:"AIzaSyBR84eviPn7JRtgAF02OyXQphjCLy3-RKY",authDomain:"k-spider-social-media.firebaseapp.com",databaseURL:"https://k-spider-social-media-default-rtdb.firebaseio.com",projectId:"k-spider-social-media",storageBucket:"k-spider-social-media.firebasestorage.app",messagingSenderId:"1063536440954",appId:"1:1063536440954:web:9a27a9c116132539bcadc3"};
+try{
+const _app=initializeApp(_cfg);
+const _auth=getAuth(_app);const _db=getFirestore(_app);const _rtdb=getDatabase(_app);
+const _gp=new GoogleAuthProvider();
+_gp.setCustomParameters({prompt:'select_account'});
+window._fb={auth:_auth,db:_db,rtdb:_rtdb,gp:_gp,
+  createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,signInWithRedirect,getRedirectResult,
+  collection,addDoc,getDocs,getDoc,setDoc,doc,updateDoc,deleteDoc,onSnapshot,query,orderBy,limit,where,serverTimestamp,increment,arrayUnion,arrayRemove,
+  dbRef,dbSet,dbRemove,onValue};
+window._FB_READY=true;
+window._ADMIN_EMAIL='kspider221206@gmail.com';
+console.log("KSpider Firebase connected");
+onAuthStateChanged(_auth,async user=>{
+  window._currentUser=user;
+  if(user&&!window._isGuest){
+    document.getElementById("fb-auth-overlay")?.classList.add("hidden");
+    if(typeof window.setupFirebaseUser==="function")await window.setupFirebaseUser(user);
+    if(typeof window.subscribeToPostsRT==="function")window.subscribeToPostsRT();
+    const nm=window.STATE?.currentUser?.name||user.displayName||user.email?.split("@")[0]||"K Spider User";
+    const av=window.STATE?.currentUser?.avatar||user.photoURL||"https://api.dicebear.com/7.x/avataaars/svg?seed="+user.uid;
+    if(typeof window.setupPresence==="function")window.setupPresence(user.uid,nm,av);
+    if(typeof window.subscribeToOnlineUsers==="function")window.subscribeToOnlineUsers();
+  }else if(!window._isGuest){
+    if(window.STATE){window.STATE.currentUser=null;window.STATE.posts=[];}
+    localStorage.removeItem("kspider_user");
+    const ov=document.getElementById("fb-auth-overlay");
+    if(ov){
+      ov.classList.remove("hidden");
+      const errEl=document.getElementById("auth-err");
+      if(errEl){errEl.textContent="";errEl.classList.remove("show");}
+      ["login-email","login-password","reg-fname","reg-lname","reg-email","reg-password"].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.value="";
+      });
+      if(typeof window.resetGoogleBtn==="function") window.resetGoogleBtn();
+    }
+    if(typeof window.renderPosts==="function")window.renderPosts();
+  }
+});
+getRedirectResult(_auth).then(result=>{
+  if(result&&result.user){console.log("Google redirect login success:",result.user.email);}
+}).catch(e=>{ if(e.code!=="auth/no-current-user") console.warn("Redirect result:",e.message); });
+}catch(err){
+  console.warn("Firebase init failed:",err.message);
+  window._FB_READY=false;window._fb=null;
+  document.addEventListener("DOMContentLoaded",()=>{document.getElementById("fb-auth-overlay")?.classList.remove("hidden");});
+}
+</script>
 
 <style>
 /* ============================================================
@@ -2463,6 +2512,7 @@ ul { list-style: none; }
   padding: 32px 28px; width: 100%; max-width: 420px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.35);
   animation: fbSlideUp .4s cubic-bezier(.34,1.56,.64,1);
+  max-height: 95vh; overflow-y: auto;
 }
 @keyframes fbSlideUp { from{opacity:0;transform:translateY(30px) scale(.96)} to{opacity:1;transform:none} }
 .fb-auth-logo {
@@ -2505,23 +2555,47 @@ ul { list-style: none; }
 }
 .fb-auth-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 24px rgba(24,119,242,.45); }
 .fb-auth-btn:disabled { opacity: .65; cursor: not-allowed; transform: none; }
+
+/* ── PROFESSIONAL GOOGLE SIGN-IN BUTTON ── */
+.fb-google-btn {
+  background: #fff; color: #3c4043;
+  border: 1.5px solid #dadce0;
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  box-shadow: 0 1px 3px rgba(0,0,0,.08);
+  font-weight: 700; font-size: 15px;
+}
+.fb-google-btn:hover {
+  background: #f8f9fa; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+  transform: translateY(-1px);
+}
+.fb-google-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+.fb-google-btn span { letter-spacing: .2px; }
+
 .fb-auth-divider {
   display: flex; align-items: center; gap: 10px;
-  margin: 14px 0; color: #8A8D91; font-size: 12px; font-weight: 600;
+  margin: 16px 0; color: #8A8D91; font-size: 11px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
 }
 .fb-auth-divider::before, .fb-auth-divider::after { content:''; flex:1; height:1px; background:#E4E6EB; }
-.fb-auth-guest {
-  width: 100%; padding: 11px; border-radius: 10px;
-  border: 1.5px solid #CED0D4; background: #F7F8FA; color: #050505;
-  font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s;
-}
-.fb-auth-guest:hover { border-color: #1877F2; background: #EEF3FF; color: #1877F2; }
 .fb-auth-err {
   background: #FEF2F2; border: 1px solid rgba(239,68,68,.25); border-radius: 8px;
   padding: 10px 12px; font-size: 12px; color: #DC2626; margin-bottom: 10px; display: none;
 }
 .fb-auth-err.show { display: block; }
-.fb-auth-note { font-size: 11px; color: #8A8D91; text-align: center; margin-top: 12px; line-height: 1.6; }
+.fb-auth-note { font-size: 11px; color: #8A8D91; text-align: center; margin-top: 16px; line-height: 1.6; }
+
+/* ── AUTH TABS (now secondary, smaller) ── */
+.fb-auth-tabs { display: flex; gap: 8px; margin-bottom: 10px; }
+.fb-auth-tab {
+  flex: 1; padding: 8px; border-radius: 8px; border: none;
+  background: #F0F2F5; color: #65676B; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all .2s;
+}
+.fb-auth-tab.active { background: #E7F3FF; color: #1877F2; }
+[data-theme="dark"] .fb-google-btn { background:#1c1c1e; color:#fff; border-color:#3a3a3c; }
+[data-theme="dark"] .fb-google-btn:hover { background:#2c2c2e; }
+[data-theme="dark"] .fb-auth-tab { background: var(--bg-input); color: var(--text-muted); }
+[data-theme="dark"] .fb-auth-tab.active { background: rgba(24,119,242,.15); color: #1877F2; }
 
 /* ── ONLINE USERS PANEL ── */
 #online-panel {
@@ -2585,14 +2659,27 @@ ul { list-style: none; }
   <div class="fb-auth-box">
     <div class="fb-auth-logo">🕷️ KSpider <span>Social AI — India ka Apna Platform</span></div>
 
+    <!-- Error Box -->
+    <div class="fb-auth-err" id="auth-err"></div>
+
+    <!-- PRIMARY: GOOGLE SIGN-IN (Professional, one-click) -->
+    <button class="fb-auth-btn fb-google-btn" id="google-login-btn" onclick="fbGoogleLogin()">
+      <svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink:0">
+        <path fill="#FFC107" d="M43.6 20.5h-1.9V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.5 29.6 4.5 24 4.5 12.7 4.5 3.5 13.7 3.5 25S12.7 45.5 24 45.5 44.5 36.3 44.5 25c0-1.5-.2-3-.4-4.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.5 29.6 4.5 24 4.5c-7.7 0-14.3 4.4-17.7 10.2z"/>
+        <path fill="#4CAF50" d="M24 45.5c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.4c-2 1.4-4.7 2.3-7.7 2.3-5.2 0-9.6-3.3-11.3-8l-6.6 5.1C9.6 41 16.3 45.5 24 45.5z"/>
+        <path fill="#1976D2" d="M43.6 20.5H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.5l6.6 5.4C41.6 36.1 44.5 31 44.5 25c0-1.5-.2-3-.4-4.5z"/>
+      </svg>
+      <span>Continue with Google</span>
+    </button>
+
+    <div class="fb-auth-divider">OR USE EMAIL</div>
+
     <!-- Tabs -->
     <div class="fb-auth-tabs">
       <button class="fb-auth-tab active" id="tab-login" onclick="switchAuthTab('login')">🔐 Login</button>
       <button class="fb-auth-tab" id="tab-register" onclick="switchAuthTab('register')">✨ Register</button>
     </div>
-
-    <!-- Error Box -->
-    <div class="fb-auth-err" id="auth-err"></div>
 
     <!-- LOGIN FORM -->
     <div id="auth-login-form">
@@ -2620,8 +2707,6 @@ ul { list-style: none; }
       <button class="fb-auth-btn" id="reg-btn" onclick="fbRegister()">🎉 Create Account</button>
     </div>
 
-    <div class="fb-auth-divider">OR</div>
-    <button class="fb-auth-guest" onclick="fbGuest()">👤 Continue as Guest (View Only)</button>
     <div class="fb-auth-note">
       By continuing, you agree to K Spider AI's <strong>Terms of Service</strong>.<br>
       🔒 Powered by Firebase — your data is secure.<br>
@@ -3853,8 +3938,7 @@ const STATE = {
 ============================================================ */
 function saveState() {
   try {
-    localStorage.setItem('kspider_posts', JSON.stringify(STATE.posts));
-    localStorage.setItem('kspider_user', JSON.stringify(STATE.currentUser));
+    // Posts and currentUser are NOT persisted — Firebase is source of truth
     localStorage.setItem('kspider_saved', JSON.stringify([...STATE.savedPosts]));
     localStorage.setItem('kspider_liked', JSON.stringify([...STATE.likedPosts]));
     localStorage.setItem('kspider_reactions', JSON.stringify(STATE.reactions));
@@ -3865,10 +3949,8 @@ function saveState() {
 
 function loadState() {
   try {
-    const posts = localStorage.getItem('kspider_posts');
-    if(posts) STATE.posts = JSON.parse(posts);
-    const user = localStorage.getItem('kspider_user');
-    if(user) STATE.currentUser = JSON.parse(user);
+    // Do NOT load posts/currentUser from localStorage — Firebase is source of truth
+    // (stale local data causes permission-denied errors and duplicate/ghost posts)
     const saved = localStorage.getItem('kspider_saved');
     if(saved) STATE.savedPosts = new Set(JSON.parse(saved));
     const liked = localStorage.getItem('kspider_liked');
@@ -3909,29 +3991,10 @@ function init() {
    USER SYSTEM
 ============================================================ */
 function initUser() {
-  if(!STATE.currentUser) {
-    STATE.currentUser = {
-      id: 'user_' + Date.now(),
-      name: 'K Spider User',
-      handle: '@kspideruser',
-      bio: '🚀 Building the future with K Spider AI | Creative mind at work | kspiderai.in',
-      profession: 'Web Developer & AI Enthusiast',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=kspider',
-      cover: 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
-      website: 'https://www.kspiderai.in',
-      youtube: 'https://www.youtube.com/@KSpider4Kreaction',
-      instagram: '',
-      followers: 1247,
-      following_count: 348,
-      likes: 8421,
-      themeColor: '#00d4ff'
-    };
-    saveState();
-  }
-  
+  // DO NOT create a fake local user — Firebase auth (onAuthStateChanged) handles user creation.
+  // Only show sample posts until Firebase loads real data.
   if(!STATE.posts.length) {
     STATE.posts = generateSamplePosts();
-    saveState();
   }
 }
 
@@ -3952,6 +4015,99 @@ function applyUserProfile() {
   const pcover = document.getElementById('profile-cover-img');
   if(pcover) pcover.src = u.cover;
   if(u.themeColor) applyThemeColor(u.themeColor);
+}
+
+/* ── XSS-SAFE INPUT SANITIZER ── */
+function sanitizeInput(str) {
+  if(!str) return '';
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML.substring(0, 2000);
+}
+
+/* ── NAV USER CHIP (avatar + name + admin crown) ── */
+function updateNavUserChip() {
+  const u = STATE.currentUser;
+  const chip = document.getElementById('nav-user-chip');
+  const nameEl = document.getElementById('nav-user-name');
+  const avatarEl = document.getElementById('nav-avatar-img');
+  if (!chip) return;
+  if (u) {
+    chip.style.display = 'flex';
+    if (nameEl) nameEl.textContent = u.name || 'User';
+    if (avatarEl) avatarEl.src = u.avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=kspider';
+  } else {
+    chip.style.display = 'none';
+  }
+  const logoutBtn = document.getElementById('logout-btn');
+  if (logoutBtn) logoutBtn.style.display = u ? 'flex' : 'none';
+}
+
+/* ── LOAD REAL NOTIFICATIONS FROM FIREBASE ── */
+async function loadNotifications() {
+  const container = document.getElementById('notifications-list');
+  if (!container) return;
+  if (!window._FB_READY || !STATE.currentUser?.isFirebase || !window._currentUser) {
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">🔔 Login to see notifications</div>';
+    return;
+  }
+  const myId = window._currentUser.uid;
+  container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">⏳ Loading notifications...</div>';
+  try {
+    const snap = await window._fb.getDocs(
+      window._fb.query(
+        window._fb.collection(window._fb.db,'notifications'),
+        window._fb.where('toUserId','==',myId),
+        window._fb.limit(30)
+      )
+    );
+    if (snap.empty) {
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-bell-slash" style="font-size:2rem;opacity:0.3;display:block;margin-bottom:10px"></i>No notifications yet</div>';
+      return;
+    }
+    let docs = [];
+    snap.forEach(d => docs.push({id:d.id, ...d.data()}));
+    docs.sort((a,b) => {
+      const ta = a.createdAt?.toMillis ? a.createdAt.toMillis() : 0;
+      const tb = b.createdAt?.toMillis ? b.createdAt.toMillis() : 0;
+      return tb - ta;
+    });
+    let html = '';
+    let unread = 0;
+    docs.forEach(n => {
+      const ts = n.createdAt?.toDate?.()?.toLocaleDateString() || '';
+      const icon = n.type==='like'?'❤️':n.type==='comment'?'💬':n.type==='follow'?'👤':n.type==='mention'?'@':'🔔';
+      if (!n.read) unread++;
+      html += `<div class="notif-item ${n.read?'':'unread'}" onclick="markNotifRead('${n.id}')" style="display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);cursor:pointer;background:${n.read?'transparent':'rgba(24,119,242,0.06)'}">
+        <img src="${n.fromAvatar||'https://api.dicebear.com/7.x/avataaars/svg?seed=notif'}" style="width:40px;height:40px;border-radius:50%;object-fit:cover;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;color:var(--text-primary);line-height:1.4">${icon} ${n.message||n.type||'Notification'}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${ts}</div>
+        </div>
+        ${!n.read?'<div style="width:8px;height:8px;border-radius:50%;background:#1877F2;flex-shrink:0"></div>':''}
+      </div>`;
+    });
+    container.innerHTML = html || '<div style="text-align:center;padding:30px;color:var(--text-muted)">No notifications</div>';
+    const badge = document.getElementById('notif-badge');
+    if (badge) { badge.textContent = unread; badge.style.display = unread > 0 ? 'flex' : 'none'; }
+  } catch(e) {
+    console.warn('loadNotifications error:', e.message);
+    container.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load notifications</div>';
+  }
+}
+
+async function markNotifRead(notifId) {
+  if (!window._FB_READY || !window._currentUser) return;
+  try {
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'notifications',notifId), { read: true });
+    const badge = document.getElementById('notif-badge');
+    if(badge){
+      const cur = parseInt(badge.textContent)||0;
+      const next = Math.max(0,cur-1);
+      badge.textContent = next;
+      badge.style.display = next>0?'flex':'none';
+    }
+  } catch(e) {}
 }
 
 /* ============================================================
@@ -4143,6 +4299,8 @@ function navigateTo(page) {
   if(page === 'explore') renderExplore();
   if(page === 'reels') renderReels();
   if(page === 'analytics') setTimeout(renderAnalyticsPage, 100);
+  if(page === 'notifications' && window._FB_READY) loadNotifications();
+  if(page === 'messages' && window._FB_READY && typeof loadRealConversations === 'function') loadRealConversations();
 }
 
 /* ============================================================
@@ -4327,70 +4485,223 @@ function updateActiveTags() {
   container.innerHTML = html;
 }
 
-function submitPost() {
-  const text = document.getElementById('post-text-input').value.trim();
-  const visibility = document.getElementById('post-visibility').value;
-  
-  if(!text && !STATE.currentPostMedia) {
+async function submitPost() {
+  if (!STATE.currentUser) {
+    showToast('Please login to post', 'error');
+    document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+    return;
+  }
+
+  const rawText = document.getElementById('post-text-input')?.value?.trim() || '';
+  const text = (typeof sanitizeInput === 'function')
+    ? sanitizeInput(rawText)
+    : rawText.replace(/[<>&"\']/g, c=>({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#x27;'}[c]||c)).substring(0,2000);
+  const visibility = document.getElementById('post-visibility')?.value || 'public';
+
+  if (!text && !STATE.currentPostMedia) {
     showToast('Please write something or add media!', 'error');
     return;
   }
-  
-  const post = {
-    id: 'post_' + Date.now(),
-    authorId: STATE.currentUser.id,
-    authorName: STATE.currentUser.name,
-    authorAvatar: STATE.currentUser.avatar,
-    text: text + (STATE.activeTags.hashtags.length ? ' ' + STATE.activeTags.hashtags.map(h=>'#'+h).join(' ') : ''),
-    image: STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
-    video: STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
-    feeling: STATE.activeTags.feeling,
-    location: STATE.activeTags.location,
-    visibility,
-    timestamp: Date.now(),
-    likes: 0,
-    comments: [],
-    shares: 0,
-    views: 1,
-    isOwn: true,
-    reaction: null,
-  };
-  
-  STATE.posts.unshift(post);
-  
-  // Reset
+
+  const btn = document.querySelector('.post-submit-btn');
+  const resetBtn = () => { if(btn){btn.disabled=false;btn.innerHTML='Post Now <i class="fas fa-paper-plane"></i>';} };
+  if(btn){btn.disabled=true;btn.innerHTML='Posting...';}
+
+  const mediaBackup     = STATE.currentPostMedia;
+  const mediaTypeBackup = STATE.currentPostMediaType;
   document.getElementById('post-text-input').value = '';
   removeMedia();
+  const hashtags = STATE.activeTags?.hashtags || [];
   STATE.activeTags = {feeling:null, hashtags:[], location:null};
-  updateActiveTags();
-  closeEmojiPicker();
-  
+  if(typeof updateActiveTags === 'function') updateActiveTags();
+  if(typeof closeEmojiPicker === 'function') closeEmojiPicker();
+  resetBtn();
+
+  const nowMs = Date.now();
+  const fullText = text + (hashtags.length ? ' ' + hashtags.map(h=>'#'+h).join(' ') : '');
+
+  // ── LOCAL / GUEST PATH ──
+  if (!window._FB_READY || !STATE.currentUser.isFirebase) {
+    const localPost = {
+      id: 'post_'+nowMs,
+      authorId: STATE.currentUser.id || 'local',
+      authorName: STATE.currentUser.name,
+      authorAvatar: STATE.currentUser.avatar,
+      text: fullText,
+      image: mediaTypeBackup === 'image' ? mediaBackup : null,
+      video: mediaTypeBackup === 'video' ? mediaBackup : null,
+      feeling: null, location: null, visibility,
+      likes:0, comments:[], shares:0, views:1,
+      timestamp: nowMs, _clientTs: nowMs, _ts: nowMs, isOwn: true, reaction:null
+    };
+    STATE.posts.unshift(localPost);
+    renderPosts();
+    showToast('Post published! 🚀', 'success');
+    saveState(); updateProfileStats();
+    return;
+  }
+
+  // ── FIREBASE PATH ──
+  const firebaseUser = window._currentUser;
+  if (!firebaseUser) {
+    showToast('Session expired. Please login again.', 'error');
+    setTimeout(() => fbLogout(), 800);
+    return;
+  }
+
+  const tempId = 'temp_' + nowMs;
+  const tempPost = {
+    id: tempId,
+    authorId: firebaseUser.uid,
+    authorName: STATE.currentUser.name,
+    authorAvatar: STATE.currentUser.avatar,
+    text: fullText,
+    image: mediaTypeBackup === 'image' ? mediaBackup : null,
+    video: mediaTypeBackup === 'video' ? mediaBackup : null,
+    feeling: null, location: STATE.currentUser.city || null,
+    visibility,
+    likes:0, comments:[], shares:0, views:0,
+    timestamp: nowMs, _clientTs: nowMs, _ts: nowMs, isOwn: true, reaction:null,
+    userCity: STATE.currentUser.city || null,
+    userSchool: STATE.currentUser.school || null,
+    userCollege: STATE.currentUser.college || null,
+  };
+
+  STATE.posts.unshift(tempPost);
+  const pc = document.getElementById('posts-container');
+  if(pc) {
+    const tempHTML = createPostHTML(tempPost, 0);
+    const div = document.createElement('div');
+    div.innerHTML = tempHTML;
+    const postEl = div.firstElementChild;
+    if(postEl) {
+      postEl.setAttribute('data-temp', tempId);
+      postEl.style.opacity = '0.75';
+      pc.insertBefore(postEl, pc.firstChild);
+    }
+  }
+  showToast('✅ Post shared!', 'success');
+
+  try {
+    let imageURL = mediaTypeBackup === 'image' ? mediaBackup : null;
+    let videoURL = mediaTypeBackup === 'video' ? mediaBackup : null;
+    if(imageURL && typeof compressImageTo100KB === 'function') {
+      try { imageURL = await compressImageTo100KB(imageURL, 95); } catch(e) {}
+    }
+
+    const fbData = {
+      authorId: firebaseUser.uid,
+      authorName: STATE.currentUser.name,
+      authorAvatar: STATE.currentUser.avatar,
+      text: fullText,
+      image: imageURL,
+      video: videoURL,
+      feeling: null,
+      location: STATE.currentUser.city || null,
+      visibility,
+      likes: 0, comments: [], shares: 0, views: 0,
+      timestamp: window._fb.serverTimestamp(),
+      _clientTs: nowMs,
+      userCity: STATE.currentUser.city || null,
+      userSchool: STATE.currentUser.school || null,
+      userCollege: STATE.currentUser.college || null,
+    };
+
+    const docRef = await window._fb.addDoc(
+      window._fb.collection(window._fb.db, 'posts'),
+      fbData
+    );
+
+    const idx = STATE.posts.findIndex(p => p.id === tempId);
+    if(idx > -1) {
+      STATE.posts[idx] = { ...STATE.posts[idx], id: docRef.id, isOwn: true };
+      const tempEl = document.querySelector('[data-temp="'+tempId+'"]');
+      if(tempEl) {
+        tempEl.id = 'post-' + docRef.id;
+        tempEl.setAttribute('data-post-id', docRef.id);
+        tempEl.removeAttribute('data-temp');
+        tempEl.style.opacity = '1';
+      }
+    }
+
+    window._fb.updateDoc(
+      window._fb.doc(window._fb.db,'users',firebaseUser.uid),
+      { posts: window._fb.increment(1) }
+    ).catch(()=>{});
+
+  } catch(e) {
+    console.error('submitPost Firebase error:', e.code, e.message);
+    if(e.code === 'permission-denied') {
+      showToast('Permission denied — please logout and login again.', 'error');
+    } else {
+      showToast('⚠️ Save failed: ' + (e.message||'Unknown error'), 'error');
+      STATE.posts = STATE.posts.filter(p => p.id !== tempId);
+      document.querySelector('[data-temp="'+tempId+'"]')?.remove();
+      renderPosts();
+    }
+  }
+
   saveState();
-  renderPosts();
   updateProfileStats();
-  showToast('Post published! 🚀', 'success');
 }
 
 /* ============================================================
    POST RENDERING
 ============================================================ */
+function getNearbyScore(post) {
+  const u = STATE.currentUser;
+  if(!u) return 0;
+  let score = 0;
+  if(post.authorId === u.id) score += 200;
+  if(u.city && post.userCity && post.userCity === u.city) score += 50;
+  if(u.school && post.userSchool && post.userSchool === u.school) score += 30;
+  if(u.college && post.userCollege && post.userCollege === u.college) score += 30;
+  return score;
+}
+
+function sortPostsForFeed(posts) {
+  return [...posts].sort((a, b) => {
+    const sa = getNearbyScore(a), sb = getNearbyScore(b);
+    if (sa !== sb) return sb - sa;
+    const toMs = (post) => {
+      if(typeof post._clientTs === 'number' && post._clientTs > 0) return post._clientTs;
+      if(typeof post._ts === 'number' && post._ts > 0) return post._ts;
+      const t = post.timestamp;
+      if(!t) return 0;
+      if(typeof t.toMillis === 'function') return t.toMillis();
+      if(typeof t === 'number') return t;
+      return 0;
+    };
+    return toMs(b) - toMs(a);
+  });
+}
+
 function renderPosts(container = 'posts-container', posts = STATE.posts) {
   const c = document.getElementById(container);
   if(!c) return;
-  
-  if(!posts.length) {
+
+  let displayPosts = posts;
+  if (container === 'posts-container') {
+    displayPosts = sortPostsForFeed(posts);
+  }
+
+  if(!displayPosts.length) {
     c.innerHTML = `<div style="text-align:center; padding:40px; color:var(--text-muted);">
       <i class="fas fa-inbox" style="font-size:2rem; margin-bottom:10px; display:block; opacity:0.3;"></i>
       No posts yet. Be the first to share something!
     </div>`;
     return;
   }
-  
-  c.innerHTML = posts.map((post, idx) => createPostHTML(post, idx)).join('');
+
+  c.innerHTML = displayPosts.map((post, idx) => createPostHTML(post, idx)).join('');
 }
 
 function createPostHTML(post, idx = 0) {
-  const timeAgo = getTimeAgo(post.timestamp);
+  const tsMs = (typeof post._clientTs==='number'&&post._clientTs>0) ? post._clientTs :
+               (typeof post._ts==='number'&&post._ts>0) ? post._ts :
+               post.timestamp?.toMillis ? post.timestamp.toMillis() :
+               (typeof post.timestamp==='number'&&post.timestamp>0) ? post.timestamp : Date.now();
+  const timeAgo = getTimeAgo(tsMs);
   const isLiked = STATE.likedPosts.has(post.id);
   const isSaved = STATE.savedPosts.has(post.id);
   const reaction = STATE.reactions[post.id];
@@ -4405,7 +4716,7 @@ function createPostHTML(post, idx = 0) {
     <span>K Spider AI: This post has high engagement potential. Best time to boost: 6-9 PM IST. Suggested hashtags: #Trending #Viral</span>
   </div>` : '';
   
-  return `<div class="post-card" id="post-${post.id}" style="animation-delay:${idx * 0.05}s">
+  return `<div class="post-card" id="post-${post.id}" data-post-id="${post.id}" style="animation-delay:${idx * 0.05}s">
     <div class="post-header">
       <div class="post-avatar" onclick="navigateTo('profile')">
         <img src="${post.authorAvatar}" alt="${post.authorName}" loading="lazy">
@@ -4557,24 +4868,46 @@ function reactPost(postId, reaction, e) {
   showToast(`Reacted with ${reaction}`, 'success');
 }
 
-function likePost(postId) {
+async function likePost(postId) {
   const post = STATE.posts.find(p => p.id === postId);
   if(!post) return;
-  
+  if (!STATE.currentUser) { showToast('Please login to react', 'error'); return; }
+
   const btn = document.getElementById('like-btn-' + postId);
+  let delta = 0;
   if(STATE.likedPosts.has(postId)) {
     STATE.likedPosts.delete(postId);
     delete STATE.reactions[postId];
-    post.likes = Math.max(0, post.likes - 1);
+    post.likes = Math.max(0, (post.likes||0) - 1);
     btn?.classList.remove('liked');
+    delta = -1;
   } else {
     STATE.likedPosts.add(postId);
-    post.likes++;
+    post.likes = (post.likes||0) + 1;
     btn?.classList.add('liked');
+    delta = 1;
   }
-  
+
   saveState();
   updatePostStats(postId, post);
+
+  // Firebase sync — only for real Firestore posts
+  if (window._FB_READY && postId && !postId.startsWith('post_') && !postId.startsWith('temp_')) {
+    try {
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId), {
+        likes: window._fb.increment(delta)
+      });
+      // Notify post author on like (not on unlike)
+      if(delta > 0 && post.authorId && window._currentUser && post.authorId !== window._currentUser.uid) {
+        window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'), {
+          toUserId: post.authorId, fromUserId: window._currentUser.uid,
+          fromName: STATE.currentUser.name, fromAvatar: STATE.currentUser.avatar,
+          type: 'like', message: STATE.currentUser.name + ' liked your post',
+          read: false, createdAt: window._fb.serverTimestamp(), postId
+        }).catch(()=>{});
+      }
+    } catch(e) { console.warn('likePost Firebase:', e.message); }
+  }
 }
 
 function updatePostStats(postId, post) {
@@ -4598,35 +4931,55 @@ function toggleComments(postId) {
   }
 }
 
-function submitComment(postId) {
+async function submitComment(postId) {
+  if (!STATE.currentUser) { showToast('Please login to comment', 'error'); return; }
   const input = document.getElementById('comment-input-' + postId);
-  const text = input?.value.trim();
-  if(!text) return;
-  
+  const rawText = input?.value.trim();
+  if(!rawText) return;
+  const text = (typeof sanitizeInput === 'function') ? sanitizeInput(rawText) : rawText.substring(0,500);
+
   const post = STATE.posts.find(p => p.id === postId);
   if(!post) return;
-  
+
   const comment = {
     id: 'c_' + Date.now(),
     author: STATE.currentUser.name,
     avatar: STATE.currentUser.avatar,
+    authorId: window._currentUser?.uid || STATE.currentUser.id,
     text,
     timestamp: Date.now(),
     likes: 0,
   };
-  
+
   if(!post.comments) post.comments = [];
   post.comments.push(comment);
-  
+
   const listEl = document.getElementById('comments-list-' + postId);
   if(listEl) {
     listEl.insertAdjacentHTML('beforeend', renderComments([comment]));
   }
-  
+
   input.value = '';
   saveState();
   updatePostStats(postId, post);
   showToast('Comment posted!', 'success');
+
+  // Firebase sync — store comment in post's comments array
+  if (window._FB_READY && postId && !postId.startsWith('post_') && !postId.startsWith('temp_')) {
+    try {
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId), {
+        comments: window._fb.arrayUnion(comment)
+      });
+      if(post.authorId && window._currentUser && post.authorId !== window._currentUser.uid) {
+        window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'), {
+          toUserId: post.authorId, fromUserId: window._currentUser.uid,
+          fromName: STATE.currentUser.name, fromAvatar: STATE.currentUser.avatar,
+          type: 'comment', message: STATE.currentUser.name + ' commented: ' + text.slice(0,50),
+          read: false, createdAt: window._fb.serverTimestamp(), postId
+        }).catch(()=>{});
+      }
+    } catch(e) { console.warn('submitComment Firebase:', e.message); }
+  }
 }
 
 function savePost(postId, el) {
@@ -4642,13 +4995,22 @@ function savePost(postId, el) {
   saveState();
 }
 
-function deletePost(postId) {
+async function deletePost(postId) {
   if(!confirm('Delete this post?')) return;
   STATE.posts = STATE.posts.filter(p => p.id !== postId);
   document.getElementById('post-' + postId)?.remove();
   saveState();
   updateProfileStats();
   showToast('Post deleted', 'success');
+
+  if (window._FB_READY && postId && !postId.startsWith('post_') && !postId.startsWith('temp_')) {
+    try {
+      await window._fb.deleteDoc(window._fb.doc(window._fb.db,'posts',postId));
+    } catch(e) {
+      console.warn('deletePost Firebase:', e.message);
+      if(e.code === 'permission-denied') showToast('Could not delete from server (permission)', 'error');
+    }
+  }
 }
 
 function editPost(postId) {
@@ -4663,7 +5025,51 @@ function editPost(postId) {
   }
 }
 
-function reportPost(postId) {
+async function reportPost(postId) {
+  const post = STATE.posts.find(p => p.id === postId);
+  if (!post) return;
+
+  const reasons = ['🔞 Nude / Adult Content', '😡 Hate Speech', '🔫 Violence / Harmful', '🤥 Fake News / Spam', '💰 Scam / Fraud', '👶 Child Safety', '🎭 Impersonation', '📵 Other'];
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `<div style="background:var(--bg-secondary);border-radius:16px;padding:24px;width:100%;max-width:380px">
+    <div style="font-size:1rem;font-weight:800;color:var(--text-primary);margin-bottom:14px">🛡️ Report Post</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      ${reasons.map(r=>`<button onclick="submitReport('${postId}','${r.replace(/'/g,"\\'")}', this)" style="text-align:left;padding:10px 14px;border-radius:10px;border:1px solid var(--border);background:var(--bg-card);color:var(--text-primary);cursor:pointer;font-size:.85rem">${r}</button>`).join('')}
+      <button onclick="this.closest('[style*=fixed]').remove()" style="text-align:center;padding:10px;border-radius:10px;border:none;background:var(--bg-input);color:var(--text-muted);cursor:pointer;font-size:.85rem;margin-top:4px">Cancel</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click', e => { if(e.target === modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+async function submitReport(postId, reason, btn) {
+  btn.style.background = '#FEF2F2';
+  btn.style.borderColor = '#ef4444';
+  btn.textContent = '✅ Reported!';
+  btn.disabled = true;
+
+  const post = STATE.posts.find(p => p.id === postId);
+  const reportData = {
+    postId,
+    postText: post?.text?.slice(0,100) || '',
+    postAuthorId: post?.authorId || '',
+    postAuthorName: post?.authorName || '',
+    reportedBy: STATE.currentUser?.id || 'guest',
+    reportedByName: STATE.currentUser?.name || 'Guest',
+    reason,
+    timestamp: window._FB_READY ? window._fb.serverTimestamp() : Date.now(),
+    status: 'pending'
+  };
+
+  if (window._FB_READY) {
+    try {
+      await window._fb.addDoc(window._fb.collection(window._fb.db,'reports'),reportData);
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId),{ flagged: true, flagReason: reason }).catch(()=>{});
+    } catch(e) { console.warn('submitReport:', e.message); }
+  }
+
+  setTimeout(()=>{ btn.closest('[style*=fixed]')?.remove(); }, 900);
   showToast('Post reported. We will review it. 🛡️', 'warning');
 }
 
@@ -4692,6 +5098,13 @@ let currentSharePostId = null;
 
 function openShareModal(postId) {
   currentSharePostId = postId;
+  if (window._FB_READY && postId && !postId.startsWith('post_') && !postId.startsWith('temp_')) {
+    window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId),{
+      shares: window._fb.increment(1)
+    }).catch(()=>{});
+  }
+  const post = STATE.posts.find(p => p.id === postId);
+  if (post) post.shares = (post.shares||0) + 1;
   document.getElementById('share-modal').classList.remove('hidden');
 }
 
@@ -4747,22 +5160,7 @@ function toggleEditProfile() {
   }
 }
 
-function saveProfile(e) {
-  e.preventDefault();
-  const u = STATE.currentUser;
-  u.name = document.getElementById('edit-name').value.trim() || u.name;
-  u.profession = document.getElementById('edit-profession').value.trim();
-  u.bio = document.getElementById('edit-bio').value.trim();
-  u.website = document.getElementById('edit-website').value.trim();
-  u.youtube = document.getElementById('edit-youtube').value.trim();
-  u.instagram = document.getElementById('edit-instagram').value.trim();
-  u.themeColor = document.getElementById('edit-theme-color').value;
-  
-  saveState();
-  applyUserProfile();
-  document.getElementById('edit-profile-form').classList.remove('open');
-  showToast('Profile saved! ✨', 'success');
-}
+/* saveProfile moved to Firebase engine below — see async function saveProfile */
 
 function triggerCoverUpload() {
   document.getElementById('cover-upload').click();
@@ -4908,19 +5306,45 @@ function renderSuggestedUsers() {
   `).join('');
 }
 
-function toggleFollow(userId, btn) {
-  if(STATE.following.has(userId)) {
+async function toggleFollow(userId, btn) {
+  if (!STATE.currentUser) { showToast('Please login to follow', 'error'); return; }
+  const isFollowing = STATE.following.has(userId);
+
+  if (isFollowing) {
     STATE.following.delete(userId);
-    btn.textContent = 'Follow';
-    btn.classList.remove('following');
-    showToast('Unfollowed', 'success');
+    if (btn) { btn.textContent = 'Follow'; btn.classList.remove('following'); }
+    showToast('Unfollowed', 'info');
   } else {
     STATE.following.add(userId);
-    btn.textContent = 'Following';
-    btn.classList.add('following');
+    if (btn) { btn.textContent = 'Following'; btn.classList.add('following'); }
     showToast('Following! 👋', 'success');
   }
   saveState();
+
+  if (window._FB_READY && STATE.currentUser.isFirebase && window._currentUser) {
+    const myId = window._currentUser.uid;
+    const followRef = window._fb.doc(window._fb.db, 'users', myId, 'following', userId);
+    const followerRef = window._fb.doc(window._fb.db, 'users', userId, 'followers', myId);
+    try {
+      if (isFollowing) {
+        await window._fb.deleteDoc(followRef);
+        await window._fb.deleteDoc(followerRef);
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',myId), { following_count: window._fb.increment(-1) }).catch(()=>{});
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',userId), { followers: window._fb.increment(-1) }).catch(()=>{});
+      } else {
+        await window._fb.setDoc(followRef, { followedAt: window._fb.serverTimestamp(), userId });
+        await window._fb.setDoc(followerRef, { followedAt: window._fb.serverTimestamp(), userId: myId });
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',myId), { following_count: window._fb.increment(1) }).catch(()=>{});
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',userId), { followers: window._fb.increment(1) }).catch(()=>{});
+        window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'), {
+          toUserId: userId, fromUserId: myId,
+          fromName: STATE.currentUser.name, fromAvatar: STATE.currentUser.avatar,
+          type: 'follow', message: STATE.currentUser.name + ' started following you',
+          read: false, createdAt: window._fb.serverTimestamp()
+        }).catch(()=>{});
+      }
+    } catch(e) { console.warn('toggleFollow error:', e.message); }
+  }
 }
 
 function renderOnlineMembers() {
@@ -5929,491 +6353,415 @@ const _analyticsPageHook = () => { setTimeout(renderAnalyticsPage, 100); };
    BACKEND MODULAR INTERFACE (Future Integration Stubs)
 ============================================================ */
 /* ============================================================
-   ██████╗ FIREBASE REAL-TIME ENGINE
-   Multi-user: Login · Posts · Likes · Online Presence
+/* ============================================================
+   ██████╗ FIREBASE REAL-TIME ENGINE v11.0 — MODULAR SDK
+   Multi-user: Google Sign-In · Posts · Likes · Messages ·
+   Notifications · Follow · Online Presence · Admin
    Developed by Gaurang Raval & Khush Raval — kspiderai.in
 ============================================================ */
 
-/* ── YOUR FIREBASE CONFIG ──────────────────────────────────
-   STEP 1: Go to https://console.firebase.google.com
-   STEP 2: Create project → Add Web App → Copy config below
-   STEP 3: Enable Authentication (Email/Password + Anonymous)
-   STEP 4: Enable Firestore Database (start in test mode)
-   STEP 5: Enable Realtime Database (start in test mode)
-   ──────────────────────────────────────────────────────── */
-const FB_CONFIG = {
-  apiKey:            "AIzaSyBR84eviPn7JRtgAF02OyXQphjCLy3-RKY",
-  authDomain:        "k-spider-social-media.firebaseapp.com",
-  databaseURL:       "https://k-spider-social-media-default-rtdb.firebaseio.com",
-  projectId:         "k-spider-social-media",
-  storageBucket:     "k-spider-social-media.firebasestorage.app",
-  messagingSenderId: "1063536440954",
-  appId:             "1:1063536440954:web:9a27a9c116132539bcadc3",
-  measurementId:     "G-CH0RSTGBRS"
-};
-
-/* ── FIREBASE STATE ── */
-let FB = null, DB = null, RTDB = null, AUTH = null;
-let FB_READY = false;
+window._isGuest = false;
 let _postsListener = null;
-let _onlineListener = null;
-let _isGuest = false;
-let _myPresenceRef = null;
+let _presenceRef   = null;
 
-/* ── INIT ── */
-function initFirebase() {
-  try {
-    if (!firebase.apps.length) firebase.initializeApp(FB_CONFIG);
-    FB    = firebase.app();
-    AUTH  = firebase.auth();
-    DB    = firebase.firestore();
-    RTDB  = firebase.database();
-    FB_READY = true;
-    console.log('✅ Firebase connected');
-    listenAuthState();
-  } catch(e) {
-    console.warn('⚠️ Firebase init failed — running offline:', e.message);
-    FB_READY = false;
-    // Show login overlay anyway so user can use guest mode
-    document.getElementById('fb-auth-overlay').classList.remove('hidden');
-  }
-}
-
-/* ── AUTH STATE LISTENER ── */
-function listenAuthState() {
-  AUTH.onAuthStateChanged(async (user) => {
-    if (user && !_isGuest) {
-      // Logged in — hide overlay, set up user, subscribe to data
-      document.getElementById('fb-auth-overlay').classList.add('hidden');
-      await setupFirebaseUser(user);
-      subscribeToPostsRT();
-      setupPresence(user.uid, STATE.currentUser.name, STATE.currentUser.avatar);
-      subscribeToOnlineUsers();
-      showToast(`✅ Welcome back, ${STATE.currentUser.name}!`, 'success');
-    } else if (!_isGuest) {
-      // Not logged in and not guest — show login
-      document.getElementById('fb-auth-overlay').classList.remove('hidden');
-    }
-  });
-}
-
-/* ── SETUP USER AFTER LOGIN ── */
-async function setupFirebaseUser(firebaseUser) {
-  const uid = firebaseUser.uid;
-  // Try to load existing profile from Firestore
-  try {
-    const snap = await DB.collection('users').doc(uid).get();
-    if (snap.exists) {
-      const data = snap.data();
-      STATE.currentUser = {
-        id: uid,
-        name: data.name || firebaseUser.displayName || 'K Spider User',
-        handle: data.handle || '@' + (data.name||'user').toLowerCase().replace(/\s+/,''),
-        bio: data.bio || '🚀 K Spider AI User',
-        avatar: data.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
-        cover: data.cover || 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
-        profession: data.profession || 'K Spider AI User',
-        website: 'https://www.kspiderai.in',
-        followers: data.followers || 0,
-        following_count: data.following_count || 0,
-        likes: data.likes || 0,
-        email: firebaseUser.email,
-        isFirebase: true
-      };
-    } else {
-      // First login — create profile
-      const name = firebaseUser.displayName || firebaseUser.email?.split('@')[0] || 'K Spider User';
-      STATE.currentUser = {
-        id: uid,
-        name: name,
-        handle: '@' + name.toLowerCase().replace(/\s+/g,''),
-        bio: '🚀 New to K Spider Social AI!',
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
-        cover: 'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
-        profession: 'K Spider AI User',
-        website: 'https://www.kspiderai.in',
-        followers: 0, following_count: 0, likes: 0,
-        email: firebaseUser.email,
-        isFirebase: true
-      };
-      await DB.collection('users').doc(uid).set(STATE.currentUser);
-    }
-  } catch(e) {
-    console.warn('Firestore user fetch failed:', e);
-    STATE.currentUser = {
-      id: uid, name: firebaseUser.displayName || 'User',
-      handle: '@user', bio: '', avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`,
-      isFirebase: true
+/* ── IMAGE COMPRESS (<=100 KB) ── */
+async function compressImageTo100KB(dataURL, maxKB=95){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas');
+      let w=img.width,h=img.height;
+      if(w>1200){h=Math.round(h*1200/w);w=1200;}
+      if(h>1200){w=Math.round(w*1200/h);h=1200;}
+      c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      let q=0.85;
+      const go=()=>{const r=c.toDataURL('image/jpeg',q);if(Math.round(r.length*0.75/1024)<=maxKB||q<=0.1){resolve(r);}else{q=Math.max(0.1,q-0.1);go();}};
+      go();
     };
+    img.src=dataURL;
+  });
+}
+
+/* ── GOOGLE BUTTON RESET HELPER ── */
+const _GOOGLE_BTN_HTML = `<svg width="20" height="20" viewBox="0 0 48 48" style="flex-shrink:0">
+        <path fill="#FFC107" d="M43.6 20.5h-1.9V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.5 29.6 4.5 24 4.5 12.7 4.5 3.5 13.7 3.5 25S12.7 45.5 24 45.5 44.5 36.3 44.5 25c0-1.5-.2-3-.4-4.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.1 18.9 12.5 24 12.5c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6.5 29.6 4.5 24 4.5c-7.7 0-14.3 4.4-17.7 10.2z"/>
+        <path fill="#4CAF50" d="M24 45.5c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.4c-2 1.4-4.7 2.3-7.7 2.3-5.2 0-9.6-3.3-11.3-8l-6.6 5.1C9.6 41 16.3 45.5 24 45.5z"/>
+        <path fill="#1976D2" d="M43.6 20.5H24v8h11.3c-.8 2.3-2.2 4.2-4.1 5.5l6.6 5.4C41.6 36.1 44.5 31 44.5 25c0-1.5-.2-3-.4-4.5z"/>
+      </svg>
+      <span>Continue with Google</span>`;
+
+function resetGoogleBtn() {
+  const btn = document.getElementById('google-login-btn');
+  if (btn) { btn.disabled = false; btn.innerHTML = _GOOGLE_BTN_HTML; }
+}
+window.resetGoogleBtn = resetGoogleBtn;
+
+/* ── AUTH UI HELPERS ── */
+function showAuthError(msg){
+  const el=document.getElementById('auth-err');
+  if(!el)return;
+  el.textContent=msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'),5000);
+}
+
+function switchAuthTab(tab){
+  const loginForm=document.getElementById('auth-login-form');
+  const regForm=document.getElementById('auth-register-form');
+  const tabLogin=document.getElementById('tab-login');
+  const tabReg=document.getElementById('tab-register');
+  const err=document.getElementById('auth-err');
+  if(err)err.classList.remove('show');
+  if(tab==='login'){
+    if(loginForm)loginForm.style.display='block';
+    if(regForm)regForm.style.display='none';
+    if(tabLogin)tabLogin.classList.add('active');
+    if(tabReg)tabReg.classList.remove('active');
+  }else{
+    if(loginForm)loginForm.style.display='none';
+    if(regForm)regForm.style.display='block';
+    if(tabLogin)tabLogin.classList.remove('active');
+    if(tabReg)tabReg.classList.add('active');
   }
-  applyUserProfile();
-  updateNavUserChip();
 }
 
-/* ── UPDATE NAV CHIP ── */
-function updateNavUserChip() {
-  const u = STATE.currentUser;
-  if (!u) return;
-  const chip = document.getElementById('nav-user-chip');
-  const nameEl = document.getElementById('nav-user-name');
-  const img = document.getElementById('nav-avatar-img');
-  if (chip) { chip.style.display = 'flex'; }
-  if (nameEl) nameEl.textContent = u.name.split(' ')[0];
-  if (img) img.src = u.avatar;
-  const logoutBtn = document.getElementById('logout-btn');
-  if (logoutBtn) logoutBtn.style.display = 'flex';
-  const oldWrap = document.getElementById('nav-avatar-wrap');
-  if (oldWrap) oldWrap.style.display = 'none';
-}
+/* ── SETUP USER FROM FIRESTORE (auto-syncs Google profile photo) ── */
+window.setupFirebaseUser = async function(firebaseUser){
+  const uid=firebaseUser.uid;
+  const gPhoto=firebaseUser.photoURL||null;
+  const gName=firebaseUser.displayName||firebaseUser.email?.split('@')[0]||'K Spider User';
+  const defAvatar=gPhoto||'https://api.dicebear.com/7.x/avataaars/svg?seed='+uid;
+  const isAdmin = firebaseUser.email && firebaseUser.email.toLowerCase() === (window._ADMIN_EMAIL||'').toLowerCase();
 
-/* ── REAL-TIME POSTS SUBSCRIPTION ── */
-function subscribeToPostsRT() {
-  if (!FB_READY) return;
-  if (_postsListener) _postsListener(); // unsubscribe old
-  let firstLoad = true;
-  _postsListener = DB.collection('posts')
-    .orderBy('timestamp', 'desc')
-    .limit(50)
-    .onSnapshot((snapshot) => {
-      const newPosts = [];
-      snapshot.forEach(doc => {
-        newPosts.push({ id: doc.id, ...doc.data() });
-      });
-      if (firstLoad) {
-        STATE.posts = newPosts;
-        renderPosts();
-        firstLoad = false;
-      } else {
-        // Check for genuinely new posts from other users
-        const myId = STATE.currentUser?.id;
-        const newFromOthers = newPosts.filter(p =>
-          p.authorId !== myId && !STATE.posts.find(old => old.id === p.id)
-        );
-        STATE.posts = newPosts;
-        if (newFromOthers.length > 0) {
-          showRTIndicator(newFromOthers.length);
-        } else {
-          renderPosts(); // own actions — render silently
-        }
+  try{
+    const snap=await window._fb.getDoc(window._fb.doc(window._fb.db,'users',uid));
+    if(snap.exists()){
+      const d=snap.data();
+      STATE.currentUser={
+        id:uid, name:d.name||gName,
+        handle:d.handle||'@'+gName.toLowerCase().replace(/\\s+/g,''),
+        bio:d.bio||'KSpider AI User',
+        // Google profile picture ALWAYS takes priority — auto-synced
+        avatar:gPhoto||d.avatar||defAvatar,
+        cover:d.cover||'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
+        profession:d.profession||'K Spider AI User',
+        website:d.website||'https://www.kspiderai.in',
+        youtube:d.youtube||'', instagram:d.instagram||'',
+        twitter:d.twitter||'', linkedin:d.linkedin||'',
+        followers:d.followers||0, following_count:d.following_count||0, likes:d.likes||0,
+        email:firebaseUser.email,
+        phone:d.phone||null, dob:d.dob||null, gender:d.gender||null,
+        relationship:d.relationship||null, city:d.city||null,
+        school:d.school||null, college:d.college||null,
+        worksAt:d.worksAt||null, hometown:d.hometown||null,
+        languages:d.languages||null, geo:d.geo||null,
+        themeColor:d.themeColor||null, isFirebase:true,
+        isAdmin: isAdmin || d.isAdmin === true,
+        verified: d.verified === true || isAdmin
+      };
+      // Auto-sync: if Google photo changed, update Firestore
+      if(gPhoto && gPhoto!==d.avatar){
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',uid),{avatar:gPhoto}).catch(()=>{});
       }
-    }, (err) => {
-      console.warn('Posts listener error:', err);
-    });
-}
-
-/* ── SHOW NEW POST INDICATOR ── */
-let _rtIndicatorTimeout = null;
-function showRTIndicator(count) {
-  const el = document.getElementById('rt-indicator');
-  if (!el) return;
-  el.textContent = `🔴 ${count} new post${count>1?'s':''} — tap to load`;
-  el.classList.add('show');
-  el.style.cursor = 'pointer';
-  el.onclick = () => { renderPosts(); el.classList.remove('show'); };
-  clearTimeout(_rtIndicatorTimeout);
-  _rtIndicatorTimeout = setTimeout(() => el.classList.remove('show'), 8000);
-}
-
-/* ── ONLINE PRESENCE SYSTEM (Realtime DB) ── */
-function setupPresence(uid, name, avatar) {
-  if (!RTDB) return;
-  const presenceRef = RTDB.ref('presence/' + uid);
-  _myPresenceRef = presenceRef;
-  const userData = { name, avatar, uid, online: true, lastSeen: firebase.database.ServerValue.TIMESTAMP };
-
-  // Set online when connected
-  RTDB.ref('.info/connected').on('value', (snap) => {
-    if (snap.val() === true) {
-      presenceRef.onDisconnect().remove(); // auto-remove on disconnect
-      presenceRef.set(userData);
+      // Ensure admin flag is set in Firestore for admin email
+      if(isAdmin && d.isAdmin !== true){
+        window._fb.updateDoc(window._fb.doc(window._fb.db,'users',uid),{isAdmin:true,verified:true}).catch(()=>{});
+      }
+    } else {
+      STATE.currentUser={
+        id:uid, name:gName,
+        handle:'@'+gName.toLowerCase().replace(/\\s+/g,''),
+        bio:'New to K Spider Social AI! 🚀', avatar:defAvatar,
+        cover:'https://images.unsplash.com/photo-1635776063028-227d30595bfa?w=900&q=80',
+        profession:'K Spider AI User', website:'https://www.kspiderai.in',
+        youtube:'', instagram:'', twitter:'', linkedin:'',
+        followers:0, following_count:0, likes:0,
+        email:firebaseUser.email, isFirebase:true,
+        isAdmin: isAdmin, verified: isAdmin
+      };
+      await window._fb.setDoc(window._fb.doc(window._fb.db,'users',uid),STATE.currentUser);
     }
-  });
-
-  // Heartbeat every 30s to keep presence fresh
-  setInterval(() => {
-    if (_myPresenceRef) _myPresenceRef.update({ lastSeen: firebase.database.ServerValue.TIMESTAMP });
-  }, 30000);
-}
-
-/* ── SUBSCRIBE TO ONLINE USERS LIST ── */
-function subscribeToOnlineUsers() {
-  if (!RTDB) return;
-  if (_onlineListener) RTDB.ref('presence').off('value', _onlineListener);
-
-  _onlineListener = RTDB.ref('presence').on('value', (snap) => {
-    const data = snap.val() || {};
-    const users = Object.values(data);
-    updateOnlinePanel(users);
-  });
-}
-
-/* ── RENDER ONLINE PANEL ── */
-let _onlinePanelCollapsed = false;
-function updateOnlinePanel(users) {
-  const list = document.getElementById('online-list');
-  const badge = document.getElementById('online-count-badge');
-  const title = document.getElementById('online-panel-title');
-  if (!list) return;
-
-  const myId = STATE.currentUser?.id;
-  const others = users.filter(u => u.uid !== myId);
-  const total = users.length;
-
-  if (badge) badge.textContent = total;
-  if (title) title.textContent = `🟢 Online Now`;
-
-  if (users.length === 0) {
-    list.innerHTML = '<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">No one online yet</div>';
-    return;
+  }catch(e){
+    console.warn('setupFirebaseUser:',e.message);
+    STATE.currentUser={id:uid,name:gName,handle:'@'+uid,bio:'',avatar:defAvatar,email:firebaseUser.email,isFirebase:true,isAdmin:isAdmin};
   }
 
-  list.innerHTML = users.map(u => `
-    <div class="online-user-item" title="${u.name}">
-      <div class="online-avatar-wrap">
-        <img src="${u.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.uid}`}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'" alt="${u.name}">
-        <div class="online-dot"></div>
-      </div>
-      <div style="min-width:0">
-        <div class="online-user-name">${u.uid===myId ? u.name+' (You)' : u.name}</div>
-        <div class="online-user-sub">🟢 Active now</div>
-      </div>
-    </div>
-  `).join('');
-}
+  applyUserProfile(); updateNavUserChip();
+  if(typeof checkAdminAccess==='function')checkAdminAccess();
 
-function toggleOnlinePanel() {
-  _onlinePanelCollapsed = !_onlinePanelCollapsed;
-  const panel = document.getElementById('online-panel');
-  const list = document.getElementById('online-list');
-  const title = document.getElementById('online-panel-title');
-  if (_onlinePanelCollapsed) {
-    if (list) list.style.display = 'none';
-    if (title) title.style.display = 'none';
-    panel.style.width = '52px';
-  } else {
-    if (list) list.style.display = 'block';
-    if (title) title.style.display = 'block';
-    panel.style.width = '220px';
+  // Capture GPS for nearby feed
+  if(navigator.geolocation&&!STATE.currentUser.geo){
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      const geo={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      STATE.currentUser.geo=geo;
+      window._fb.updateDoc(window._fb.doc(window._fb.db,'users',uid),{geo}).catch(()=>{});
+    },()=>{},{timeout:5000});
   }
-}
 
-/* ── FIREBASE POST SAVE (override submitPost) ── */
-const _origSubmitPost = submitPost;
-window.submitPost = async function() {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) {
-    _origSubmitPost();
-    return;
-  }
-  const text = document.getElementById('post-text-input')?.value?.trim();
-  if (!text && !STATE.currentPostMedia) {
-    showToast('Please write something or add media!', 'error');
-    return;
-  }
-  const post = {
-    authorId: STATE.currentUser.id,
-    authorName: STATE.currentUser.name,
-    authorAvatar: STATE.currentUser.avatar,
-    text: text || '',
-    image: STATE.currentPostMediaType === 'image' ? STATE.currentPostMedia : null,
-    video: STATE.currentPostMediaType === 'video' ? STATE.currentPostMedia : null,
-    feeling: STATE.activeTags.feeling || null,
-    location: STATE.activeTags.location || null,
-    visibility: document.getElementById('post-visibility')?.value || 'public',
-    timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-    likes: 0, comments: [], shares: 0, views: 0,
-  };
-  try {
-    const btn = document.querySelector('.create-post-submit-btn');
-    if (btn) { btn.disabled = true; btn.textContent = 'Posting...'; }
-    await DB.collection('posts').add(post);
-    document.getElementById('post-text-input').value = '';
-    if (typeof removeMedia === 'function') removeMedia();
-    STATE.activeTags = { feeling: null, hashtags: [], location: null };
-    if (typeof updateActiveTags === 'function') updateActiveTags();
-    showToast('✅ Post shared with everyone!', 'success');
-    if (btn) { btn.disabled = false; btn.textContent = 'Post'; }
-  } catch(e) {
-    showToast('❌ Failed to post: ' + e.message, 'error');
-    console.error(e);
-  }
+  // Check ban
+  try{
+    const ban=await window._fb.getDoc(window._fb.doc(window._fb.db,'bannedUsers',uid));
+    if(ban.exists()){
+      await window._fb.signOut(window._fb.auth);
+      document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+      showAuthError('Your account has been banned. Contact: kspider221206@gmail.com');
+      return;
+    }
+  }catch(e){}
+
+  showToast(`Welcome, ${STATE.currentUser.name}! 👋`,'success');
 };
 
-/* ── FIREBASE LIKE (real-time sync) ── */
-const _origLikePost = likePost;
-window.likePost = async function(postId) {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) { _origLikePost(postId); return; }
-  const myId = STATE.currentUser.id;
-  const likeRef = DB.collection('posts').doc(postId).collection('likes').doc(myId);
-  const snap = await likeRef.get();
-  if (snap.exists) {
-    await likeRef.delete();
-    await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(-1) });
-    STATE.likedPosts.delete(postId);
-  } else {
-    await likeRef.set({ uid: myId, name: STATE.currentUser.name, ts: firebase.firestore.FieldValue.serverTimestamp() });
-    await DB.collection('posts').doc(postId).update({ likes: firebase.firestore.FieldValue.increment(1) });
-    STATE.likedPosts.add(postId);
-  }
-  const post = STATE.posts.find(p => p.id === postId);
-  if (post) updatePostStats(postId, post);
-};
+/* ── POSTS REAL-TIME LISTENER ──
+   NO orderBy — avoids Firestore mixed-timestamp-type issue.
+   Client-side sort by _clientTs ensures instant visibility
+   for ALL users, ALL devices, ALL browsers. */
+window.subscribeToPostsRT = function(){
+  if(!window._fb?.db) return;
+  if(_postsListener){try{_postsListener();}catch(e){}_postsListener=null;}
 
-/* ── FIREBASE DELETE POST ── */
-const _origDeletePost = deletePost;
-window.deletePost = async function(postId) {
-  if (!FB_READY || !STATE.currentUser?.isFirebase) { _origDeletePost(postId); return; }
-  if (!confirm('Delete this post for everyone?')) return;
-  try {
-    await DB.collection('posts').doc(postId).delete();
-    document.getElementById('post-' + postId)?.remove();
-    showToast('Post deleted', 'success');
-  } catch(e) {
-    showToast('❌ Delete failed: ' + e.message, 'error');
-  }
-};
+  const u=STATE.currentUser;
+  const banner=document.getElementById('nearby-feed-banner');
+  if(banner&&u&&(u.city||u.school||u.college||u.geo)){banner.style.display='flex';}
 
-/* ── AUTH UI FUNCTIONS ── */
-function switchAuthTab(tab) {
-  document.getElementById('auth-login-form').style.display    = tab === 'login'    ? 'block' : 'none';
-  document.getElementById('auth-register-form').style.display = tab === 'register' ? 'block' : 'none';
-  document.getElementById('tab-login').classList.toggle('active',    tab === 'login');
-  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
-  document.getElementById('auth-err').classList.remove('show');
-}
+  const q = window._fb.query(
+    window._fb.collection(window._fb.db,'posts'),
+    window._fb.limit(50)
+  );
 
-function showAuthError(msg) {
-  const el = document.getElementById('auth-err');
-  el.textContent = '⚠️ ' + msg;
-  el.classList.add('show');
-}
-
-async function fbLogin() {
-  const errBox = document.getElementById('auth-err');
-  errBox.classList.remove('show');
-
-  if (!FB_READY) { showAuthError('Firebase not configured. Please add your Firebase config.'); return; }
-
-  const email    = document.getElementById('login-email').value.trim();
-  const password = document.getElementById('login-password').value;
-
-  if (!email)    { showAuthError('Please enter your email address.'); return; }
-  if (!password) { showAuthError('Please enter your password.'); return; }
-
-  const btn = document.getElementById('login-btn');
-  btn.disabled = true; btn.textContent = '⏳ Logging in...';
-
-  try {
-    console.log('🔄 Logging in:', email);
-    await AUTH.signInWithEmailAndPassword(email, password);
-    console.log('✅ Login success');
-    // onAuthStateChanged handles rest
-  } catch(e) {
-    console.error('❌ Login error:', e.code, e.message);
-    showAuthError(firebaseErrMsg(e.code) + ' [' + e.code + ']');
-    btn.disabled = false; btn.textContent = '🚀 Login to K Spider AI';
-  }
-}
-
-async function fbRegister() {
-  const errBox = document.getElementById('auth-err');
-  errBox.classList.remove('show');
-
-  if (!FB_READY) { showAuthError('Firebase not configured. Please add your Firebase config.'); return; }
-
-  const fname    = document.getElementById('reg-fname').value.trim();
-  const lname    = document.getElementById('reg-lname').value.trim();
-  const email    = document.getElementById('reg-email').value.trim();
-  const password = document.getElementById('reg-password').value;
-
-  if (!fname)    { showAuthError('Please enter your first name.'); return; }
-  if (!email)    { showAuthError('Please enter your email address.'); return; }
-  if (!password) { showAuthError('Please enter a password.'); return; }
-  if (password.length < 6) { showAuthError('Password must be at least 6 characters.'); return; }
-
-  const btn = document.getElementById('reg-btn');
-  btn.disabled = true; btn.textContent = '⏳ Creating account...';
-
-  try {
-    console.log('🔄 Registering:', email);
-    const cred = await AUTH.createUserWithEmailAndPassword(email, password);
-    console.log('✅ User created:', cred.user.uid);
-    await cred.user.updateProfile({ displayName: fname + (lname ? ' ' + lname : '') });
-    console.log('✅ Profile updated');
-    // onAuthStateChanged handles the rest
-  } catch(e) {
-    console.error('❌ Register error:', e.code, e.message);
-    showAuthError(firebaseErrMsg(e.code) + ' [' + e.code + ']');
-    btn.disabled = false; btn.textContent = '🎉 Create Account';
-  }
-}
-
-async function fbGuest() {
-  _isGuest = true;
-  document.getElementById('fb-auth-overlay').classList.add('hidden');
-  STATE.currentUser = {
-    id: 'guest_' + Date.now(),
-    name: 'Guest User',
-    handle: '@guest',
-    bio: 'Browsing as guest',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=guest',
-    isGuest: true
-  };
-  applyUserProfile();
-  updateNavUserChip();
-  // Guests can read posts from Firestore but not post
-  if (FB_READY) {
-    subscribeToPostsRT();
-    subscribeToOnlineUsers();
-  }
-  showToast('👤 Browsing as Guest — login to post!', 'info');
-}
-
-async function fbLogout() {
-  if (!confirm('Logout from K Spider Social AI?')) return;
-  try {
-    // Remove presence
-    if (_myPresenceRef) await _myPresenceRef.remove();
-    // Unsubscribe listeners
-    if (_postsListener) { _postsListener(); _postsListener = null; }
-    if (_onlineListener) { RTDB.ref('presence').off('value', _onlineListener); _onlineListener = null; }
-    _isGuest = false;
-    if (AUTH) await AUTH.signOut();
-    STATE.currentUser = null;
-    STATE.posts = [];
-    // Hide nav elements
-    const chip = document.getElementById('nav-user-chip');
-    const logoutBtn = document.getElementById('logout-btn');
-    if (chip) chip.style.display = 'none';
-    if (logoutBtn) logoutBtn.style.display = 'none';
-    document.getElementById('online-list').innerHTML = '<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">Connecting...</div>';
-    document.getElementById('online-count-badge').textContent = '0';
+  _postsListener = window._fb.onSnapshot(q, {includeMetadataChanges: false}, snap => {
+    const myUid = window._currentUser?.uid || null;
+    const pts = [];
+    snap.forEach(d => {
+      const data = d.data();
+      let tsMs;
+      if(typeof data._clientTs === 'number' && data._clientTs > 0){
+        tsMs = data._clientTs;
+      } else if(data.timestamp && typeof data.timestamp.toMillis === 'function'){
+        tsMs = data.timestamp.toMillis();
+      } else if(typeof data.timestamp === 'number'){
+        tsMs = data.timestamp;
+      } else {
+        tsMs = Date.now();
+      }
+      pts.push({ id:d.id, ...data, isOwn: !!(myUid && data.authorId === myUid), _ts: tsMs });
+    });
+    pts.sort((a,b) => (b._ts||0) - (a._ts||0));
+    STATE.posts = pts;
+    document.querySelectorAll('[data-temp]').forEach(el => el.remove());
     renderPosts();
-    document.getElementById('fb-auth-overlay').classList.remove('hidden');
-    showToast('👋 Logged out successfully', 'info');
-  } catch(e) {
-    console.error('Logout error:', e);
+    if(window._subscribeToPostsRT_firstLoad === false){
+      const el = document.getElementById('rt-indicator');
+      if(el){el.classList.add('show'); setTimeout(()=>el.classList.remove('show'),4000);}
+    }
+    window._subscribeToPostsRT_firstLoad = false;
+  }, err => {
+    console.warn('Posts listener error:', err.message, err.code);
+    setTimeout(()=>{ if(window._FB_READY) window.subscribeToPostsRT(); }, 3000);
+  });
+  window._subscribeToPostsRT_firstLoad = true;
+};
+
+/* ── PRESENCE SETUP ── */
+window.setupPresence = function(uid,name,avatar){
+  if(!window._fb?.rtdb) return;
+  const ref=window._fb.dbRef(window._fb.rtdb,'presence/'+uid);
+  _presenceRef=ref;
+  window._fb.dbSet(ref,{uid,name,avatar,online:true,lastSeen:Date.now()}).catch(()=>{});
+  window.addEventListener('beforeunload',()=>window._fb.dbRemove(ref).catch(()=>{}));
+};
+
+/* ── ONLINE USERS LISTENER ── */
+window.subscribeToOnlineUsers = function(){
+  if(!window._fb?.rtdb) return;
+  const ref=window._fb.dbRef(window._fb.rtdb,'presence');
+  window._fb.onValue(ref,snap=>{
+    const list=document.getElementById('online-list');
+    const badge=document.getElementById('online-count-badge');
+    const users=Object.values(snap.val()||{});
+    if(badge)badge.textContent=users.length;
+    if(!list)return;
+    if(!users.length){list.innerHTML='<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">No one online yet</div>';return;}
+    list.innerHTML=users.map(u=>`<div class="online-user-item" onclick="navigateTo('profile')"><div class="online-avatar-wrap"><img src="${u.avatar||'https://api.dicebear.com/7.x/avataaars/svg?seed=x'}" class="online-avatar" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=x'"><span class="online-dot"></span></div><span class="online-name">${u.name||'User'}</span></div>`).join('');
+  });
+};
+
+/* ── AUTH: GOOGLE SIGN-IN (PRIMARY — Professional one-click) ──
+   Profile photo from Google auto-syncs to K Spider profile. */
+async function fbGoogleLogin(){
+  if(!window._fb||!window._FB_READY){showAuthError('Firebase connecting... Please wait and try again.');return;}
+  const btn=document.getElementById('google-login-btn');
+  if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> <span>Opening Google...</span>';}
+  try{
+    try{
+      await window._fb.signInWithPopup(window._fb.auth,window._fb.gp);
+    }catch(pe){
+      if(pe.code==='auth/popup-blocked'||pe.code==='auth/popup-closed-by-user'||pe.code==='auth/cancelled-popup-request'){
+        if(pe.code==='auth/popup-closed-by-user'||pe.code==='auth/cancelled-popup-request'){
+          resetGoogleBtn(); return;
+        }
+        await window._fb.signInWithRedirect(window._fb.auth,window._fb.gp);
+      }else throw pe;
+    }
+  }catch(e){
+    showAuthError('Google sign-in failed: '+(e.message||e.code));
+    resetGoogleBtn();
   }
 }
 
-function firebaseErrMsg(code) {
-  const msgs = {
-    'auth/user-not-found':      'No account found with this email.',
-    'auth/wrong-password':      'Wrong password. Please try again.',
-    'auth/email-already-in-use':'This email is already registered. Please login.',
-    'auth/invalid-email':       'Please enter a valid email address.',
-    'auth/weak-password':       'Password too weak. Use at least 6 characters.',
-    'auth/too-many-requests':   'Too many attempts. Please wait and try again.',
-    'auth/network-request-failed': 'Network error. Check your internet connection.',
-    'auth/invalid-credential':  'Invalid email or password. Please check and try again.',
-  };
-  return msgs[code] || 'Something went wrong. Please try again.';
+/* ── AUTH: EMAIL LOGIN ── */
+async function fbLogin(){
+  if(!window._fb||!window._FB_READY){showAuthError('Firebase connecting... Please wait and try again.');return;}
+  const email=document.getElementById('login-email')?.value?.trim();
+  const pass=document.getElementById('login-password')?.value;
+  if(!email||!pass){showAuthError('Please enter email and password.');return;}
+  const btn=document.getElementById('login-btn');
+  if(btn){btn.disabled=true;btn.textContent='Logging in...';}
+  try{
+    await window._fb.signInWithEmailAndPassword(window._fb.auth,email,pass);
+  }catch(e){
+    showAuthError(firebaseErrMsg(e.code));
+    if(btn){btn.disabled=false;btn.textContent='🚀 Login to K Spider AI';}
+  }
 }
 
-/* ── INIT FIREBASE ON PAGE LOAD ── */
-document.addEventListener('DOMContentLoaded', () => {
-  initFirebase();
-  ksUpdatePreview();
+/* ── AUTH: REGISTER ── */
+async function fbRegister(){
+  if(!window._fb||!window._FB_READY){showAuthError('Firebase connecting... Please wait and try again.');return;}
+  const fname=document.getElementById('reg-fname')?.value?.trim();
+  const lname=document.getElementById('reg-lname')?.value?.trim();
+  const name=(fname+' '+lname).trim()||fname||lname;
+  const email=document.getElementById('reg-email')?.value?.trim();
+  const pass=document.getElementById('reg-password')?.value;
+  if(!name||!email||!pass){showAuthError('Please fill all fields.');return;}
+  if(pass.length<6){showAuthError('Password must be at least 6 characters.');return;}
+  const btn=document.getElementById('reg-btn');
+  if(btn){btn.disabled=true;btn.textContent='Creating account...';}
+  try{
+    const cred=await window._fb.createUserWithEmailAndPassword(window._fb.auth,email,pass);
+    await window._fb.updateProfile(cred.user,{displayName:name});
+  }catch(e){
+    showAuthError(firebaseErrMsg(e.code));
+    if(btn){btn.disabled=false;btn.textContent='🎉 Create Account';}
+  }
+}
+
+/* ── AUTH: LOGOUT ── */
+async function fbLogout(){
+  if(!confirm('Logout from K Spider Social AI?'))return;
+  try{
+    if(_presenceRef&&window._fb?.rtdb){try{await window._fb.dbRemove(_presenceRef);}catch(e){}}
+    if(_postsListener){try{_postsListener();}catch(e){}_postsListener=null;}
+    window._isGuest=false; _presenceRef=null;
+    STATE.currentUser=null; STATE.posts=[];
+    localStorage.removeItem('kspider_user'); localStorage.removeItem('kspider_posts');
+    if(window._fb?.auth)await window._fb.signOut(window._fb.auth);
+    setTimeout(()=>{
+      const ov=document.getElementById('fb-auth-overlay');
+      if(ov){
+        ov.classList.remove('hidden');
+        const loginForm=document.getElementById('auth-login-form');
+        const regForm=document.getElementById('auth-register-form');
+        const tabLogin=document.getElementById('tab-login');
+        const tabReg=document.getElementById('tab-register');
+        if(loginForm)loginForm.style.display='block';
+        if(regForm)regForm.style.display='none';
+        if(tabLogin)tabLogin.classList.add('active');
+        if(tabReg)tabReg.classList.remove('active');
+        const errEl=document.getElementById('auth-err');
+        if(errEl){errEl.textContent='';errEl.classList.remove('show');}
+        ['login-email','login-password','reg-fname','reg-lname','reg-email','reg-password'].forEach(id=>{
+          const el=document.getElementById(id); if(el)el.value='';
+        });
+        resetGoogleBtn();
+        const lb=document.getElementById('login-btn'); if(lb){lb.disabled=false;lb.textContent='🚀 Login to K Spider AI';}
+        const rb=document.getElementById('reg-btn');   if(rb){rb.disabled=false;rb.textContent='🎉 Create Account';}
+      }
+    },150);
+    document.getElementById('nav-user-chip')?.style.setProperty('display','none');
+    document.getElementById('logout-btn')?.style.setProperty('display','none');
+    const ol=document.getElementById('online-list');
+    if(ol)ol.innerHTML='<div style="padding:12px;font-size:11px;color:#8A8D91;text-align:center">Connecting...</div>';
+    const ob=document.getElementById('online-count-badge');if(ob)ob.textContent='0';
+    renderPosts(); navigateTo('feed');
+    showToast('Logged out successfully 👋','info');
+  }catch(e){
+    console.error('Logout error:',e);
+    localStorage.removeItem('kspider_user');
+    document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+    resetGoogleBtn();
+    showToast('Logged out','info');
+  }
+}
+
+/* ── ADMIN ACCESS CHECK ── */
+function checkAdminAccess(){
+  const u = STATE.currentUser;
+  if(!u) return;
+  const isAdmin = u.isAdmin === true || (u.email && u.email.toLowerCase() === (window._ADMIN_EMAIL||'').toLowerCase());
+  document.querySelectorAll('.admin-only-link, .admin-only-badge').forEach(el=>{
+    el.style.display = isAdmin ? '' : 'none';
+  });
+  if(isAdmin){
+    STATE.currentUser.isAdmin = true;
+    // Add admin badge to nav if not present
+    const chip = document.getElementById('nav-user-chip');
+    if(chip && !chip.querySelector('.admin-crown')){
+      const crown = document.createElement('i');
+      crown.className = 'fas fa-crown admin-crown';
+      crown.style.cssText = 'color:#FFD700;font-size:11px;margin-left:2px';
+      crown.title = 'K Spider Admin';
+      chip.appendChild(crown);
+    }
+  }
+}
+window.checkAdminAccess = checkAdminAccess;
+
+/* ── SAVE PROFILE ── */
+async function saveProfile(e){
+  e.preventDefault();
+  const u=STATE.currentUser; if(!u)return;
+  const g=id=>document.getElementById(id)?.value?.trim()||null;
+  u.name=g('edit-name')||u.name;
+  u.profession=g('edit-profession')||''; u.bio=g('edit-bio')||'';
+  u.website=g('edit-website')||''; u.youtube=g('edit-youtube')||'';
+  u.instagram=g('edit-instagram')||''; u.twitter=g('edit-twitter')||'';
+  u.linkedin=g('edit-linkedin')||'';
+  u.phone=g('edit-phone'); u.dob=document.getElementById('edit-dob')?.value||null;
+  u.gender=document.getElementById('edit-gender')?.value||null;
+  u.relationship=document.getElementById('edit-relationship')?.value||null;
+  u.city=g('edit-city'); u.hometown=g('edit-hometown');
+  u.school=g('edit-school'); u.college=g('edit-college');
+  u.worksAt=g('edit-works'); u.languages=g('edit-languages');
+  u.themeColor=document.getElementById('edit-theme-color')?.value||u.themeColor;
+  if(window._FB_READY&&u.isFirebase&&window._currentUser){
+    try{
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',window._currentUser.uid),{
+        name:u.name,profession:u.profession,bio:u.bio,website:u.website,
+        youtube:u.youtube,instagram:u.instagram,twitter:u.twitter,linkedin:u.linkedin,
+        phone:u.phone,dob:u.dob,gender:u.gender,relationship:u.relationship,
+        city:u.city,hometown:u.hometown,school:u.school,college:u.college,
+        worksAt:u.worksAt,languages:u.languages
+      });
+    }catch(err){console.warn('Profile save:',err.message);}
+  }
+  applyUserProfile();
+  document.getElementById('edit-profile-form')?.classList.remove('open');
+  showToast('Profile saved! ✨','success');
+}
+
+/* ── FIREBASE ERROR MESSAGES ── */
+function firebaseErrMsg(code){
+  const m={'auth/user-not-found':'No account found with this email.','auth/wrong-password':'Wrong password. Please try again.','auth/email-already-in-use':'Email already registered. Please login.','auth/invalid-email':'Please enter a valid email address.','auth/weak-password':'Password too weak. Use at least 6 characters.','auth/too-many-requests':'Too many attempts. Please wait.','auth/network-request-failed':'Network error. Check your internet.','auth/invalid-credential':'Invalid email or password. Please check and try again.','auth/popup-blocked':'Popup was blocked. Please allow popups and try again.','auth/cancelled-popup-request':'Sign-in cancelled.'};
+  return m[code]||'Something went wrong. Please try again.';
+}
+
+/* ── INIT ON PAGE LOAD ── */
+document.addEventListener('DOMContentLoaded',()=>{
+  init(); ksUpdatePreview();
 });
+
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════
