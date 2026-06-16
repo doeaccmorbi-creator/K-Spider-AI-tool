@@ -718,7 +718,7 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:var(--text-dark);li
 /* Prescription modal — full screen on mobile */
 #prescription-modal{padding:0;overflow:hidden;}
 #prescription-modal .modal-box{max-height:100vh;height:100vh;overflow-y:hidden;margin:0;border-radius:0;width:100%;max-width:100%;}
-@media(min-width:700px){#prescription-modal .modal-box{max-height:94vh;height:auto;margin:10px auto;border-radius:14px;max-width:980px;}}
+@media(min-width:700px){#prescription-modal .modal-box{max-height:96vh;height:auto;margin:8px auto;border-radius:14px;max-width:1180px;}}
 .modal-close{position:absolute;top:14px;right:18px;background:none;border:none;font-size:24px;cursor:pointer;color:var(--text-light);}
 /* Safety Modal */
 .safety-modal{background:white;max-width:540px;margin:80px auto;border-radius:14px;padding:32px;text-align:center;border-top:6px solid var(--danger);}
@@ -726,7 +726,7 @@ body{font-family:'Inter',sans-serif;background:#f1f5f9;color:var(--text-dark);li
 .safety-modal p{color:var(--text-dark);line-height:1.8;margin-bottom:16px;}
 /* Drug autocomplete dropdown */
 .drug-autocomplete-wrap{position:relative;width:100%;}
-.drug-autocomplete-list{position:absolute;top:100%;left:0;right:0;background:white;border:1.5px solid #6366f1;border-radius:8px;z-index:9999;max-height:200px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.15);display:none;}
+.drug-autocomplete-list{position:fixed;background:white;border:1.5px solid #6366f1;border-radius:8px;z-index:99999;max-height:240px;overflow-y:auto;box-shadow:0 10px 32px rgba(0,0,0,0.25);display:none;}
 .drug-autocomplete-list.show{display:block;}
 .drug-ac-item{padding:7px 12px;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;transition:background 0.15s;}
 .drug-ac-item:hover,.drug-ac-item.active{background:#ede9fe;color:#4c1d95;}
@@ -2951,9 +2951,18 @@ function toggleDarkMode() {
 
   <!-- Drug/Brand CSV -->
   <div style="background:var(--card-bg);border:1px solid var(--border);border-radius:12px;padding:18px;">
-    <div style="font-size:1.1rem;margin-bottom:6px;">&#x1F48A; Drug &amp; Brand Database</div>
-    <p style="font-size:0.82rem;color:var(--text-light);margin:0 0 14px;">267+ built-in brands + your custom brands. Edit via CSV and re-import</p>
-    <div style="display:flex;gap:6px;flex-wrap:wrap;"><button onclick="ksDrugExportCSV()" style="flex:1;min-width:120px;padding:9px;background:#1a5276;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E5; Export Drugs</button><button onclick="ksCsvExportBrands()" style="flex:1;min-width:120px;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E5; Export Brands</button><button onclick="ksCsvImportBrandsClick()" style="flex:1;min-width:120px;padding:9px;background:#2980b9;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E4; Import Brands</button><button onclick="ksDrugImportCSVClick()" style="flex:1;min-width:120px;padding:9px;background:#8e44ad;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E4; Import Drugs</button></div>
+    <div style="font-size:1.1rem;margin-bottom:4px;font-weight:700;">&#x1F48A; Drug &amp; Brand Database</div>
+    <p style="font-size:0.8rem;color:var(--text-light);margin:0 0 4px;">1232 built-in drugs + 275+ brands with full clinical data: doses, side effects, contraindications, pregnancy categories, elderly cautions</p>
+    <p style="font-size:0.78rem;color:#e67e22;margin:0 0 12px;font-weight:600;">&#x2139; Export CSV &#x2192; Edit in Excel &#x2192; Import back to add your drugs &amp; brands</p>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
+      <button onclick="ksDrugExportCSV()" style="flex:1;min-width:130px;padding:9px;background:#1a5276;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E5; Export Drugs CSV</button>
+      <button onclick="ksBrandExportCSV()" style="flex:1;min-width:130px;padding:9px;background:#27ae60;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E5; Export Brands CSV</button>
+      <button onclick="ksCsvImportBrandsClick()" style="flex:1;min-width:130px;padding:9px;background:#2980b9;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E4; Import Brands CSV</button>
+      <button onclick="ksDrugImportCSVClick()" style="flex:1;min-width:130px;padding:9px;background:#8e44ad;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.82rem;font-weight:600;">&#x1F4E4; Import Drugs CSV</button>
+    </div>
+    <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:7px;padding:8px 12px;font-size:0.75rem;color:#0369a1;">
+      <strong>CSV Columns (Brands):</strong> Brand Name | Generic/Composition | Company | Category | Form | Price | Standard Dose | Side Effects | Contraindications | Special Notes / Prescribing Criteria | Custom (Yes/No)
+    </div>
     <input type="file" id="ks-csv-brand-import" accept=".csv" style="display:none;" onchange="ksCsvImportBrands(this)">
   </div>
 
@@ -5543,7 +5552,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; PRESCRIPTION BUILDER MODAL &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
 <div id="prescription-modal" class="modal-overlay">
-  <div class="modal-box" style="max-width:980px;padding:0;display:flex;flex-direction:column;max-height:92vh;">
+  <div class="modal-box" style="max-width:1180px;padding:0;display:flex;flex-direction:column;max-height:95vh;">
 
     <!-- HEADER -->
     <div style="padding:16px 20px;border-bottom:2px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(135deg,#1e3a8a,#0891b2);border-radius:14px 14px 0 0;flex-shrink:0;">
@@ -9880,37 +9889,99 @@ function showDrugSuggestions(inp) {
   if (!acList) return;
   if (query.length < 2) { acList.classList.remove('show'); return; }
 
-  const matches = DRUG_RAW.filter(dr => {
-    if (!dr[0]) return false;
-    return dr[0].toLowerCase().includes(query);
-  }).slice(0, 10);
+  // Combine built-in drugs + custom drugs + built-in/custom BRANDS for richer suggestions
+  let matches = DRUG_RAW.filter(dr => dr[0] && dr[0].toLowerCase().includes(query));
 
-  if (matches.length === 0) { acList.classList.remove('show'); return; }
+  // Custom drugs
+  try {
+    const customDrugs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]');
+    customDrugs.forEach(d => {
+      if (d.name && d.name.toLowerCase().includes(query)) {
+        matches.push([d.name, d.category||'Custom', d.adultDose||'', d.pedsDose||'', d.pregnancy||'', d.elderlyNote||'', d.contraindications||'']);
+      }
+    });
+  } catch(e) {}
 
-  acList.innerHTML = matches.map((dr, idx) => {
-    const name = dr[0];
-    const cat  = dr[1] || '';
-    const dose = dr[2] ? dr[2].split(';')[0].trim().substring(0,30) : '';
-    const hi = name.replace(new RegExp('('+query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')', 'gi'), '<strong>$1</strong>');
-    return `<div class="drug-ac-item" data-idx="${idx}" data-name="${name.replace(/"/g,'"')}" onmousedown="selectDrugAC(event,'${name.replace(/'/g,"\\'")}','${inp.id}')">
-      ${hi} ${cat ? `<small style="color:#94a3b8;"> — ${cat}</small>` : ''}
-      ${dose ? `<div style="font-size:10px;color:#94a3b8;">${dose}</div>` : ''}
-    </div>`;
-  }).join('');
+  // Brand database (built-in + custom) — shown as brand entries
+  let brandMatches = [];
+  try {
+    if (typeof KSPIDER_BRAND_DB !== 'undefined') {
+      KSPIDER_BRAND_DB.forEach(b => {
+        if (b[0] && (b[0].toLowerCase().includes(query) || (b[1]||'').toLowerCase().includes(query))) {
+          brandMatches.push({brand:b[0], generic:b[1], dose:b[6]||'', price:b[5]||'', cat:b[3]||''});
+        }
+      });
+    }
+    if (typeof KS_BRAND_RX_DB !== 'undefined') {
+      KS_BRAND_RX_DB.forEach(b => {
+        if (b[0] && (b[0].toLowerCase().includes(query) || (b[1]||'').toLowerCase().includes(query))) {
+          brandMatches.push({brand:b[0], generic:b[1], dose:b[4]||'', price:b[5]||'', cat:b[3]||''});
+        }
+      });
+    }
+    const customBrands = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]');
+    customBrands.forEach(b => {
+      if (b.brand && (b.brand.toLowerCase().includes(query) || (b.generic||'').toLowerCase().includes(query))) {
+        brandMatches.push({brand:b.brand, generic:b.generic, dose:b.dose||'', price:b.price||'', cat:b.category||''});
+      }
+    });
+  } catch(e) {}
+
+  if (matches.length === 0 && brandMatches.length === 0) { acList.classList.remove('show'); return; }
+
+  matches = matches.slice(0, 8);
+  brandMatches = brandMatches.slice(0, 6);
+
+  let html = '';
+  if (brandMatches.length) {
+    html += '<div style="padding:4px 10px;font-size:10px;font-weight:800;color:#2563eb;background:#eff6ff;">&#x1F3F7; BRAND NAMES</div>';
+    brandMatches.forEach((b, idx) => {
+      const safeBrand = b.brand.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const safeDose = (b.dose||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      html += '<div class="drug-ac-item" data-idx="b'+idx+'" data-name="'+b.brand.replace(/"/g,'&quot;')+'" onmousedown="selectDrugAC(event,\''+safeBrand+'\',\''+inp.id+'\',\''+safeDose+'\')">'
+        + '<strong>'+b.brand+'</strong> <small style="color:#94a3b8;">'+(b.generic||'')+'</small>'
+        + (b.price ? '<div style="font-size:10px;color:#16a34a;">'+b.price+'</div>' : '')
+        + '</div>';
+    });
+  }
+  if (matches.length) {
+    html += '<div style="padding:4px 10px;font-size:10px;font-weight:800;color:#7c3aed;background:#f5f3ff;">&#x1F9EA; GENERIC DRUGS</div>';
+    matches.forEach((dr, idx) => {
+      const name = dr[0];
+      const cat  = dr[1] || '';
+      const dose = dr[2] ? dr[2].split(';')[0].trim().substring(0,40) : '';
+      const hi = name.replace(new RegExp('('+query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')', 'gi'), '<strong>$1</strong>');
+      const safeName = name.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const safeDose = dose.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      html += '<div class="drug-ac-item" data-idx="'+idx+'" data-name="'+name.replace(/"/g,'&quot;')+'" onmousedown="selectDrugAC(event,\''+safeName+'\',\''+inp.id+'\',\''+safeDose+'\')">'
+        + hi + (cat ? ' <small style="color:#94a3b8;"> &mdash; '+cat+'</small>' : '')
+        + (dose ? '<div style="font-size:10px;color:#94a3b8;">'+dose+'</div>' : '')
+        + '</div>';
+    });
+  }
+  acList.innerHTML = html;
+
+  // Position as fixed overlay so it escapes any overflow:auto/hidden ancestors
+  const rect = inp.getBoundingClientRect();
+  acList.style.position = 'fixed';
+  acList.style.left = rect.left + 'px';
+  acList.style.top = (rect.bottom + 2) + 'px';
+  acList.style.width = Math.max(rect.width, 220) + 'px';
+  acList.style.right = 'auto';
   acList.classList.add('show');
 }
 
-function selectDrugAC(event, name, inputId) {
+function selectDrugAC(event, name, inputId, brandDose) {
   event.preventDefault();
   const inp = document.getElementById(inputId);
   if (!inp) return;
   inp.value = name;
   hideDrugAC(inp);
 
-  // Auto-fill dose from DRUG_DB
+  // Auto-fill dose from DRUG_DB, or use brand-supplied dose if provided
   const drugInfo = DRUG_DB[name] || {};
   const rawEntry = DRUG_RAW ? DRUG_RAW.find(dr => dr[0] === name) : null;
-  const doseVal = drugInfo.adultDose ? drugInfo.adultDose.split(';')[0].trim() : '';
+  const doseVal = (brandDose && brandDose.trim()) ? brandDose.trim() : (drugInfo.adultDose ? drugInfo.adultDose.split(';')[0].trim() : '');
   const tr = inp.closest('tr');
   if (tr && doseVal) {
     const doseInp = tr.querySelectorAll('input')[1]; // dose input
@@ -9926,6 +9997,23 @@ function hideDrugAC(inp) {
   const acList = document.getElementById('ac_' + inp.id);
   if (acList) acList.classList.remove('show');
 }
+// Reposition open dropdown on scroll/resize so it stays anchored to its input
+window.addEventListener('scroll', function() {
+  document.querySelectorAll('.drug-autocomplete-list.show').forEach(function(acList) {
+    var inputId = acList.id.replace(/^ac_/, '');
+    var inp = document.getElementById(inputId);
+    if (!inp) { acList.classList.remove('show'); return; }
+    var rect = inp.getBoundingClientRect();
+    acList.style.left = rect.left + 'px';
+    acList.style.top = (rect.bottom + 2) + 'px';
+    acList.style.width = Math.max(rect.width, 220) + 'px';
+  });
+}, true);
+window.addEventListener('resize', function() {
+  document.querySelectorAll('.drug-autocomplete-list.show').forEach(function(acList) {
+    acList.classList.remove('show');
+  });
+});
 
 function navigateDrugAC(event, inp) {
   const acList = document.getElementById('ac_' + inp.id);
@@ -19544,16 +19632,15 @@ function ksCsvImportBrands(input) {
     const headers = lines[0].split(',').map(function(h){ return h.replace(/"/g,'').trim().toLowerCase(); });
     let customs = [];
     try { customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]'); } catch(e){}
-    let added = 0;
+    let added = 0, updated = 0;
     lines.slice(1).forEach(function(line) {
       const vals = ksCsvParseLine(line);
       const obj = {};
       headers.forEach(function(h,i){ obj[h] = (vals[i]||'').replace(/^"|"$/g,'').trim(); });
       const name = obj['brand name'] || obj['brand'] || '';
       if (!name) return;
-      const isCustom = (obj['custom']||'').toLowerCase() !== 'no';
-      if (!isCustom) return; // Skip built-in ones
-      const existing = customs.findIndex(function(b){ return b.brand===name; });
+      // Allow importing both custom and built-in as custom additions
+      const existing = customs.findIndex(function(b){ return b.brand.toLowerCase()===name.toLowerCase(); });
       const brand = {
         brand: name,
         generic: obj['generic/composition']||obj['generic']||'',
@@ -19561,16 +19648,23 @@ function ksCsvImportBrands(input) {
         category: obj['category']||'Other',
         form: obj['form']||'',
         price: obj['price']||'',
-        dose: obj['usual dose']||obj['dose']||'',
-        notes: obj['clinical notes']||obj['notes']||'',
+        dose: obj['standard dose']||obj['usual dose']||obj['dose']||'',
+        notes: (obj['side effects'] ? 'SE: '+obj['side effects']+'. ' : '') +
+               (obj['contraindications / when not to prescribe'] ? 'CI: '+obj['contraindications / when not to prescribe']+'. ' : '') +
+               (obj['special notes / prescribing criteria']||obj['clinical notes']||obj['notes']||''),
+        sideEffects: obj['side effects']||'',
+        contraindications: obj['contraindications / when not to prescribe']||obj['contraindications']||'',
+        specialNotes: obj['special notes / prescribing criteria']||obj['special notes']||'',
         _custom: true
       };
-      if (existing>=0) customs[existing]=brand;
+      if (existing>=0) { customs[existing]=brand; updated++; }
       else { customs.push(brand); added++; }
     });
     localStorage.setItem('ks_brand_custom_v3', JSON.stringify(customs));
+    // Reset brand map cache
+    if (typeof _ksBrandMap !== 'undefined') { try { _ksBrandMap = null; } catch(e){} }
     if (typeof brandDBInit==='function') brandDBInit();
-    alert('Brand import complete: ' + added + ' custom brands imported.');
+    alert('Brand import complete! Added: ' + added + ', Updated: ' + updated + '.\nThese brands will now appear in prescription autocomplete.');
     input.value = '';
   };
   reader.readAsText(file);
@@ -19943,23 +20037,41 @@ let _ksBrandMap = null;
 function ksGetBrandMap() {
   if (_ksBrandMap) return _ksBrandMap;
   _ksBrandMap = {};
-  KS_BRAND_RX_DB.forEach(function(b) {
-    _ksBrandMap[b[0].toLowerCase()] = {
-      brand: b[0], generic: b[1], company: b[2], form: b[3],
-      dose: b[4], price: b[5], sideEffects: b[6],
-      contraindications: b[7], specialNotes: b[8],
-      _source: 'builtin'
-    };
-  });
-  // Add custom brands from KS_BRAND_CUSTOM
+  // Load KS_BRAND_RX_DB (100+ brands with full clinical data)
+  if (typeof KS_BRAND_RX_DB !== 'undefined') {
+    KS_BRAND_RX_DB.forEach(function(b) {
+      _ksBrandMap[b[0].toLowerCase()] = {
+        brand: b[0], generic: b[1], company: b[2], form: b[3],
+        dose: b[4], price: b[5], sideEffects: b[6],
+        contraindications: b[7], specialNotes: b[8],
+        _source: 'builtin_rx'
+      };
+    });
+  }
+  // Also load KSPIDER_BRAND_DB (brand-db section, 168 more brands)
+  if (typeof KSPIDER_BRAND_DB !== 'undefined') {
+    KSPIDER_BRAND_DB.forEach(function(b) {
+      var key = b[0].toLowerCase();
+      if (!_ksBrandMap[key]) { // Don't override richer KS_BRAND_RX_DB data
+        _ksBrandMap[key] = {
+          brand: b[0], generic: b[1], company: b[2], form: b[4],
+          dose: b[6], price: b[5], sideEffects: '',
+          contraindications: '', specialNotes: b[7] || '',
+          _source: 'builtin_brand'
+        };
+      }
+    });
+  }
+  // Add custom brands
   try {
     var customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]');
     customs.forEach(function(b) {
       _ksBrandMap[b.brand.toLowerCase()] = {
-        brand: b.brand, generic: b.generic, company: b.company,
-        form: b.form, dose: b.dose, price: b.price,
-        sideEffects: b.notes || '', contraindications: '',
-        specialNotes: '', _source: 'custom'
+        brand: b.brand, generic: b.generic || '', company: b.company || '',
+        form: b.form || '', dose: b.dose || '', price: b.price || '',
+        sideEffects: b.sideEffects || b.notes || '',
+        contraindications: b.contraindications || '',
+        specialNotes: b.specialNotes || '', _source: 'custom'
       };
     });
   } catch(e) {}
@@ -20414,40 +20526,59 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // ── CSV EXPORT for Drug DB ──────────────────────────────────────────
 window.ksDrugExportCSV = function() {
-  var rows = [['Drug Name','Category','Adult Dose','Paediatric Dose','Pregnancy Category','Elderly Notes','Contraindications','Source']];
+  var rows = [['Drug Name','Category','Adult Dose','Paediatric Dose','Pregnancy Category (A/B/C/D/X)','Elderly Notes / Cautions','Contraindications / When NOT to Prescribe','Source']];
   if (typeof DRUG_RAW !== 'undefined') {
     DRUG_RAW.forEach(function(d) {
       rows.push([d[0],d[1],d[2],d[3],d[4],d[5],d[6],'Built-in']);
     });
   }
+  // Add custom drugs
   try {
     var customs = JSON.parse(localStorage.getItem('ks_custom_drugs_v1') || '[]');
     customs.forEach(function(d) {
-      rows.push([d.name,d.category,d.adultDose,d.pedsDose,d.pregnancy,d.elderlyNote,d.contraindications,'Custom']);
+      rows.push([d.name||'',d.category||'',d.adultDose||'',d.pedsDose||'',d.pregnancy||'',d.elderlyNote||'',d.contraindications||'','Custom']);
     });
   } catch(e) {}
-  if (typeof ksDownloadCSV === 'function') ksDownloadCSV(rows, 'KSpider_DrugDB_' + new Date().toISOString().slice(0,10) + '.csv');
-  if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' drugs');
+  if (typeof ksDownloadCSV === 'function') {
+    ksDownloadCSV(rows, 'KSpider_Drug_Database_' + new Date().toISOString().slice(0,10) + '.csv');
+  }
+  if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' drugs to CSV');
 };
 
 // ── CSV EXPORT for Brand DB ─────────────────────────────────────────
 window.ksBrandExportCSV = function() {
-  var rows = [['Brand Name','Generic','Company','Form','Standard Dose','Price','Side Effects','Contraindications','Special Notes','Source']];
-  KS_BRAND_RX_DB.forEach(function(b) {
-    rows.push([b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7],b[8],'Built-in']);
-  });
+  // Unified CSV with all clinical data columns for prescription decision support
+  var rows = [['Brand Name','Generic/Composition','Company','Category','Form','Price','Standard Dose','Side Effects','Contraindications / When NOT to Prescribe','Special Notes / Prescribing Criteria','Custom']];
+  // Built-in KS_BRAND_RX_DB (100+ with full clinical data)
+  if (typeof KS_BRAND_RX_DB !== 'undefined') {
+    KS_BRAND_RX_DB.forEach(function(b) {
+      rows.push([b[0],b[1],b[2],'',b[3],b[5],b[4],b[6],b[7],b[8],'No']);
+    });
+  }
+  // Built-in KSPIDER_BRAND_DB (brand-db section data)
+  if (typeof KSPIDER_BRAND_DB !== 'undefined') {
+    KSPIDER_BRAND_DB.forEach(function(b) {
+      // Skip if already in KS_BRAND_RX_DB
+      var exists = typeof KS_BRAND_RX_DB !== 'undefined' && KS_BRAND_RX_DB.some(function(r){ return r[0].toLowerCase()===b[0].toLowerCase(); });
+      if (!exists) rows.push([b[0],b[1],b[2],b[3],b[4],b[5],b[6],b[7]||'','','','No']);
+    });
+  }
+  // Custom brands
   try {
     var customs = JSON.parse(localStorage.getItem('ks_brand_custom_v3') || '[]');
     customs.forEach(function(b) {
-      rows.push([b.brand,b.generic,b.company,b.form||'',b.dose||'',b.price||'',b.notes||'','','','Custom']);
+      rows.push([b.brand,b.generic||'',b.company||'',b.category||'',b.form||'',b.price||'',b.dose||'',b.sideEffects||'',b.contraindications||'',b.specialNotes||b.notes||'','Yes']);
     });
   } catch(e) {}
-  if (typeof ksDownloadCSV === 'function') ksDownloadCSV(rows, 'KSpider_BrandDB_' + new Date().toISOString().slice(0,10) + '.csv');
-  if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' brands');
+  if (typeof ksDownloadCSV === 'function') {
+    ksDownloadCSV(rows, 'KSpider_Brand_Database_' + new Date().toISOString().slice(0,10) + '.csv');
+  }
+  if (typeof showToast === 'function') showToast('Exported ' + (rows.length-1) + ' brands to CSV');
 };
 
 // Also alias
 window.ksCsvExportBrands = window.ksBrandExportCSV;
+window.csCsvExportBrands = window.ksBrandExportCSV;
 
 </script>
 
