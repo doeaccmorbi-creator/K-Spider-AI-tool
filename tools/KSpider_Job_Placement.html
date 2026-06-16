@@ -3172,6 +3172,8 @@ Frontend Intern | TechNova | June–Aug 2023
       <!-- DPDP Compliance -->
       <div style="background:var(--gl);border-radius:var(--rs);padding:9px;margin-bottom:12px;font-size:11px;color:var(--green);">🛡️ DPDP Act 2023 Compliant — Your data is shared only with the hiring company. Files stored as Base64 text (max 20 KB).</div>
       <button class="bprim" id="submitAppBtn" onclick="submitApp()">🚀 Submit Application</button>
+      <!-- v13: WhatsApp Direct Apply — only shown if recruiter enabled a WhatsApp number for this job -->
+      <button class="bprim" id="submitAppWaBtn" onclick="submitApp('whatsapp')" style="display:none;background:#25D366;border-color:#25D366;margin-top:8px;">💬 Submit & Apply via WhatsApp</button>
       <p style="font-size:10px;color:var(--t3);text-align:center;margin-top:8px;">KSpider Connect · <span style="color:var(--primary);cursor:pointer;" onclick="showModal('privacyModal')">Privacy Policy</span></p>
     </div>
   </div>
@@ -3204,7 +3206,12 @@ Frontend Intern | TechNova | June–Aug 2023
     <div class="mbd">
       <div class="fg"><label class="fl">Display Name</label><input type="text" class="fc" id="ename" placeholder="Your full name"></div>
       <div class="fg"><label class="fl">Headline</label><input type="text" class="fc" id="ehl" placeholder="e.g. React Developer · Open to Work"></div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Contact Number * <span style="color:var(--red);font-size:10px;">(Required)</span></label><input type="tel" class="fc" id="ephone" placeholder="+91 98765 43210" required></div>
+        <div class="fg"><label class="fl">City Pin Code * <span style="color:var(--red);font-size:10px;">(Required)</span></label><input type="text" class="fc" id="epin" placeholder="e.g. 390001" maxlength="6" pattern="[0-9]{6}" required></div>
+      </div>
       <div class="fg"><label class="fl">Location</label><input type="text" class="fc" id="eloc" placeholder="e.g. Ahmedabad, Gujarat"></div>
+      <div style="font-size:10px;color:var(--t3);margin:-8px 0 10px;">📍 Pin Code is used for "Near Me" — jobs &amp; posts near your area will be shown automatically.</div>
       <div class="fg"><label class="fl">About / Bio</label><textarea class="fc" rows="3" id="eabout" placeholder="Tell us about yourself…"></textarea></div>
       <div class="fg"><label class="fl">Skills (comma separated)</label><input type="text" class="fc" id="eskills" placeholder="React.js, Firebase, Python, AI/ML"></div>
       <div class="fg"><label class="fl">Website</label><input type="url" class="fc" id="eweb" placeholder="https://kspiderai.in"></div>
@@ -3829,6 +3836,8 @@ function updateUI(){
   $('ename').value=nm;$('ehl').value=hl;$('eloc').value=_up.location||'';
   $('eabout').value=_up.about||'';$('eskills').value=_up.skills||'';
   $('eweb').value=_up.website||'';$('ephoto').value=_up.photoURL||'';
+  if($('ephone')) $('ephone').value=_up.phone||'';
+  if($('epin')) $('epin').value=_up.cityPin||'';
   // Analytics
   $('anJobs').textContent=_up.jobs||0;
 }
@@ -3860,6 +3869,46 @@ function inFeedAd(){
 let _feedUnsub=null;   // unsubscribe handle
 let _feedLoading=false,_feedDone=false,_feedLastDoc=null;
 const FEED_PAGE_SIZE=12;
+
+// v13: Feed Tab filtering — categorize posts so All/Jobs/Social/News/Events
+// tabs actually filter the visible feed (previously these were toast-only).
+var _feedCache=[];        // all posts loaded so far, newest first
+var _feedFilter='all';    // current active tab
+var _feedMode='seeker';   // current Home Feed mode (seeker/recruiter)
+
+function postCategory(p){
+  var tags=(p.hashtags||'').toLowerCase();
+  var txt=(p.text||'').toLowerCase();
+  if(p.userRole==='recruiter' || /\b(hiring|job|vacancy|recruit|opening)\b/.test(tags) || /\b(hiring|vacancy|we're hiring|job opening)\b/.test(txt)) return 'jobs';
+  if(/\b(news|update|announcement|launch)\b/.test(tags)) return 'news';
+  if(/\b(event|webinar|workshop|meetup|seminar|conference)\b/.test(tags)) return 'events';
+  return 'social';
+}
+
+function renderFeedFiltered(){
+  var box=$('feedBox');
+  if(!box) return;
+  var list=_feedFilter==='all'?_feedCache:_feedCache.filter(function(p){return postCategory(p)===_feedFilter;});
+  // Remove load-more button while re-rendering filtered view
+  var oldBtn=document.getElementById('feedLoadMoreBtn');
+  if(oldBtn) oldBtn.remove();
+  if(!list.length){
+    box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px;">'+
+      (_feedFilter==='all'?'No posts yet. Be the first to share!':'No '+_feedFilter+' posts yet. Try a different tab.')+
+      '</div>';
+    return;
+  }
+  box.innerHTML='';
+  var cnt=0;
+  list.forEach(function(post){
+    if(_userGeo&&post.geoLat&&post.geoLng){
+      post._nearbyKm=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
+    }
+    box.insertAdjacentHTML('beforeend',renderPost(post));
+    cnt++;
+    if(_feedFilter==='all'&&cnt%3===0) box.appendChild(inFeedAd());
+  });
+}
 
 async function loadFeed(reset=true){
   const box=$('feedBox');
@@ -3907,24 +3956,29 @@ async function loadFeed(reset=true){
       // If this is the first load (box had spinner/demo), render all
       const isFirstLoad=!box.querySelector('.pc[data-id]');
       if(isFirstLoad){
-        box.innerHTML='';
+        _feedCache=[]; // v13: rebuild cache on fresh load
         let cnt=0;
         snap.forEach(d=>{
           const post={id:d.id,...d.data()};
           if(_userGeo&&post.geoLat&&post.geoLng){
             post._nearbyKm=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
           }
-          box.insertAdjacentHTML('beforeend',renderPost(post));
+          _feedCache.push(post);
           cnt++;
-          if(cnt%3===0) box.appendChild(inFeedAd());
         });
+        // v13: render through filter (handles 'all' too — same as before)
+        renderFeedFiltered();
       } else if(newDocs.length>0){
-        // Prepend only truly new posts
+        // v13: prepend new posts to cache too
+        newDocs.slice().reverse().forEach(post=>{_feedCache.unshift(post);});
+        // Prepend only truly new posts (if they match current filter)
         newDocs.reverse().forEach(post=>{
           if(_userGeo&&post.geoLat&&post.geoLng){
             post._nearbyKm=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
           }
-          box.insertAdjacentHTML('afterbegin',renderPost(post));
+          if(_feedFilter==='all'||postCategory(post)===_feedFilter){
+            box.insertAdjacentHTML('afterbegin',renderPost(post));
+          }
         });
       }
 
@@ -4159,8 +4213,7 @@ function renderJobCard(j){
       ${sks?`<div class="sktgs" style="margin-bottom:8px;">${sks}</div>`:''}
       ${desc?`<div style="font-size:12px;color:var(--t2);margin-bottom:10px;line-height:1.6;">${desc}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="bap" onclick="openApply('${t}','${co}','${sal}','${exp}','${typ}','${jId}','${rId}')">⚡ Easy Apply</button>
-        ${j.whatsappApply?`<button class="bap" style="background:#25D366;border-color:#25D366;" onclick="applyViaWhatsApp('${jId}','${t}','${co}','${loc}','${validateInput(j.whatsappApply)}')">💬 WhatsApp Apply</button>`:''}
+        <button class="bap" onclick="openApply('${t}','${co}','${sal}','${exp}','${typ}','${jId}','${rId}','${validateInput(j.whatsappApply||'')}')">⚡ Easy Apply</button>
         <button class="bsv" onclick="saveJob(this,'${jId}')" title="Save Job">🔖</button>
         <button class="bsv" onclick="shareJob('${t}','${co}','${loc}','${jId}')" title="Share" style="font-size:14px;">📤</button>
       </div>
@@ -4794,31 +4847,42 @@ function showBoostNudge(jobTitle){
 }
 
 // ══════════════════════════════════════
-// WHATSAPP DIRECT APPLY — Task #3
-// Opens WhatsApp with a pre-filled professional application message
+// WHATSAPP DIRECT APPLY — Task #3 (v13: now inside Easy Apply flow)
+// Opens WhatsApp with a pre-filled professional application message.
+// If appData (from submitApp) is provided, uses those full details —
+// otherwise falls back to profile data.
 // ══════════════════════════════════════
-async function applyViaWhatsApp(jobId,jobTitle,company,location,waNumber){
+async function applyViaWhatsApp(jobId,jobTitle,company,location,waNumber,appData){
   if(!waNumber) return showToast('⚠️ WhatsApp number not available for this job.');
 
   // Clean WhatsApp number: strip spaces/dashes, keep leading +
   var cleanNum=waNumber.replace(/[^\d+]/g,'').replace(/^\+/,'');
   if(!cleanNum) return showToast('⚠️ Invalid WhatsApp number.');
 
-  // Build applicant details from profile if logged in
-  var name=(_up&&_up.name)||(_user&&_user.displayName)||'';
-  var mobile=(_up&&_up.phone)||'';
-  var email=(_user&&_user.email)||(_up&&_up.email)||'';
-  var skills=(_up&&_up.skills)||'';
-  var experience=(_up&&_up.experience)||'';
-  var education=(_up&&(_up.qualification||_up.education))||'';
-  var profileLink='https://kspiderai.in/tools/KSpider_Job_Placement.html';
-  var resumeLink=(_up&&_up.resumeLink)||'';
-
-  // If profile fields are empty, prompt user for minimal details (non-blocking, optional)
-  if(!name){
-    var entered=prompt('Your Name (for WhatsApp application):');
-    if(entered) name=entered.trim();
+  // v13: Prefer full application form data (from Easy Apply submission)
+  var name, mobile, email, skills, experience, education, resumeLink;
+  if(appData){
+    name=appData.applicantName||'';
+    mobile=appData.applicantPhone||'';
+    email=appData.applicantEmail||'';
+    skills=appData.skills||'';
+    experience=appData.experience||'';
+    education=appData.qualification||'';
+    resumeLink=appData.resumeFileName?('Attached on KSpider Connect ('+appData.resumeFileName+')'):'';
+  } else {
+    name=(_up&&_up.name)||(_user&&_user.displayName)||'';
+    mobile=(_up&&_up.phone)||'';
+    email=(_user&&_user.email)||(_up&&_up.email)||'';
+    skills=(_up&&_up.skills)||'';
+    experience=(_up&&_up.experience)||'';
+    education=(_up&&(_up.qualification||_up.education))||'';
+    resumeLink=(_up&&_up.resumeLink)||'';
+    if(!name){
+      var entered=prompt('Your Name (for WhatsApp application):');
+      if(entered) name=entered.trim();
+    }
   }
+  var profileLink='https://kspiderai.in/tools/KSpider_Job_Placement.html';
 
   // ── Build professional message exactly per master template ──
   var lines=[];
@@ -5063,7 +5127,7 @@ function handleAppFile(event, type){
   else reader.readAsDataURL(file);
 }
 
-function openApply(title,company,salary,exp,type,jobId,recruiterId){
+function openApply(title,company,salary,exp,type,jobId,recruiterId,waNumber){
   // Store ALL job info including jobId and recruiterId for notification
   $('ajt').textContent=validateInput(title||'');
   $('ajc').textContent=validateInput(company||'');
@@ -5077,6 +5141,11 @@ function openApply(title,company,salary,exp,type,jobId,recruiterId){
   modal.dataset.recruiterId=recruiterId||'';
   modal.dataset.jobTitle=title||'';
   modal.dataset.jobCompany=company||'';
+  modal.dataset.jobLocation=$('aloc')?$('aloc').value:'';
+  modal.dataset.whatsappApply=waNumber||'';  // v13: WhatsApp Direct Apply number
+  // v13: show "Submit & Apply via WhatsApp" only if recruiter set a number
+  var waBtn=$('submitAppWaBtn');
+  if(waBtn) waBtn.style.display=waNumber?'block':'none';
   // Pre-fill from user profile
   if(_up){
     $('aname').value=_up.name||'';
@@ -5094,15 +5163,16 @@ function openApply(title,company,salary,exp,type,jobId,recruiterId){
   showModal('applyModal');
 }
 
-async function submitApp(){
+async function submitApp(mode){
   const nm=$('aname').value.trim();
   const em=$('aemail').value.trim();
   const ph=$('aphone').value.trim();
   if(!nm) return showToast('⚠️ Full name required!');
   if(!em||!/^[^@]+@[^@]+\.[^@]+$/.test(em)) return showToast('⚠️ Valid email required!');
+  if(!ph) return showToast('⚠️ Phone number required!');
 
-  const btn=$('submitAppBtn');
-  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  const btn=mode==='whatsapp'?$('submitAppWaBtn'):$('submitAppBtn');
+  if(btn){btn.disabled=true;btn.textContent=mode==='whatsapp'?'Submitting…':'Submitting…';}
 
   const nowMs=Date.now();
   const appData={
@@ -5250,8 +5320,28 @@ async function submitApp(){
 
     // ── REAL-TIME NOTIFICATION BELL UPDATE ──
     updateNotifBell(true);
+
+    // v13: If user chose "Submit & Apply via WhatsApp", open WhatsApp now
+    // with full applicant + job details, AFTER the application is saved.
+    const _applyModal=$('applyModal');
     closeModal('applyModal');
-    showToast('🎉 Application submitted! Recruiter has been notified 📬');
+
+    if(mode==='whatsapp'){
+      const waNum=_applyModal.dataset.whatsappApply||'';
+      if(waNum){
+        await applyViaWhatsApp(
+          _applyModal.dataset.jobId||'',
+          appData.jobTitle,
+          appData.company,
+          _applyModal.dataset.jobLocation||'',
+          waNum,
+          appData // pass full applicant data so WhatsApp message is pre-filled
+        );
+      }
+      showToast('🎉 Application submitted! Opening WhatsApp…');
+    } else {
+      showToast('🎉 Application submitted! Recruiter has been notified 📬');
+    }
 
     // Clear form
     ['aname','aemail','aphone','aloc','alinkedin','aportfolio',
@@ -5262,7 +5352,7 @@ async function submitApp(){
     showToast('⚠️ Submit failed: '+e.message);
     console.warn('submitApp error:',e);
   }finally{
-    if(btn){btn.disabled=false;btn.textContent='🚀 Submit Application';}
+    if(btn){btn.disabled=false;btn.textContent=mode==='whatsapp'?'💬 Submit & Apply via WhatsApp':'🚀 Submit Application';}
   }
 }
 
@@ -5840,6 +5930,18 @@ document.addEventListener('DOMContentLoaded',function(){
   // Build translate selector in header
   buildTranslateUI();
 
+  // v13: Restore Home Feed mode (Job Seeker / Recruiter) from last session
+  try{
+    var savedMode=localStorage.getItem('ks_feed_mode');
+    if(savedMode==='seeker'||savedMode==='recruiter'){
+      _feedMode=savedMode;
+      var mEl=document.getElementById(savedMode==='seeker'?'mseeker':'mrec');
+      if(mEl) mEl.classList.add('act');
+      var otherEl=document.getElementById(savedMode==='seeker'?'mrec':'mseeker');
+      if(otherEl) otherEl.classList.remove('act');
+    }
+  }catch(e){}
+
   // Add ⚙️ API Settings link to profile dropdown
   var pdp=document.querySelector('.pdp');
   if(pdp){
@@ -5869,11 +5971,20 @@ document.addEventListener('DOMContentLoaded',function(){
 // ══════════════════════════════════════
 async function saveProfile(){
   if(!window._fb||!_user){showToast('⚠️ Configure Firebase!');return;}
-  const up={name:$('ename').value.trim(),headline:$('ehl').value.trim(),location:$('eloc').value.trim(),about:$('eabout').value.trim(),skills:$('eskills').value.trim(),website:$('eweb').value.trim(),photoURL:$('ephoto').value.trim()};
+  const phone=$('ephone')?$('ephone').value.trim():'';
+  const cityPin=$('epin')?$('epin').value.trim():'';
+  // v13: Contact Number + City Pin Code are compulsory
+  if(!phone) return showToast('⚠️ Contact Number is required!');
+  if(!cityPin||!/^\d{4,6}$/.test(cityPin)) return showToast('⚠️ Valid City Pin Code is required!');
+  const up={name:$('ename').value.trim(),headline:$('ehl').value.trim(),location:$('eloc').value.trim(),about:$('eabout').value.trim(),skills:$('eskills').value.trim(),website:$('eweb').value.trim(),photoURL:$('ephoto').value.trim(),phone:phone,cityPin:cityPin};
   try{
     await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),up);
     await window._fb.updateProfile(_user,{displayName:up.name,photoURL:up.photoURL||null});
     _up={..._up,...up};updateUI();closeModal('editProfileModal');showToast('✅ Profile updated!');
+    // v13: Reload feed/jobs so Near Me (pin-code based) reflects new location
+    if(typeof initGeo==='function') initGeo();
+    if(typeof loadFeed==='function') loadFeed(true);
+    if(typeof loadJobs==='function') loadJobs();
   }catch(e){showToast('⚠️ '+e.message);}
 }
 
@@ -5936,8 +6047,46 @@ function showPage(pg,btn){
   if(btn)btn.classList.add('act');
   closeDrop();window.scrollTo({top:0,behavior:'smooth'});
 }
-function feedTab(btn,type){document.querySelectorAll('.ftb').forEach(b=>b.classList.remove('act'));btn.classList.add('act');const m={all:'🌐 All posts',jobs:'💼 Jobs only',social:'📱 Social',news:'📰 Industry news',events:'🎪 Events'};showToast(m[type]||'Loading…');}
-function toggleMode(m){$('mseeker').classList.toggle('act',m==='seeker');$('mrec').classList.toggle('act',m==='recruiter');showToast(m==='seeker'?'🔍 Job Seeker mode!':'🏢 Recruiter mode activated!');}
+// v13: feedTab now actually FILTERS the feed (was toast-only before)
+function feedTab(btn,type){
+  document.querySelectorAll('.ftb').forEach(b=>b.classList.remove('act'));
+  btn.classList.add('act');
+  _feedFilter=type;
+  renderFeedFiltered();
+  const m={all:'🌐 Showing all posts',jobs:'💼 Showing job posts',social:'📱 Showing social posts',news:'📰 Showing news & updates',events:'🎪 Showing events'};
+  showToast(m[type]||'Loading…');
+}
+
+// v13: toggleMode now persists the user's role + applies a real feed effect
+// (Job Seeker mode → shows Jobs tab by default; Recruiter mode → shows All
+// and highlights Post Job). Existing UI toggle visuals unchanged.
+function toggleMode(m){
+  $('mseeker').classList.toggle('act',m==='seeker');
+  $('mrec').classList.toggle('act',m==='recruiter');
+  _feedMode=m;
+  try{localStorage.setItem('ks_feed_mode',m);}catch(e){}
+
+  // Persist role to profile if logged in (non-blocking)
+  if(window._fb&&_user){
+    var newRole=(m==='seeker')?'jobseeker':'recruiter';
+    if(_up&&_up.role!==newRole){
+      _up.role=newRole;
+      window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{role:newRole}).catch(function(){});
+    }
+  }
+
+  // Real effect on the feed: seeker → Jobs tab; recruiter → All tab
+  var targetTab=(m==='seeker')?'jobs':'all';
+  var tabBtns=document.querySelectorAll('.ftb');
+  tabBtns.forEach(function(b){
+    var label=(b.textContent||'').toLowerCase();
+    var match=(targetTab==='jobs')?label.indexOf('jobs')!==-1:label.indexOf('all')!==-1;
+    if(match){ b.click(); }
+  });
+
+  showToast(m==='seeker'?'🔍 Job Seeker mode — showing relevant jobs!':'🏢 Recruiter mode — post jobs to reach seekers!');
+}
+
 function doSearch(){const q=$('searchInput').value.trim();if(q)showToast(`🔍 Searching: "${q}"…`);}
 function timeAgo(d){const now=new Date(),diff=Math.floor((now-d)/1000);if(diff<60)return'Just now';if(diff<3600)return Math.floor(diff/60)+'m ago';if(diff<86400)return Math.floor(diff/3600)+'h ago';return Math.floor(diff/86400)+'d ago';}
 
