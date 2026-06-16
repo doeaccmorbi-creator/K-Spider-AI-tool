@@ -805,6 +805,24 @@ body{
 @media(prefers-reduced-motion:reduce){
   *{animation:none!important;transition:none!important}
 }
+
+/* ── PROMPT CHECKBOX PANEL ── */
+#ksPromptCheckboxes{
+  scrollbar-width:thin;
+  scrollbar-color:var(--accent) var(--bg-panel);
+}
+#ksPromptCheckboxes::-webkit-scrollbar{width:4px}
+#ksPromptCheckboxes::-webkit-scrollbar-thumb{background:var(--accent);border-radius:4px}
+#ksPromptCheckboxes label:has(input:checked){
+  background:rgba(0,212,255,.07)!important;
+  border-color:var(--accent2)!important;
+}
+.ks-options-grid{
+  max-height:220px;
+  overflow-y:auto;
+  scrollbar-width:thin;
+  scrollbar-color:var(--accent) var(--bg-panel);
+}
 </style>
 </head>
 <body>
@@ -857,53 +875,24 @@ body{
 
     <!-- Sheet Loader -->
     <div class="ks-card" id="ksSheetCard">
-      <div class="ks-card-title"><span class="icon">📊</span> Select Data Source</div>
+      <div class="ks-card-title"><span class="icon">📊</span> Select Dataset</div>
       <div class="ks-sheet-input">
-
-        <!-- ── INBUILT SHEETS DROPDOWN ── -->
-        <label class="ks-label" for="ksInbuiltSheet">📂 Inbuilt Datasets</label>
+        <label class="ks-label" for="ksInbuiltSheet">📂 Choose a Dataset</label>
         <select class="ks-input ks-select" id="ksInbuiltSheet">
-          <option value="">— Choose a Dataset —</option>
-          <optgroup label="🎵 Music">
-            <option value="https://docs.google.com/spreadsheets/d/e/2PACX-1vTlzkFp78TUjzWOD1CETiLfMOfELrCkjXak6jbGFPDzivbyeIfYtgRWIvwtc79VBXoK7FlZMccpgI6j/pub?gid=1171160466&single=true&output=csv" data-title="🎵 Bollywood Songs (400+)">🎵 Bollywood Songs (400+)</option>
-          </optgroup>
-          <optgroup label="➕ More Coming Soon" id="ksMoreSheetsGroup">
-            <option value="" disabled>📌 Send your sheet link to add more</option>
-          </optgroup>
+          <option value="">— Select Dataset —</option>
         </select>
         <button class="ks-btn ks-btn-primary" id="ksLoadInbuilt" style="width:100%">
-          ⚡ Load Selected Dataset
+          ⚡ Load Dataset
         </button>
-
-        <!-- Divider -->
-        <div style="display:flex;align-items:center;gap:8px;margin:4px 0">
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-          <span style="font-size:11px;color:var(--text-3);white-space:nowrap">OR paste your own sheet</span>
-          <div style="flex:1;height:1px;background:var(--border)"></div>
-        </div>
-
-        <!-- Custom URL -->
-        <label class="ks-label" for="ksSheetUrl">Your Google Sheet CSV URL</label>
-        <input
-          class="ks-input"
-          id="ksSheetUrl"
-          type="url"
-          placeholder="https://docs.google.com/spreadsheets/d/..."
-          autocomplete="off"
-          spellcheck="false"
-        >
-        <small style="font-size:11px;color:var(--text-3)">📌 Sheet → File → Share → Anyone with link (Viewer) → Publish as CSV</small>
-        <button class="ks-btn ks-btn-secondary" id="ksLoadSheet" style="width:100%">
-          <span>🔗</span> Load Custom Sheet
-        </button>
-
         <div id="ksSheetStatus" style="display:none"></div>
         <div id="ksProgress" class="ks-progress" style="display:none">
           <div class="ks-progress-bar" id="ksProgressBar" style="width:0%"></div>
         </div>
       </div>
-      <!-- Hidden legacy demo button kept for backward compat -->
-      <button id="ksLoadDemo" style="display:none">Load Demo</button>
+      <!-- Hidden compat stubs -->
+      <input id="ksSheetUrl" type="hidden">
+      <button id="ksLoadSheet" style="display:none">x</button>
+      <button id="ksLoadDemo" style="display:none">x</button>
     </div>
 
     <!-- Column Mapping -->
@@ -941,52 +930,170 @@ body{
 
     <!-- Prompt Style Options -->
     <div class="ks-card">
-      <div class="ks-card-title"><span class="icon">🎨</span> Prompt Style</div>
-      <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="ks-card-title"><span class="icon">🎨</span> Prompt Style Options</div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+
+        <!-- TONE -->
         <div>
-          <label class="ks-label">Tone</label>
-          <div class="ks-options-grid" id="ksToneOptions">
-            <div class="ks-option-chip selected-orange" data-group="tone" data-value="Inspirational">✨ Inspire</div>
-            <div class="ks-option-chip" data-group="tone" data-value="Funny">😂 Funny</div>
-            <div class="ks-option-chip" data-group="tone" data-value="Emotional">💫 Emotional</div>
-            <div class="ks-option-chip" data-group="tone" data-value="Educational">📚 Edu</div>
-            <div class="ks-option-chip" data-group="tone" data-value="Business">💼 Business</div>
-            <div class="ks-option-chip" data-group="tone" data-value="Cinematic">🎬 Cinematic</div>
+          <label class="ks-label">🎭 Tone</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksToneOptions">
+            <div class="ks-option-chip selected-orange" data-group="tone" data-value="Inspirational and uplifting">✨ Inspire</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Funny and humorous">😂 Funny</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Deeply emotional and heartfelt">💫 Emotional</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Educational and informative">📚 Edu</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Professional business">💼 Business</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Cinematic and epic">🎬 Cinematic</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Romantic and passionate">💖 Romantic</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Patriotic and proud">🇮🇳 Patriotic</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Dark and mysterious">🌑 Dark</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Playful and quirky">🎪 Playful</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Luxury and premium">💎 Luxury</div>
+            <div class="ks-option-chip" data-group="tone" data-value="Spiritual and devotional">🙏 Spiritual</div>
           </div>
         </div>
+
+        <!-- BACKGROUND / SETTING -->
         <div>
-          <label class="ks-label">Background Style</label>
-          <div class="ks-options-grid" id="ksBgOptions">
-            <div class="ks-option-chip selected" data-group="bg" data-value="Natural outdoor landscape">🌿 Nature</div>
-            <div class="ks-option-chip" data-group="bg" data-value="Professional studio with bokeh">🎙️ Studio</div>
-            <div class="ks-option-chip" data-group="bg" data-value="Abstract colorful gradient">🎨 Abstract</div>
-            <div class="ks-option-chip" data-group="bg" data-value="Vintage cinematic film grain">🎞️ Vintage</div>
-            <div class="ks-option-chip" data-group="bg" data-value="Minimal clean white space">⬜ Minimal</div>
-            <div class="ks-option-chip" data-group="bg" data-value="Neon cyberpunk city at night">🌃 Neon</div>
+          <label class="ks-label">🌅 Background / Setting</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksBgOptions">
+            <div class="ks-option-chip selected" data-group="bg" data-value="Natural outdoor lush green landscape with golden hour sunlight">🌿 Nature</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Professional photography studio with soft bokeh and grey backdrop">🎙️ Studio</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Abstract colourful gradient with light leaks and bokeh orbs">🎨 Abstract</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Vintage 35mm film grain cinematic aesthetic with warm tones">🎞️ Vintage</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Clean minimal white space with sharp shadows">⬜ Minimal</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Neon cyberpunk city at night with rain reflections on wet streets">🌃 Neon City</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Majestic Himalayan mountain peaks with snow and dramatic clouds">🏔️ Mountains</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Ornate Indian palace interior with arches, candles and marigolds">🕌 Palace</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Deep outer space nebula with stars and galaxies">🌌 Space</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Tropical beach sunset with orange sky and calm ocean waves">🏖️ Beach</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Dense misty forest with god-rays of light filtering through trees">🌲 Forest</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Busy Indian street market with colourful stalls and crowd">🛕 Bazaar</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Futuristic holographic digital environment with glowing grids">🔮 Futuristic</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Underwater ocean world with light rays and sea creatures">🌊 Underwater</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Desert sand dunes at golden sunset with dramatic shadows">🏜️ Desert</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Old European cobblestone street with vintage lamps and ivy walls">🏛️ European</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Lush Bollywood film set with grand staircase and curtains">🎭 Film Set</div>
+            <div class="ks-option-chip" data-group="bg" data-value="Moody rainy day urban city with umbrella and reflections">🌧️ Rainy City</div>
           </div>
         </div>
+
+        <!-- ART STYLE / RENDER -->
         <div>
-          <label class="ks-label">Human in Image</label>
-          <div class="ks-options-grid" id="ksHumanOptions">
-            <div class="ks-option-chip selected" data-group="human" data-value="No humans, object and typography only">🚫 None</div>
-            <div class="ks-option-chip" data-group="human" data-value="1 Indian male, 25-35 years old, expressive">👨 1 Male</div>
-            <div class="ks-option-chip" data-group="human" data-value="1 Indian female, 25-35 years old, expressive">👩 1 Female</div>
-            <div class="ks-option-chip" data-group="human" data-value="Indian couple, romantic expression">💑 Couple</div>
-            <div class="ks-option-chip" data-group="human" data-value="Group of 3-4 Indian young adults, joyful">👫 Group</div>
-            <div class="ks-option-chip" data-group="human" data-value="Silhouette of person, dramatic lighting">🌑 Silhouette</div>
+          <label class="ks-label">🖌️ Art Style / Render Type</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksArtOptions">
+            <div class="ks-option-chip selected" data-group="art" data-value="Photorealistic ultra-detailed 8K photography">📷 Photo Real</div>
+            <div class="ks-option-chip" data-group="art" data-value="Full 3D CGI render, Unreal Engine 5, physically-based rendering, subsurface scattering">🎮 3D CGI</div>
+            <div class="ks-option-chip" data-group="art" data-value="2D animated cartoon style, vibrant flat colours, Disney-Pixar inspired">🎠 Animated 2D</div>
+            <div class="ks-option-chip" data-group="art" data-value="3D animated film style, Pixar/DreamWorks quality, smooth shading">🎬 3D Animated</div>
+            <div class="ks-option-chip" data-group="art" data-value="Watercolour painting with soft brushstrokes and paper texture">🎨 Watercolour</div>
+            <div class="ks-option-chip" data-group="art" data-value="Oil painting masterpiece in renaissance style with rich textures">🖼️ Oil Paint</div>
+            <div class="ks-option-chip" data-group="art" data-value="Comic book / graphic novel style with bold outlines and halftone dots">💥 Comic Book</div>
+            <div class="ks-option-chip" data-group="art" data-value="Anime / Manga illustration style, Japanese animation aesthetic">⛩️ Anime</div>
+            <div class="ks-option-chip" data-group="art" data-value="Minimalist vector flat design with geometric shapes and solid colours">◼ Flat Vector</div>
+            <div class="ks-option-chip" data-group="art" data-value="Isometric 3D illustration with clean lines and bold colours">📐 Isometric</div>
+            <div class="ks-option-chip" data-group="art" data-value="Pencil sketch / charcoal drawing, fine art, cross-hatching technique">✏️ Sketch</div>
+            <div class="ks-option-chip" data-group="art" data-value="Double exposure glitch art, surreal photo manipulation">🌀 Glitch Art</div>
+            <div class="ks-option-chip" data-group="art" data-value="Mandala / Warli / Madhubani Indian folk art style">🌸 Folk Art</div>
+            <div class="ks-option-chip" data-group="art" data-value="Neon glow synthwave retro 80s poster art style">🕹️ Synthwave</div>
+            <div class="ks-option-chip" data-group="art" data-value="Hyper-realistic digital painting, concept art quality">🖥️ Digital Paint</div>
+            <div class="ks-option-chip" data-group="art" data-value="Low poly geometric 3D art with faceted surfaces">💠 Low Poly</div>
+            <div class="ks-option-chip" data-group="art" data-value="Macro photography extreme close-up with shallow depth of field">🔬 Macro</div>
+            <div class="ks-option-chip" data-group="art" data-value="Typography-dominant design, kinetic type art">🔤 Type Art</div>
           </div>
         </div>
+
+        <!-- SITUATION / CONTEXT -->
         <div>
-          <label class="ks-label">Emotion</label>
-          <div class="ks-options-grid" id="ksEmotionOptions">
-            <div class="ks-option-chip selected" data-group="emotion" data-value="nostalgic and soulful">🥺 Nostalgic</div>
-            <div class="ks-option-chip" data-group="emotion" data-value="energetic and vibrant">⚡ Energetic</div>
-            <div class="ks-option-chip" data-group="emotion" data-value="romantic and dreamy">💕 Romantic</div>
-            <div class="ks-option-chip" data-group="emotion" data-value="powerful and dramatic">🔥 Dramatic</div>
-            <div class="ks-option-chip" data-group="emotion" data-value="peaceful and serene">🕊️ Peaceful</div>
-            <div class="ks-option-chip" data-group="emotion" data-value="mysterious and intriguing">🌘 Mysterious</div>
+          <label class="ks-label">🎬 Situation / Context</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksSituationOptions">
+            <div class="ks-option-chip selected" data-group="situation" data-value="Classic timeless scene with iconic composition">🏆 Classic</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Live performance on stage with crowd and spotlights">🎤 Live Stage</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Behind-the-scenes candid moment, raw and authentic">🎞️ BTS</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Festival celebration — Diwali/Holi lights, colours, fireworks">🪔 Festival</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Wedding ceremony with flowers, saris and traditional decor">💍 Wedding</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Travel and adventure — exploring a new destination">✈️ Travel</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Morning motivation scene with sunrise and coffee">☀️ Morning</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Late night city lights, solitude, thinking under stars">🌙 Night Vibe</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Rainy monsoon romantic moment with umbrella and chai">🌧️ Monsoon</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Recording studio session — microphone, headphones, mixer">🎚️ Studio Rec</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Social media creator filming content on smartphone">📱 Creator</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Classroom / study session — books, notes, learning">📖 Study</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Sports training / gym workout with energy and sweat">🏋️ Sports</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Family gathering — elders, children, home comfort">👨‍👩‍👧 Family</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Childhood memory — old photographs, sepia tones, toys">🧸 Nostalgia</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Futuristic sci-fi scenario — robots, holograms, space travel">🚀 Sci-Fi</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Protest / social movement — powerful crowd, banners, fists raised">✊ Movement</div>
+            <div class="ks-option-chip" data-group="situation" data-value="Meditation / yoga / spiritual awakening in nature">🧘 Spiritual</div>
           </div>
         </div>
+
+        <!-- HUMAN IN IMAGE -->
+        <div>
+          <label class="ks-label">👤 Human Subjects</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksHumanOptions">
+            <div class="ks-option-chip selected" data-group="human" data-value="No humans — object, typography and visual elements only">🚫 None</div>
+            <div class="ks-option-chip" data-group="human" data-value="1 Indian male, 25-35 years, expressive face, well-groomed">👨 Male</div>
+            <div class="ks-option-chip" data-group="human" data-value="1 Indian female, 25-35 years, expressive, traditional or modern">👩 Female</div>
+            <div class="ks-option-chip" data-group="human" data-value="Indian couple, romantic chemistry, beautiful expressions">💑 Couple</div>
+            <div class="ks-option-chip" data-group="human" data-value="Group of 4-5 Indian young adults, joyful energy together">👫 Group</div>
+            <div class="ks-option-chip" data-group="human" data-value="Dramatic silhouette against a bright backlit background">🌑 Silhouette</div>
+            <div class="ks-option-chip" data-group="human" data-value="Indian child, innocent, big eyes, playful expression">👶 Child</div>
+            <div class="ks-option-chip" data-group="human" data-value="Indian elder / grandparent, wisdom and warmth in face">👴 Elder</div>
+            <div class="ks-option-chip" data-group="human" data-value="Abstract human form — made of light, particles or energy">✨ Abstract</div>
+          </div>
+        </div>
+
+        <!-- EMOTION -->
+        <div>
+          <label class="ks-label">😊 Emotion / Mood</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksEmotionOptions">
+            <div class="ks-option-chip selected" data-group="emotion" data-value="nostalgic, soulful and bittersweet">🥺 Nostalgic</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="explosive energy, vibrant and electric">⚡ Energetic</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="deeply romantic, dreamy and tender">💕 Romantic</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="powerful, intense and dramatically epic">🔥 Dramatic</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="calm, peaceful and serenely beautiful">🕊️ Peaceful</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="mysterious, dark and intriguingly eerie">🌘 Mysterious</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="joyful, celebratory and euphoric happiness">🎉 Joyful</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="melancholic, lonely and beautifully sad">😢 Melancholic</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="awe-inspiring, grand and overwhelming wonder">🌟 Wonder</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="rebellious, bold and fearlessly defiant">✊ Rebellious</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="tender loving care, warmth and compassion">🤗 Warmth</div>
+            <div class="ks-option-chip" data-group="emotion" data-value="ethereal, otherworldly and surreally divine">🌌 Ethereal</div>
+          </div>
+        </div>
+
+        <!-- LIGHTING -->
+        <div>
+          <label class="ks-label">💡 Lighting</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksLightOptions">
+            <div class="ks-option-chip selected" data-group="light" data-value="Golden hour warm sunlight, soft diffused lighting">🌅 Golden Hr</div>
+            <div class="ks-option-chip" data-group="light" data-value="Dramatic Rembrandt side lighting with deep shadows">🎭 Dramatic</div>
+            <div class="ks-option-chip" data-group="light" data-value="Neon coloured ambient glow, blue and purple tones">💜 Neon Glow</div>
+            <div class="ks-option-chip" data-group="light" data-value="Bright clean high-key studio lighting, no shadows">⬜ High-Key</div>
+            <div class="ks-option-chip" data-group="light" data-value="Dark moody low-key lighting with deep contrast">⬛ Low-Key</div>
+            <div class="ks-option-chip" data-group="light" data-value="Backlit silhouette with glowing rim light edges">✨ Rim Light</div>
+            <div class="ks-option-chip" data-group="light" data-value="Firelight / candlelight warm flickering orange glow">🕯️ Candlelight</div>
+            <div class="ks-option-chip" data-group="light" data-value="Moonlight cool blue silver atmospheric night glow">🌙 Moonlight</div>
+            <div class="ks-option-chip" data-group="light" data-value="Volumetric god rays beaming through fog or trees">🌤️ God Rays</div>
+          </div>
+        </div>
+
+        <!-- COLOUR PALETTE -->
+        <div>
+          <label class="ks-label">🎨 Colour Palette</label>
+          <div class="ks-options-grid" style="grid-template-columns:repeat(3,1fr)" id="ksColorOptions">
+            <div class="ks-option-chip selected" data-group="color" data-value="vibrant rich saturated colours">🌈 Vibrant</div>
+            <div class="ks-option-chip" data-group="color" data-value="warm orange gold amber tones">🟠 Warm Gold</div>
+            <div class="ks-option-chip" data-group="color" data-value="cool blue silver cyan tones">🔵 Cool Blue</div>
+            <div class="ks-option-chip" data-group="color" data-value="monochrome black and white with grey tones">⚫ Mono B&W</div>
+            <div class="ks-option-chip" data-group="color" data-value="pastel soft muted tones, dreamy palette">🌸 Pastel</div>
+            <div class="ks-option-chip" data-group="color" data-value="dark deep jewel tones — emerald, sapphire, burgundy">💎 Jewel Tones</div>
+            <div class="ks-option-chip" data-group="color" data-value="earthy natural tones — terracotta, olive, rust, cream">🌱 Earthy</div>
+            <div class="ks-option-chip" data-group="color" data-value="neon electric glowing colours on dark background">⚡ Neon Pop</div>
+            <div class="ks-option-chip" data-group="color" data-value="duotone two-colour bold graphic palette">🎭 Duotone</div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1061,8 +1168,8 @@ body{
       <h3>Load Your Data to Start</h3>
       <p>Select an inbuilt dataset from the dropdown above, or paste your Google Sheet URL. Then select any record to generate 20+ AI prompts instantly.</p>
       <div style="margin-top:24px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-        <button class="ks-btn ks-btn-primary" onclick="document.getElementById('ksInbuiltSheet').value='https://docs.google.com/spreadsheets/d/e/2PACX-1vTlzkFp78TUjzWOD1CETiLfMOfELrCkjXak6jbGFPDzivbyeIfYtgRWIvwtc79VBXoK7FlZMccpgI6j/pub?gid=1171160466&single=true&output=csv';document.getElementById('ksLoadInbuilt').click()">
-          🎵 Load Bollywood Songs
+        <button class="ks-btn ks-btn-primary" onclick="document.getElementById('ksLoadInbuilt').click()">
+          ⚡ Load First Dataset
         </button>
         <a class="ks-btn ks-btn-secondary" href="https://www.kspiderai.in" target="_blank" rel="noopener">
           🌐 Visit K Spider AI
@@ -1090,38 +1197,55 @@ body{
         <div data-ks-slot="mid-banner" style="min-height:90px;background:rgba(255,255,255,.02);border:1px dashed rgba(255,255,255,.08);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#7a7690;font-size:12px;">Advertisement</div>
       </div>
 
+      <!-- ── PROMPT TYPE SELECTOR ── -->
+      <div style="background:var(--bg-card);border:1px solid var(--border-accent);border-radius:var(--radius-lg);padding:20px;position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--accent),var(--accent2))"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <h3 style="font-family:var(--font-display);font-weight:700;font-size:15px;color:var(--text-1)">
+            ✅ Select Prompt Types to Generate
+          </h3>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="ks-btn ks-btn-secondary ks-btn-sm" id="ksSelectAll">☑️ Select All</button>
+            <button class="ks-btn ks-btn-secondary ks-btn-sm" id="ksSelectNone">⬜ Clear All</button>
+            <button class="ks-btn ks-btn-secondary ks-btn-sm" id="ksSelectImages">🖼️ Images Only</button>
+            <button class="ks-btn ks-btn-secondary ks-btn-sm" id="ksSelectVideo">🎬 Video Only</button>
+            <button class="ks-btn ks-btn-secondary ks-btn-sm" id="ksSelectSEO">📈 SEO Only</button>
+          </div>
+        </div>
+        <div id="ksPromptCheckboxes" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px;max-height:320px;overflow-y:auto;padding-right:4px"></div>
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <span id="ksSelectedCount" style="font-size:12px;color:var(--text-3);font-weight:600">0 selected</span>
+        </div>
+      </div>
+
       <!-- Generate Bar -->
       <div class="ks-generate-bar">
         <div class="ks-generate-info">
-          <h3>🚀 Generate All Prompts</h3>
-          <p>20+ prompts for every social media platform — ready to paste in any AI tool</p>
+          <h3>🚀 Generate Selected Prompts</h3>
+          <p>Choose prompt types above → Generate → Copy → Paste in any AI tool</p>
         </div>
         <div class="ks-generate-btns">
-          <button class="ks-btn ks-btn-primary" id="ksGenerateAll">⚡ Generate All (20+)</button>
-          <button class="ks-btn ks-btn-outline" id="ksCopyAllPrompts">📋 Copy All Prompts</button>
+          <button class="ks-btn ks-btn-primary" id="ksGenerateAll">⚡ Generate Selected</button>
+          <button class="ks-btn ks-btn-outline" id="ksCopyAllPrompts">📋 Copy All</button>
           <button class="ks-btn ks-btn-secondary" id="ksDownloadPrompts">⬇️ Download .txt</button>
         </div>
       </div>
 
-      <!-- Prompt Type Tabs -->
+      <!-- Filter Tabs -->
       <div style="background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px">
         <div class="ks-prompt-tabs" id="ksPromptTabs" role="tablist">
           <div class="ks-tab active" data-filter="all" role="tab" aria-selected="true"><span class="ks-tab-emoji">⚡</span>All</div>
           <div class="ks-tab" data-filter="image" role="tab"><span class="ks-tab-emoji">🖼️</span>Images</div>
           <div class="ks-tab" data-filter="video" role="tab"><span class="ks-tab-emoji">🎬</span>Video</div>
-          <div class="ks-tab" data-filter="music" role="tab"><span class="ks-tab-emoji">🎵</span>Music/Audio</div>
+          <div class="ks-tab" data-filter="music" role="tab"><span class="ks-tab-emoji">🎵</span>Music</div>
           <div class="ks-tab" data-filter="text" role="tab"><span class="ks-tab-emoji">✍️</span>Text/Copy</div>
           <div class="ks-tab" data-filter="seo" role="tab"><span class="ks-tab-emoji">📈</span>SEO</div>
           <div class="ks-tab" data-filter="social" role="tab"><span class="ks-tab-emoji">📱</span>Social</div>
         </div>
-
-        <!-- Loading state -->
         <div class="ks-loading" id="ksPromptsLoading" style="display:none">
           <div class="ks-spinner"></div>
           <span>Generating powerful prompts…</span>
         </div>
-
-        <!-- Prompts grid -->
         <div class="ks-prompts-grid" id="ksPromptsGrid"></div>
       </div>
 
@@ -1277,12 +1401,17 @@ let appState = {
   colTitle: '',
   colSub: '',
   colYear: '',
-  tone: 'Inspirational',
-  bg: 'Natural outdoor landscape',
-  human: 'No humans, object and typography only',
-  emotion: 'nostalgic and soulful',
+  tone: 'Inspirational and uplifting',
+  bg: 'Natural outdoor lush green landscape with golden hour sunlight',
+  human: 'No humans — object, typography and visual elements only',
+  emotion: 'nostalgic, soulful and bittersweet',
+  art: 'Photorealistic ultra-detailed 8K photography',
+  situation: 'Classic timeless scene with iconic composition',
+  light: 'Golden hour warm sunlight, soft diffused lighting',
+  color: 'vibrant rich saturated colours',
   filter: 'all',
   generatedPrompts: {},
+  selectedPromptIds: new Set(),
   profile: {}
 };
 
@@ -1403,53 +1532,55 @@ function showProgress(pct){
   if(pct>=100) setTimeout(()=>{el.style.display='none';},600);
 }
 
-/* ── LOAD SHEET ── */
+/* ── LOAD SHEET — robust multi-proxy fetch ── */
 async function loadSheet(url, preColTitle='', preColSub='', preColYear=''){
-  const csvUrl = sheetUrlToCSV(url);
-  showStatus('ksSheetStatus','Connecting to data source…','info');
-  showProgress(20);
-  try{
-    let text = '';
-    let success = false;
+  // For published Google Sheet /pub?output=csv URLs use directly
+  // For edit URLs, convert
+  const csvUrl = url.includes('/pub?') ? url : sheetUrlToCSV(url);
+  showStatus('ksSheetStatus','Loading data…','info');
+  showProgress(15);
+  let text = '', success = false;
 
-    // Attempt 1: direct
+  const proxies = [
+    csvUrl,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(csvUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(csvUrl)}`,
+  ];
+
+  for(let pi=0; pi<proxies.length && !success; pi++){
+    showProgress(20 + pi*15);
     try{
-      const r = await fetch(csvUrl,{cache:'no-cache'});
-      if(r.ok){ text = await r.text(); success=true; }
-    }catch(e){}
-
-    // Attempt 2: allorigins proxy
-    if(!success){
-      showStatus('ksSheetStatus','Using proxy to fetch…','info');
-      const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(csvUrl)}`;
-      try{
-        const r2 = await fetch(proxy);
-        if(r2.ok){
-          const j = await r2.json();
-          text = j.contents || '';
-          success = !!text;
+      const ctrl = new AbortController();
+      const tid = setTimeout(()=>ctrl.abort(), 8000);
+      const r = await fetch(proxies[pi], {cache:'no-cache', signal:ctrl.signal});
+      clearTimeout(tid);
+      if(r.ok){
+        const raw = await r.text();
+        // allorigins wraps in JSON
+        if(pi===1){
+          try{ const j=JSON.parse(raw); text=j.contents||raw; }catch{ text=raw; }
+        } else {
+          text = raw;
         }
-      }catch(e){}
-    }
+        // Validate it looks like CSV (has commas and newlines)
+        if(text && text.includes(',') && text.includes('\n') && text.length > 30){
+          success = true;
+        }
+      }
+    }catch(e){ /* try next */ }
+  }
 
-    // Attempt 3: corsproxy.io
-    if(!success){
-      try{
-        const proxy2 = `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`;
-        const r3 = await fetch(proxy2);
-        if(r3.ok){ text = await r3.text(); success=true; }
-      }catch(e){}
-    }
+  showProgress(80);
+  if(!success || !text.trim()){
+    showProgress(100);
+    showStatus('ksSheetStatus','❌ Could not load data. Check network or contact admin.','error');
+    return;
+  }
 
-    showProgress(70);
-
-    if(!success || !text.trim()){
-      throw new Error('Could not fetch sheet. Make sure it is shared as "Anyone with link" and published as CSV.');
-    }
-
+  try{
     const {columns, data} = parseCSV(text);
-    if(!columns.length || !data.length) throw new Error('Sheet appears empty or unreadable.');
-
+    if(!columns.length || !data.length){ showStatus('ksSheetStatus','⚠️ Sheet is empty or unreadable','warning'); return; }
     appState.sheetData = data;
     appState.columns = columns;
     showProgress(100);
@@ -1458,31 +1589,33 @@ async function loadSheet(url, preColTitle='', preColSub='', preColYear=''){
     renderDataList();
     document.getElementById('ksColumnCard').style.display='';
     document.getElementById('ksDataCard').style.display='';
-
   }catch(e){
     showProgress(100);
-    showStatus('ksSheetStatus', e.message || 'Failed to load sheet', 'error');
+    showStatus('ksSheetStatus','❌ Parse error: '+e.message,'error');
   }
 }
 
-/* ── INBUILT SHEETS REGISTRY — add more sheets here ── */
+/* ── INBUILT SHEETS REGISTRY ── */
 const INBUILT_SHEETS = [
   {
     title: '🎵 Bollywood Songs (400+)',
-    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTlzkFp78TUjzWOD1CETiLfMOfELrCkjXak6jbGFPDzivbyeIfYtgRWIvwtc79VBXoK7FlZMccpgI6j/pub?gid=1171160466&single=true&output=csv',
     group: '🎵 Music',
-    colTitle: 'Song Name',
-    colSub: 'Movie',
-    colYear: 'Year'
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTlzkFp78TUjzWOD1CETiLfMOfELrCkjXak6jbGFPDzivbyeIfYtgRWIvwtc79VBXoK7FlZMccpgI6j/pub?gid=1171160466&single=true&output=csv',
+    colTitle: 'Song Name', colSub: 'Movie', colYear: 'Year'
+  },
+  {
+    title: '📋 Dataset 2',
+    group: '📋 General',
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSYlNuMi4IZ5XDp9ACT0z0UYyolEUKZXAHdzRBQ41VUTWm-Tf1U0_1URpJviImHDtOqzi965Em0gbby/pub?output=csv',
+    colTitle: '', colSub: '', colYear: ''
   }
-  // ↓ Admin: paste more sheet objects here as needed
+  /* ↓ Add more sheet objects here */
 ];
 
 function populateInbuiltDropdown(){
   const sel = document.getElementById('ksInbuiltSheet');
   if(!sel) return;
-  // Clear existing dynamic options but keep optgroups
-  sel.innerHTML = '<option value="">— Choose a Dataset —</option>';
+  sel.innerHTML = '<option value="">— Select Dataset —</option>';
   const groups = {};
   INBUILT_SHEETS.forEach(s=>{
     if(!groups[s.group]) groups[s.group] = [];
@@ -1496,19 +1629,20 @@ function populateInbuiltDropdown(){
       opt.value = s.url;
       opt.textContent = s.title;
       opt.dataset.colTitle = s.colTitle||'';
-      opt.dataset.colSub = s.colSub||'';
-      opt.dataset.colYear = s.colYear||'';
+      opt.dataset.colSub   = s.colSub||'';
+      opt.dataset.colYear  = s.colYear||'';
       og.appendChild(opt);
     });
     sel.appendChild(og);
   });
-  // Add "More coming soon" group
   const more = document.createElement('optgroup');
-  more.label = '➕ More Coming Soon';
+  more.label = '➕ More Datasets Coming Soon';
   const p = document.createElement('option');
-  p.value=''; p.disabled=true; p.textContent='📌 Send your sheet link to add more';
+  p.value=''; p.disabled=true; p.textContent='📌 New datasets added regularly';
   more.appendChild(p);
   sel.appendChild(more);
+  // Auto-select first sheet
+  if(INBUILT_SHEETS.length > 0) sel.value = INBUILT_SHEETS[0].url;
 }
 
 function loadDemoData(){
@@ -1648,7 +1782,7 @@ function buildDataContext(row){
 }
 
 function getStyleBlock(){
-  return `Style: ${appState.tone} tone, ${appState.bg} background, ${appState.human}, ${appState.emotion} emotion`;
+  return `Tone: ${appState.tone} | Background/Setting: ${appState.bg} | Art Style: ${appState.art} | Situation: ${appState.situation} | Lighting: ${appState.light} | Colour Palette: ${appState.color} | Human Subjects: ${appState.human} | Emotion: ${appState.emotion}`;
 }
 
 function buildFullDataBlock(row){
@@ -1703,9 +1837,19 @@ function generatePrompts(row){
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${allFields}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 STYLE DIRECTIVES — STRICTLY FOLLOW:
+  Art Style: ${appState.art}
+  Background: ${appState.bg}
+  Situation: ${appState.situation}
+  Lighting: ${appState.light}
+  Colour: ${appState.color}
+  Humans: ${appState.human}
+  Emotion: ${appState.emotion}
+  Tone: ${appState.tone}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `;
 
-  /* ── VISUAL ELEMENTS built from real data ── */
+  /* ── VISUAL ELEMENTS built from real data + style choices ── */
   const visualElements = [
     `Title text on image: "${title}"`,
     sub        ? `Subtitle: "${sub}"`                            : '',
@@ -1713,13 +1857,19 @@ ${allFields}
     genre      ? `Genre visual style: ${genre}`                  : '',
     singer     ? `Artist name displayed: ${singer}`              : '',
     composer   ? `Composer credit: ${composer}`                  : '',
-    raag       ? `Classical mood (Raag ${raag}): use colour/lighting that feels like this raag` : '',
-    cast       ? `Human reference for mood: inspired by ${cast}` : '',
+    raag       ? `Classical mood (Raag ${raag}): colour/lighting that embodies this raag's essence` : '',
+    cast       ? `Human mood reference: inspired by ${cast}`     : '',
     location   ? `Setting/backdrop inspired by: ${location}`     : '',
-    impact     ? `Mood & feel: ${impact}`                        : '',
-    popularity ? `Visual weight/energy: ${popularity} popularity` : '',
-    awards     ? `Achievement badge/glow: ${awards}`             : '',
-    fact       ? `Hidden detail to include subtly: ${fact}`      : '',
+    impact     ? `Emotional core: ${impact}`                     : '',
+    popularity ? `Energy level: ${popularity}`                   : '',
+    awards     ? `Achievement glow element: ${awards}`           : '',
+    fact       ? `Subtle hidden detail: ${fact}`                 : '',
+    /* Style choices as explicit visual directives */
+    `Art Style: ${appState.art}`,
+    `Lighting: ${appState.light}`,
+    `Colour Palette: ${appState.color}`,
+    `Situation/Scene Context: ${appState.situation}`,
+    `Setting/Background: ${appState.bg}`,
   ].filter(Boolean).join('\n- ');
 
   /* ── AI MUSIC ELEMENTS from data ── */
@@ -2479,9 +2629,18 @@ function renderPrompts(prompts){
   const filter = appState.filter;
   grid.innerHTML = '';
 
-  const defs = filter==='all'
-    ? PROMPT_DEFS
-    : PROMPT_DEFS.filter(d=>d.filter===filter);
+  // Only show defs that have generated prompts AND pass tab filter
+  const defs = PROMPT_DEFS.filter(d=>{
+    if(!prompts[d.id]) return false;
+    if(filter==='all') return true;
+    if(filter==='social') return d.filter==='social'||d.filter==='text';
+    return d.filter===filter;
+  });
+
+  if(defs.length===0){
+    grid.innerHTML='<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text-3)">No prompts match this filter. Select more prompt types above.</div>';
+    return;
+  }
 
   defs.forEach(def=>{
     const promptText = prompts[def.id];
@@ -2664,6 +2823,142 @@ function downloadPrompts(){
 }
 
 /* ── EVENT LISTENERS ── */
+
+/* ── PROMPT CHECKBOX SYSTEM ── */
+function renderPromptCheckboxes(){
+  const container = document.getElementById('ksPromptCheckboxes');
+  if(!container) return;
+
+  const groups = {
+    '🖼️ Image Prompts': PROMPT_DEFS.filter(d=>d.filter==='image'),
+    '🎬 Video Prompts': PROMPT_DEFS.filter(d=>d.filter==='video'),
+    '🎵 Music / Audio': PROMPT_DEFS.filter(d=>d.filter==='music'),
+    '✍️ Text & Captions': PROMPT_DEFS.filter(d=>d.filter==='text'||d.filter==='social'),
+    '📈 SEO & Ads': PROMPT_DEFS.filter(d=>d.filter==='seo'),
+  };
+
+  container.innerHTML = '';
+  Object.entries(groups).forEach(([gLabel, defs])=>{
+    // Group header
+    const ghdr = document.createElement('div');
+    ghdr.style.cssText = 'grid-column:1/-1;font-size:11px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;padding:6px 0 2px;border-bottom:1px solid var(--border);margin-top:4px';
+    ghdr.textContent = gLabel;
+    container.appendChild(ghdr);
+
+    defs.forEach(def=>{
+      const wrapper = document.createElement('label');
+      wrapper.style.cssText = 'display:flex;align-items:center;gap:8px;cursor:pointer;padding:7px 10px;border-radius:8px;background:var(--bg-panel);border:1px solid var(--border);transition:.18s ease;user-select:none';
+      wrapper.onmouseenter = ()=>{ wrapper.style.borderColor='rgba(0,212,255,.35)'; };
+      wrapper.onmouseleave = ()=>{ wrapper.style.borderColor = appState.selectedPromptIds.has(def.id) ? 'var(--accent2)' : 'var(--border)'; };
+
+      const chk = document.createElement('input');
+      chk.type = 'checkbox';
+      chk.id = 'chkPt_'+def.id;
+      chk.value = def.id;
+      chk.style.cssText = 'width:15px;height:15px;accent-color:var(--accent);cursor:pointer;flex-shrink:0';
+      chk.checked = appState.selectedPromptIds.has(def.id);
+
+      chk.onchange = function(){
+        if(this.checked){
+          appState.selectedPromptIds.add(def.id);
+          wrapper.style.cssText = wrapper.style.cssText.replace('var(--border)','var(--accent2)').replace('var(--bg-panel)','rgba(0,212,255,.06)');
+        } else {
+          appState.selectedPromptIds.delete(def.id);
+          wrapper.style.background = 'var(--bg-panel)';
+          wrapper.style.borderColor = 'var(--border)';
+        }
+        updateSelectedCount();
+      };
+
+      const icon = document.createElement('span');
+      icon.textContent = def.emoji;
+      icon.style.fontSize = '15px';
+
+      const text = document.createElement('div');
+      text.style.cssText = 'flex:1;min-width:0';
+
+      const name = document.createElement('div');
+      name.textContent = def.name;
+      name.style.cssText = 'font-size:12px;font-weight:600;color:var(--text-1);white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+
+      const size = document.createElement('div');
+      size.textContent = def.size;
+      size.style.cssText = 'font-size:10px;color:var(--text-3);margin-top:1px';
+
+      text.appendChild(name);
+      text.appendChild(size);
+      wrapper.appendChild(chk);
+      wrapper.appendChild(icon);
+      wrapper.appendChild(text);
+      container.appendChild(wrapper);
+
+      // Apply selected style if pre-checked
+      if(chk.checked){
+        wrapper.style.background = 'rgba(0,212,255,.06)';
+        wrapper.style.borderColor = 'var(--accent2)';
+      }
+    });
+  });
+  updateSelectedCount();
+}
+
+function updateSelectedCount(){
+  const el = document.getElementById('ksSelectedCount');
+  if(el) el.textContent = `${appState.selectedPromptIds.size} prompt type${appState.selectedPromptIds.size!==1?'s':''} selected`;
+}
+
+function setAllCheckboxes(checked){
+  document.querySelectorAll('#ksPromptCheckboxes input[type=checkbox]').forEach(chk=>{
+    chk.checked = checked;
+    const wrapper = chk.closest('label');
+    if(wrapper){
+      wrapper.style.background = checked ? 'rgba(0,212,255,.06)' : 'var(--bg-panel)';
+      wrapper.style.borderColor = checked ? 'var(--accent2)' : 'var(--border)';
+    }
+    if(checked) appState.selectedPromptIds.add(chk.value);
+    else appState.selectedPromptIds.delete(chk.value);
+  });
+  updateSelectedCount();
+}
+
+function setCheckboxesByFilter(filter){
+  document.querySelectorAll('#ksPromptCheckboxes input[type=checkbox]').forEach(chk=>{
+    const def = PROMPT_DEFS.find(d=>d.id===chk.value);
+    const match = def && (def.filter===filter || (filter==='social' && (def.filter==='text'||def.filter==='social')));
+    chk.checked = !!match;
+    const wrapper = chk.closest('label');
+    if(wrapper){
+      wrapper.style.background = match ? 'rgba(0,212,255,.06)' : 'var(--bg-panel)';
+      wrapper.style.borderColor = match ? 'var(--accent2)' : 'var(--border)';
+    }
+    if(match) appState.selectedPromptIds.add(chk.value);
+    else appState.selectedPromptIds.delete(chk.value);
+  });
+  updateSelectedCount();
+}
+
+/* Override generateAllPrompts to use selectedPromptIds */
+function generateAllPrompts(){
+  if(!appState.selectedRow) return;
+  // Default: select all if nothing selected
+  if(appState.selectedPromptIds.size === 0){
+    PROMPT_DEFS.forEach(d=>appState.selectedPromptIds.add(d.id));
+    setAllCheckboxes(true);
+  }
+  document.getElementById('ksPromptsLoading').style.display='flex';
+  document.getElementById('ksPromptsGrid').innerHTML='';
+  setTimeout(()=>{
+    const prompts = generatePrompts(appState.selectedRow);
+    // Filter to only selected
+    const filtered = {};
+    appState.selectedPromptIds.forEach(id=>{ if(prompts[id]) filtered[id]=prompts[id]; });
+    document.getElementById('ksPromptsLoading').style.display='none';
+    renderPrompts(filtered);
+    renderWATemplates(appState.selectedRow);
+    if(typeof gtag!=='undefined') gtag('event','prompts_generated',{count:appState.selectedPromptIds.size});
+  }, 350);
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   loadProfile();
   populateInbuiltDropdown();
@@ -2675,36 +2970,35 @@ document.addEventListener('DOMContentLoaded',()=>{
     this.setAttribute('aria-expanded', nav.classList.contains('open'));
   };
 
-  // ── INBUILT SHEET LOADER (new) ──
-  document.getElementById('ksLoadInbuilt').onclick = async function(){
+  // ── INBUILT SHEET LOADER ──
+  async function doLoadInbuilt(){
     const sel = document.getElementById('ksInbuiltSheet');
-    const url = sel.value;
-    if(!url){ showStatus('ksSheetStatus','Please select a dataset first','warning'); return; }
-    this.disabled = true;
-    this.innerHTML = '<span>⏳</span> Loading…';
-    // Apply preset column mapping from data attribute
+    const url = sel ? sel.value : '';
+    if(!url){ showStatus('ksSheetStatus','Please select a dataset','warning'); return; }
+    const btn = document.getElementById('ksLoadInbuilt');
+    if(btn){ btn.disabled=true; btn.innerHTML='<span>⏳</span> Loading…'; }
     const opt = sel.options[sel.selectedIndex];
-    const preColTitle = opt.dataset.colTitle||'';
-    const preColSub   = opt.dataset.colSub||'';
-    const preColYear  = opt.dataset.colYear||'';
+    const preColTitle = (opt && opt.dataset.colTitle)||'';
+    const preColSub   = (opt && opt.dataset.colSub)||'';
+    const preColYear  = (opt && opt.dataset.colYear)||'';
     await loadSheet(url, preColTitle, preColSub, preColYear);
-    this.disabled = false;
-    this.innerHTML = '⚡ Load Selected Dataset';
-    if(typeof gtag!=='undefined') gtag('event','load_inbuilt_sheet',{sheet:opt.textContent});
+    if(btn){ btn.disabled=false; btn.innerHTML='⚡ Load Dataset'; }
+    if(typeof gtag!=='undefined') gtag('event','load_inbuilt_sheet',{sheet: opt ? opt.textContent : url});
+  }
+
+  document.getElementById('ksLoadInbuilt').onclick = doLoadInbuilt;
+
+  // Also reload when dropdown changes
+  document.getElementById('ksInbuiltSheet').onchange = function(){
+    if(this.value) doLoadInbuilt();
   };
 
-  // ── CUSTOM SHEET LOADER ──
-  document.getElementById('ksLoadSheet').onclick = async function(){
-    const url = document.getElementById('ksSheetUrl').value.trim();
-    if(!url){ showStatus('ksSheetStatus','Please enter a Google Sheet URL','error'); return; }
-    this.disabled = true; this.textContent = 'Loading…';
-    await loadSheet(url);
-    this.disabled = false;
-    this.innerHTML = '<span>🔗</span> Load Custom Sheet';
-  };
+  // AUTO-LOAD first dataset on page ready
+  setTimeout(doLoadInbuilt, 300);
 
-  // Demo (legacy hidden button)
-  document.getElementById('ksLoadDemo').onclick = loadDemoData;
+  // Custom sheet & demo — hidden stubs only (no custom URL input exposed to user)
+  document.getElementById('ksLoadSheet').onclick = ()=>{};
+  document.getElementById('ksLoadDemo').onclick  = ()=> doLoadInbuilt();
 
   // Column mapping
   document.getElementById('ksColTitle').onchange = e=>{ appState.colTitle=e.target.value; renderDataList(); };
@@ -2716,7 +3010,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     renderDataList(this.value);
   };
 
-  // Style option chips
+  // Style option chips — handle all 8 groups
   document.querySelectorAll('.ks-option-chip').forEach(chip=>{
     chip.onclick = function(){
       const group = this.dataset.group;
@@ -2724,13 +3018,16 @@ document.addEventListener('DOMContentLoaded',()=>{
       document.querySelectorAll(`.ks-option-chip[data-group="${group}"]`).forEach(c=>{
         c.classList.remove('selected','selected-orange');
       });
-      const isOrange = ['tone'].includes(group);
+      const isOrange = ['tone','situation'].includes(group);
       this.classList.add(isOrange?'selected-orange':'selected');
-      if(group==='tone') appState.tone = val;
-      if(group==='bg') appState.bg = val;
-      if(group==='human') appState.human = val;
-      if(group==='emotion') appState.emotion = val;
-      // Re-generate if row selected
+      if(group==='tone')      appState.tone = val;
+      if(group==='bg')        appState.bg = val;
+      if(group==='human')     appState.human = val;
+      if(group==='emotion')   appState.emotion = val;
+      if(group==='art')       appState.art = val;
+      if(group==='situation') appState.situation = val;
+      if(group==='light')     appState.light = val;
+      if(group==='color')     appState.color = val;
       if(appState.selectedRow) generateAllPrompts();
     };
   });
@@ -2769,17 +3066,27 @@ document.addEventListener('DOMContentLoaded',()=>{
   };
 
   // Save Profile
+  // Prompt type checkboxes
+  renderPromptCheckboxes();
+  // Select all by default
+  setAllCheckboxes(true);
+
+  document.getElementById('ksSelectAll').onclick   = ()=> setAllCheckboxes(true);
+  document.getElementById('ksSelectNone').onclick  = ()=> setAllCheckboxes(false);
+  document.getElementById('ksSelectImages').onclick = ()=> setCheckboxesByFilter('image');
+  document.getElementById('ksSelectVideo').onclick  = ()=> setCheckboxesByFilter('video');
+  document.getElementById('ksSelectSEO').onclick    = ()=> setCheckboxesByFilter('seo');
+
   document.getElementById('ksSaveProfile').onclick = ()=>{
     const p = getProfile();
     KS.safeLS.set('profile',JSON.stringify(p));
     showToast('✅ Profile saved!');
     if(appState.selectedRow) generateAllPrompts();
+    // Re-render checkboxes to keep them in sync
+    renderPromptCheckboxes();
   };
 
-  // Enter key on URL input
-  document.getElementById('ksSheetUrl').onkeydown = e=>{
-    if(e.key==='Enter') document.getElementById('ksLoadSheet').click();
-  };
+  // ksSheetUrl is now a hidden stub — no keydown needed
 });
 
 /* ── AD NO-JUMP PATCH ── */
