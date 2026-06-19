@@ -1598,18 +1598,18 @@ async function loadSheet(url, preColTitle='', preColSub='', preColYear=''){
 /* ── INBUILT SHEETS REGISTRY ── */
 const INBUILT_SHEETS = [
   {
-    title: '🎵 Bollywood Songs (400+)',
-    group: '🎵 Music',
+    title: '🎵 Bollywood Songs Database (400+)',
+    group: '🎵 Bollywood Music',
     url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTlzkFp78TUjzWOD1CETiLfMOfELrCkjXak6jbGFPDzivbyeIfYtgRWIvwtc79VBXoK7FlZMccpgI6j/pub?gid=1171160466&single=true&output=csv',
     colTitle: 'Song Name', colSub: 'Movie', colYear: 'Year'
   },
   {
-    title: '📋 Dataset 2',
-    group: '📋 General',
+    title: '🎶 Bollywood Songs Collection 2',
+    group: '🎵 Bollywood Music',
     url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSYlNuMi4IZ5XDp9ACT0z0UYyolEUKZXAHdzRBQ41VUTWm-Tf1U0_1URpJviImHDtOqzi965Em0gbby/pub?output=csv',
-    colTitle: '', colSub: '', colYear: ''
+    colTitle: 'Song Name', colSub: 'Movie', colYear: 'Year'
   }
-  /* ↓ Add more sheet objects here */
+  /* ↓ Admin: add more sheet objects here as { title, group, url, colTitle, colSub, colYear } */
 ];
 
 function populateInbuiltDropdown(){
@@ -1803,817 +1803,720 @@ function generatePrompts(row){
   const title    = KS.clean(row[appState.colTitle]||row[appState.columns[0]]||'Topic');
   const sub      = KS.clean(row[appState.colSub]||'');
   const year     = appState.colYear ? KS.clean(row[appState.colYear]||'') : '';
-  const style    = getStyleBlock();
   const profile  = getProfile();
   const profileBlock = buildProfileBlock(profile);
   const branding = brandingBlock();
 
-  /* ── EXTRACT ALL FIELDS FROM ROW ── */
-  const allFields = buildFullDataBlock(row);       // multi-line "  • Key: Value"
-  const inlineData = buildInlineData(row);          // inline compact form
+  /* ── ALL ROW FIELDS — used everywhere ── */
+  const allFields    = buildFullDataBlock(row);
+  const inlineData   = buildInlineData(row);
 
-  /* ── COMMON KNOWN FIELDS (graceful fallback) ── */
-  const genre    = KS.clean(row['Genre']||row['Category']||row['Type']||'');
-  const singer   = KS.clean(row['Singer']||row['Artist']||row['Creator']||'');
-  const composer = KS.clean(row['Composer']||row['Music Director']||row['Director']||'');
-  const lyricist = KS.clean(row['Lyricist']||row['Writer']||'');
-  const impact   = KS.clean(row['Cultural Impact']||row['Description']||row['Details']||row['About']||'');
-  const fact     = KS.clean(row['Interesting Fact']||row['Fact']||row['Note']||row['Fun Fact']||'');
-  const awards   = KS.clean(row['Awards']||row['Achievement']||row['Recognition']||'');
-  const raag     = KS.clean(row['Raag']||row['Scale']||'');
-  const duration = KS.clean(row['Duration']||row['Length']||'');
-  const label    = KS.clean(row['Music Label']||row['Label']||row['Publisher']||'');
-  const studio   = KS.clean(row['Studio']||row['Production']||'');
-  const cast     = KS.clean(row['Hero-Heroine']||row['Cast']||row['Stars']||row['Hero']||'');
-  const location = KS.clean(row['Filming Location']||row['Location']||row['Place']||'');
-  const popularity = KS.clean(row['Popularity Index']||row['Popularity']||row['Rating']||'');
-  const remakes  = KS.clean(row['Remakes/Versions']||row['Remakes']||'');
-  const recYear  = KS.clean(row['Recording Year']||'');
+  /* ── SMART FIELD EXTRACTION (works for ANY sheet column names) ── */
+  function pickField(row, ...keys){
+    for(const k of keys){
+      for(const col of Object.keys(row)){
+        if(col.toLowerCase().includes(k.toLowerCase()) && row[col] && row[col].trim())
+          return KS.clean(row[col]);
+      }
+    }
+    return '';
+  }
+  const genre    = pickField(row,'genre','type','category');
+  const singer   = pickField(row,'singer','artist','vocalist','performer');
+  const composer = pickField(row,'composer','music director','music');
+  const lyricist = pickField(row,'lyricist','writer','lyric');
+  const director = pickField(row,'director');
+  const impact   = pickField(row,'cultural impact','description','about','detail','impact');
+  const fact     = pickField(row,'interesting fact','fact','trivia','note');
+  const awards   = pickField(row,'award','achievement','recognition');
+  const raag     = pickField(row,'raag','raga','scale');
+  const duration = pickField(row,'duration','length','time');
+  const label    = pickField(row,'music label','label','publisher');
+  const studio   = pickField(row,'studio','production');
+  const cast     = pickField(row,'hero','cast','star','heroine');
+  const location = pickField(row,'filming location','location','place','setting');
+  const popularity = pickField(row,'popularity','rating','index');
+  const remakes  = pickField(row,'remake','version');
+  const recYear  = pickField(row,'recording year','recorded');
 
-  /* ── FULL DETAIL SECTION used in every prompt ── */
+  /* ── FULL MANDATORY DATA BLOCK (required checklist) ── */
+  const requiredFieldsList = Object.entries(row)
+    .filter(([k,v]) => v && v.trim && v.trim())
+    .map(([k,v]) => `  ✅ ${k}: ${v.trim()}`)
+    .join('\n');
+
   const fullDetailSection = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📌 COMPLETE DATA — USE ALL THIS IN OUTPUT:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${allFields}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 STYLE DIRECTIVES — STRICTLY FOLLOW:
-  Art Style: ${appState.art}
-  Background: ${appState.bg}
-  Situation: ${appState.situation}
-  Lighting: ${appState.light}
-  Colour: ${appState.color}
-  Humans: ${appState.human}
-  Emotion: ${appState.emotion}
-  Tone: ${appState.tone}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+═══════════════════════════════════════════════════════
+📌 MANDATORY DATA — EVERY FIELD BELOW MUST APPEAR IN OUTPUT
+   Do NOT skip any field. All data is compulsory.
+═══════════════════════════════════════════════════════
+${requiredFieldsList}
+═══════════════════════════════════════════════════════
+🎨 STYLE DIRECTIVES — STRICTLY FOLLOW ALL:
+  ✅ Art Style / Render Type : ${appState.art}
+  ✅ Background / Setting    : ${appState.bg}
+  ✅ Situation / Scene       : ${appState.situation}
+  ✅ Lighting                : ${appState.light}
+  ✅ Colour Palette          : ${appState.color}
+  ✅ Human Subjects          : ${appState.human}
+  ✅ Emotion / Mood          : ${appState.emotion}
+  ✅ Overall Tone            : ${appState.tone}
+═══════════════════════════════════════════════════════
+⚠️  CRITICAL: Output MUST represent EVERY field above.
+═══════════════════════════════════════════════════════
 `;
 
-  /* ── VISUAL ELEMENTS built from real data + style choices ── */
-  const visualElements = [
-    `Title text on image: "${title}"`,
-    sub        ? `Subtitle: "${sub}"`                            : '',
-    year       ? `Year badge: "${year}"`                        : '',
-    genre      ? `Genre visual style: ${genre}`                  : '',
-    singer     ? `Artist name displayed: ${singer}`              : '',
-    composer   ? `Composer credit: ${composer}`                  : '',
-    raag       ? `Classical mood (Raag ${raag}): colour/lighting that embodies this raag's essence` : '',
-    cast       ? `Human mood reference: inspired by ${cast}`     : '',
-    location   ? `Setting/backdrop inspired by: ${location}`     : '',
-    impact     ? `Emotional core: ${impact}`                     : '',
-    popularity ? `Energy level: ${popularity}`                   : '',
-    awards     ? `Achievement glow element: ${awards}`           : '',
-    fact       ? `Subtle hidden detail: ${fact}`                 : '',
-    /* Style choices as explicit visual directives */
+  /* ── DYNAMIC TYPOGRAPHY BLOCK — every field as text element ── */
+  const allTypographyBlock = Object.entries(row)
+    .filter(([k,v]) => v && v.trim && v.trim())
+    .map(([k,v]) => `• ${k}: "${v.trim()}"  → display as text overlay, badge, label or caption`)
+    .join('\n');
+
+  /* ── DYNAMIC VISUAL ELEMENTS — field → visual directive mapping ── */
+  const skipKeys = new Set([appState.colTitle, appState.colSub, appState.colYear, 'Song Name','Movie','Year','Title','Name','Date']);
+
+  const veCore = [
+    `Main title: "${title}" (large, bold, dominant — most prominent element)`,
+    sub  ? `Subtitle: "${sub}"` : '',
+    year ? `Year badge: "${year}"` : '',
+  ].filter(Boolean);
+
+  const veDynamic = Object.entries(row)
+    .filter(([k,v]) => v && v.trim && v.trim() && !skipKeys.has(k))
+    .map(([k,v]) => {
+      const val = v.trim(); const kl = k.toLowerCase();
+      if(kl.includes('genre')||kl.includes('type')||kl.includes('category'))
+        return `Genre "${val}": define overall visual language, texture and colour palette`;
+      if(kl.includes('singer')||kl.includes('artist')||kl.includes('vocalist'))
+        return `Artist "${val}": display name prominently, evoke their artistic energy`;
+      if(kl.includes('composer')||kl.includes('music director'))
+        return `Composer "${val}": credit displayed, compositional style influences arrangement`;
+      if(kl.includes('lyricist')||kl.includes('writer'))
+        return `Lyricist "${val}": credit shown, lyrical mood influences text style`;
+      if(kl.includes('director')&&!kl.includes('music'))
+        return `Director "${val}": credit shown`;
+      if(kl.includes('raag')||kl.includes('raga'))
+        return `Raag "${val}": translate its emotional rasa into specific colours, lighting and mood`;
+      if(kl.includes('hero')||kl.includes('cast')||kl.includes('star'))
+        return `Cast "${val}": human mood/energy reference`;
+      if(kl.includes('location')||kl.includes('filming'))
+        return `Location "${val}": inspire the backdrop, environment and setting`;
+      if(kl.includes('impact')||kl.includes('description')||kl.includes('about'))
+        return `Cultural impact "${val}": the emotional story the image must tell`;
+      if(kl.includes('fact')||kl.includes('trivia')||kl.includes('note'))
+        return `Interesting fact "${val}": weave this subtly into visual storytelling`;
+      if(kl.includes('award')||kl.includes('achievement'))
+        return `Achievement "${val}": show as trophy/star/glow accent element`;
+      if(kl.includes('popular')||kl.includes('rating'))
+        return `Popularity "${val}": reflect as energy intensity in the composition`;
+      if(kl.includes('label')||kl.includes('publisher'))
+        return `Label "${val}": small credit element`;
+      if(kl.includes('studio')||kl.includes('production'))
+        return `Production "${val}": small credit element`;
+      if(kl.includes('duration')||kl.includes('length'))
+        return `Duration "${val}": visual rhythm/pacing reference`;
+      if(kl.includes('remake')||kl.includes('version'))
+        return `Legacy "${val}": timeless quality in visual treatment`;
+      return `${k} "${val}": incorporate meaningfully into visual composition`;
+    })
+    .filter(Boolean);
+
+  const veStyle = [
     `Art Style: ${appState.art}`,
     `Lighting: ${appState.light}`,
     `Colour Palette: ${appState.color}`,
-    `Situation/Scene Context: ${appState.situation}`,
-    `Setting/Background: ${appState.bg}`,
-  ].filter(Boolean).join('\n- ');
+    `Situation: ${appState.situation}`,
+    `Background: ${appState.bg}`,
+  ];
 
-  /* ── AI MUSIC ELEMENTS from data ── */
-  const musicElements = [
-    singer   ? `Vocal style inspired by: ${singer}`     : '',
-    composer ? `Musical complexity of: ${composer}`     : '',
-    raag     ? `Base scale/raag: ${raag}`               : '',
-    genre    ? `Genre: ${genre}`                        : '',
-    year     ? `Era of music: ${year}`                  : '',
-    impact   ? `Emotional arc: ${impact}`               : '',
-    duration ? `Target duration: ${duration}`           : '',
-    label    ? `Production quality of: ${label} label`  : '',
-  ].filter(Boolean).join('\n- ');
+  const visualElements = [...veCore, ...veDynamic, ...veStyle].join('\n- ');
+
+  /* ── MUSIC ELEMENTS — dynamic ── */
+  const meDynamic = Object.entries(row)
+    .filter(([k,v]) => v && v.trim && v.trim())
+    .map(([k,v]) => {
+      const val = v.trim(); const kl = k.toLowerCase();
+      if(kl.includes('singer')||kl.includes('vocalist')||kl.includes('artist'))
+        return `Vocal style inspired by: ${val}`;
+      if(kl.includes('composer')||kl.includes('music director'))
+        return `Compositional depth of: ${val}`;
+      if(kl.includes('raag')||kl.includes('raga')||kl.includes('scale'))
+        return `Base melodic raag/scale: ${val}`;
+      if(kl.includes('genre')||kl.includes('type'))
+        return `Music genre: ${val}`;
+      if(kl.includes('year')||kl.includes('date'))
+        return `Era of composition: ${val}`;
+      if(kl.includes('impact')||kl.includes('description'))
+        return `Emotional arc: ${val}`;
+      if(kl.includes('duration')||kl.includes('length'))
+        return `Target duration: ${val}`;
+      if(kl.includes('label'))
+        return `Production quality of: ${val} label`;
+      if(kl.includes('lyricist'))
+        return `Lyrical mood by: ${val}`;
+      if(kl.includes('award'))
+        return `Award-winning quality target: ${val}`;
+      if(kl.includes('fact')||kl.includes('note'))
+        return `Musical inspiration: ${val}`;
+      return null;
+    })
+    .filter(Boolean);
+  const musicElements = meDynamic.join('\n- ');
+
+  const shortCtx = `"${title}"${sub?' from "'+sub+'"':''}${year?' ('+year+')':''}`;
 
   const prompts = {};
 
-  /* ════════════════════════════════
-     IMAGE PROMPTS
-     ════════════════════════════════ */
+  /* ════════════════════════════════════════════════════════
+     IMAGE PROMPTS — ALL with full data coverage
+     ════════════════════════════════════════════════════════ */
 
   prompts.ig_post = `🖼️ INSTAGRAM POST IMAGE PROMPT (1080×1080px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a stunning, scroll-stopping Instagram square post image (1080×1080px, 1:1 ratio) that visually represents ALL the data above.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — Instagram Square Post (1080×1080px, 1:1)
+═══════════════════════════════════════════════════════
+Create a stunning scroll-stopping image. EVERY data field from the 
+mandatory list above MUST appear — as text, badge, colour, symbol or visual element.
 
-REQUIRED VISUAL ELEMENTS:
+REQUIRED VISUAL ELEMENTS (from data + style — ALL mandatory):
 - ${visualElements}
 
-HUMAN SUBJECTS: ${appState.human}
-BACKGROUND: ${appState.bg}
-EMOTION & MOOD: ${appState.emotion}
-TONE: ${appState.tone}
+MANDATORY TYPOGRAPHY (every field must show as text/label/badge):
+${allTypographyBlock}
 
-TYPOGRAPHY ON IMAGE (all must appear):
-• Main title — "${title}" (large, bold, dominant)
-${sub   ? `• Sub text  — "${sub}"` : ''}
-${year  ? `• Year tag  — "${year}"` : ''}
-${singer? `• Artist    — "${singer}"` : ''}
-${genre ? `• Genre tag — "${genre}"` : ''}
-
-BRANDING (compulsory bottom strip):
+BRANDING STRIP (bottom — never remove):
 "Powered by kspiderai.in | ▶ youtube.com/@KSpider4Kreation"
 ${profileBlock ? `Creator: ${profileBlock}` : ''}
 
-STYLE RULES:
-✅ Ultra-high quality, photorealistic OR artistic illustration
-✅ Instagram-safe 1:1 ratio, RGB colour space
-✅ No copyrighted logos, no brand watermarks of others
-✅ 100% original AI-generated artwork
-✅ Eye-catching, saves-worthy, share-worthy
-✅ Data-driven visual storytelling — every field above must influence the output${branding}`;
+QUALITY:
+✅ ${appState.art} — ultra-high quality output
+✅ 1080×1080px, 1:1, RGB, Instagram-safe
+✅ 100% original AI-generated, no copyrighted elements
+✅ ALL data fields must be visible somewhere in the image${branding}`;
 
   prompts.ig_story = `📱 INSTAGRAM STORY IMAGE PROMPT (1080×1920px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a full-bleed vertical Instagram Story (1080×1920px, 9:16 ratio) that tells the complete story of this data visually.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — Instagram Story (1080×1920px, 9:16)
+═══════════════════════════════════════════════════════
+Full-bleed vertical story. EVERY data field MUST be shown.
 
 REQUIRED VISUAL ELEMENTS:
 - ${visualElements}
 
-LAYOUT (top to bottom):
-[TOP SAFE ZONE — minimal, leave for stickers]
-[MID HERO — ${appState.human} in ${appState.bg}]
-[TEXT SECTION]:
-  • "${title}" — massive bold headline
-  ${sub    ? `• "${sub}" — subtitle` : ''}
-  ${singer ? `• By ${singer}` : ''}
-  ${year   ? `• ${year}` : ''}
-  ${awards ? `• 🏆 ${awards.slice(0,60)}` : ''}
-  ${fact   ? `• 💡 ${fact.slice(0,80)}` : ''}
-[BOTTOM BRANDING STRIP]:
-  "kspiderai.in | @KSpider4Kreation"
-  ${profileBlock ? profileBlock : ''}
+LAYOUT (top → bottom):
+[TOP 10%] — Safe zone, minimal
+[TOP 45%] — Hero visual: ${appState.human} | ${appState.bg} | ${appState.situation}
+             Lighting: ${appState.light} | Art: ${appState.art}
+[MIDDLE 40%] — ALL DATA AS TEXT/BADGE CARDS:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`  • ${k}: "${v.trim()}"`).join('\n')}
+[BOTTOM 10%] — BRANDING: "kspiderai.in | @KSpider4Kreation"
+${profileBlock ? `  • Creator: ${profileBlock}` : ''}
 
-MOOD: ${appState.emotion} | ${appState.tone} tone
-✅ Mobile-first design, readable at 375px width
-✅ No copyright elements, 100% original${branding}`;
+STYLE: ${appState.emotion} mood | ${appState.tone} tone | ${appState.color}
+✅ Mobile-first, readable at 375px | 100% original${branding}`;
 
   prompts.yt_thumb = `▶️ YOUTUBE THUMBNAIL PROMPT (1280×720px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a high-impact YouTube thumbnail (1280×720px, 16:9) that gets maximum click-through rate. Must be readable at 120×90px small size.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — YouTube Thumbnail (1280×720px, 16:9)
+═══════════════════════════════════════════════════════
+High-CTR thumbnail. Every data field must influence design.
 
-LAYOUT:
-• LEFT 55% — ${appState.human} with strong ${appState.emotion} facial expression, ${appState.bg}
-• RIGHT 45% — Bold text block:
-   LINE 1 (HUGE caps): "${title.split(' ').slice(0,4).join(' ').toUpperCase()}"
-   LINE 2 (Medium): ${sub||singer||year||genre}
-   LINE 3 (Small): kspiderai.in
-
-DATA TO REFLECT IN DESIGN:
+REQUIRED VISUAL ELEMENTS:
 - ${visualElements}
 
+LAYOUT:
+• LEFT 55% — ${appState.human}, ${appState.bg}, ${appState.emotion} expression
+• RIGHT 45% — Bold text block showing ALL key data:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,6).map(([k,v])=>`  LINE: "${v.trim()}"`).join('\n')}
+  + "kspiderai.in" small tag
+
+ALL DATA SHOWN:
+${allTypographyBlock}
+
 THUMBNAIL RULES:
-✅ High contrast (dark bg + bright text OR vice versa)
-✅ Max 6 words of text total
-✅ Strong emotional hook: ${appState.emotion}
-✅ ${popularity ? popularity+' popularity — reflect that energy' : 'Viral-worthy energy'}
-✅ Curiosity-gap visual composition
-✅ 4K quality render${branding}`;
+✅ ${appState.art} render
+✅ High contrast — readable at 120×90px small size
+✅ ${appState.light} lighting | ${appState.color} palette
+✅ Curiosity-gap visual | 4K quality
+✅ ALL data fields from mandatory list must influence design${branding}`;
 
   prompts.fb_cover = `👍 FACEBOOK COVER PHOTO PROMPT (820×312px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a professional Facebook Cover photo (820×312px) — panoramic horizontal banner representing all data above.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — Facebook Cover (820×312px, panoramic)
+═══════════════════════════════════════════════════════
+Horizontal banner. Every data field must appear.
 
-LAYOUT:
-• FAR LEFT (25%) — ${appState.human}
-• CENTRE (50%) — "${title}" headline + key details
-• RIGHT (25%) — supporting data + branding
-• BOTTOM STRIP — "kspiderai.in | @KSpider4Kreation"
-${profileBlock ? `• Profile section: ${profileBlock}` : ''}
-
-ALL DATA ELEMENTS TO SHOW:
+REQUIRED VISUAL ELEMENTS:
 - ${visualElements}
 
-DESIGN NOTES:
-✅ Works on desktop (full) AND mobile (centre 820×312 crop safe zone)
-✅ ${appState.bg} background, ${appState.emotion} mood
-✅ Professional, brand-consistent design
-✅ Include year "${year}" and genre "${genre}" if available${branding}`;
+LAYOUT:
+• LEFT 25%  — ${appState.human}
+• CENTRE 50% — All key data as text:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`  • ${k}: "${v.trim()}"`).join('\n')}
+• RIGHT 25% — Branding + remaining data
+• BOTTOM — "kspiderai.in | @KSpider4Kreation"
+${profileBlock ? `• Profile: ${profileBlock}` : ''}
+
+STYLE: ${appState.art} | ${appState.bg} | ${appState.light} | ${appState.color}
+✅ Works desktop AND mobile (centre crop safe zone)
+✅ ALL data mandatory${branding}`;
 
   prompts.twitter = `🐦 TWITTER/X POST IMAGE PROMPT (1600×900px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a bold Twitter/X post image (1600×900px, 16:9) — punchy, share-worthy, data-driven.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — Twitter/X Post (1600×900px, 16:9)
+═══════════════════════════════════════════════════════
+Bold, punchy, data-rich. Every field must show.
 
-ALL DATA TO INCORPORATE:
+REQUIRED VISUAL ELEMENTS:
 - ${visualElements}
 
-DESIGN:
-• Background: ${appState.bg}
-• ${appState.human} — positioned for drama
-• Headline: "${title}" (massive, readable in feed)
-${sub    ? `• Subtext: "${sub}"` : ''}
-${singer ? `• Artist: ${singer}` : ''}
-${year   ? `• Year: ${year}` : ''}
-${impact ? `• Impact quote: "${impact.slice(0,80)}..."` : ''}
-• Bottom right: "kspiderai.in | @KSpider4Kreation"
-${profileBlock ? `• Credit: ${profileBlock}` : ''}
+ALL DATA AS TEXT OVERLAYS:
+${allTypographyBlock}
 
-MOOD: ${appState.emotion} | TONE: ${appState.tone}
-✅ Twitter-optimised, high contrast, feed-stopping visual${branding}`;
+STYLE: ${appState.art} | ${appState.bg} | ${appState.light} | ${appState.color}
+HUMAN: ${appState.human} | MOOD: ${appState.emotion}
+BRANDING: "kspiderai.in | @KSpider4Kreation"
+${profileBlock ? `Credit: ${profileBlock}` : ''}
+✅ High contrast | Twitter feed-stopping | ALL data mandatory${branding}`;
 
   prompts.linkedin = `💼 LINKEDIN POST IMAGE PROMPT (1200×628px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a professional LinkedIn post image (1200×628px) — credibility-building, data-forward.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — LinkedIn Post (1200×628px)
+═══════════════════════════════════════════════════════
+Professional, data-forward. Every field must appear.
 
-DATA TO DISPLAY:
+REQUIRED VISUAL ELEMENTS:
 - ${visualElements}
 
-DESIGN APPROACH:
-• Clean professional aesthetic with ${appState.bg} background
-• ${appState.human} — business-appropriate expression
-• Data visualisation: show key stats/facts from the data above in elegant card format
-• Typography: Clean sans-serif, data-forward layout
-• Colour palette: Professional with ${appState.tone==='Business'?'corporate blue/grey':'warm orange accent'}
+DATA DISPLAY LAYOUT — show all fields as info cards:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`  [CARD] ${k}: "${v.trim()}"`).join('\n')}
 
-TEXT ELEMENTS:
-✦ "${title}" — main headline
-${sub      ? `✦ "${sub}"` : ''}
-${singer   ? `✦ By: ${singer}` : ''}
-${awards   ? `✦ 🏆 ${awards.slice(0,70)}` : ''}
-${impact   ? `✦ "${impact.slice(0,100)}"` : ''}
-✦ "kspiderai.in" — subtle bottom branding
-${profileBlock ? `✦ Author: ${profileBlock}` : ''}${branding}`;
+BRANDING: "kspiderai.in" | ${profileBlock ? `Author: ${profileBlock}` : ''}
+STYLE: ${appState.art} | ${appState.bg} | ${appState.light} | ${appState.color}
+✅ Professional quality | ALL data mandatory${branding}`;
 
   prompts.pinterest = `📌 PINTEREST PIN PROMPT (1000×1500px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a Pinterest Pin (1000×1500px, 2:3 tall ratio) — scroll-stopping, save-worthy, information-rich.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — Pinterest Pin (1000×1500px, 2:3)
+═══════════════════════════════════════════════════════
+Tall infographic-style pin. Every field shown.
 
-SECTIONS (top to bottom):
-1. HERO IMAGE (top 50%) — ${appState.bg} with ${appState.human}
-2. TITLE BAND — "${title}" in bold display font
-3. INFO CARDS — show these data points as visual tiles:
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,8).map(([k,v])=>`   • ${k}: ${v.trim().slice(0,50)}`).join('\n')}
-4. FOOTER — "More at kspiderai.in | @KSpider4Kreation"
-${profileBlock ? `   Creator: ${profileBlock}` : ''}
+REQUIRED VISUAL ELEMENTS:
+- ${visualElements}
 
-MOOD: ${appState.emotion} — rich, saturated Pinterest aesthetic
-✅ Font-forward, save-worthy, infographic style
-✅ All data above must appear somewhere in the image${branding}`;
+SECTIONS (top → bottom):
+[TOP 35%] Hero: ${appState.bg} | ${appState.human} | ${appState.art}
+[MID 55%] DATA INFORMATION CARDS — ALL fields:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`  📌 ${k}: "${v.trim()}"`).join('\n')}
+[BOTTOM 10%] "More at kspiderai.in | @KSpider4Kreation"
+${profileBlock ? `  Creator: ${profileBlock}` : ''}
+
+STYLE: ${appState.emotion} | ${appState.color} | Save-worthy infographic
+✅ Font-forward | ALL data mandatory${branding}`;
 
   prompts.wa_status = `💬 WHATSAPP STATUS IMAGE PROMPT (1080×1920px)
 ${fullDetailSection}
-DESIGN BRIEF:
-Create a vibrant WhatsApp Status image (1080×1920px) — vivid, readable on phone, shareable.
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — WhatsApp Status (1080×1920px)
+═══════════════════════════════════════════════════════
+Vibrant, mobile-readable. Every field must show.
 
-ALL DATA TO USE:
+REQUIRED VISUAL ELEMENTS:
 - ${visualElements}
 
-DESIGN:
-• Vivid, eye-catching ${appState.bg} background
-• ${appState.human} — natural, relatable pose
-• Large readable text (viewed at 5 inches on phone):
-  "${title}" — main bold text
-  ${sub    ? `"${sub}"` : ''}
-  ${singer ? `🎤 ${singer}` : ''}
-  ${year   ? `📅 ${year}` : ''}
-  ${fact   ? `💡 "${fact.slice(0,80)}"` : ''}
-• Small bottom tag: "kspiderai.in"
-${profileBlock ? `• Creator: ${profileBlock}` : ''}
+ALL DATA AS READABLE TEXT (large enough for 5-inch screen):
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`  • ${k}: "${v.trim()}"`).join('\n')}
 
-✅ WhatsApp-optimised, vibrant colours, works all phones
-✅ No copyright, original AI art${branding}`;
+SMALL BOTTOM TAG: "kspiderai.in"
+${profileBlock ? `Creator: ${profileBlock}` : ''}
+
+STYLE: ${appState.art} | ${appState.bg} | ${appState.light} | ${appState.color}
+✅ Vibrant | Phone-readable | ALL data mandatory${branding}`;
 
   prompts.html_ban = `🌐 HTML ANIMATED BANNER CODE PROMPT
 ${fullDetailSection}
-Write complete HTML5+CSS3 code for TWO animated web banners. Use ONLY inline HTML/CSS/JS — no external libraries.
+Write complete, self-contained HTML5+CSS3 code (no external libs) for TWO animated banners.
+Display ALL data fields below in the banners.
 
-DATA TO DISPLAY IN BANNERS:
+ALL DATA TO SHOW:
 ${allFields}
 
-═══════════════════════════════════════
+═══════════════════════════════════════════════════════
 BANNER 1 — LEADERBOARD (728×90px)
-═══════════════════════════════════════
-Requirements:
-• Show: "${title}"${sub?' | '+sub:''} ${year?'('+year+')':''}
-• Artist: ${singer||''}  |  Genre: ${genre||''}
-• CSS typewriter animation for title
-• Dark background #0a0812, accent colour #e8520a
-• Click = opens kspiderai.in
-• Small "Ad by kspiderai.in" label (AdSense safe)
+═══════════════════════════════════════════════════════
+• CSS typewriter animation cycling through all data fields
+• Dark bg #0a0812, accent #e8520a
+• Show: ${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`${k}: "${v.trim()}"`).join(' | ')}
+• Click → kspiderai.in | "Ad by kspiderai.in" label
 
-═══════════════════════════════════════
+═══════════════════════════════════════════════════════
 BANNER 2 — RECTANGLE (300×250px)
-═══════════════════════════════════════
-Requirements:
-• Full data card: all fields above displayed
-• Fade-in animation, sliding panels
-• ${appState.emotion} colour mood
-• CTA button: "Explore More" → kspiderai.in
-• Branding: "kspiderai.in | @KSpider4Kreation"
-${profileBlock ? `• Creator credit: ${profileBlock}` : ''}
+═══════════════════════════════════════════════════════
+• All data in scrolling card stack animation
+• ${appState.emotion} colour mood | ${appState.color}
+• CTA: "Explore More" → kspiderai.in
+• Bottom: "kspiderai.in | @KSpider4Kreation"
+${profileBlock ? `• Creator: ${profileBlock}` : ''}
 
-OUTPUT FORMAT: Provide full <html>...</html> code for each banner.
-✅ Google AdSense safe, no deceptive elements, no fake buttons${branding}`;
+OUTPUT: Full working <html>...</html> code for each banner.
+✅ AdSense-safe | ALL data fields shown${branding}`;
 
-  /* ── RELATED DATA IMAGE PROMPT (NEW) ── */
-  prompts.data_related = `🎯 DATA-RELATED CONTEXTUAL IMAGE PROMPT
+  prompts.data_related = `🎯 DATA-CONTEXTUAL IMAGE PROMPT
 ${fullDetailSection}
-DESIGN BRIEF — GENERATE AN IMAGE THAT VISUALLY REPRESENTS EVERY SINGLE DATA POINT ABOVE:
+═══════════════════════════════════════════════════════
+DESIGN BRIEF — Every Data Field = One Visual Element
+═══════════════════════════════════════════════════════
+Generate an image where EACH field from the mandatory data list above 
+is translated into a SPECIFIC visual element, texture, colour, symbol 
+or typography choice. This is a data-to-visual translation exercise.
 
-This is the most important prompt. Generate an image where EACH field of data above is translated into a specific visual element:
+FIELD-BY-FIELD VISUAL MAPPING (follow exactly):
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`• "${k}" = "${v.trim()}" → [Translate into a specific visual element in the image]`).join('\n')}
 
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).map(([k,v])=>{
-  const val = v.trim();
-  return `• "${k}" = "${val}" → [Translate this into a visual element, texture, colour, symbol, or typography in the image]`;
-}).join('\n')}
-
-COMPOSITION RULES:
+COMPOSITION:
 • The image must feel like a visual encyclopaedia entry for "${title}"
-• Every data point creates a visual "layer" in the composition
-• Background: ${appState.bg} evolved with data-driven colour choices
-• ${appState.human} if applicable — expression matches "${appState.emotion}"
-• Typography as visual art: show title "${title}" prominently
-• Genre "${genre||'theme'}" must define the overall visual language
-${raag ? `• Raag "${raag}" → translate to a colour palette (Raag-specific synaesthesia)` : ''}
-${awards ? `• Achievement layer: subtle trophy/glow element representing "${awards}"` : ''}
-• BOTTOM BRANDING (compulsory): "kspiderai.in | ▶ @KSpider4Kreation"
-${profileBlock ? `• Creator watermark: ${profileBlock}` : ''}
+• Every data point adds a distinct visual "layer"
+• Art Style: ${appState.art}
+• Background: ${appState.bg} evolved by data
+• ${appState.human} — expression matches "${appState.emotion}"
+• Lighting: ${appState.light} | Colour: ${appState.color}
+${genre ? `• Genre "${genre}": define the entire visual language` : ''}
+${raag  ? `• Raag "${raag}": translate to synaesthetic colour palette` : ''}
 
-QUALITY: Photorealistic or hyper-artistic, 4K, zero copyright issues, 100% original AI generation${branding}`;
+BOTTOM BRANDING (compulsory):
+"kspiderai.in | ▶ @KSpider4Kreation"
+${profileBlock ? `Creator watermark: ${profileBlock}` : ''}
 
-  /* ════════════════════════════════
+✅ 4K quality | Zero copyright | ALL fields visually mapped${branding}`;
+
+  /* ════════════════════════════════════════════════════════
      VIDEO PROMPTS
-     ════════════════════════════════ */
+     ════════════════════════════════════════════════════════ */
 
   prompts.video_reel = `🎬 INSTAGRAM REEL / YOUTUBE SHORTS SCRIPT (60 seconds)
 ${fullDetailSection}
-COMPLETE VIDEO SCRIPT — use ALL data above in the content:
+═══════════════════════════════════════════════════════
+USE ALL DATA ABOVE throughout the script — nothing omitted
+═══════════════════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎬 TITLE: "${title}"
-PLATFORM: Instagram Reels + YouTube Shorts
-DURATION: 60 seconds
-TONE: ${appState.tone} | EMOTION: ${appState.emotion}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[0-3 sec] HOOK:
+  Visual: ${appState.human} | ${appState.bg} | Fast zoom
+  Text on screen: "${title}"
+  VO: "You won't believe this about ${title}…"
 
-[0-3 sec] HOOK — Stop the scroll!
-  Voiceover: "You won't believe this about ${title}…"
-  Visual: ${appState.human} | ${appState.bg} | Fast zoom-in
-  Text on screen: "${title}" with ${appState.emotion} treatment
+[3-15 sec] SETUP — cover these fields:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,5).map(([k,v])=>`  • ${k}: "${v.trim()}"`).join('\n')}
 
-[3-15 sec] CONTEXT SETUP
-  Voiceover: Cover this data —
-${allFields.split('\n').slice(0,6).join('\n')}
-  Visuals: Relevant imagery matching ${genre||'the theme'}
+[15-40 sec] MAIN CONTENT — cover ALL remaining fields:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(5).map(([k,v])=>`  • ${k}: "${v.trim()}"`).join('\n')}
+  Visual style: ${appState.art} | ${appState.bg} | ${appState.light}
 
-[15-40 sec] MAIN STORY
-${impact ? `  Core message: "${impact}"` : '  [Main story about '+title+']'}
-${fact   ? `  Surprising fact: "${fact}"` : ''}
-${awards ? `  Achievement moment: "${awards}"` : ''}
-  Background music: ${genre||'cinematic'} ${appState.emotion} track
+[40-50 sec] DATA HIGHLIGHT — show as animated cards:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`  ${k}: "${v.trim()}"`).join('\n')}
 
-[40-50 sec] DATA HIGHLIGHT
-  Show these facts as animated text cards:
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,5).map(([k,v])=>`  ${k}: ${v.trim().slice(0,60)}`).join('\n')}
+[50-57 sec] EMOTIONAL PEAK:
+  Most powerful line about "${title}" | Mood: ${appState.emotion}
 
-[50-57 sec] EMOTIONAL PEAK
-  Most powerful line about "${title}"
-
-[57-60 sec] CTA
+[57-60 sec] CTA:
   "Like & Share! | Follow for more!"
-  Screen: "kspiderai.in | @KSpider4Kreation"
+  "kspiderai.in | @KSpider4Kreation"
   ${profileBlock ? profileBlock : ''}
 
-MUSIC SUGGESTION: ${genre||'Cinematic'} ${appState.emotion} background
-HASHTAGS: #${(title||'').replace(/\s/g,'')} #${(genre||'bollywood').replace(/\s/g,'')} #kspiderai #kspider4kreation #viral #trending #india${branding}`;
+BG MUSIC: ${genre||'Cinematic'} ${appState.emotion} | Tone: ${appState.tone}
+HASHTAGS: #${(title||'').replace(/\s/g,'')} #${(genre||'bollywood').replace(/\s/g,'')} #kspiderai #kspider4kreation #viral #india${branding}`;
 
   prompts.yt_script = `📹 YOUTUBE FULL VIDEO SCRIPT (5-8 minutes)
 ${fullDetailSection}
-COMPLETE YOUTUBE SCRIPT — incorporate ALL data fields above throughout the video:
+═══════════════════════════════════════════════════════
+Cover ALL data fields above throughout the video
+═══════════════════════════════════════════════════════
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎥 VIDEO: "${title}"${sub?' | '+sub:''}${year?' ('+year+')':''}
-DURATION: 5-8 minutes | TONE: ${appState.tone}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[INTRO — 0:00-0:30]
-Hook question for audience about "${title}"
-"Subscribe — new content every week!"
+[INTRO 0:00-0:30]
+Hook about "${title}" | Subscribe CTA
 ${profileBlock||'[Channel Name]'} | kspiderai.in
 
-[SECTION 1 — Background — 0:30-1:30]
-Complete background covering:
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,4).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
+[SECTION 1 — Background 0:30-1:30]
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,4).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
 
-[SECTION 2 — Deep Dive — 1:30-4:00]
-${impact ? `Cultural/Social Impact: ${impact}` : 'Complete story of '+title}
-${fact   ? `\nSurprising fact segment: "${fact}"` : ''}
-${awards ? `\nAchievements: ${awards}` : ''}
-All remaining data to cover:
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(4,10).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
+[SECTION 2 — Deep Dive 1:30-4:00]
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(4,9).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
 
-[SECTION 3 — Analysis — 4:00-5:30]
-Why "${title}" matters today
-${remakes ? `Legacy & Remakes: ${remakes}` : ''}
-${popularity ? `Cultural reach: ${popularity}` : ''}
+[SECTION 3 — Impact & Legacy 4:00-5:30]
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(9,14).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
 
-[SECTION 4 — Remaining Data — 5:30-6:30]
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(10).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')||'[Final facts and trivia]'}
+[SECTION 4 — Remaining Data 5:30-6:30]
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(14).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')||'[Final facts and trivia]'}
 
-[OUTRO — 6:30-7:00]
-3 key takeaways about "${title}"
-CTA: "Like, Share, Subscribe! Comment your thoughts!"
-"For free AI tools: kspiderai.in | Watch more: youtube.com/@KSpider4Kreation"
+[OUTRO 6:30-7:00]
+3 key takeaways | Like, Share, Subscribe!
+"kspiderai.in | youtube.com/@KSpider4Kreation"
 ${profileBlock||''}
 
-━━━ SEO METADATA ━━━
-TITLE OPTIONS (5 clickworthy variations):
-1. Everything About "${title}" — The Complete Story | ${year||''}
-2. "${title}" — ${fact?fact.slice(0,50):'Untold Facts'} | ${genre||''}
-3. Why "${title}" Changed ${sub||'Indian Culture'} Forever
-4. "${title}" Full Analysis — ${singer||composer||''}${year?' ('+year+')':''}
-5. ${impact?impact.slice(0,50)+'...':'The Real Story Behind "'+title+'"'}
-
-DESCRIPTION: [Generate 500-word SEO description using all data: ${inlineData.slice(0,300)}]
-TAGS: ${title}, ${sub||''}, ${singer||''}, ${genre||''}, ${year||''}, india, bollywood, kspiderai, ${(title||'').replace(/\s/g,'')}, ${(singer||'').replace(/\s/g,'')}${branding}`;
+SEO METADATA:
+TITLE OPTIONS (5): [Generate clickworthy titles for "${title}"]
+DESCRIPTION: [500-word SEO description using all data above: ${inlineData.slice(0,300)}]
+TAGS: ${[title,sub,singer,genre,year,composer,lyricist,raag,'bollywood','india','kspiderai'].filter(Boolean).join(', ')}${branding}`;
 
   prompts.video_ad = `📢 VIDEO AD SCRIPT (30 seconds)
 ${fullDetailSection}
-DATA DRIVING THIS AD:
-${allFields}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📢 AD: "${title}" | 30 sec
-TONE: ${appState.tone} | ${appState.emotion}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-[0-5 sec] ATTENTION HOOK
-Scene: ${appState.bg} | ${appState.human}
-VO: "[Powerful line about '${title}' that creates instant curiosity]"
-
-[5-15 sec] VALUE: What makes "${title}" special
-Key data: ${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,4).map(([k,v])=>k+': '+v.trim().slice(0,40)).join(' | ')}
-Visual: Showcase the subject dynamically
-
-[15-25 sec] PROOF
-${awards ? `Award-winning: ${awards}` : impact||'Why this matters'}
-${fact   ? `Unique angle: "${fact.slice(0,80)}"` : ''}
-${popularity ? `Reach: ${popularity}` : ''}
-
-[25-30 sec] CTA
-"Visit kspiderai.in for free AI tools!"
-Logo: K Spider AI | Web: kspiderai.in
+[0-5 sec] HOOK: ${appState.bg} | ${appState.human} | ${appState.emotion}
+  VO: "[Powerful line about '${title}']"
+[5-15 sec] VALUE:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,4).map(([k,v])=>`  • ${k}: ${v.trim().slice(0,50)}`).join('\n')}
+[15-25 sec] PROOF:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(4,8).map(([k,v])=>`  • ${k}: ${v.trim().slice(0,50)}`).join('\n')}
+[25-30 sec] CTA: "Visit kspiderai.in!" | K Spider AI logo
 ${profileBlock ? `By: ${profileBlock}` : ''}
 
-VISUAL DIRECTION: ${appState.bg}, ${appState.emotion}, ${appState.tone}
-MUSIC: ${genre||'Cinematic'} upbeat background score${branding}`;
+STYLE: ${appState.art} | ${appState.bg} | ${appState.light} | ${appState.color}
+✅ ALL data covered in 30 seconds${branding}`;
 
-  /* ════════════════════════════════
+  /* ════════════════════════════════════════════════════════
      MUSIC PROMPTS
-     ════════════════════════════════ */
+     ════════════════════════════════════════════════════════ */
 
   prompts.music_track = `🎵 AI MUSIC TRACK GENERATION PROMPT
 ${fullDetailSection}
-ALL MUSIC DATA FROM ABOVE:
-- ${musicElements}
+ALL MUSIC DATA:
+- ${musicElements||allFields}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎵 FOR SUNO AI (suno.com):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"${genre?genre+' song, ':''}${appState.emotion} mood, ${appState.tone.toLowerCase()} energy.
-Title: '${title}'${sub?' from "'+sub+'"':''}${year?' (era: '+year+')':''}
-${singer  ? 'Vocal style: emotional, expressive, inspired by '+singer+'s range' : 'Expressive lead vocals'}
-${composer? 'Musical richness: complexity inspired by '+composer+'s arrangements' : 'Rich musical arrangement'}
-${raag    ? 'Base scale/raag: '+raag+' — use its characteristic notes and mood' : ''}
-Instruments: ${genre?.toLowerCase().includes('classical')||genre?.toLowerCase().includes('folk')?'sitar, tabla, bansuri, sarangi, harmonium':'acoustic guitar, piano, subtle tabla, atmospheric pads, strings'}
-Tempo: ${appState.emotion.includes('energetic')||appState.emotion.includes('vibrant')?'upbeat 118-124 BPM':'slow emotional 68-76 BPM'}
+FOR SUNO AI (suno.com):
+"${genre ? genre+' song, ' : ''}${appState.emotion} mood, ${appState.tone} energy.
+Title: '${title}'${sub?' from "'+sub+'"':''}${year?' era: '+year:''}
+${singer   ? 'Vocal style: inspired by '+singer+'s range' : 'Expressive lead vocals'}
+${composer ? 'Musical arrangement: complexity of '+composer : 'Rich orchestration'}
+${raag     ? 'Scale/Raag: '+raag+' — use its characteristic notes' : ''}
+Instruments: ${genre&&(genre.toLowerCase().includes('classical')||genre.toLowerCase().includes('folk'))?'sitar, tabla, bansuri, sarangi, harmonium':'piano, strings, tabla, atmospheric pads'}
+BPM: ${appState.emotion.includes('energetic')||appState.emotion.includes('vibrant')?'118-124':'68-76'}
 Duration: ${duration||'3-4 minutes'}
-Mood tags: [${appState.emotion}, ${appState.tone.toLowerCase()}, ${genre||'cinematic'}, soulful, Indian, heartfelt]
-Lyrics theme: ${impact||'emotional journey inspired by '+title}
-Structure: Intro → Verse 1 → Chorus → Verse 2 → Bridge → Chorus → Outro (fade)"
+Mood: [${appState.emotion}, ${appState.tone}, ${genre||'cinematic'}, soulful, Indian]
+Lyrics theme: ${impact||'emotional journey about '+title}"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎶 FOR UDIO (udio.com):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"[${genre||'cinematic'}, ${appState.emotion}, ${appState.tone.toLowerCase()}, Indian inspired, ${raag?raag+' scale,':''} ${singer?'vocals like '+singer+',':''} original, 2024 production, radio-ready]"
+FOR UDIO (udio.com):
+"[${genre||'cinematic'}, ${appState.emotion}, ${appState.tone}, Indian${raag?', '+raag:''}${singer?', vocals like '+singer:''}]"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-♊ FOR GEMINI MUSIC:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-"Compose a ${appState.emotion} ${genre||'cinematic'} song titled '${title}'. ${impact||shortCtx}. ${singer?'Vocals reminiscent of '+singer+'.':''} ${composer?'Arrangement with the depth of '+composer+'.':''} ${raag?'Use '+raag+' raag as the melodic foundation.':''} Duration: ${duration||'3-4 minutes'}."
+FOR GEMINI MUSIC:
+"Compose ${appState.emotion} ${genre||'cinematic'} song '${title}'. ${impact||shortCtx}. ${singer?'Vocals like '+singer+'.':''} ${composer?'Arrangement depth of '+composer+'.':''} ${raag?'Use '+raag+' raag.':''} Duration: ${duration||'3-4 min'}."
 
-Branding in track title: "Produced with K Spider AI | kspiderai.in"
-${profileBlock?`Artist credit: ${profileBlock}`:''}${branding}`;
+Track title branding: "Produced with K Spider AI | kspiderai.in"
+${profileBlock ? `Artist credit: ${profileBlock}` : ''}${branding}`;
 
   prompts.music_bg = `🎼 INSTRUMENTAL BACKGROUND SCORE PROMPT
 ${fullDetailSection}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-INSTRUMENTAL BACKGROUND MUSIC for "${title}"
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-DATA INFORMING THIS SCORE:
+ALL DATA FOR SCORE:
 ${allFields}
 
-SUNO/UDIO PROMPT (Instrumental only):
-"Cinematic instrumental, NO vocals, NO lyrics.
-Genre: ${genre||'orchestral cinematic'}
-Mood: ${appState.emotion}
-${raag?'Scale/Raag: '+raag:''} 
-${composer?'Compositional depth: '+composer+' style':'Rich orchestral composition'}
-Instruments: ${genre?.toLowerCase().includes('folk')||genre?.toLowerCase().includes('classical')?'sitar, tabla, bansuri, sarangi':'piano, strings, subtle tabla, synth pads, orchestral swells'}
-BPM: 78-88 (versatile for video editing)
-Arc: Minimal intro → gradual build → full arrangement → emotional peak → resolution fade
-Use case: social media background, YouTube intro, reel music, presentation"
+SUNO/UDIO PROMPT — Instrumental only, NO lyrics:
+"Cinematic instrumental, ${appState.emotion} mood, ${genre||'orchestral'} style.
+${raag ? 'Scale/Raag: '+raag : ''}
+${composer ? 'Style depth: '+composer : 'Rich orchestration'}
+Instruments: ${genre&&genre.toLowerCase().includes('folk')?'sitar, tabla, bansuri':'piano, strings, tabla, pads'}
+BPM: 78-88 | Arc: minimal → build → peak → resolution"
 
-PERFECT FOR:
-✅ Instagram Reel background
-✅ YouTube video background
-✅ Podcast intro/outro
-✅ Presentation music
-✅ All royalty-free (AI-generated = copyright-safe)${branding}`;
+USE FOR: Reels, YouTube, Podcast, Presentation
+✅ AI-generated = royalty-free${branding}`;
 
-  /* ════════════════════════════════
+  /* ════════════════════════════════════════════════════════
      TEXT / SOCIAL PROMPTS
-     ════════════════════════════════ */
+     ════════════════════════════════════════════════════════ */
 
   prompts.viral_cap = `✨ VIRAL CAPTION GENERATOR
 ${fullDetailSection}
-Generate 10 platform-specific viral captions using ALL data above:
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DATA USED:
-${allFields}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1️⃣ [EMOTIONAL — Instagram]
-"[Heart-touching line using ${impact||title}]"
-${singer?`🎤 ${singer}`:''}${year?` | ${year}`:''}${genre?` | ${genre}`:''}
-📌 kspiderai.in | @KSpider4Kreation
-
-2️⃣ [FACT DROP — Twitter/X]
-"🤯 ${fact||'[Mind-blowing fact about "'+title+'"]'}"
-${awards?`🏆 ${awards.slice(0,60)}`:''}
-#${(title||'').replace(/\s/g,'')} #kspiderai
-
-3️⃣ [NOSTALGIA — Facebook]
-"[Memory-triggering line about '${title}' — connecting to personal experiences]"
-${sub?`From: "${sub}"`:''}${year?` (${year})`:''}
-Share if you remember! 💛
-
-4️⃣ [DEBATE STARTER — Twitter]
-"Hot take: ${title} is the ${genre?genre+' ':''}${impact?'song that '+impact.slice(0,50)+'...':'[make a bold claim]'}"
-Agree or disagree? 👇
-
-5️⃣ [APPRECIATION — All Platforms]
-"Why '${title}' deserves more recognition:
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,5).map(([k,v])=>`✦ ${k}: ${v.trim().slice(0,60)}`).join('\n')}
-kspiderai.in | @KSpider4Kreation"
-
-6️⃣ [FUNNY/WITTY — Instagram Reels]
-"POV: You just discovered '${title}' and now it's on repeat 😅 ${fact?'| Fun fact: '+fact.slice(0,50):''}
-Tag someone who needs to hear this! 🎵"
-
-7️⃣ [EDUCATIONAL — LinkedIn/YouTube]
-"Everything you didn't know about '${title}':
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,6).map(([k,v])=>`• ${k}: ${v.trim().slice(0,60)}`).join('\n')}
-More at: kspiderai.in"
-
-8️⃣ [MOTIVATIONAL — All Platforms]
-"[Life lesson or inspiration drawn from '${title}' and the story of ${singer||'the artist'}]"
-${impact?`"${impact.slice(0,100)}"`:''}
-
-9️⃣ [CHALLENGE — Instagram/TikTok]
-"${title} Challenge! 🎵 Can you [relevant challenge]?
-Tag 3 friends + @KSpider4Kreation | kspiderai.in"
-
-🔟 [HINDI — WhatsApp/Instagram]
-"${title} के बारे में कुछ ऐसा जो आप नहीं जानते…
-${fact?fact.slice(0,80):'[Interesting Hindi caption about '+title+']'}
-Share करो! 🙌 kspiderai.in"
-
-${profileBlock?`\nCredit each post: ${profileBlock}`:''}${branding}`;
-
-  prompts.hashtags = `#️⃣ COMPLETE HASHTAG STRATEGY PACK
-${fullDetailSection}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DATA: ${inlineData.slice(0,400)}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-INSTAGRAM (30 hashtags — mix of volumes):
-HIGH (1M+): #${(genre||'bollywood').replace(/\s/g,'')} #india #viral #trending #explore #reels #music #song
-MID (100K-1M): #${(title||'').replace(/[^a-z0-9]/gi,'')} #${(sub||'bollywood').replace(/[^a-z0-9]/gi,'')} #${year||'2024'} #${(singer||'artist').replace(/\s/g,'')} #indianculture #contentcreator #indiacreator
-NICHE (<100K): #${(composer||'music').replace(/\s/g,'')} #${(raag||'classical').replace(/\s/g,'')} #kspiderai #kspider4kreation #${(genre||'music').replace(/\s/g,'').toLowerCase()}songs
-
-Generate full 30-tag set mixing: [topic tags] + [platform tags] + [location: India] + [brand: #kspiderai]
-
-YOUTUBE TAGS (50 tags):
-Primary: ${title}, ${sub||''}, ${singer||''}, ${genre||''}, ${year||''}
-Secondary: ${composer||''}, ${lyricist||''}, ${raag||''}, ${label||''}, ${awards||''}
-Long-tail: "${title} full information", "${title} history", "${title} ${year||''}", "${singer||''} best songs"
-Brand: kspiderai, kspider4kreation, free AI tools India
-Generate 50 total YouTube-optimised tags
-
-TWITTER TRENDING SETS:
-Morning batch: [5 hashtags for 8-10 AM IST posting]
-Afternoon batch: [5 hashtags for 1-3 PM IST posting]
-Evening batch: [5 hashtags for 7-10 PM IST posting]
-
-PINTEREST KEYWORDS (20 keyword phrases):
-[Generate 20 Pinterest-style descriptive keyword phrases for "${title}"]
-
-FACEBOOK HASHTAGS (10):
-[10 Facebook-appropriate hashtags]${branding}`;
-
-  prompts.wa_msg = `📲 WHATSAPP VIRAL BROADCAST MESSAGES
-${fullDetailSection}
-Generate 10 WhatsApp broadcast messages using ALL data above:
+Generate 10 platform-specific captions covering ALL data above:
 
 ALL DATA TO REFERENCE:
 ${allFields}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📱 MSG 1 — VIRAL HOOK (General)
+1️⃣ [EMOTIONAL] "${impact||title}" — ${singer||''} ${year?'('+year+')':''}
+   kspiderai.in | @KSpider4Kreation
+
+2️⃣ [FACT DROP] "🤯 ${fact||'[Surprising fact about "'+title+'"]'}"
+   ${awards ? '🏆 '+awards.slice(0,60) : ''}
+
+3️⃣ [DATA SHOWCASE] 
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`   ✦ ${k}: ${v.trim()}`).join('\n')}
+   kspiderai.in
+
+4️⃣ [NOSTALGIA] "${title}" ${year?'('+year+')':''} — memories of ${genre||'music'}...
+   Share if you remember! 💛
+
+5️⃣ [DEBATE] "Hot take: ${title} is the greatest ${genre||'song'} because..."
+   Agree? 👇
+
+6️⃣ [APPRECIATION]
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,5).map(([k,v])=>`   ✦ ${k}: ${v.trim().slice(0,60)}`).join('\n')}
+   kspiderai.in | @KSpider4Kreation
+
+7️⃣ [FUNNY] "POV: You discovered '${title}' and it's on repeat 😅"
+   ${fact ? 'Fun fact: '+fact.slice(0,60) : ''}
+
+8️⃣ [EDUCATIONAL]
+   Everything about "${title}":
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,6).map(([k,v])=>`   • ${k}: ${v.trim().slice(0,60)}`).join('\n')}
+   More: kspiderai.in
+
+9️⃣ [HINDI]
+   "${title}" के बारे में — ${fact ? fact.slice(0,80) : '[Interesting Hindi caption]'}
+   Share करो! 🙌 kspiderai.in
+
+🔟 [CHALLENGE] "${title}" Challenge! Tag 3 friends + @KSpider4Kreation
+   kspiderai.in
+
+${profileBlock ? `Credit each post: ${profileBlock}` : ''}${branding}`;
+
+  prompts.hashtags = `#️⃣ COMPLETE HASHTAG STRATEGY PACK
+${fullDetailSection}
+DATA: ${inlineData.slice(0,400)}
+
+INSTAGRAM (30 tags):
+HIGH (1M+): #${(genre||'bollywood').replace(/\s/g,'')} #india #viral #trending #explore #reels
+MID (100K-1M): #${(title||'').replace(/[^a-z0-9]/gi,'')} #${(sub||'bollywood').replace(/[^a-z0-9]/gi,'')} #${year||'2024'} #${(singer||'artist').replace(/\s/g,'')} #indianculture #contentcreator
+NICHE: #${(composer||'music').replace(/\s/g,'')} #${(raag||'classical').replace(/\s/g,'')} #kspiderai #kspider4kreation
+
+Generate 30 tags using all data: ${[title,sub,singer,genre,year,composer,lyricist,raag,label,'kspiderai','india'].filter(Boolean).join(', ')}
+
+YOUTUBE TAGS (50):
+${[title,sub,singer,genre,year,composer,lyricist,raag,label,'bollywood','india','kspiderai','kspider4kreation',title+' song',singer+' songs',title+' '+year,title+' full information'].filter(Boolean).join(', ')}
+
+TWITTER (3 session sets):
+Morning [8-10AM IST]: 5 trending hashtags
+Evening [7-10PM IST]: 5 trending hashtags
+Night   [10PM+]:      5 trending hashtags
+
+PINTEREST KEYWORDS (20 phrases): [Generate for "${title}" ${genre||''} ${year||''}]${branding}`;
+
+  prompts.wa_msg = `📲 WHATSAPP VIRAL BROADCAST MESSAGES
+${fullDetailSection}
+ALL DATA TO USE:
+${allFields}
+
+📱 MSG 1 — VIRAL HOOK:
 🔥 *${title}* 🔥
-${impact?impact.slice(0,100)+'...':'[Hook line]'}
-${fact?'🤯 '+fact.slice(0,80):''}
-Share karo! 👇
-🌐 kspiderai.in | ▶️ @KSpider4Kreation
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${impact ? impact.slice(0,100)+'...' : '[Hook line]'}
+${fact ? '🤯 '+fact.slice(0,80) : ''}
+Share karo! 👇 🌐 kspiderai.in | ▶️ @KSpider4Kreation
 
-📱 MSG 2 — EDUCATIONAL (Hindi)
-📚 *क्या आप जानते हैं?*
-"${title}"${singer?' — '+singer:''}${year?' | '+year:''}
-${allFields.split('\n').slice(0,4).join('\n')}
-और जानें: www.kspiderai.in
+📱 MSG 2 — COMPLETE DATA (Hindi):
+📚 *"${title}" — पूरी जानकारी*
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`✦ ${k}: ${v.trim()}`).join('\n')}
+🔗 www.kspiderai.in
 
-📱 MSG 3 — NOSTALGIA
-💛 *${title}* ${year?'('+year+')':''}
-${sub?'— '+sub:''}
-[Nostalgic message connecting this to listener's memories]
-Comment karo 👇 | kspiderai.in
+📱 MSG 3 — NOSTALGIA:
+💛 *${title}* ${year ? '('+year+')' : ''} ${sub ? '— '+sub : ''}
+[Nostalgic message connecting this to listeners' memories]
+💬 Comment karo | kspiderai.in
 
-📱 MSG 4 — BUSINESS/CREATOR
-💼 *Content Creators ke liye FREE tool!*
-"${title}" jaise content ke liye AI prompts chahiye?
-✅ 20+ prompts — Image, Video, Music, SEO
-✅ 100% Free | All Platforms
-🌐 www.kspiderai.in
-▶️ youtube.com/@KSpider4Kreation
+📱 MSG 4 — CREATOR/BUSINESS:
+💼 *Content Creators ke liye FREE AI Prompt Tool!*
+✅ 21+ prompts | Image, Video, Music, SEO
+✅ Google Sheet se data fetch | 100% Free
+🌐 www.kspiderai.in | ▶️ @KSpider4Kreation
 
-📱 MSG 5 — FUNNY
+📱 MSG 5 — FUNNY:
 😂 *${title}* sunke kya hota hai?
-[Funny/relatable take on the subject]
-${fact?'Fun fact: '+fact.slice(0,60):''}
-Tag karo un dosto ko 🤣 | kspiderai.in
+${fact ? 'Fun fact: '+fact.slice(0,60) : '[Funny relatable take]'}
+Tag karo 🤣 | kspiderai.in
 
-[Generate 5 more unique variations: Quiz style, Poll, Countdown, Throwback, Festival special]
+[Generate 5 more: Quiz, Poll, Countdown, Throwback, Festival]
+${profileBlock ? `\nShared by: ${profileBlock}` : ''}${branding}`;
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${profileBlock?`Shared by: ${profileBlock}`:''}${branding}`;
-
-  /* ════════════════════════════════
+  /* ════════════════════════════════════════════════════════
      SEO PROMPTS
-     ════════════════════════════════ */
+     ════════════════════════════════════════════════════════ */
 
   prompts.seo_blog = `📝 SEO BLOG POST — FULL ARTICLE
 ${fullDetailSection}
-ALL DATA TO INCLUDE IN ARTICLE:
+ALL DATA FOR ARTICLE:
 ${allFields}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 SEO METADATA:
-Title (60 char): [Keyword-rich, CTR-optimised title including "${title}"]
-Description (155 char): [Meta desc with "${title}" primary keyword]
+Title (60c): [Keyword-rich title including "${title}"]
+Description (155c): [Meta desc with "${title}" keyword]
 Slug: /${(title||'').toLowerCase().replace(/[^a-z0-9]+/g,'-')}/
-Primary keyword: "${title}"
-Secondary keywords: ${[sub,singer,genre,year].filter(Boolean).join(', ')}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Primary KW: "${title}"
+Secondary KW: ${[sub,singer,genre,year].filter(Boolean).join(', ')}
 
-ARTICLE STRUCTURE (1200-1500 words):
-
-H1: [Compelling headline including "${title}"]
-
-INTRODUCTION (150 words):
-Hook → Context → What reader will learn
+ARTICLE (1200-1500 words):
+H1: [Compelling headline — "${title}"]
+INTRO (150w): Hook → Context → What reader learns
 
 H2: Complete Guide to "${title}"
-Cover: ${Object.entries(row).filter(([k,v])=>v&&v.trim()).slice(0,5).map(([k,v])=>k+': '+v.trim().slice(0,60)).join(' | ')}
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(0,5).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
 
-H2: The Story Behind ${sub||title}
-${impact?`Deep dive: ${impact}`:'[Full historical context]'}
-
-H2: ${singer?singer+' — The Voice Behind "'+title+'"':'The Artists'}
-${singer?`About ${singer}'s contribution`:'[Artist section]'}
-${composer?`Composer: ${composer}`:''}
-${lyricist?`Lyricist: ${lyricist}`:''}
-
-H2: Technical Brilliance
-${raag?`Raag: ${raag}`:'[Musical/technical details]'}
-${duration?`Duration: ${duration}`:''}
+H2: Background & Story
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(5,10).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
 
 H2: Cultural Impact & Legacy
-${impact||'[Cultural significance section]'}
-${awards?`Awards & Recognition: ${awards}`:''}
-${remakes?`Remakes & Versions: ${remakes}`:''}
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(10,15).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')}
 
-H2: ${fact?'Did You Know? Amazing Facts':'10 Fascinating Facts'}
-${fact?`• ${fact}`:'[10 interesting facts]'}
+H2: Remaining Information
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).slice(15).map(([k,v])=>`• ${k}: ${v.trim()}`).join('\n')||'[Additional details]'}
 
 H2: FAQs about "${title}"
-Q1: What is "${title}"? A: [Answer using data]
-Q2: Who ${singer?'sang':'created'} "${title}"? A: ${singer||'[Answer]'}
-Q3: When was "${title}" released? A: ${year||recYear||'[Answer]'}
-Q4: [Generate 2 more relevant FAQs]
+[Generate 5 FAQs from the data]
 
-CONCLUSION (100 words): Summary + internal link to kspiderai.in
+CONCLUSION + internal link to kspiderai.in
+Author: ${profileBlock||'K Spider AI | kspiderai.in'}${branding}`;
 
-INTERNAL LINKS: Link to www.kspiderai.in 2-3 times
-Author: ${profileBlock||'K Spider AI Team | kspiderai.in'}${branding}`;
-
-  prompts.yt_meta = `🔍 YOUTUBE SEO COMPLETE METADATA PACK
+  prompts.yt_meta = `🔍 YOUTUBE SEO METADATA PACK
 ${fullDetailSection}
-ALL DATA FOR SEO:
+ALL DATA:
 ${allFields}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TITLE OPTIONS (5 variations — pick best):
-1. [CURIOSITY]: "[Surprising fact about ${title}] — You Won't Believe This!"
-2. [LIST FORMAT]: "Top 10 Facts About ${title} | ${singer||sub||year||'Complete Info'}"
+TITLE OPTIONS (5):
+1. [CURIOSITY]: "[Fact from data] About ${title} — You Won't Believe!"
+2. [LIST]: "Top Facts About ${title} | ${singer||sub||year||'Complete'}"
 3. [STORY]: "The Real Story Behind '${title}' | ${sub||genre||''} | ${year||''}"
-4. [HOW-TO/INFO]: "Everything About '${title}' in 7 Minutes | ${singer||''} | ${year||''}"
-5. [HINDI]: "'${title}' की पूरी कहानी | ${singer||sub||''} | ${year||''}"
+4. [INFO]: "Everything About '${title}' | ${singer||''} | ${year||''}"
+5. [HINDI]: "'${title}' की पूरी कहानी | ${singer||sub||''}"
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-FULL DESCRIPTION (500 words, keyword-optimised):
+DESCRIPTION (500 words):
+🎵 Welcome! Today: "${title}"
+ALL DATA:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`✦ ${k}: ${v.trim()}`).join('\n')}
+🛠️ Free AI Tools: www.kspiderai.in | ▶️ @KSpider4Kreation
+${profileBlock||''}
 
-🎵 Welcome to this video about "${title}"!
+CHAPTERS:
+00:00 Intro | 00:30 Background | 01:30 Story | 03:30 Analysis
+04:30 Cultural Impact | 05:30 Facts | 06:30 Conclusion
 
-In this video, we cover everything you need to know:
-${Object.entries(row).filter(([k,v])=>v&&v.trim()).map(([k,v])=>`✦ ${k}: ${v.trim()}`).join('\n')}
-
-${impact?`\n📌 Cultural Impact: ${impact}`:''}
-${awards?`\n🏆 Awards: ${awards}`:''}
-${fact?`\n💡 Did You Know: ${fact}`:''}
-
-📌 CHAPTERS:
-00:00 Introduction to "${title}"
-00:30 Background & History
-01:30 ${singer?'About '+singer:'Artist Information'}
-02:30 ${composer?'Music by '+composer:'Musical Analysis'}
-03:30 Cultural Impact & Legacy
-04:30 ${awards?'Awards: '+awards.slice(0,40):'Achievements'}
-05:30 Fun Facts & Trivia
-06:30 Conclusion
-
-🛠️ Free AI Tools: www.kspiderai.in
-▶️ YouTube: youtube.com/@KSpider4Kreation
-${profileBlock?profileBlock:''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-TAGS (50 tags):
-${[title,sub,singer,genre,year,composer,lyricist,raag,label,'bollywood','india','kspiderai','kspider4kreation','indiansongs','viral','trending'].filter(Boolean).join(', ')}
-[Generate 35 more long-tail, niche, and related tags]
-
-THUMBNAIL TEXT (6 words max): "${title.split(' ').slice(0,4).join(' ').toUpperCase()}"
-END SCREEN: Subscribe button + 2 related video suggestions${branding}`;
+TAGS (50):
+${[title,sub,singer,genre,year,composer,lyricist,raag,label,'bollywood','india','kspiderai','kspider4kreation',title+' song',singer+' songs'].filter(Boolean).join(', ')}
+[Generate 35 more long-tail tags]${branding}`;
 
   prompts.ad_copy = `💰 AD COPY PACK — GOOGLE + META
 ${fullDetailSection}
-DATA FOR AD TARGETING:
-${allFields}
+DATA: ${inlineData.slice(0,400)}
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 GOOGLE SEARCH ADS (3 variations):
+V1: H1:"${title.slice(0,25)}" | H2:"${singer||sub||''}".slice(0,25) | H3:"kspiderai.in"
+    Desc: [90c value prop about "${title}"]
+V2 & V3: [Generate with different data angles]
 
-VARIATION 1:
-Headline 1 (30 chars): [${title.slice(0,25)} Info]
-Headline 2 (30 chars): [${singer?singer.slice(0,25):'Complete Guide'}]
-Headline 3 (30 chars): Free at kspiderai.in
-Description (90 chars): [Value prop about "${title}" + CTA]
-Display URL: kspiderai.in/${(title||'').toLowerCase().replace(/\s/g,'-').slice(0,20)}
-
-VARIATION 2 & 3: [Generate with different angles]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 FACEBOOK/INSTAGRAM ADS:
-
-PRIMARY TEXT (125 chars): [Emotional/curiosity hook about "${title}"]
-HEADLINE (27 chars): [Short punchy headline]
-DESCRIPTION (30 chars): [Supporting detail]
+Primary (125c): [Emotional hook about "${title}"]
+Headline (27c): [Short punchy]
+Description (30c): [${year||genre||''}]
 CTA: Learn More | Watch Now
 
-IMAGE AD COPY: "${title}" ${year?'('+year+')':''} — ${impact?impact.slice(0,60)+'...':'[Impact statement]'}
+ALL DATA TO REFERENCE IN ADS:
+${Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`• ${k}: ${v.trim().slice(0,60)}`).join('\n')}
 
-VIDEO AD HOOK (3 sec text): [Most shocking/interesting thing about "${title}"]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 TARGET AUDIENCE:
-Age: 18-45 | Country: India
-Interests: ${[genre,singer,sub,'Music','Entertainment','Indian Culture'].filter(Boolean).join(', ')}
-Behaviour: Music lovers, content creators, students, cultural enthusiasts
-Language: Hindi + English bilingual
-
-WHATSAPP BUSINESS AD (10 lines):
-[Persuasive WhatsApp business message about "${title}" ending with kspiderai.in]
-${profileBlock?`\nBrand voice: ${profileBlock}`:''}${branding}`;
+Age: 18-45 | India | Interests: ${[genre,singer,sub,'Music','Indian Culture'].filter(Boolean).join(', ')}
+${profileBlock ? `Brand voice: ${profileBlock}` : ''}${branding}`;
 
   return prompts;
 }
+
 
 function buildShortContext(row){
   const title = row[appState.colTitle] || row[appState.columns[0]] || 'Item';
