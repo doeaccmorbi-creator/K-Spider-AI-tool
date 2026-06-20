@@ -1305,6 +1305,7 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
       <div class="chips" style="flex-direction:column;gap:8px;">
         <div class="gt-row"><span class="chip gt-chip" onclick="startGrandTest('NEET UG Grand Test 1',180)"><span class="ck">▶</span>🏆 NEET UG 1st Grand Test — 180 Questions</span><button class="gt-share-btn" onclick="shareGrandTest('NEET UG Grand Test 1',180)">📤 Share</button></div>
         <div class="gt-row"><span class="chip gt-chip" onclick="startGrandTest('NEET UG Grand Test 2',180)"><span class="ck">▶</span>🏆 NEET UG 2nd Grand Test — 180 Questions</span><button class="gt-share-btn" onclick="shareGrandTest('NEET UG Grand Test 2',180)">📤 Share</button></div>
+        <div class="gt-row"><span class="chip gt-chip" onclick="startGrandTest('NEET UG Grand Test 3',180)"><span class="ck">▶</span>🏆 NEET UG 3rd Grand Test — 180 Questions</span><button class="gt-share-btn" onclick="shareGrandTest('NEET UG Grand Test 3',180)">📤 Share</button></div>
         <div class="gt-row"><span class="chip gt-chip" onclick="startGrandTest('NEET UG Grand Test 4',180)"><span class="ck">▶</span>🏆 NEET UG 4th Grand Test — 180 Questions</span><button class="gt-share-btn" onclick="shareGrandTest('NEET UG Grand Test 4',180)">📤 Share</button></div>
       </div>
     </div>
@@ -1978,6 +1979,7 @@ const KS_GT_URLS = {
   'INI-CET Grand Test 1':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=846666618&single=true&output=csv',
   'NEET UG Grand Test 1':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1238042127&single=true&output=csv',
   'NEET UG Grand Test 2':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=0&single=true&output=csv',
+  'NEET UG Grand Test 3':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1250812650&single=true&output=csv',
   'NEET UG Grand Test 4':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1282875462&single=true&output=csv',
   'GPSC Grand Test 1':     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=310518064&single=true&output=csv',
   'GPSC Grand Test 2':     'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=539414665&single=true&output=csv',
@@ -2598,9 +2600,11 @@ Rules:
     if(valid.length===0) throw new Error('No valid questions in response');
     const tagged=valid.map(q=>({...q,aiGenerated:true,topic:q.topic||topics[0]}));
     aiGeneratedCache[cacheKey]=(aiGeneratedCache[cacheKey]||[]).concat(tagged);
+    window.KS_LAST_AI_ERROR = null;
     return tagged;
   } catch(err){
     console.warn('AI generation failed:',err.message);
+    window.KS_LAST_AI_ERROR = err.message;
     return null;
   }
 }
@@ -2610,18 +2614,33 @@ Rules:
 // Used for SUBJECT-WISE AI question generation only (NOT Grand Tests)
 // ═══════════════════════════════════════════════════════════════════
 const KS_AI_PROV_ORDER=['groq','gemini','claude','gai','openai'];
-let KS_CENTRAL_KEYS=null, KS_CENTRAL_KEYS_PROMISE=null;
+let KS_CENTRAL_KEYS=null, KS_CENTRAL_KEYS_PROMISE=null, KS_CENTRAL_KEYS_AT=0;
+const KS_CENTRAL_KEYS_TTL=120000; // 2 min — re-fetch periodically so admin updates apply live
 
 async function loadCentralKeys(){
-  if(KS_CENTRAL_KEYS)return KS_CENTRAL_KEYS;
-  if(KS_CENTRAL_KEYS_PROMISE)return KS_CENTRAL_KEYS_PROMISE;
+  var fresh = KS_CENTRAL_KEYS && (Date.now()-KS_CENTRAL_KEYS_AT) < KS_CENTRAL_KEYS_TTL;
+  if(fresh) return KS_CENTRAL_KEYS;
+  if(KS_CENTRAL_KEYS_PROMISE) return KS_CENTRAL_KEYS_PROMISE;
   KS_CENTRAL_KEYS_PROMISE=new Promise(function(resolve){
     loadKsFirebase(function(){
-      if(!ksDb){KS_CENTRAL_KEYS={};resolve(KS_CENTRAL_KEYS);return;}
+      if(!ksDb){
+        console.warn('[KSpider] AI keys: Firebase unavailable — will retry next call');
+        KS_CENTRAL_KEYS_PROMISE=null; // don't cache failure — allow retry
+        resolve(KS_CENTRAL_KEYS||{});
+        return;
+      }
       ksDb.collection('admin').doc('api_keys').get().then(function(snap){
-        KS_CENTRAL_KEYS=snap.exists?(snap.data()||{}):{};
-        resolve(KS_CENTRAL_KEYS);
-      }).catch(function(){KS_CENTRAL_KEYS={};resolve(KS_CENTRAL_KEYS);});
+        var data = snap.exists ? (snap.data()||{}) : {};
+        KS_CENTRAL_KEYS = data;       // cache only on success
+        KS_CENTRAL_KEYS_AT = Date.now();
+        KS_CENTRAL_KEYS_PROMISE=null;
+        if(Object.keys(data).length===0) console.warn('[KSpider] AI keys: admin/api_keys doc has no provider keys yet');
+        resolve(data);
+      }).catch(function(e){
+        console.warn('[KSpider] AI keys: Firestore read failed —', e.message, '— will retry next call');
+        KS_CENTRAL_KEYS_PROMISE=null; // don't cache failure — allow retry
+        resolve(KS_CENTRAL_KEYS||{});
+      });
     });
   });
   return KS_CENTRAL_KEYS_PROMISE;
@@ -2638,8 +2657,13 @@ async function getKey(provider){
   var central=await loadCentralKeys();
   var arr=central[provider];
   if(Array.isArray(arr)){
-    var active=arr.find(function(k){return k&&k.active&&k.key;});
-    if(active)return active.key;
+    var active=arr.find(function(k){
+      if(!k) return false;
+      var keyVal = k.key || k.value || k.apiKey || '';
+      var isActive = k.active!==false; // treat missing 'active' field as active
+      return isActive && keyVal;
+    });
+    if(active) return active.key || active.value || active.apiKey;
   }
   var uk2=ksUserKeys();
   if(uk2[provider])return uk2[provider];
@@ -2702,15 +2726,20 @@ const KS_AI_CALLERS={groq:callGroq,gemini:callGemini,claude:callClaude,gai:callG
 
 // Try each provider in order (Groq → Gemini → Claude → GAI → OpenAI)
 async function callAICascade(prompt){
-  var lastErr=null;
+  var lastErr=null, anyKeyFound=false;
   for(var i=0;i<KS_AI_PROV_ORDER.length;i++){
     var prov=KS_AI_PROV_ORDER[i];
+    var k = await getKey(prov);
+    if(k) anyKeyFound = true;
     try{
       var text=await KS_AI_CALLERS[prov](prompt);
       if(text&&text.trim()){console.log('[KSpider] AI question generation via:',prov);return text;}
     }catch(e){lastErr=e;console.warn('[KSpider] AI provider failed:',prov,'-',e.message);}
   }
-  throw lastErr||new Error('All AI providers failed — add an API key in AI Settings');
+  if(!anyKeyFound){
+    throw new Error('No active API key found in admin settings (Default mode) or personal settings (Personal mode). Add/activate a key in AI Settings.');
+  }
+  throw lastErr||new Error('All AI providers failed — check API keys in AI Settings');
 }
 
 // ── AI Settings Modal (Default centralized keys vs Personal keys) ──
@@ -2722,10 +2751,17 @@ function openAPIKeyModal(){
     var el=document.getElementById('akm-'+p);
     if(el)el.value=uk[p]||'';
   });
+  // Force a fresh check so admin's latest key changes show immediately when diagnosing
+  KS_CENTRAL_KEYS_AT = 0;
+  document.getElementById('akm-central-status').innerHTML = 'Checking centralized keys…';
   loadCentralKeys().then(function(central){
     var lines=KS_AI_PROV_ORDER.map(function(p){
       var arr=central[p]||[];
-      var active=arr.filter(function(k){return k&&k.active&&k.key;}).length;
+      var active=arr.filter(function(k){
+        if(!k) return false;
+        var keyVal = k.key || k.value || k.apiKey || '';
+        return k.active!==false && keyVal;
+      }).length;
       return p.toUpperCase()+': '+(active>0?('✅ '+active+' active key(s)'):'⚪ none');
     });
     document.getElementById('akm-central-status').innerHTML=lines.join('<br>');
@@ -2816,6 +2852,11 @@ async function getQs(topics, count, years){
       if(lcC>0) msg+=' + 📚 '+lcC+' Built-in';
       toast(msg+' questions loaded!','s');
       return result;
+    } else if (window.KS_LAST_AI_ERROR && !window.KS_AI_FAIL_TOAST_SHOWN) {
+      // Show the real reason once per session — helps admin/user diagnose live issues
+      window.KS_AI_FAIL_TOAST_SHOWN = true;
+      console.warn('[KSpider] AI generation unavailable:', window.KS_LAST_AI_ERROR);
+      toast('ℹ️ AI extra questions unavailable right now — showing sheet/built-in questions.', 'i');
     }
   } catch(e){ console.warn('AI gen error:', e); }
   hideAILoader();
