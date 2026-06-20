@@ -8690,10 +8690,16 @@ details summary { transition: background .2s; }
   'use strict';
 
   // ──────────────────────────────────────────────────────────
-  // 🔒 INBUILT CONFIG (hidden from UI — admin sets these once)
+  // 🔒 INBUILT CONFIG (hidden from UI — fully embedded, zero copy-paste)
   // ──────────────────────────────────────────────────────────
-  // Master CSV template URL (admin's published reference sheet)
+  // Master CSV (published Google Sheet) — default data source for every new Database
   var _GS_MASTER_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vSaZKW5GhAIhuhOb0qSRglusrr8FaATYZgg59Kf0l9FLzOBISZ1VOk29d-tpOzX1wvQ_nNrlPCU6wWV/pub?gid=0&single=true&output=csv';
+  // Master Apps Script Web App URL — handles Add/Edit/Delete (CRUD) for every Database
+  var _GS_MASTER_SCRIPT = 'https://script.google.com/macros/s/AKfycbwjqZmPgLik9S2yjW_UBq-pIiDdE7skxSQPIQIB1slHwb378gXU9ejke6Bo8C3l2Wpz/exec';
+  // Apps Script deployment ID (kept for reference / re-deploy lookups)
+  var _GS_SCRIPT_DEPLOY_ID = 'AKfycbwjqZmPgLik9S2yjW_UBq-pIiDdE7skxSQPIQIB1slHwb378gXU9ejke6Bo8C3l2Wpz';
+  // Apps Script library reference (shared CRUD logic, version 1)
+  var _GS_SCRIPT_LIBRARY = 'https://script.google.com/macros/library/d/1sfrb2yu6gWRVDfFxNK4vYZDvl2Khagvfxikdg95fYYU1yHoSxSExYxN-/1';
 
   // Firebase config (same project as admin.html — used only to fetch
   // inbuilt AI keys; never exposes keys to client-visible UI/network tab beyond fetch)
@@ -8956,20 +8962,19 @@ details summary { transition: background .2s; }
       if (db) db.name = name;
       statusEl.textContent = '✅ Renamed!';
     } else {
-      // Create new — generates its own isolated CSV reference + unique ID
-      // (User will paste their own published Google Sheet CSV link via prompt,
-      //  OR system clones master template structure for them.)
+      // Create new — fully auto-connected to the inbuilt Sheet + Apps Script.
+      // No copy-paste, no prompts — everything is embedded.
       var newDb = {
         id: gsGenId(),
         name: name,
-        csvUrl: '',
-        scriptUrl: '',
+        csvUrl: _GS_MASTER_CSV,
+        scriptUrl: _GS_MASTER_SCRIPT,
         ownerUserId: GS.userId,
         createdAt: new Date().toISOString()
       };
       GS.databases.push(newDb);
       GS.activeDbId = newDb.id;
-      statusEl.textContent = '✅ Database banaya! Ab apni Google Sheet link connect karo.';
+      statusEl.textContent = '✅ Database ready! Auto-connected — fetch karo.';
     }
     statusEl.style.color = '#059669';
     _saveDatabases();
@@ -8977,25 +8982,18 @@ details summary { transition: background .2s; }
 
     setTimeout(function() {
       document.getElementById('gsDbModal').classList.remove('active');
-      if (!editId) gsPromptConnectSheet();
+      if (!editId) gsFetchSheet();
     }, 700);
   };
 
-  // Prompt to connect a real Google Sheet (CSV publish link) to this database
-  function gsPromptConnectSheet() {
-    var db = _activeDb();
-    if (!db) return;
-    var url = prompt(
-      'Apni Google Sheet ka "Publish to web" CSV link paste karo.\n\n' +
-      'Sheet → File → Share → Publish to web → CSV format → Publish → Link copy karo:',
-      _GS_MASTER_CSV
-    );
-    if (url && url.trim()) {
-      db.csvUrl = url.trim();
-      _saveDatabases();
-      gsStatus('✅ Sheet connected to "' + db.name + '"!', 'success');
-      gsFetchSheet();
-    }
+  // Backward-compatible safety net: if an older Database object somehow has
+  // no csvUrl/scriptUrl saved (e.g. from a previous version), auto-heal it
+  // with the inbuilt master URLs instead of ever prompting the user.
+  function gsEnsureDbConnected(db) {
+    if (!db) return db;
+    if (!db.csvUrl)    db.csvUrl    = _GS_MASTER_CSV;
+    if (!db.scriptUrl) db.scriptUrl = _GS_MASTER_SCRIPT;
+    return db;
   }
 
   window.gsDeleteDb = function() {
@@ -9048,7 +9046,8 @@ details summary { transition: background .2s; }
   window.gsFetchSheet = function() {
     var db = _activeDb();
     if (!db) { gsStatus('❌ Pehle Database select karo!', 'error'); return; }
-    if (!db.csvUrl) { gsPromptConnectSheet(); return; }
+    db = gsEnsureDbConnected(db);
+    _saveDatabases();
 
     var url = db.csvUrl;
     if (url.includes('/edit')) url = url.replace(/\/edit[^]*$/, '/export?format=csv');
@@ -9295,11 +9294,8 @@ details summary { transition: background .2s; }
       _action: parseInt(document.getElementById('gsc-row-idx').value, 10) >= 0 ? 'edit' : 'add'
     };
 
-    if (!db.scriptUrl) {
-      statusEl.textContent = '⚠️ Is Database mein write-access setup nahi hai. Admin se contact karo.';
-      statusEl.style.color = '#D97706';
-      return;
-    }
+    db = gsEnsureDbConnected(db);
+    _saveDatabases();
 
     statusEl.textContent = '⏳ Saving...';
     statusEl.style.color = 'var(--muted)';
@@ -9332,7 +9328,8 @@ details summary { transition: background .2s; }
   window.gsDeleteRecord = function() {
     var db = _activeDb();
     if (!db || !GS.records.length) return;
-    if (!db.scriptUrl) { gsStatus('⚠️ Write-access setup nahi hai is Database mein.', 'warning'); return; }
+    db = gsEnsureDbConnected(db);
+    _saveDatabases();
     var nameEl = document.getElementById('gs-record-name');
     var name = nameEl ? nameEl.textContent : 'is client';
     if (!confirm('"' + name + '" ko sheet se delete karein?')) return;
@@ -9361,30 +9358,15 @@ details summary { transition: background .2s; }
   // ──────────────────────────────────────────────────────────
   window.gsOpenIntakeForm = function() {
     var db = _activeDb();
-    if (!db) return;
-    if (!db.scriptUrl) {
-      gsPromptConnectScript(db);
-      return;
-    }
+    if (!db) { gsStatus('❌ Pehle Database select karo!', 'error'); return; }
+    db = gsEnsureDbConnected(db);
+    _saveDatabases();
     var formHtml = _buildIntakeFormHTML(db.scriptUrl, db.name);
     var blob = new Blob([formHtml], { type: 'text/html;charset=utf-8' });
     var url = URL.createObjectURL(blob);
     window.open(url, '_blank');
     if (typeof showToast === 'function') showToast('✅ Form khul gaya — Save As karke share karo!', 'success');
   };
-
-  function gsPromptConnectScript(db) {
-    var url = prompt(
-      'Is Database ke liye Apps Script Web App URL connect karo (form submissions ke liye):\n\n' +
-      'Sheet → Extensions → Apps Script → Deploy → Web App → Anyone → URL copy karo:'
-    );
-    if (url && url.trim()) {
-      db.scriptUrl = url.trim();
-      _saveDatabases();
-      gsStatus('✅ Form-write access connected!', 'success');
-      gsOpenIntakeForm();
-    }
-  }
 
   function _buildIntakeFormHTML(scriptUrl, dbName) {
     return '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
