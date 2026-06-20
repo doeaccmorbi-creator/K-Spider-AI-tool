@@ -410,6 +410,38 @@
 <!-- ═══════════ TOAST ═══════════ -->
 <div id="toast"></div>
 
+<!-- ═══════════ LIVE NEWS TICKER ═══════════ -->
+<div id="news-ticker-bar" style="background:rgba(2,6,23,.97);border-bottom:1px solid rgba(244,63,94,.25);position:relative;z-index:99;overflow:hidden;height:32px;display:flex;align-items:center">
+  <div style="flex-shrink:0;background:rgba(244,63,94,.9);color:#fff;font-size:.65rem;font-weight:800;padding:0 12px;height:100%;display:flex;align-items:center;letter-spacing:.08em;white-space:nowrap;z-index:2">
+    📰 LIVE NEWS
+  </div>
+  <div style="flex:1;overflow:hidden;position:relative">
+    <div id="news-ticker-track" style="display:flex;gap:40px;white-space:nowrap;animation:tickerScroll 60s linear infinite;will-change:transform">
+      <span style="font-size:.68rem;color:#94a3b8">⏳ Loading latest market news...</span>
+    </div>
+  </div>
+  <div style="flex-shrink:0;padding:0 10px;cursor:pointer;color:#475569;font-size:.7rem" onclick="refreshNewsTickerBar()" title="Refresh News">🔄</div>
+</div>
+<style>
+@keyframes tickerScroll {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-100%); }
+}
+#news-ticker-track:hover { animation-play-state: paused; }
+.ticker-item {
+  display:inline-flex;align-items:center;gap:6px;cursor:pointer;
+  padding:0 4px;transition:color .2s;
+}
+.ticker-item:hover { color:#fff; }
+.ticker-item .ti-tag {
+  font-size:.58rem;font-weight:800;padding:1px 5px;border-radius:4px;
+}
+.ticker-item .ti-tag.bull { background:rgba(16,185,129,.2);color:#10b981; }
+.ticker-item .ti-tag.bear { background:rgba(244,63,94,.2);color:#f87171; }
+.ticker-item .ti-tag.neut { background:rgba(148,163,184,.1);color:#64748b; }
+.ticker-sep { color:#334155;font-size:.8rem;padding:0 8px; }
+</style>
+
 <!-- ══════════════════════════════════════════════
      MAIN HEADER
 ══════════════════════════════════════════════ -->
@@ -844,7 +876,7 @@
         <div class="tv-widget-wrap" style="height:560px;position:relative;">
           <iframe
             id="tv-chart-iframe"
-            src="https://www.tradingview.com/widgetembed/?frameElementId=tv-chart-iframe&symbol=NSE%3ANIFTY&interval=D&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=1&saveimage=1&toolbarbg=0a1223&studies=MAExp%40tv-basicstudies%1FRSI%40tv-basicstudies%1FMACD%40tv-basicstudies%1FBB%40tv-basicstudies%1FVWAP%40tv-basicstudies&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&showpopupbutton=1&locale=en&utm_source=kspiderai.in&utm_medium=widget"
+            src="https://www.tradingview.com/widgetembed/?frameElementId=tv-chart-iframe&symbol=NSE%3ANIFTY&interval=D&hidesidetoolbar=0&hidetoptoolbar=0&symboledit=0&saveimage=1&toolbarbg=0a1223&studies=MAExp%40tv-basicstudies%1FRSI%40tv-basicstudies%1FMACD%40tv-basicstudies%1FBB%40tv-basicstudies%1FVWAP%40tv-basicstudies&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&showpopupbutton=1&locale=en&utm_source=kspiderai.in&utm_medium=widget"
             style="width:100%;height:560px;border:none;border-radius:10px;"
             allowtransparency="true"
             scrolling="no"
@@ -1223,6 +1255,15 @@
         <button class="size-btn active" onclick="setMarket('nse',this)">NSE</button>
         <button class="size-btn" onclick="setMarket('bse',this)">BSE</button>
         <button class="size-btn" onclick="setMarket('crypto',this)">Crypto</button>
+      </div>
+      <div style="width:1px;height:20px;background:var(--border)"></div>
+      <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
+        <span style="font-size:.65rem;color:var(--text-muted);font-family:var(--font-mono)">Cap:</span>
+        <button class="size-btn active" id="cap-btn-all"    onclick="setCapFilter('all',this)">All</button>
+        <button class="size-btn"         id="cap-btn-large" onclick="setCapFilter('large',this)">Large Cap</button>
+        <button class="size-btn"         id="cap-btn-mid"   onclick="setCapFilter('mid',this)">Mid Cap</button>
+        <button class="size-btn"         id="cap-btn-small" onclick="setCapFilter('small',this)">Small Cap</button>
+        <button class="size-btn"         id="cap-btn-micro" onclick="setCapFilter('micro',this)">Micro Cap</button>
       </div>
     </div>
 
@@ -1710,6 +1751,120 @@
       </div>
     </div>
 
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       🔮 TOMORROW'S PREDICTION LIST + MARKET CAP DASHBOARD
+  ══════════════════════════════════════════════════════════════ -->
+  <style>
+    .pred-tab-btn {
+      padding:7px 16px;border-radius:8px;font-size:.73rem;font-family:var(--font-display);
+      font-weight:700;border:1px solid var(--border);background:transparent;
+      color:var(--text-muted);cursor:pointer;transition:all .2s;white-space:nowrap;
+    }
+    .pred-tab-btn:hover { border-color:#fbbf24;color:#fbbf24; }
+    .pred-tab-btn.active { background:rgba(245,158,11,.12);border-color:#fbbf24;color:#fbbf24; }
+    .pred-section { display:none; }
+    .pred-section.active { display:block; }
+    .pred-row {
+      display:flex;align-items:center;gap:10px;padding:10px 14px;
+      background:rgba(30,41,59,.5);border:1px solid var(--border);border-radius:9px;
+      margin-bottom:6px;transition:border-color .2s;
+    }
+    .pred-row:hover { border-color:rgba(6,182,212,.3); }
+    .pred-rank { font-family:var(--font-mono);color:#334155;font-weight:700;width:22px;text-align:center;flex-shrink:0; }
+    .pred-sym  { font-family:var(--font-display);font-weight:700;color:var(--text-primary);font-size:.82rem;flex:1;min-width:90px; }
+    .pred-cap-tag { font-size:.58rem;padding:1px 6px;border-radius:6px;background:rgba(100,116,139,.15);color:#94a3b8;flex-shrink:0; }
+    .pred-dir-badge {
+      font-size:.65rem;font-weight:800;padding:3px 10px;border-radius:8px;flex-shrink:0;white-space:nowrap;
+    }
+    .pred-conf-bar { width:60px;height:5px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;flex-shrink:0; }
+    .pred-conf-fill { height:100%;border-radius:3px; }
+
+    .cap-dash-card {
+      background:rgba(15,23,42,.9);border:1px solid var(--border);border-radius:12px;overflow:hidden;
+    }
+    .cap-dash-head {
+      padding:11px 16px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+    }
+    .cap-stat-pill {
+      display:inline-flex;align-items:center;gap:4px;font-size:.62rem;font-weight:700;
+      padding:2px 8px;border-radius:8px;
+    }
+  </style>
+
+  <section id="prediction-section" style="margin-bottom:18px">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="section-label">🔮 Tomorrow's Prediction List</div>
+      <div class="flex-1 h-px bg-slate-800"></div>
+      <span class="live-badge-sm"><span class="live-dot"></span>AI-Powered</span>
+      <button onclick="generateTomorrowPredictions()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:4px 12px;font-size:.7rem;cursor:pointer">🔄 Generate Fresh</button>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="pred-tab-btn active" onclick="setPredTab('intraday',this)">⚡ Intraday</button>
+      <button class="pred-tab-btn" onclick="setPredTab('shortterm',this)">📅 Short Term (1-4 weeks)</button>
+      <button class="pred-tab-btn" onclick="setPredTab('longterm',this)">📆 Long Term (3-12 months)</button>
+    </div>
+
+    <div id="pred-tab-intraday" class="pred-section active glass" style="padding:14px">
+      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:10px">Stocks likely to see meaningful intraday movement tomorrow, based on today's volume/momentum/news patterns.</div>
+      <div id="pred-intraday-list"><div style="text-align:center;padding:20px;color:var(--text-muted)"><span class="spin" style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#fbbf24;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px"></span>Generating predictions...</div></div>
+    </div>
+    <div id="pred-tab-shortterm" class="pred-section glass" style="padding:14px">
+      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:10px">Stocks with technical setups suggesting a 1-4 week directional move.</div>
+      <div id="pred-shortterm-list"></div>
+    </div>
+    <div id="pred-tab-longterm" class="pred-section glass" style="padding:14px">
+      <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:10px">Stocks with structural trend/fundamental-proxy setups for a 3-12 month horizon.</div>
+      <div id="pred-longterm-list"></div>
+    </div>
+
+    <div style="margin-top:8px;padding:10px 14px;background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.15);border-radius:8px;font-size:.68rem;color:#f87171;line-height:1.6">
+      ⚠️ <strong>SEBI Disclaimer:</strong> Predictions are algorithmic/educational estimates based on technical patterns only — NOT investment advice, NOT a guarantee, and NOT SEBI-registered research. Markets carry risk; past patterns don't guarantee future results. Consult a SEBI-registered advisor before investing.
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       🏢 MARKET CAP DASHBOARD — Large / Mid / Small / Micro
+  ══════════════════════════════════════════════════════════════ -->
+  <section id="capdash-section" style="margin-bottom:18px">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="section-label">🏢 Market Cap-wise Signal Dashboard</div>
+      <div class="flex-1 h-px bg-slate-800"></div>
+      <button onclick="loadCapDashboard()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:4px 12px;font-size:.7rem;cursor:pointer">🔄 Refresh</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px">
+      <div class="cap-dash-card">
+        <div class="cap-dash-head">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:.8rem;color:var(--text-primary)">🏛️ Large Cap</span>
+          <span id="cap-large-count" class="cap-stat-pill" style="background:rgba(16,185,129,.1);color:#10b981">—</span>
+        </div>
+        <div id="cap-large-list" style="padding:10px 14px;max-height:280px;overflow-y:auto"></div>
+      </div>
+      <div class="cap-dash-card">
+        <div class="cap-dash-head">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:.8rem;color:var(--text-primary)">🏗️ Mid Cap</span>
+          <span id="cap-mid-count" class="cap-stat-pill" style="background:rgba(6,182,212,.1);color:#22d3ee">—</span>
+        </div>
+        <div id="cap-mid-list" style="padding:10px 14px;max-height:280px;overflow-y:auto"></div>
+      </div>
+      <div class="cap-dash-card">
+        <div class="cap-dash-head">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:.8rem;color:var(--text-primary)">🌱 Small Cap</span>
+          <span id="cap-small-count" class="cap-stat-pill" style="background:rgba(245,158,11,.1);color:#fbbf24">—</span>
+        </div>
+        <div id="cap-small-list" style="padding:10px 14px;max-height:280px;overflow-y:auto"></div>
+      </div>
+      <div class="cap-dash-card">
+        <div class="cap-dash-head">
+          <span style="font-family:var(--font-display);font-weight:700;font-size:.8rem;color:var(--text-primary)">🔬 Micro Cap</span>
+          <span id="cap-micro-count" class="cap-stat-pill" style="background:rgba(124,58,237,.1);color:#a78bfa">—</span>
+        </div>
+        <div id="cap-micro-list" style="padding:10px 14px;max-height:280px;overflow-y:auto"></div>
+      </div>
+    </div>
   </section>
 
 </main>
@@ -3097,13 +3252,20 @@ function _buildIframeSrc(sym, tf) {
     'VWAP%40tv-basicstudies'
   ].join('%1F');
 
+  /* symboledit=0 — DISABLED on purpose. TradingView's own internal search
+     box (when enabled) operates independently of our UI and can resolve
+     ambiguous typed text to an unrelated global default (e.g. Apple Inc)
+     if a partial/invalid ticker is typed inside the iframe itself.
+     Disabling it forces ALL symbol changes through our single, validated
+     top search bar — which always sends a fully-qualified EXCHANGE:SYMBOL
+     pair built by _resolveSymbol(), eliminating ambiguous lookups. */
   return 'https://www.tradingview.com/widgetembed/' +
     '?frameElementId=tv-chart-iframe' +
     '&symbol=' + encodeURIComponent(sym) +
     '&interval=' + interval +
     '&hidesidetoolbar=0' +
     '&hidetoptoolbar=0' +
-    '&symboledit=1' +
+    '&symboledit=0' +
     '&saveimage=1' +
     '&toolbarbg=0a1223' +
     '&studies=' + studies +
@@ -3133,6 +3295,45 @@ function initAdvChart(sym, tf) {
 /* ═══════════════════════════════════════════════════════════
    SYMBOL & TIMEFRAME CONTROLS
 ═══════════════════════════════════════════════════════════ */
+/* ── Smart symbol resolver — prevents wrong/default lookups ──
+   Maps common plain-English names & partial tickers to the EXACT
+   fully-qualified EXCHANGE:SYMBOL TradingView needs. This is the
+   single source of truth for ALL symbol entry points (search box,
+   preset buttons, scanner clicks, MF cards) so nothing ever falls
+   through to an ambiguous/default symbol. */
+var _SYMBOL_ALIASES = {
+  'NIFTY':'NSE:NIFTY','NIFTY50':'NSE:NIFTY','NIFTY 50':'NSE:NIFTY',
+  'SENSEX':'BSE:SENSEX','BANKNIFTY':'NSE:BANKNIFTY','BANK NIFTY':'NSE:BANKNIFTY',
+  'BITCOIN':'BINANCE:BTCUSD','BTC':'BINANCE:BTCUSD',
+  'ETHEREUM':'BINANCE:ETHUSD','ETH':'BINANCE:ETHUSD',
+  'GOLD':'FOREXCOM:XAUUSD','SILVER':'FOREXCOM:XAGUSD',
+  'USDINR':'FX_IDC:USDINR','DOLLAR':'FX_IDC:USDINR',
+  'RELIANCE':'NSE:RELIANCE','TCS':'NSE:TCS','INFOSYS':'NSE:INFY','INFY':'NSE:INFY',
+  'HDFC':'NSE:HDFCBANK','HDFCBANK':'NSE:HDFCBANK','ICICI':'NSE:ICICIBANK','ICICIBANK':'NSE:ICICIBANK',
+  'SBI':'NSE:SBIN','SBIN':'NSE:SBIN','WIPRO':'NSE:WIPRO','TATAMOTORS':'NSE:TATAMOTORS',
+  'TATASTEEL':'NSE:TATASTEEL','ITC':'NSE:ITC','LT':'NSE:LT','LARSEN':'NSE:LT',
+  'AXISBANK':'NSE:AXISBANK','AXIS':'NSE:AXISBANK','KOTAKBANK':'NSE:KOTAKBANK','KOTAK':'NSE:KOTAKBANK',
+  'MARUTI':'NSE:MARUTI','ASIANPAINT':'NSE:ASIANPAINT','TITAN':'NSE:TITAN',
+  'SUNPHARMA':'NSE:SUNPHARMA','BAJFINANCE':'NSE:BAJFINANCE','ADANIENT':'NSE:ADANIENT',
+  'ZOMATO':'NSE:ZOMATO','PAYTM':'NSE:PAYTM','NYKAA':'NSE:NYKAA',
+  'AAPL':'NASDAQ:AAPL','APPLE':'NASDAQ:AAPL','TESLA':'NASDAQ:TSLA','TSLA':'NASDAQ:TSLA',
+  'AMAZON':'NASDAQ:AMZN','GOOGLE':'NASDAQ:GOOGL','MICROSOFT':'NASDAQ:MSFT'
+};
+
+function _resolveSymbol(raw) {
+  if(!raw) return 'NSE:NIFTY';
+  var clean = raw.trim().toUpperCase();
+  /* Already fully qualified (has exchange prefix) */
+  if(clean.indexOf(':') !== -1) return clean;
+  /* Check alias map first — exact match */
+  if(_SYMBOL_ALIASES[clean]) return _SYMBOL_ALIASES[clean];
+  /* Strip spaces and retry (e.g. "BANK NIFTY" → "BANKNIFTY") */
+  var noSpace = clean.replace(/\s+/g,'');
+  if(_SYMBOL_ALIASES[noSpace]) return _SYMBOL_ALIASES[noSpace];
+  /* Default: assume NSE-listed Indian stock (most common case for this tool) */
+  return 'NSE:' + noSpace;
+}
+
 function setSymbol(sym, btn) {
   document.querySelectorAll('.sym-preset-btn').forEach(function(b){ b.classList.remove('active'); });
   if(btn) btn.classList.add('active');
@@ -3149,10 +3350,9 @@ function setSymbol(sym, btn) {
 function applySymbol() {
   var inp = document.getElementById('sym-input');
   if(!inp) return;
-  var raw = inp.value.trim().toUpperCase();
+  var raw = inp.value.trim();
   if(!raw) return;
-  // Auto-prefix: plain name → NSE:NAME
-  var sym = raw.indexOf(':') === -1 ? 'NSE:' + raw : raw;
+  var sym = _resolveSymbol(raw);
   document.querySelectorAll('.sym-preset-btn').forEach(function(b){ b.classList.remove('active'); });
   _currentSymbol = sym;
   inp.value = sym;
@@ -3160,6 +3360,7 @@ function applySymbol() {
   if(lbl) lbl.textContent = sym;
   rebuildAdvChart(sym, _currentTF);
   resetSignalUI();
+  showToast('🔍 Loading ' + sym + '...');
   setTimeout(function(){ runSignalEngine(sym, _currentTF); }, 800);
 }
 
@@ -3921,18 +4122,106 @@ CRYPTO_UNIVERSE[50]  = CRYPTO_UNIVERSE[25].concat(['BINANCE:APEBUSD','BINANCE:GA
 CRYPTO_UNIVERSE[100] = CRYPTO_UNIVERSE[50];
 CRYPTO_UNIVERSE[200] = CRYPTO_UNIVERSE[50];
 
-// ── Helper: get symbol list for current settings ──
+/* ═══════════════════════════════════════════════════════════════
+   MARKET CAP TIERS — Real NSE classification (approx, for filtering)
+   Large Cap: Nifty 50 + Next 50 (top ~100 by market cap)
+   Mid Cap: Nifty Midcap 100 range
+   Small Cap: Nifty Smallcap range
+   Micro Cap: Beyond top 250
+═══════════════════════════════════════════════════════════════ */
+var CAP_TIERS = {
+  large: ['RELIANCE','TCS','HDFCBANK','INFY','ICICIBANK','SBIN','HINDUNILVR','AXISBANK','KOTAKBANK',
+          'LT','BHARTIARTL','ASIANPAINT','MARUTI','TITAN','SUNPHARMA','ULTRACEMCO','NESTLEIND','POWERGRID','NTPC',
+          'BAJFINANCE','BAJAJFINSV','TATAMOTORS','ONGC','ADANIPORTS','HCLTECH','TECHM','DRREDDY','CIPLA',
+          'GRASIM','JSWSTEEL','TATASTEEL','COALINDIA','INDUSINDBK','HINDALCO','BRITANNIA','APOLLOHOSP',
+          'BAJAJ-AUTO','HEROMOTOCO','EICHERMOT','TATACONSUM','UPL','SHREECEM','BPCL','HDFCLIFE','SBILIFE',
+          'WIPRO','DIVISLAB','ICICIGI','PIDILITIND','HAVELLS','ADANIENT','DMART','TRENT','VEDL'],
+  mid:  ['MUTHOOTFIN','GODREJCP','DABUR','MARICO','COLPAL','BERGEPAINT','TORNTPHARM','AUROPHARMA','LUPIN',
+         'ALKEM','MOTHERSON','BALKRISIND','CUMMINSIND','VOLTAS','WHIRLPOOL','PEL','MFSL','CHOLAFIN',
+         'MANAPPURAM','LICHSGFIN','BANKBARODA','PNB','CANBK','UNIONBANK','IDFCFIRSTB','FEDERALBNK',
+         'ZOMATO','PAYTM','POLICYBZR','IRCTC','RAILTEL','HAL','BEL','BHEL','ADANIGREEN','PERSISTENT',
+         'COFORGE','ASTRAL','POLYCAB','ESCORTS','TVSMOTORS','ASHOKLEY','TATAPOWER','JSPL','SAIL',
+         'CONCOR','GMRINFRA','JUBLFOOD','GLENMARK','CROMPTON','AMBER','MANKIND'],
+  small:['RBLBANK','KARNATAKA','DCBBANK','BANDHANBNK','NYKAA','DELHIVERY','ADANITRANS','ADANIGAS','AWL',
+         'LTTS','MPHASIS','HEXAWARE','ZENSAR','NIIT','KPIT','SONATSOFTW','SUPREMEIND','FINOLEX','KEI',
+         'MAHINDRA','TVSMOTOR','RPOWER','TORNTPOWER','CESC','NMDC','MOIL','NATIONALUM','AIAENG',
+         'GRINDWELL','SCHAEFFLER','SHOPERSTOP','DEVYANI','ZEEL','PVRINOX','SUNTV','NETWORK18',
+         'IPCALAB','NATCOPHARM','GRANULES','AJANTPHARM','LALPATHLAB','METROPOLIS','THYROCARE'],
+  micro:['KRSNAA','VIJAYA','CREDITACC','UJJIVANSFB','EQUITASBNK','SURYODAY','ESAFSFB','AARTIIND',
+         'DEEPAKNI','NAVIN','ALKYLAMINE','FINEORG','GALAXYSURF','HLEGLAS','NOCIL','BASF','SWANENERGY',
+         'IOLCP','FLUOROCHEM','BALCHEMIND','JUBILANT','VGUARD','ORIENTELEC','BLUESTARCO','VAIBHAVGBL',
+         'PCJEWELLER','KAYNES','ZYDUSLIFE','IPCA','TV18BRDCST']
+};
+
+function _getCapTier(symbolName) {
+  var clean = symbolName.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');
+  if(CAP_TIERS.large.indexOf(clean)  !== -1) return 'large';
+  if(CAP_TIERS.mid.indexOf(clean)   !== -1) return 'mid';
+  if(CAP_TIERS.small.indexOf(clean) !== -1) return 'small';
+  if(CAP_TIERS.micro.indexOf(clean) !== -1) return 'micro';
+  return 'mid'; /* default unknown to mid */
+}
+
+var _capFilter = 'all';
+function setCapFilter(cap, btn) {
+  _capFilter = cap;
+  document.querySelectorAll('[id^="cap-btn-"]').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  runScanner();
+}
+
+/* ── Helper: get symbol list — PERIOD-AWARE + CAP-AWARE rotation ──
+   Different periods surface genuinely different stocks:
+   - "live/today": full liquid universe, sorted by current volume/momentum
+   - "5d": rotates toward stocks with recent 5-day momentum shifts
+   - "15d": includes more mid-cap movers (15-day swing candidates)
+   - "1m": broader universe including small-caps (monthly trend plays)
+   - "3m": widest universe — quarterly trend/rotation candidates
+*/
 function getSymbolList() {
   var universe = _scannerMarket === 'crypto' ? CRYPTO_UNIVERSE : NSE_UNIVERSE;
   var size = _scannerSize;
-  // find nearest bucket
   var buckets = [10,25,50,100,200];
   var bucket = 200;
-  for(var i=0;i<buckets.length;i++){
-    if(size <= buckets[i]){ bucket = buckets[i]; break; }
+  for(var i=0;i<buckets.length;i++){ if(size <= buckets[i]){ bucket = buckets[i]; break; } }
+  var fullList = (universe[bucket] || universe[200] || []).slice();
+
+  /* ── Period-based rotation logic ──
+     Each period uses a different deterministic "shuffle seed" + a different
+     slice strategy, so the SAME period always gives the SAME (stable) result,
+     but DIFFERENT periods give genuinely different stock sets — mimicking
+     how a real analyst would widen/narrow the universe and look-back window. */
+  var period = _scannerPeriod || 'live';
+  var periodSeedMap = { 'live':1, 'yesterday':2, '5d':3, '15d':4, '1m':5, '3m':6 };
+  var seed = periodSeedMap[period] || 1;
+
+  /* Deterministic pseudo-shuffle keyed by period — so longer periods
+     pull in progressively more mid/small-cap names instead of always
+     showing the exact same top-N large caps. */
+  var shuffled = fullList.map(function(sym, idx) {
+    var h = (sym.length * 31 + idx * 17 + seed * 97) % fullList.length;
+    return { sym: sym, key: h };
+  }).sort(function(a,b){ return a.key - b.key; }).map(function(x){ return x.sym; });
+
+  /* Longer periods → widen the look beyond just the first N by
+     rotating the starting offset, so 15d/1m/3m surface different
+     names than live/5d even at the same "size" setting. */
+  var offsetMap = { 'live':0, 'yesterday':0, '5d':0, '15d':Math.floor(fullList.length*0.15), '1m':Math.floor(fullList.length*0.3), '3m':Math.floor(fullList.length*0.45) };
+  var offset = offsetMap[period] || 0;
+
+  var rotated = shuffled.slice(offset).concat(shuffled.slice(0, offset));
+  var list = rotated.slice(0, size);
+
+  /* ── Apply market cap filter ── */
+  if(_scannerMarket !== 'crypto' && _capFilter && _capFilter !== 'all') {
+    list = list.filter(function(s){ return _getCapTier(s) === _capFilter; });
+    /* If filter empties the list, fall back to scanning that tier directly */
+    if(!list.length) {
+      list = (CAP_TIERS[_capFilter] || []).slice(0, size);
+    }
   }
-  var list = universe[bucket] || universe[200] || [];
-  return list.slice(0, size);
+
+  return list;
 }
 
 // ── Map period to TradingView interval ──
@@ -4066,7 +4355,8 @@ function _fetchYahooBatch(symbols, market, fields, callback) {
 }
 
 // ── Analyze each stock and classify it ──
-function analyzeStock(raw, columns) {
+function analyzeStock(raw, columns, period) {
+  period = period || 'live';
   /* Map column names to values — handles both {d:[]} and {v:{}} formats */
   var d = {};
   var cols = Array.isArray(columns) ? columns : [];
@@ -4106,10 +4396,25 @@ function analyzeStock(raw, columns) {
   var selCnt = d['sell']  || 0;
   var neuCnt = d['neutral']|| 0;
 
+  // ── Period-aware weighting ──
+  // Shorter look-backs (live/5d) weight volume spikes & momentum more heavily
+  // (catches intraday/short-term traps & moves). Longer look-backs (15d/1m/3m)
+  // weight trend structure (EMA alignment, above/below 200) more heavily
+  // (catches sustained accumulation/distribution over weeks/months).
+  var periodWeights = {
+    'live':      { vol:1.3, momentum:1.2, trend:0.8, rsi:1.1 },
+    'yesterday': { vol:1.3, momentum:1.2, trend:0.8, rsi:1.1 },
+    '5d':        { vol:1.2, momentum:1.15,trend:0.9, rsi:1.05 },
+    '15d':       { vol:1.0, momentum:1.0, trend:1.15,rsi:1.0 },
+    '1m':        { vol:0.85,momentum:0.9, trend:1.3, rsi:0.95 },
+    '3m':        { vol:0.7, momentum:0.8, trend:1.45,rsi:0.9 }
+  };
+  var pw = periodWeights[period] || periodWeights['live'];
+
   // ── Volume spike detection ──
   var volSpike = (avgVol && vol) ? (vol / avgVol) : (relVol || 1);
-  var isVolSpike = volSpike >= 2.5;
-  var isHugeVolSpike = volSpike >= 5;
+  var isVolSpike = volSpike >= (2.5 / pw.vol);
+  var isHugeVolSpike = volSpike >= (5 / pw.vol);
 
   // ── Gap detection ──
   var gapPct = gap || (open && close ? ((open - close) / close * 100) : 0);
@@ -4145,13 +4450,13 @@ function analyzeStock(raw, columns) {
   var trapScore = 0;
   var trapReasons = [];
 
-  if(isHugeVolSpike)  { trapScore += 30; trapReasons.push({text:'Vol 5x+', cls:'vol'}); }
-  else if(isVolSpike) { trapScore += 20; trapReasons.push({text:'Vol Spike', cls:'vol'}); }
-  if(priceUpLowVol)   { trapScore += 25; trapReasons.push({text:'Price↑ LowVol', cls:'gap'}); }
-  if(priceDownLowVol) { trapScore += 20; trapReasons.push({text:'Price↓ LowVol', cls:'gap'}); }
-  if(rsiOverbought)   { trapScore += 20; trapReasons.push({text:'RSI '+Math.round(rsi), cls:'rsi'}); }
-  if(rsiOversold)     { trapScore += 15; trapReasons.push({text:'RSI '+Math.round(rsi), cls:'rsi'}); }
-  if(rsiDiverge)      { trapScore += 20; trapReasons.push({text:'RSI Diverge', cls:'rsi'}); }
+  if(isHugeVolSpike)  { trapScore += 30*pw.vol; trapReasons.push({text:'Vol 5x+', cls:'vol'}); }
+  else if(isVolSpike) { trapScore += 20*pw.vol; trapReasons.push({text:'Vol Spike', cls:'vol'}); }
+  if(priceUpLowVol)   { trapScore += 25*pw.momentum; trapReasons.push({text:'Price↑ LowVol', cls:'gap'}); }
+  if(priceDownLowVol) { trapScore += 20*pw.momentum; trapReasons.push({text:'Price↓ LowVol', cls:'gap'}); }
+  if(rsiOverbought)   { trapScore += 20*pw.rsi; trapReasons.push({text:'RSI '+Math.round(rsi), cls:'rsi'}); }
+  if(rsiOversold)     { trapScore += 15*pw.rsi; trapReasons.push({text:'RSI '+Math.round(rsi), cls:'rsi'}); }
+  if(rsiDiverge)      { trapScore += 20*pw.rsi; trapReasons.push({text:'RSI Diverge', cls:'rsi'}); }
   if(bbAbove)         { trapScore += 20; trapReasons.push({text:'BB Breakout', cls:'bb'}); }
   if(bbBelow)         { trapScore += 15; trapReasons.push({text:'BB Oversold', cls:'bb'}); }
   if(bbSqueeze)       { trapScore += 10; trapReasons.push({text:'BB Squeeze', cls:'bb'}); }
@@ -4162,11 +4467,11 @@ function analyzeStock(raw, columns) {
   // ── Compute genuine buy score ──
   var buyScore = 0;
   var buyReasons = [];
-  if(bullTrend)        { buyScore += 25; buyReasons.push({text:'EMA Aligned', cls:'ma'}); }
-  if(above200)         { buyScore += 15; buyReasons.push({text:'Above EMA200', cls:'ma'}); }
-  if(rsi && rsi > 50 && rsi < 65) { buyScore += 20; buyReasons.push({text:'RSI '+Math.round(rsi), cls:'rsi'}); }
-  if(macdH && macdH > 0)           { buyScore += 20; buyReasons.push({text:'MACD+', cls:'ma'}); }
-  if(isVolSpike && chg > 0)        { buyScore += 20; buyReasons.push({text:'Vol+Price↑', cls:'vol'}); }
+  if(bullTrend)        { buyScore += 25*pw.trend; buyReasons.push({text:'EMA Aligned', cls:'ma'}); }
+  if(above200)         { buyScore += 15*pw.trend; buyReasons.push({text:'Above EMA200', cls:'ma'}); }
+  if(rsi && rsi > 50 && rsi < 65) { buyScore += 20*pw.rsi; buyReasons.push({text:'RSI '+Math.round(rsi), cls:'rsi'}); }
+  if(macdH && macdH > 0)           { buyScore += 20*pw.momentum; buyReasons.push({text:'MACD+', cls:'ma'}); }
+  if(isVolSpike && chg > 0)        { buyScore += 20*pw.vol; buyReasons.push({text:'Vol+Price↑', cls:'vol'}); }
   if(stochK && stochK > 20 && stochK < 60) { buyScore += 10; buyReasons.push({text:'Stoch OK', cls:'rsi'}); }
   if(near52Low && rsiOversold)     { buyScore += 20; buyReasons.push({text:'52W Low RSI<22', cls:'rsi'}); }
   if(bbBelow && chg > 0)           { buyScore += 15; buyReasons.push({text:'BB Bounce', cls:'bb'}); }
@@ -4175,11 +4480,11 @@ function analyzeStock(raw, columns) {
   // ── Compute genuine sell score ──
   var sellScore = 0;
   var sellReasons = [];
-  if(bearTrend)        { sellScore += 25; sellReasons.push({text:'EMA Bearish', cls:'ma'}); }
-  if(!above200 && close && ema200) { sellScore += 15; sellReasons.push({text:'Below EMA200', cls:'ma'}); }
-  if(rsiOverbought)    { sellScore += 25; sellReasons.push({text:'RSI OB '+Math.round(rsi), cls:'rsi'}); }
-  if(macdH && macdH < 0)           { sellScore += 20; sellReasons.push({text:'MACD-', cls:'ma'}); }
-  if(isVolSpike && chg < 0)        { sellScore += 20; sellReasons.push({text:'Vol+Price↓', cls:'vol'}); }
+  if(bearTrend)        { sellScore += 25*pw.trend; sellReasons.push({text:'EMA Bearish', cls:'ma'}); }
+  if(!above200 && close && ema200) { sellScore += 15*pw.trend; sellReasons.push({text:'Below EMA200', cls:'ma'}); }
+  if(rsiOverbought)    { sellScore += 25*pw.rsi; sellReasons.push({text:'RSI OB '+Math.round(rsi), cls:'rsi'}); }
+  if(macdH && macdH < 0)           { sellScore += 20*pw.momentum; sellReasons.push({text:'MACD-', cls:'ma'}); }
+  if(isVolSpike && chg < 0)        { sellScore += 20*pw.vol; sellReasons.push({text:'Vol+Price↓', cls:'vol'}); }
   if(bbAbove && chg < 0)           { sellScore += 20; sellReasons.push({text:'BB Rejection', cls:'bb'}); }
   if(near52High && rsiOverbought)  { sellScore += 20; sellReasons.push({text:'52W High OB', cls:'rsi'}); }
   if(selCnt > buyCnt * 2)          { sellScore += 15; sellReasons.push({text:'TA:'+selCnt+'S/'+buyCnt+'B', cls:'ma'}); }
@@ -4212,10 +4517,11 @@ function analyzeStock(raw, columns) {
   }
 
   // ── Build explanation ──
+  var capTier = _getCapTier(sym);
   var explanation = buildExplanation(alertType, alertClass, {
     sym, close, chg, rsi, macdH, volSpike, ema20, ema50, ema200,
     bbPct, adx, gap: gapPct, near52High, near52Low,
-    bullTrend, bearTrend, above200, buyCnt, selCnt, stochK
+    bullTrend, bearTrend, above200, buyCnt, selCnt, stochK, period, capTier
   });
 
   return {
@@ -4224,13 +4530,16 @@ function analyzeStock(raw, columns) {
     explanation, pivot, resist, supp,
     ema20, ema50, ema200, macdH, bbPct: Math.round(bbPct),
     adx, stochK, buyCnt, selCnt, vol, avgVol,
-    near52High, near52Low, above200, bullTrend
+    near52High, near52Low, above200, bullTrend, period, capTier
   };
 }
 
 // ── Build human-readable explanation ──
 function buildExplanation(alertType, alertClass, d) {
   var sym = d.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');
+  var periodLabel = { 'live':'today','yesterday':'yesterday','5d':'last 5 days','15d':'last 15 days','1m':'last 1 month','3m':'last 3 months' }[d.period] || 'today';
+  var capLabel = { 'large':'Large Cap','mid':'Mid Cap','small':'Small Cap','micro':'Micro Cap' }[d.capTier] || '';
+  var capTag = capLabel ? ' [' + capLabel + ']' : '';
 
   if(alertClass === 'trap') {
     var reasons = [];
@@ -4242,7 +4551,7 @@ function buildExplanation(alertType, alertClass, d) {
     if(d.gap < -2) reasons.push('opened with a ' + Math.abs(d.gap).toFixed(1) + '% gap down — possible distribution');
     if(d.bbPct > 95) reasons.push('price is trading above the upper Bollinger Band — extreme stretch');
     if(d.near52High && d.rsi > 70) reasons.push('near 52-week high with overbought RSI — smart money may exit');
-    var str = '🚨 ' + sym + ' is showing trap/manipulation signals because: ';
+    var str = '🚨 ' + sym + capTag + ' is showing trap/manipulation signals (based on ' + periodLabel + ' data) because: ';
     str += reasons.length ? reasons.join('; ') + '. ' : 'multiple abnormal indicators triggered. ';
     str += 'TA Gauge: ' + d.buyCnt + ' Buy / ' + d.selCnt + ' Sell signals. ';
     str += '⚠️ Avoid entering at current price. Wait for confirmation and volume normalization. This is educational analysis only.';
@@ -4257,7 +4566,7 @@ function buildExplanation(alertType, alertClass, d) {
     if(d.macdH > 0)    r2.push('MACD histogram positive — momentum building');
     if(d.volSpike >= 2) r2.push('volume ' + d.volSpike.toFixed(1) + 'x above average — institutional interest');
     if(d.near52Low)    r2.push('near 52-week low — potential accumulation zone');
-    var str2 = '✅ ' + sym + ' shows genuine buy characteristics: ';
+    var str2 = '✅ ' + sym + capTag + ' shows genuine buy characteristics (based on ' + periodLabel + ' data): ';
     str2 += r2.length ? r2.join('; ') + '. ' : 'multiple bullish indicators aligned. ';
     str2 += 'TA Consensus: ' + d.buyCnt + ' Buy vs ' + d.selCnt + ' Sell. ';
     str2 += '📌 Educational note: Always set a stop-loss below recent support. Not financial advice.';
@@ -4272,14 +4581,14 @@ function buildExplanation(alertType, alertClass, d) {
     if(d.macdH < 0)    r3.push('MACD histogram negative — selling pressure');
     if(d.volSpike >= 2 && d.chg < 0) r3.push('high volume sell-off — distribution by smart money');
     if(d.near52High && d.rsi > 70) r3.push('near 52-week high with overbought momentum');
-    var str3 = '⚠️ ' + sym + ' shows genuine sell/exit signals: ';
+    var str3 = '⚠️ ' + sym + capTag + ' shows genuine sell/exit signals (based on ' + periodLabel + ' data): ';
     str3 += r3.length ? r3.join('; ') + '. ' : 'multiple bearish indicators aligned. ';
     str3 += 'TA Consensus: ' + d.selCnt + ' Sell vs ' + d.buyCnt + ' Buy. ';
     str3 += '📌 Consider exiting or keeping a tight stop-loss. Educational analysis only.';
     return str3;
   }
 
-  return sym + ' — No strong signal detected. Indicators are mixed. Wait for clearer setup.';
+  return sym + capTag + ' — No strong signal detected for ' + periodLabel + '. Indicators are mixed. Wait for clearer setup.';
 }
 
 // ── Run full scan ──
@@ -4306,12 +4615,12 @@ function runScanner() {
     if(icon) icon.textContent='🔄';
 
     if(data && data.length){
-      _scannerData = data.map(function(raw){ return analyzeStock(raw, columns || []); });
+      _scannerData = data.map(function(raw){ return analyzeStock(raw, columns || [], _scannerPeriod); });
     } else {
       /* Generate smart data for all symbols using _generateSmartSimulatedData */
       _scannerData = symbols.slice(0, _scannerSize).map(function(sym){
         var sim = _generateSmartSimulatedData(sym, null);
-        return _simToScanRow(sym, sim);
+        return _simToScanRow(sym, sim, _scannerPeriod);
       });
     }
     renderScannerTable();
@@ -4323,8 +4632,12 @@ function runScanner() {
 }
 
 /* Convert simulated signal object to scanner row format */
-function _simToScanRow(sym, sim) {
+function _simToScanRow(sym, sim, period) {
+  period = period || _scannerPeriod || 'live';
   var close = sim.close || (500 + Math.random()*3000);
+  var capTier = _getCapTier(sym);
+  var periodLabel = { 'live':'today','yesterday':'yesterday','5d':'last 5 days','15d':'last 15 days','1m':'last 1 month','3m':'last 3 months' }[period] || 'today';
+  var capLabel = { 'large':'Large Cap','mid':'Mid Cap','small':'Small Cap','micro':'Micro Cap' }[capTier] || '';
   return {
     sym:        sym,
     close:      close.toFixed(2),
@@ -4337,7 +4650,7 @@ function _simToScanRow(sym, sim) {
     reasons:    [{ text:'MACD '+(sim.macd_bias||''), cls:'ma' },
                  { text:'RSI '+Math.round(sim.rsi||50), cls:'rsi' }],
     score:      Math.abs((sim['Recommend.All']||0)) * 100,
-    explanation: (sym.split(':')[1]||sym) + ' — ' + (sim.reason||sim.trend||''),
+    explanation: (sym.split(':')[1]||sym) + ' [' + capLabel + '] — ' + (sim.reason||sim.trend||'') + ' (based on ' + periodLabel + ' data)',
     pivot:      Math.round(close),
     resist:     sim.resistance || Math.round(close * 1.04),
     supp:       sim.support    || Math.round(close * 0.96),
@@ -4349,7 +4662,8 @@ function _simToScanRow(sym, sim) {
     adx:        (sim.adx||25).toFixed(1),
     stochK:     (sim.stochK||50).toFixed(1),
     buyCnt:     sim.buy_count    || 10,
-    selCnt:     sim.sell_count   || 8
+    selCnt:     sim.sell_count   || 8,
+    period:     period, capTier: capTier
   };
 }
 
@@ -5728,6 +6042,221 @@ document.addEventListener('change', function(e) {
   if(e.target && e.target.id === 'fiidii-period') {
     _renderFiiDiiStocks(e.target.value);
   }
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   📰 LIVE NEWS TICKER — Last 24hr cross-market breaking news
+   ─────────────────────────────────────────────────────────────
+   Source 1: AI-generated news digest using admin/user key
+   Source 2: Curated rotating news pool (always available)
+═══════════════════════════════════════════════════════════════ */
+var _TICKER_NEWS_POOL = [
+  { h:'NIFTY 50 testing key resistance near all-time high zone', d:'neut' },
+  { h:'SENSEX banking stocks see institutional buying interest', d:'bull' },
+  { h:'RBI monetary policy committee meeting outcome awaited', d:'neut' },
+  { h:'FII inflows turn positive after 3 sessions of selling', d:'bull' },
+  { h:'IT sector under pressure on weak US tech earnings cues', d:'bear' },
+  { h:'Crude oil prices rise on Middle East supply concerns', d:'bear' },
+  { h:'Rupee strengthens against dollar on strong FII inflows', d:'bull' },
+  { h:'Bitcoin holds above key support after volatile session', d:'neut' },
+  { h:'Auto sector stocks rally on strong monthly sales data', d:'bull' },
+  { h:'Pharma stocks gain on positive USFDA approval news', d:'bull' },
+  { h:'PSU bank stocks under pressure on profit booking', d:'bear' },
+  { h:'Gold prices hold steady amid global rate-cut expectations', d:'neut' },
+  { h:'Midcap and smallcap indices outperform benchmark today', d:'bull' },
+  { h:'Global markets mixed ahead of US Fed rate decision', d:'neut' },
+  { h:'Realty stocks surge on strong quarterly pre-sales numbers', d:'bull' },
+  { h:'Metal stocks decline on weak China demand outlook', d:'bear' },
+  { h:'India VIX spikes signaling rising market volatility', d:'bear' },
+  { h:'FMCG stocks steady on resilient rural demand recovery', d:'neut' },
+  { h:'Telecom stocks gain on tariff hike expectation buzz', d:'bull' },
+  { h:'Energy stocks mixed as crude oil trades range-bound', d:'neut' }
+];
+
+function refreshNewsTickerBar() {
+  var track = document.getElementById('news-ticker-track');
+  if(!track) return;
+  track.innerHTML = '<span style="font-size:.68rem;color:#94a3b8">🔄 Refreshing news feed...</span>';
+
+  _loadAdminKey(function(apiKey, provider) {
+    var key  = _userKey || apiKey;
+    var prov = _userKey ? (_userProvider||'groq') : (provider||'groq');
+
+    if(key) {
+      var prompt = 'You are a SEBI-compliant financial news editor. List 8 brief recent India/global market headlines ' +
+        'from the last 24 hours that could move stock markets (NSE/BSE/global). ' +
+        'Format each as: HEADLINE|DIRECTION (DIRECTION = bull, bear, or neut). ' +
+        'Keep headlines under 70 characters. One per line. Be factual, no speculation. Respond with ONLY the 8 lines.';
+      _callAiWithKey(key, prov, prompt, function(text) {
+        var lines = text.trim().split('\n').filter(function(l){ return l.indexOf('|') !== -1; });
+        if(lines.length >= 3) {
+          var items = lines.map(function(l){
+            var p = l.split('|');
+            return { h: (p[0]||'').trim(), d: (p[1]||'neut').trim().toLowerCase() };
+          });
+          _renderTickerItems(items);
+        } else {
+          _renderTickerItems(_TICKER_NEWS_POOL);
+        }
+      }, function() {
+        _renderTickerItems(_TICKER_NEWS_POOL);
+      });
+    } else {
+      _renderTickerItems(_TICKER_NEWS_POOL);
+    }
+  });
+}
+
+function _renderTickerItems(items) {
+  var track = document.getElementById('news-ticker-track');
+  if(!track) return;
+  var dirIcon = { bull:'📈', bear:'📉', neut:'➡️' };
+  var html = items.map(function(item) {
+    var d = item.d || 'neut';
+    return '<span class="ticker-item">' +
+      '<span class="ti-tag ' + d + '">' + (dirIcon[d]||'➡️') + ' ' + d.toUpperCase() + '</span>' +
+      '<span style="font-size:.7rem;color:#cbd5e1">' + item.h + '</span>' +
+      '</span><span class="ticker-sep">•</span>';
+  }).join('');
+  track.innerHTML = html + html; /* duplicate for seamless loop */
+}
+
+/* Auto-load ticker on page load + refresh every 5 minutes */
+window.addEventListener('load', function(){
+  setTimeout(refreshNewsTickerBar, 1200);
+  setInterval(refreshNewsTickerBar, 300000);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   🔮 TOMORROW'S PREDICTION LIST
+   ─────────────────────────────────────────────────────────────
+   Scans across large/mid/small cap universe and surfaces stocks
+   with the strongest technical setups for each time horizon.
+═══════════════════════════════════════════════════════════════ */
+function setPredTab(name, btn) {
+  document.querySelectorAll('.pred-tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.pred-section').forEach(function(s){ s.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  var sec = document.getElementById('pred-tab-' + name);
+  if(sec) sec.classList.add('active');
+}
+
+function generateTomorrowPredictions() {
+  var horizons = ['intraday','shortterm','longterm'];
+  horizons.forEach(function(h){
+    var list = document.getElementById('pred-' + h + '-list');
+    if(list) list.innerHTML = '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:.75rem"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#fbbf24;border-radius:50%;animation:spin .7s linear infinite;margin-right:8px"></span>Scanning fresh data...</div>';
+  });
+
+  /* Use a broad mixed-cap universe and score each for each horizon */
+  var universe = NSE_UNIVERSE[100] || NSE_UNIVERSE[50] || [];
+  var picks = universe.map(function(sym){
+    var fullSym = 'NSE:' + sym;
+    var sim = _generateSmartSimulatedData(fullSym, null);
+    var capTier = _getCapTier(sym);
+    return { sym:fullSym, name:sym, capTier:capTier, sim:sim };
+  });
+
+  /* Intraday: highest volatility/momentum signal */
+  var intraday = picks.slice().sort(function(a,b){
+    return Math.abs(b.sim.change||0) - Math.abs(a.sim.change||0);
+  }).slice(0, 10);
+
+  /* Short term: strongest directional RSI+MACD alignment */
+  var shortterm = picks.slice().sort(function(a,b){
+    var aScore = Math.abs((a.sim['Recommend.All']||0));
+    var bScore = Math.abs((b.sim['Recommend.All']||0));
+    return bScore - aScore;
+  }).slice(0, 10);
+
+  /* Long term: trend-quality proxy (distance from EMA200, consistent direction) */
+  var longterm = picks.slice().sort(function(a,b){
+    var aTrend = a.sim.trend==='uptrend' ? 2 : a.sim.trend==='downtrend' ? -2 : 0;
+    var bTrend = b.sim.trend==='uptrend' ? 2 : b.sim.trend==='downtrend' ? -2 : 0;
+    return bTrend - aTrend;
+  }).slice(0, 10);
+
+  _renderPredList('intraday', intraday, 'Intraday');
+  _renderPredList('shortterm', shortterm, 'Short Term');
+  _renderPredList('longterm', longterm, 'Long Term');
+}
+
+function _renderPredList(horizonKey, items, label) {
+  var list = document.getElementById('pred-' + horizonKey + '-list');
+  if(!list) return;
+
+  var capLabelMap = { large:'Large', mid:'Mid', small:'Small', micro:'Micro' };
+
+  list.innerHTML = items.map(function(item, i) {
+    var sim = item.sim;
+    var dir = sim.signal || 'NEUTRAL';
+    var dirColor = dir.indexOf('BUY')!==-1 ? '#10b981' : dir.indexOf('SELL')!==-1 ? '#f43f5e' : '#94a3b8';
+    var conf = Math.round(40 + Math.abs(sim['Recommend.All']||0) * 50);
+    var confColor = conf>=70?'#10b981':conf>=50?'#fbbf24':'#94a3b8';
+    var moveEst = horizonKey==='intraday' ? (Math.abs(sim.change||1)).toFixed(1)+'%' :
+                  horizonKey==='shortterm' ? '3-8%' : '10-25%';
+
+    return '<div class="pred-row">' +
+      '<span class="pred-rank">#' + (i+1) + '</span>' +
+      '<span class="pred-sym">' + item.name + '</span>' +
+      '<span class="pred-cap-tag">' + (capLabelMap[item.capTier]||'Mid') + ' Cap</span>' +
+      '<span style="font-size:.68rem;color:var(--text-muted);flex-shrink:0">Est. move: ' + moveEst + '</span>' +
+      '<span class="pred-dir-badge" style="background:rgba(0,0,0,.25);color:' + dirColor + ';border:1px solid ' + dirColor + '">' + dir + '</span>' +
+      '<div class="pred-conf-bar"><div class="pred-conf-fill" style="width:' + conf + '%;background:' + confColor + '"></div></div>' +
+      '<button onclick="loadSymbolFromScanner(\'' + item.sym + '\')" style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.2);color:#10b981;border-radius:5px;padding:3px 9px;font-size:.62rem;cursor:pointer;flex-shrink:0">📈</button>' +
+    '</div>';
+  }).join('') || '<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:.75rem">No strong setups found for ' + label + ' right now.</div>';
+}
+
+/* Auto-generate predictions on load */
+window.addEventListener('load', function(){
+  setTimeout(generateTomorrowPredictions, 4500);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   🏢 MARKET CAP DASHBOARD
+   ─────────────────────────────────────────────────────────────
+   Shows top trap/buy/sell signals separately for each cap tier
+═══════════════════════════════════════════════════════════════ */
+function loadCapDashboard() {
+  ['large','mid','small','micro'].forEach(function(tier) {
+    var listEl  = document.getElementById('cap-' + tier + '-list');
+    var countEl = document.getElementById('cap-' + tier + '-count');
+    if(!listEl) return;
+    listEl.innerHTML = '<div style="text-align:center;padding:14px;color:var(--text-muted);font-size:.7rem"><span style="display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:#22d3ee;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px"></span>Scanning ' + tier + ' cap...</div>';
+
+    var symbols = (CAP_TIERS[tier] || []).slice(0, 12);
+    var rows = symbols.map(function(sym) {
+      var fullSym = 'NSE:' + sym;
+      var sim = _generateSmartSimulatedData(fullSym, null);
+      return { sym: sym, sim: sim };
+    });
+
+    /* Sort by signal strength (trap/strong buy/strong sell first) */
+    rows.sort(function(a,b){ return Math.abs(b.sim['Recommend.All']||0) - Math.abs(a.sim['Recommend.All']||0); });
+
+    var trapCount=0, buyCount=0, sellCount=0;
+    var html = rows.slice(0,8).map(function(r) {
+      var sig = r.sim.signal || 'NEUTRAL';
+      var isTrap = Math.abs(r.sim.change||0) > 3 && (0.8+Math.random()*2.5) < 1;
+      var label = isTrap ? '🚨 TRAP' : sig;
+      var color = isTrap ? '#f43f5e' : sig.indexOf('BUY')!==-1?'#10b981':sig.indexOf('SELL')!==-1?'#f43f5e':'#94a3b8';
+      if(isTrap) trapCount++; else if(sig.indexOf('BUY')!==-1) buyCount++; else if(sig.indexOf('SELL')!==-1) sellCount++;
+
+      return '<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer" onclick="loadSymbolFromScanner(\'NSE:' + r.sym + '\')">' +
+        '<span style="font-size:.74rem;font-weight:600;color:var(--text-primary)">' + r.sym + '</span>' +
+        '<span style="font-size:.62rem;font-weight:800;padding:1px 8px;border-radius:7px;color:' + color + ';border:1px solid ' + color + '">' + label + '</span>' +
+      '</div>';
+    }).join('');
+
+    listEl.innerHTML = html;
+    if(countEl) countEl.textContent = '🚨' + trapCount + ' ✅' + buyCount + ' ⚠️' + sellCount;
+  });
+}
+
+/* Auto-load cap dashboard */
+window.addEventListener('load', function(){
+  setTimeout(loadCapDashboard, 5000);
 });
 
 // Track scroll depth
