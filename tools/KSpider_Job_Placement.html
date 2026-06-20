@@ -1036,13 +1036,14 @@ img{max-width:100%;display:block;}
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
               <span id="geoLabel" style="font-size:11px;color:var(--t3);"></span>
               <button id="nearMeBtn" onclick="toggleNearMe()" style="display:none;padding:5px 12px;border-radius:99px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">📍 Near Me</button>
+              <span onclick="refineWithGPS()" style="font-size:10px;color:var(--t3);cursor:pointer;text-decoration:underline;margin-left:4px;" title="Use precise GPS instead of Pin Code">Use exact GPS</span>
               <button class="bap" style="font-size:12px;padding:8px 14px;width:auto;border-radius:var(--rs)" onclick="showModal('postJobModal')">+ Post Job</button>
             </div>
           </div>
           <div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:12px;box-shadow:var(--sh);">
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <input type="text" class="fc" placeholder="🔍 Job title or keyword" style="flex:1;min-width:120px" id="jsq" oninput="filterJobsLive()">
-              <input type="text" class="fc" placeholder="📍 Location" style="width:110px" id="jlq" oninput="filterJobsLive()">
+              <input type="text" class="fc" placeholder="📍 Location or Pin Code" style="width:130px" id="jlq" oninput="filterJobsLive()">
               <select class="fc" style="width:110px" id="jtq" onchange="filterJobsLive()"><option value="">All Types</option><option>Full-Time</option><option>Part-Time</option><option>Remote</option><option>Internship</option></select>
               <select class="fc" style="width:120px" id="jindustryq" onchange="filterJobsLive()"><option value="">All Industries</option><option>Technology</option><option>Finance</option><option>Healthcare</option><option>Education</option><option>Marketing</option><option>Operations</option></select>
               <button class="bap" style="width:auto;padding:9px 14px;border-radius:var(--rs)" onclick="filterJobsLive()">🔍 Search</button>
@@ -3889,19 +3890,31 @@ function renderFeedFiltered(){
   var box=$('feedBox');
   if(!box) return;
   var list=_feedFilter==='all'?_feedCache:_feedCache.filter(function(p){return postCategory(p)===_feedFilter;});
+
+  // v14: Near Me filter — uses pin-code aware distance (jobPostDistance),
+  // works even without GPS permission, purely from profile Pin Code.
+  if(_nearMeFeedActive&&_userGeo){
+    list=list.filter(function(p){
+      p._nearbyKm=jobPostDistance(p);
+      return p._nearbyKm<=100;
+    });
+    list=list.slice().sort(function(a,b){return a._nearbyKm-b._nearbyKm;});
+  }
+
   // Remove load-more button while re-rendering filtered view
   var oldBtn=document.getElementById('feedLoadMoreBtn');
   if(oldBtn) oldBtn.remove();
   if(!list.length){
     box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);font-size:12px;">'+
-      (_feedFilter==='all'?'No posts yet. Be the first to share!':'No '+_feedFilter+' posts yet. Try a different tab.')+
+      (_nearMeFeedActive?'No posts found near your area yet.':
+       (_feedFilter==='all'?'No posts yet. Be the first to share!':'No '+_feedFilter+' posts yet. Try a different tab.'))+
       '</div>';
     return;
   }
   box.innerHTML='';
   var cnt=0;
   list.forEach(function(post){
-    if(_userGeo&&post.geoLat&&post.geoLng){
+    if(post._nearbyKm===undefined&&_userGeo&&post.geoLat&&post.geoLng){
       post._nearbyKm=geoDistKm(_userGeo.lat,_userGeo.lng,post.geoLat,post.geoLng);
     }
     box.insertAdjacentHTML('beforeend',renderPost(post));
@@ -4259,7 +4272,7 @@ async function loadJobs(){
       // Geo-sort override if near-me active
       if(_userGeo&&_nearMeActive){
         jobs.forEach(function(j){
-          j._dist=(j.geoLat&&j.geoLng)?geoDistKm(_userGeo.lat,_userGeo.lng,j.geoLat,j.geoLng):99999;
+          j._dist=jobPostDistance(j);
         });
         jobs.sort(function(a,b){
           if((b.sponsored?1:0)!==(a.sponsored?1:0))
@@ -4377,6 +4390,7 @@ async function submitPost(){
     postData.geoLat=_userGeo.lat;
     postData.geoLng=_userGeo.lng;
     postData.locationCity=_userGeo.city||'';
+    postData.cityPin=_userGeo.pin||(_up&&_up.cityPin)||''; // v14: pin-code Near Me fallback
   }
 
   // ── DEMO MODE (no Firebase) ──
@@ -4478,6 +4492,7 @@ async function submitJob(){
     jobData.geoLat=_userGeo.lat;
     jobData.geoLng=_userGeo.lng;
     jobData.locationCity=_userGeo.city||l;
+    jobData.recruiterPin=_userGeo.pin||(_up&&_up.cityPin)||''; // v14: pin-code Near Me fallback
   }
 
   // ── DEMO MODE ──
@@ -4969,13 +4984,52 @@ function geoDistKm(lat1,lng1,lat2,lng2){
   return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
 
+// v14: India PIN code -> lat/lng lookup (free, no API key, no permission popup)
+async function pinToGeo(pin){
+  if(!pin||!/^\d{6}$/.test(pin)) return null;
+  try{
+    const r=await fetch('https://api.postalpincode.in/pincode/'+pin);
+    const d=await r.json();
+    if(d&&d[0]&&d[0].Status==='Success'&&d[0].PostOffice&&d[0].PostOffice.length){
+      const po=d[0].PostOffice[0];
+      const place=(po.District||po.Name||'')+', '+(po.State||'')+', India';
+      try{
+        const r2=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(place)+'&format=json&limit=1',{headers:{'Accept-Language':'en'}});
+        const d2=await r2.json();
+        if(d2&&d2[0]){
+          return {lat:parseFloat(d2[0].lat),lng:parseFloat(d2[0].lon),city:po.District||po.Name||'',pin:pin,source:'pin'};
+        }
+      }catch(e){}
+      return {lat:null,lng:null,city:po.District||po.Name||'',pin:pin,source:'pin'};
+    }
+  }catch(e){console.warn('[Geo] PIN lookup failed:',e);}
+  return null;
+}
+
+// v14: Unified distance estimate for Near Me — works via Pin Code even
+// without GPS permission. Priority: precise coords > exact pin > pin region.
+function jobPostDistance(item){
+  if(!_userGeo) return 99999;
+  if(_userGeo.lat&&_userGeo.lng&&item.geoLat&&item.geoLng){
+    return geoDistKm(_userGeo.lat,_userGeo.lng,item.geoLat,item.geoLng);
+  }
+  const myPin=_userGeo.pin||'';
+  const itemPin=item.cityPin||item.recruiterPin||'';
+  if(myPin&&itemPin){
+    if(myPin===itemPin) return 0;
+    if(myPin.slice(0,3)===itemPin.slice(0,3)) return 25;
+    if(myPin.slice(0,2)===itemPin.slice(0,2)) return 80;
+  }
+  return 99999;
+}
+
 async function initGeo(){
-  // Try saved location first
+  // 1) Try cached geo (valid 6 hours)
   try{
     const saved=localStorage.getItem('ks_geo');
     if(saved){
       const g=JSON.parse(saved);
-      if(g&&g.lat&&Date.now()-g.ts<3600000){// 1hr cache
+      if(g&&g.pin&&Date.now()-g.ts<21600000){
         _userGeo=g;
         updateGeoUI();
         return;
@@ -4983,39 +5037,80 @@ async function initGeo(){
     }
   }catch(e){}
 
-  // Request live location
+  // 2) PRIMARY: use the City Pin Code from the user's profile (default,
+  //    compulsory field) — works for everyone, no permission popup needed.
+  const profilePin=_up&&_up.cityPin;
+  if(profilePin){
+    const geo=await pinToGeo(profilePin);
+    if(geo){
+      geo.ts=Date.now();
+      _userGeo=geo;
+      try{localStorage.setItem('ks_geo',JSON.stringify(_userGeo));}catch(e){}
+      updateGeoUI();
+      loadFeed(true);
+      loadJobs();
+      return;
+    }
+  }
+
+  // 3) Fallback: no pin set yet — try GPS silently as last resort
   if(!navigator.geolocation) return;
   navigator.geolocation.getCurrentPosition(
     async pos=>{
       const lat=pos.coords.latitude, lng=pos.coords.longitude;
       let city='';
-      // Reverse geocode via free API
       try{
         const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,{headers:{'Accept-Language':'en'}});
         const d=await r.json();
         city=d.address?.city||d.address?.town||d.address?.village||d.address?.county||'';
       }catch(e){}
-      _userGeo={lat,lng,city,ts:Date.now()};
+      _userGeo={lat,lng,city,pin:'',source:'gps',ts:Date.now()};
       try{localStorage.setItem('ks_geo',JSON.stringify(_userGeo));}catch(e){}
       updateGeoUI();
-      // Reload feed+jobs with geo context
       loadFeed(true);
       loadJobs();
     },
-    err=>console.log('Geo denied:',err.code),
+    err=>console.log('Geo denied/unavailable:',err.code),
     {timeout:8000,maximumAge:60000}
+  );
+}
+
+// v14: Optional manual GPS refinement — overrides pin-based location
+// with precise GPS coordinates if the user wants exact distance sorting.
+function refineWithGPS(){
+  if(!navigator.geolocation) return showToast('⚠️ GPS not supported on this device.');
+  showToast('📍 Getting your exact location…');
+  navigator.geolocation.getCurrentPosition(
+    async pos=>{
+      const lat=pos.coords.latitude, lng=pos.coords.longitude;
+      let city=_userGeo?_userGeo.city:'';
+      try{
+        const r=await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&addressdetails=1`,{headers:{'Accept-Language':'en'}});
+        const d=await r.json();
+        city=d.address?.city||d.address?.town||d.address?.village||city;
+      }catch(e){}
+      _userGeo={lat,lng,city,pin:(_up&&_up.cityPin)||'',source:'gps',ts:Date.now()};
+      try{localStorage.setItem('ks_geo',JSON.stringify(_userGeo));}catch(e){}
+      updateGeoUI();
+      loadFeed(true);
+      loadJobs();
+      showToast('✅ Using your exact GPS location now!');
+    },
+    err=>showToast('⚠️ Could not get GPS. Using profile Pin Code instead.'),
+    {timeout:8000,maximumAge:0}
   );
 }
 
 function updateGeoUI(){
   if(!_userGeo) return;
   const city=_userGeo.city;
+  const srcIcon=_userGeo.source==='pin'?'📮':'📍';
   const el=document.getElementById('geoLabel');
-  if(el&&city) el.textContent='📍 '+city;
+  if(el&&city) el.textContent=srcIcon+' '+city;
   const nb=document.getElementById('nearMeBtn');
   if(nb) nb.style.display='inline-flex';
   const fl=document.getElementById('geoLabelFeed');
-  if(fl&&city) fl.textContent='· 📍 '+city;
+  if(fl&&city) fl.textContent='· '+srcIcon+' '+city;
   const fb=document.getElementById('nearMeBtnFeed');
   if(fb) fb.style.display='inline-flex';
 }
@@ -5029,9 +5124,15 @@ function toggleNearMeFeed(){
     btn.style.color=_nearMeFeedActive?'#fff':'var(--primary)';
     btn.textContent=_nearMeFeedActive?'📍 Near Me ✓':'📍 Near Me';
   }
-  if(_nearMeFeedActive&&!_userGeo){showToast('⚠️ Allow location access first!');_nearMeFeedActive=false;return;}
-  loadFeed(true);
-  showToast(_nearMeFeedActive?`📍 Showing posts near ${_userGeo?.city||'you'}`:'🌍 Showing all posts');
+  // v14: works by default via City Pin Code, no GPS permission needed
+  if(_nearMeFeedActive&&!_userGeo){
+    showToast('⚠️ Set your City Pin Code in Edit Profile first!');
+    _nearMeFeedActive=false;
+    if(btn){btn.style.background='var(--pl)';btn.style.color='var(--primary)';btn.textContent='📍 Near Me';}
+    return;
+  }
+  renderFeedFiltered();
+  showToast(_nearMeFeedActive?`📍 Showing posts near ${(_userGeo&&_userGeo.city)||'you'}`:'🌍 Showing all posts');
 }
 
 // Near-me filter toggle
@@ -5044,14 +5145,15 @@ function toggleNearMe(){
     btn.style.color=_nearMeActive?'#fff':'var(--primary)';
     btn.textContent=_nearMeActive?'📍 Near Me ✓':'📍 Near Me';
   }
+  // v14: works by default via City Pin Code, no GPS permission needed
   if(_nearMeActive && !_userGeo){
-    showToast('⚠️ Allow location access first!');
+    showToast('⚠️ Set your City Pin Code in Edit Profile first!');
     _nearMeActive=false;
+    if(btn){btn.style.background='var(--pl)';btn.style.color='var(--primary)';btn.textContent='📍 Near Me';}
     return;
   }
-  loadFeed(true);
-  loadJobs();
-  showToast(_nearMeActive?`📍 Showing jobs near ${_userGeo?.city||'you'}`:'🌍 Showing all locations');
+  filterJobsLive();
+  showToast(_nearMeActive?`📍 Showing jobs near ${(_userGeo&&_userGeo.city)||'you'}`:'🌍 Showing all locations');
 }
 
 // ── Live Jobs Search Filter ──
@@ -5065,14 +5167,33 @@ function filterJobsLive(){
   if(!box) return;
   // If cache empty, just reload
   if(!_allJobsCache.length){loadJobs();return;}
-  const filtered=_allJobsCache.filter(j=>{
+  // v14: location field also accepts a Pin Code (exact or 3-digit region match)
+  const isPinQuery=/^\d{3,6}$/.test(loc);
+  let filtered=_allJobsCache.filter(j=>{
     const matchQ=!q||(j.title||'').toLowerCase().includes(q)||(j.skills||'').toLowerCase().includes(q)||(j.description||'').toLowerCase().includes(q)||(j.company||'').toLowerCase().includes(q);
-    const matchLoc=!loc||(j.location||'').toLowerCase().includes(loc)||(j.locationCity||'').toLowerCase().includes(loc);
+    let matchLoc=!loc;
+    if(loc){
+      if(isPinQuery){
+        const jPin=j.recruiterPin||'';
+        matchLoc=jPin===loc||(loc.length>=3&&jPin.slice(0,loc.length)===loc);
+      } else {
+        matchLoc=(j.location||'').toLowerCase().includes(loc)||(j.locationCity||'').toLowerCase().includes(loc);
+      }
+    }
     const matchType=!type||(j.type||'').toLowerCase()===type;
     const matchInd=!ind||(j.industry||'').toLowerCase().includes(ind);
     return matchQ&&matchLoc&&matchType&&matchInd;
   });
-  if(!filtered.length){box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);">😔 No jobs match your search.<br><small>Try different keywords or clear filters.</small></div>';return;}
+  // v14: Near Me filter using pin-code aware distance — works without GPS
+  if(_nearMeActive&&_userGeo){
+    filtered.forEach(j=>{j._dist=jobPostDistance(j);});
+    filtered=filtered.filter(j=>j._dist<=100);
+    filtered.sort((a,b)=>{
+      if((b.sponsored?1:0)!==(a.sponsored?1:0)) return (b.sponsored?1:0)-(a.sponsored?1:0);
+      return a._dist-b._dist;
+    });
+  }
+  if(!filtered.length){box.innerHTML='<div style="text-align:center;padding:32px;color:var(--t3);">😔 No jobs match your search.<br><small>Try different keywords, pin code, or clear filters.</small></div>';return;}
   box.innerHTML='';
   filtered.forEach(j=>box.insertAdjacentHTML('beforeend',renderJobCard(j)));
   showToast(`🔍 ${filtered.length} job${filtered.length===1?'':'s'} found`);
