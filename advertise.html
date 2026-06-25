@@ -1420,86 +1420,98 @@ var _advDurationMap = {
 
 // Load pricing + UPI from Firestore on page load
 function _advLoadPricingAndUPI(){
-  if(!_db) return;
+  // Retry if _db not ready yet (Firebase async init)
+  if(!_db){ setTimeout(_advLoadPricingAndUPI, 600); return; }
+  console.log('[Adv] Loading pricing + UPI from Firestore...');
 
-  // ── Helper to parse pricing from doc data ──
   function _parsePricing(d){
-    return {
-      '7days':   parseInt(d.p7d  || d['7days']  || d.d7  || 0) || 0,
-      '15days':  parseInt(d.p15d || d['15days'] || d.d15 || 0) || 0,
-      '1month':  parseInt(d.p1m  || d['1month'] || d.m1  || 0) || 0,
-      '3months': parseInt(d.p3m  || d['3months']|| d.m3  || 0) || 0,
-      '6months': parseInt(d.p6m  || d['6months']|| d.m6  || 0) || 0,
-      '1year':   parseInt(d.p1y  || d['1year']  || d.y1  || 0) || 0,
-      'ongoing': parseInt(d.pom  || d['ongoing']|| d.om  || 0) || 0
+    var r = {
+      '7days':   parseInt(d.p7d   || d['7days']   || d.d7   || d['7 Days']   || 0)||0,
+      '15days':  parseInt(d.p15d  || d['15days']  || d.d15  || d['15 Days']  || 0)||0,
+      '1month':  parseInt(d.p1m   || d['1month']  || d.m1   || d['1 Month']  || 0)||0,
+      '3months': parseInt(d.p3m   || d['3months'] || d.m3   || d['3 Months'] || 0)||0,
+      '6months': parseInt(d.p6m   || d['6months'] || d.m6   || d['6 Months'] || 0)||0,
+      '1year':   parseInt(d.p1y   || d['1year']   || d.y1   || d['1 Year']   || 0)||0,
+      'ongoing': parseInt(d.pom   || d['ongoing'] || d.om   || d['Ongoing']  || 0)||0
     };
+    console.log('[Adv] Parsed pricing:', JSON.stringify(r)); return r;
+  }
+  function _applyPricing(parsed){
+    _advPricing = parsed;
+    console.log('[Adv] Pricing ready!');
+    var sel = (document.getElementById('f-duration')||{}).value;
+    if(sel) advOnDurationChange();
+  }
+  function _applyUPI(uid, unm){
+    _advUPIData = { upiId: uid, upiName: unm||'K Spider AI' };
+    console.log('[Adv] UPI ready:', uid);
+    var upiEl=document.getElementById('adv-upi-id'), nameEl=document.getElementById('adv-upi-name');
+    if(upiEl)  upiEl.textContent  = uid;
+    if(nameEl) nameEl.textContent = unm||'K Spider AI';
+    var sel=(document.getElementById('f-duration')||{}).value;
+    if(sel && _advPricing) advOnDurationChange();
   }
 
-  // Try 'adCampaignPricing' first, then 'adsPricing', then 'settings'
-  var _pricingPaths = [
-    ['settings', 'adCampaignPricing'],
-    ['settings', 'adsPricing'],
-    ['settings', 'pricing'],
-    ['admin_settings', 'adCampaignPricing']
+  // PRICING — all known paths
+  var _PP = [
+    ['settings','adCampaignPricing'], ['settings','adsPricing'],
+    ['settings','pricing'],           ['settings','campaignPricing'],
+    ['settings','adPricing'],         ['admin_settings','adCampaignPricing'],
+    ['admin_settings','pricing'],     ['config','adCampaignPricing']
   ];
-  var _pricingIdx = 0;
-
-  function _tryNextPricingDoc(){
-    if(_pricingIdx >= _pricingPaths.length) return;
-    var p = _pricingPaths[_pricingIdx++];
+  var _pi=0;
+  function _tryP(){
+    if(_pi>=_PP.length){
+      console.warn('[Adv] Pricing not found. Open browser console to see tried paths.');
+      var amtEl=document.getElementById('adv-price-amount');
+      if(amtEl && (amtEl.textContent.indexOf('Loading')>-1||amtEl.textContent==='₹—'))
+        amtEl.textContent='See Admin';
+      return;
+    }
+    var p=_PP[_pi++];
+    console.log('[Adv] Pricing try:', p[0]+'/'+p[1]);
     _db.collection(p[0]).doc(p[1]).get()
       .then(function(doc){
-        if(doc.exists && doc.data()){
-          var parsed = _parsePricing(doc.data());
-          var hasAny = Object.values(parsed).some(function(v){ return v > 0; });
-          if(hasAny){
-            _advPricing = parsed;
-            var sel = (document.getElementById('f-duration')||{}).value;
-            if(sel) advOnDurationChange();
-          } else {
-            _tryNextPricingDoc();
-          }
-        } else {
-          _tryNextPricingDoc();
-        }
-      }).catch(function(){ _tryNextPricingDoc(); });
+        if(doc.exists){
+          var d=doc.data()||{};
+          console.log('[Adv] Doc found at '+p[0]+'/'+p[1]+':', JSON.stringify(d));
+          var parsed=_parsePricing(d);
+          var ok=Object.keys(parsed).some(function(k){return parsed[k]>0;});
+          if(ok){ _applyPricing(parsed); } else { _tryP(); }
+        } else { _tryP(); }
+      }).catch(function(e){ console.warn('[Adv] Pricing err:',e.message); _tryP(); });
   }
-  _tryNextPricingDoc();
+  _tryP();
 
-  // Load UPI/payment settings — try multiple paths
-  var _upiPaths = [
-    ['settings','paymentSettings'],
-    ['settings','platformSettings'],
-    ['settings','general'],
-    ['admin_settings','payment']
+  // UPI — all known paths
+  var _UP=[
+    ['settings','platformSettings'],  ['settings','paymentSettings'],
+    ['settings','general'],           ['settings','siteSettings'],
+    ['settings','appSettings'],       ['admin_settings','payment'],
+    ['admin_settings','general'],     ['config','payment']
   ];
-  var _upiIdx = 0;
-  function _tryNextUPIDoc(){
-    if(_upiIdx >= _upiPaths.length) return;
-    var p = _upiPaths[_upiIdx++];
+  var _ui=0;
+  function _tryU(){
+    if(_ui>=_UP.length){
+      console.warn('[Adv] UPI not found in Firestore.');
+      var el=document.getElementById('adv-upi-id');
+      if(el && el.textContent==='Loading...') el.textContent='9099928877@pthdtc';
+      return;
+    }
+    var p=_UP[_ui++];
+    console.log('[Adv] UPI try:', p[0]+'/'+p[1]);
     _db.collection(p[0]).doc(p[1]).get()
       .then(function(doc){
-        if(doc.exists && doc.data()){
-          var d = doc.data();
-          var uid = d.upiId || d.upi_id || d.upi || d.UPI || '';
-          if(uid){
-            _advUPIData = {
-              upiId:   uid,
-              upiName: d.upiName || d.upi_name || d.accountName || d.account_name || 'K Spider AI'
-            };
-            var upiEl  = document.getElementById('adv-upi-id');
-            var nameEl = document.getElementById('adv-upi-name');
-            if(upiEl)  upiEl.textContent  = _advUPIData.upiId;
-            if(nameEl) nameEl.textContent = _advUPIData.upiName;
-          } else {
-            _tryNextUPIDoc();
-          }
-        } else {
-          _tryNextUPIDoc();
-        }
-      }).catch(function(){ _tryNextUPIDoc(); });
+        if(doc.exists){
+          var d=doc.data()||{};
+          console.log('[Adv] UPI doc at '+p[0]+'/'+p[1]+':', JSON.stringify(d));
+          var uid=d.upiId||d.upi_id||d.upi||d.UPI||d.upiID||d.paymentUPI||d.merchantUPI||'';
+          var unm=d.upiName||d.upi_name||d.accountName||d.account_name||d.merchantName||d.siteName||'K Spider AI';
+          if(uid){ _applyUPI(uid,unm); } else { _tryU(); }
+        } else { _tryU(); }
+      }).catch(function(e){ console.warn('[Adv] UPI err:',e.message); _tryU(); });
   }
-  _tryNextUPIDoc();
+  _tryU();
 }
 
 // Called when duration dropdown changes
@@ -1557,24 +1569,30 @@ function advOnUTRInput(){
   advUpdateSubmitBtn();
 }
 
-// Enable submit only when duration selected + UTR entered (if price > 0)
+// Enable submit only when duration selected + UTR entered (when payment section visible)
 function advUpdateSubmitBtn(){
   var btn = document.getElementById('submit-btn');
   if(!btn) return;
-  var duration = (document.getElementById('f-duration')||{}).value || '';
-  var utr      = ((document.getElementById('adv-utr')||{}).value || '').trim();
-  var price    = _advPricing && duration ? (_advPricing[duration] || 0) : -1;
+  var duration    = (document.getElementById('f-duration')||{}).value || '';
+  var utr         = ((document.getElementById('adv-utr')||{}).value || '').trim();
+  var paySection  = document.getElementById('adv-payment-section');
+  var payVisible  = paySection && paySection.style.display !== 'none';
+  var price       = _advPricing && duration ? (_advPricing[duration] || 0) : -1;
+  // price -1 = pricing not loaded yet (treat as paid = require UTR if section visible)
+  // price  0 = free (UTR optional)
+  // price >0 = paid (UTR mandatory)
+  var needUTR = payVisible && price !== 0;  // require UTR unless price is explicitly 0
 
-  // If pricing not loaded yet or price is 0, allow submit freely
-  // If price > 0, UTR is mandatory
-  if(price > 0 && !utr){
+  if(needUTR && !utr){
     btn.disabled = true;
-    btn.textContent = '🔒 UTR Enter Karein — Phir Submit';
-    btn.style.opacity = '.5';
+    btn.textContent = '🔒 Pehle UTR Enter Karein';
+    btn.style.opacity = '.55';
+    btn.style.cursor  = 'not-allowed';
   } else {
     btn.disabled = false;
     btn.textContent = '📤 Submit Ad Request';
     btn.style.opacity = '1';
+    btn.style.cursor  = 'pointer';
   }
 }
 
@@ -1636,14 +1654,24 @@ function submitRequest(){
   if(!name)     { advToast('⚠️ Contact person name required'); return; }
   if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ advToast('⚠️ Valid email required'); return; }
   if(!phone)    { advToast('⚠️ WhatsApp number required'); return; }
+  if(!duration) { advToast('⚠️ Campaign Duration select karein'); document.getElementById('f-duration').focus(); return; }
 
   // ── Payment validation ──
   var advUTR   = ((document.getElementById('adv-utr')||{}).value||'').trim();
   var advSS    = ((document.getElementById('adv-ss-url')||{}).value||'').trim();
-  var advPrice = _advPricing && duration ? (_advPricing[duration] || 0) : 0;
-  if(advPrice > 0 && !advUTR){
-    advToast('⚠️ UTR / Transaction ID required — payment karke UTR enter karein');
-    document.getElementById('adv-utr').focus();
+  // Get price — if pricing loaded use it, else treat any paid plan as requiring UTR
+  var advPrice = _advPricing && duration ? (_advPricing[duration] || 0) : -1;
+
+  // -1 means pricing NOT loaded yet — in this case also require UTR (safe default)
+  // 0 means free plan (pricing loaded, price is zero) — UTR optional
+  // >0 means paid plan — UTR mandatory
+  var _paymentSectionVisible = (document.getElementById('adv-payment-section')||{}).style &&
+    document.getElementById('adv-payment-section').style.display !== 'none';
+
+  if(_paymentSectionVisible && advPrice !== 0 && !advUTR){
+    advToast('⚠️ UTR / Transaction ID required — UPI se payment karke UTR enter karein');
+    var utrEl = document.getElementById('adv-utr');
+    if(utrEl){ utrEl.focus(); utrEl.style.borderColor='#ef4444'; setTimeout(function(){ utrEl.style.borderColor=''; }, 3000); }
     return;
   }
 
