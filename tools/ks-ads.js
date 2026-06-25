@@ -1,47 +1,47 @@
 /*!
- * K SPIDER AI — ks-ads.js  v11.2
+ * K SPIDER AI â€” ks-ads.js  v11.4
  * www.kspiderai.in | By Gaurang Raval & Khush Raval | 2026
  *
- * UPDATES v11.2:
- *  ✅ Image alt text fix — alt="" so "Advertisement" text never shows if image fails
- *  ✅ Image onerror — broken image slot auto-hides instead of showing alt text
- *     (Fixes: "ADVERTISEMNT" text visible on left side behind ad banner)
+ * UPDATES v11.4:
+ *  âœ… .ks-ad-inner: inline-block â†’ block + margin:0 auto (true center, no left overflow)
+ *  âœ… .ks-ad-wrap: display:flex + justify-content:center added (perfect centering)
+ *  âœ… AdSense ins.adsbygoogle hidden (prevents AdSense ADVERTISEMENT label conflict)
  *
- * UPDATES v11.1 (previous):
- *  ✅ Overflow-safe scaling via ResizeObserver
- *  ✅ html/body overflow-x:hidden
- *  ✅ Leaderboard responsive CSS for 728x90 / 970x90
+ * UPDATES v11.3:
+ *  âœ… CRITICAL: Removed CSS contain:layout style â€” Chrome/Android native ADVERTISEMENT label fix
+ *
+ * UPDATES v11.2:
+ *  âœ… Image alt="" fix â€” prevents "Advertisement" alt text on broken images
+ *  âœ… Image onerror â€” broken image slot auto-hides
+ *
+ * UPDATES v11.1:
+ *  âœ… Overflow-safe scaling via ResizeObserver
+ *  âœ… html/body overflow-x:hidden
+ *  âœ… Leaderboard responsive CSS for 728x90 / 970x90
  *
  * UPDATES v11.0:
- *  ✅ Screen jump fix — height lock + fade cross-transition
- *  ✅ Animated HTML banners — self-contained <style> CSS preserved
- *  ✅ Full text-ad styling (hlDecoration, transform, letterSpacing, shadow, highlight)
- *  ✅ Badge & entrance animation support from admin HTML generator
- *  ✅ Firestore-efficient rotation (setInterval — no recursive Firestore calls)
- *  ✅ .ks-slot-inner wrapper pattern (replaces raw container.innerHTML)
- *  ✅ Logo, contact info, gradient bg, all v10.0 features retained
+ *  âœ… Screen jump fix â€” height lock + fade cross-transition
+ *  âœ… Animated HTML banners â€” self-contained <style> CSS preserved
+ *  âœ… Full text-ad styling support
+ *  âœ… Firestore-efficient rotation (setInterval)
+ *  âœ… .ks-slot-inner wrapper pattern
  *
  * USAGE:
- *   1. Load this file once in your tool page:
- *      <script src="ks-ads.js"></script>
- *   2. Add slot divs wherever you want ads:
- *      <div data-ks-slot="top-banner"></div>
- *      <div data-ks-slot="in-content"></div>
- *      <div data-ks-slot="after-result"></div>
- *      <div data-ks-slot="bottom-banner"></div>
+ *   1. <script src="ks-ads.js"></script>
+ *   2. <div data-ks-slot="top-banner"></div>
  *   3. Done. Ads load automatically.
  */
 
 (function(global) {
   'use strict';
 
-  /* ── Guard: run only once per page ── */
+  /* â”€â”€ Guard: run only once per page â”€â”€ */
   if (global.__ksAdsLoaded) return;
   global.__ksAdsLoaded = true;
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      CONFIG
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   var FB_CFG = {
     apiKey:            'AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8',
     authDomain:        'kspideraimain.firebaseapp.com',
@@ -51,7 +51,7 @@
     appId:             '1:940003391760:web:8617000465b6991d348d95'
   };
 
-  /* Slot → minimum heights (px) — prevents page collapse while loading */
+  /* Slot â†’ minimum heights (px) â€” prevents page collapse while loading */
   var SLOT_MIN_H = {
     'top-banner':    90,
     'bottom-banner': 90,
@@ -61,23 +61,34 @@
     'sidebar-right':250
   };
 
-  /* ════════════════════════════════════════════════════════
-     CSS INJECTION — once per page
-  ════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     CSS INJECTION â€” once per page
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   (function injectCss() {
     if (document.getElementById('ks-ads-css')) return;
     var s = document.createElement('style');
     s.id  = 'ks-ads-css';
     s.textContent = [
-      /* ── v11.1 OVERFLOW FIX: html/body never scroll horizontally because of ads ── */
-      'html{overflow-x:hidden}',
-      /* Wrapper isolates layout — banner height changes don\'t shift page */
-      '.ks-ad-wrap{contain:layout style;width:100%;text-align:center;max-width:100vw;overflow:hidden;box-sizing:border-box}',
-      /* Inner fades between banners — no pop/jump */
-      '.ks-ad-inner{display:inline-block;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;',
-        'border-radius:8px;transition:opacity .32s ease;will-change:opacity}',
+    /* â”€â”€ v11.2 ADSENSE PLACEHOLDER FIX â”€â”€
+       Google AdSense reserves space with "ADVERTISEMENT" label above ins tags.
+       Since KSpider uses its own ks-ads system, hide AdSense placeholders to
+       prevent the "ADVERTISEMENT" text appearing next to KSpider ad banners. */
+    'ins.adsbygoogle{display:none!important}',
+    /* Also hide the AdSense label/ribbon that appears beside ad containers */
+    '.adsbygoogle-noablate,.google-auto-placed,#google_ads_frame1,',
+    '#google_ads_frame2,.GoogleActiveViewElement,',
+    '[id^="google_ads_iframe"]{display:none!important}',
+    /* â”€â”€ END ADSENSE FIX â”€â”€ */
+    /* â”€â”€ v11.1 OVERFLOW FIX: html/body never scroll horizontally because of ads â”€â”€ */
+    'html{overflow-x:hidden}',
+      /* Wrapper â€” NOTE: NO contain property â€” contain:style triggers Chrome/Android
+         to inject a native "ADVERTISEMENT" label on ad containers */
+      '.ks-ad-wrap{width:100%;text-align:center;max-width:100vw;overflow:hidden;box-sizing:border-box;position:relative;display:flex;justify-content:center;align-items:center}',
+      /* Inner fades between banners â€” no pop/jump. block+margin:auto = true centering */
+      '.ks-ad-inner{display:block;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;',
+        'border-radius:8px;transition:opacity .32s ease;will-change:opacity;margin:0 auto}',
       '.ks-ad-inner.ks-fading{opacity:0}',
-      /* ── v11.1: force every element inside an ad to respect container width ── */
+      /* â”€â”€ v11.1: force every element inside an ad to respect container width â”€â”€ */
       '.ks-ad-inner *{max-width:100%;box-sizing:border-box}',
       '.ks-ad-inner img,.ks-ad-inner video,.ks-ad-inner iframe{max-width:100%;height:auto;display:block}',
       /* Slot-specific min-heights */
@@ -93,10 +104,10 @@
       '[data-ks-slot="sidebar-right"] .ks-ad-inner,',
       '[data-slot="sidebar-left"] .ks-ad-inner,',
       '[data-slot="sidebar-right"] .ks-ad-inner{min-height:250px;width:300px;max-width:100%}',
-      /* ── v11.1 LEADERBOARD (728x90 / 970x90) RESPONSIVE FIX ──
+      /* â”€â”€ v11.1 LEADERBOARD (728x90 / 970x90) RESPONSIVE FIX â”€â”€
          Desktop: full 728/970px width, centered.
-         Tablet (≤900px): scales to viewport width.
-         Mobile (≤480px): drops to 320x50/100 safe size automatically. */
+         Tablet (â‰¤900px): scales to viewport width.
+         Mobile (â‰¤480px): drops to 320x50/100 safe size automatically. */
       '.ks-ad-leaderboard{width:100%;max-width:728px;margin:0 auto;overflow:hidden}',
       '.ks-ad-leaderboard.ks-lb-970{max-width:970px}',
       '@media(max-width:900px){',
@@ -113,9 +124,9 @@
     (document.head || document.documentElement).appendChild(s);
   })();
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      FIREBASE HELPERS
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function getDb() {
     try {
       if (global.KS && global.KS.db) return global.KS.db;
@@ -149,9 +160,9 @@
     });
   }
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      UTILITIES
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function esc(s) {
     if (!s) return '';
     return String(s)
@@ -167,9 +178,9 @@
     return 'background:' + c1;
   }
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      TRACKING
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function trackImp(id) {
     if (!id) return;
     var db = getDb();
@@ -187,9 +198,9 @@
   };
   global.ksAdTrackClick = global.kspiderAdClick;
 
-  /* ════════════════════════════════════════════════════════
-     INNER ELEMENT — get or create .ks-ad-inner
-  ════════════════════════════════════════════════════════ */
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     INNER ELEMENT â€” get or create .ks-ad-inner
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function getInner(container) {
     var inner = container.querySelector('.ks-ad-inner');
     if (!inner) {
@@ -208,19 +219,19 @@
     container.style.display = 'none';
   }
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      AD RENDERER
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function renderAd(inner, ad) {
     var clickUrl = (ad.clickUrl || '').trim();
     var hasLink  = !!(clickUrl && clickUrl !== '#');
     var adId     = ad._id || '';
     var html     = '';
 
-    /* ── IMAGE ── */
+    /* â”€â”€ IMAGE â”€â”€ */
     if (ad.type === 'image') {
       if (!ad.imgUrl) { inner.style.display = 'none'; return; }
-      /* alt="" intentional — prevents "Advertisement" text showing if image fails to load.
+      /* alt="" intentional â€” prevents "Advertisement" text showing if image fails to load.
          onerror hides the broken slot cleanly instead of showing alt text. */
       var imgTag = '<img src="' + esc(ad.imgUrl) + '" alt="" ' +
         'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy" ' +
@@ -231,7 +242,7 @@
             'onclick="kspiderAdClick(\'' + esc(adId) + '\')">' + imgTag + '</a>'
         : '<div>' + imgTag + '</div>';
 
-    /* ── VIDEO ── */
+    /* â”€â”€ VIDEO â”€â”€ */
     } else if (ad.type === 'video') {
       if (!ad.videoUrl) { inner.style.display = 'none'; return; }
       var vurl  = ad.videoUrl;
@@ -259,7 +270,7 @@
         ? 'onclick="kspiderAdClick(\'' + esc(adId) + '\');window.open(\'' + esc(clickUrl) + '\',\'_blank\')"' : '';
       html = '<div style="cursor:' + (hasLink ? 'pointer' : 'default') + '" ' + vClick + '>' + vHtml + '</div>';
 
-    /* ── TEXT — full admin styling support ── */
+    /* â”€â”€ TEXT â€” full admin styling support â”€â”€ */
     } else if (ad.type === 'text') {
       var br  = ad.borderRadius || '12px';
       var al  = ad.layoutAlign  || 'center';
@@ -299,7 +310,7 @@
             'style="background:' + bb + ';color:' + bc + ';font-size:' + bfz +
             ';border-radius:' + bsh + ';padding:7px 20px;font-weight:700;text-decoration:none;' +
             'font-family:inherit;display:inline-block" ' +
-            'onclick="kspiderAdClick(\'' + esc(adId) + '\');event.stopPropagation()">' + esc(ad.btnText) + ' →</a>';
+            'onclick="kspiderAdClick(\'' + esc(adId) + '\');event.stopPropagation()">' + esc(ad.btnText) + ' â†’</a>';
         else
           btnH = '<span style="background:' + bb + ';color:' + bc + ';font-size:' + bfz +
             ';border-radius:' + bsh + ';padding:7px 20px;font-weight:700;display:inline-block">' +
@@ -327,28 +338,28 @@
       var inf= ad.infoFields  || {};
       var ii = '';
       if (sf.company  && inf.companyName)
-        ii += '<div style="font-size:.7rem;font-weight:800;color:#fff;opacity:.9;margin-bottom:2px">🏢 ' + esc(inf.companyName) + '</div>';
+        ii += '<div style="font-size:.7rem;font-weight:800;color:#fff;opacity:.9;margin-bottom:2px">ðŸ¢ ' + esc(inf.companyName) + '</div>';
       if (sf.offer    && inf.offerText)
         ii += '<div style="font-size:.7rem;font-weight:700;background:rgba(255,255,255,.18);display:inline-block;' +
-          'padding:2px 12px;border-radius:20px;margin-bottom:6px;color:#fff">🎁 ' + esc(inf.offerText) + '</div>';
+          'padding:2px 12px;border-radius:20px;margin-bottom:6px;color:#fff">ðŸŽ ' + esc(inf.offerText) + '</div>';
       var cl = '';
       if (sf.phone && inf.phone) {
         var pn = inf.phone.replace(/[^0-9+]/g,'');
         cl += '<a href="tel:' + esc(pn) + '" style="color:#fff;text-decoration:underline;font-size:.7rem;margin-right:8px" ' +
-          'onclick="event.stopPropagation()">📞 ' + esc(inf.phone) + '</a>';
+          'onclick="event.stopPropagation()">ðŸ“ž ' + esc(inf.phone) + '</a>';
       }
       if (sf.email && inf.email)
         cl += '<a href="mailto:' + esc(inf.email) + '" style="color:#fff;text-decoration:underline;font-size:.7rem;margin-right:8px" ' +
-          'onclick="event.stopPropagation()">✉️ ' + esc(inf.email) + '</a>';
+          'onclick="event.stopPropagation()">âœ‰ï¸ ' + esc(inf.email) + '</a>';
       if (sf.url && inf.url)
         cl += '<a href="' + esc(inf.url) + '" target="_blank" rel="noopener" ' +
-          'style="color:#fff;text-decoration:underline;font-size:.7rem" onclick="event.stopPropagation()">🌐 ' +
+          'style="color:#fff;text-decoration:underline;font-size:.7rem" onclick="event.stopPropagation()">ðŸŒ ' +
           esc(inf.url.replace(/^https?:\/\/(www\.)?/,'')) + '</a>';
       if (cl) ii += '<div style="margin-bottom:4px;line-height:2">' + cl + '</div>';
       if (sf.location && inf.location)
-        ii += '<div style="font-size:.67rem;color:rgba(255,255,255,.8);margin-bottom:2px">📍 ' + esc(inf.location) + '</div>';
+        ii += '<div style="font-size:.67rem;color:rgba(255,255,255,.8);margin-bottom:2px">ðŸ“ ' + esc(inf.location) + '</div>';
       if (sf.address  && inf.address)
-        ii += '<div style="font-size:.65rem;color:rgba(255,255,255,.72)">🏠 ' + esc(inf.address) + '</div>';
+        ii += '<div style="font-size:.65rem;color:rgba(255,255,255,.72)">ðŸ  ' + esc(inf.address) + '</div>';
 
       var tStyle = bgCss(ad) + ';border-radius:' + br + ';text-align:' + al +
         ';padding:16px 18px;position:relative;width:100%;box-sizing:border-box;' +
@@ -363,7 +374,7 @@
         (btnH ? '<div style="display:flex;justify-content:' + bpf + '">' + btnH + '</div>' : '') +
         '</div>';
 
-    /* ── HTML — animated banners: preserve self-contained <style> CSS ── */
+    /* â”€â”€ HTML â€” animated banners: preserve self-contained <style> CSS â”€â”€ */
     } else if (ad.type === 'html') {
       if (!ad.htmlCode) { inner.style.display = 'none'; return; }
       /* Strip <script> and event handlers for XSS safety, but KEEP <style> tags */
@@ -386,13 +397,13 @@
     trackImp(adId);
   }
 
-  /* ════════════════════════════════════════════════════════
-     v11.1 — VIEWPORT-SAFE SCALING (ResizeObserver)
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+     v11.1 â€” VIEWPORT-SAFE SCALING (ResizeObserver)
      Watches every ad slot; if rendered content is wider than
      the slot/viewport, applies a CSS transform scale-down so
-     nothing overflows horizontally. Non-destructive — only
+     nothing overflows horizontally. Non-destructive â€” only
      adds a transform, never changes underlying ad HTML.
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function applyOverflowGuard(container, inner) {
     function fit() {
       if (!inner || !container) return;
@@ -435,10 +446,10 @@
     }
   }
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      SLOT MANAGEMENT
-  ════════════════════════════════════════════════════════ */
-  var _slotData   = {};   /* key → {ads, idx, timer, heightLocked} */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
+  var _slotData   = {};   /* key â†’ {ads, idx, timer, heightLocked} */
 
   function getSlotKey(container, index) {
     var slot = container.getAttribute('data-ks-slot') || container.getAttribute('data-slot') || 'top-banner';
@@ -486,7 +497,7 @@
         /* Start rotation if multiple ads */
         if (ads.length > 1) {
           var ms = Math.max(3000, (parseInt(ads[0].interval) || 10) * 1000);
-          /* Measure all banner heights and lock to max — prevents any jump */
+          /* Measure all banner heights and lock to max â€” prevents any jump */
         setTimeout(function(){
           var maxH = inner.offsetHeight || 0;
           var probe = document.createElement('div');
@@ -515,19 +526,19 @@
       .catch(function(e) { console.warn('[ks-ads] ' + e.message); });
   }
 
-  /* ════════════════════════════════════════════════════════
+  /* â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
      INIT
-  ════════════════════════════════════════════════════════ */
+  â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â• */
   function initAllSlots() {
     var slots = document.querySelectorAll(
       '[data-ks-slot],[data-slot],.kspider-ad-slot'
     );
     slots.forEach(function(el, i) {
-      /* Apply contain:layout style so this element is isolated */
-      el.style.contain     = 'layout style';
+      /* NOTE: No contain property â€” contain:style causes Chrome/Android to show
+         a native "ADVERTISEMENT" label over the ad slot */
       el.style.width       = '100%';
-      el.style.maxWidth    = '100%';      /* v11.1: never exceed parent */
-      el.style.overflow    = 'hidden';    /* v11.1: clip any oversize content */
+      el.style.maxWidth    = '100%';
+      el.style.overflow    = 'hidden';
       el.style.textAlign   = 'center';
       el.style.boxSizing   = 'border-box';
       el.style.margin      = '0 auto';
@@ -551,11 +562,11 @@
 
   /* Public API */
   global.KsAds = {
-    version:   '11.2',
+    version:   '11.4',
     reload:    initAllSlots,
     trackClick:global.kspiderAdClick
   };
 
-  console.log('[ks-ads.js] v11.2 ready (overflow-safe + alt-fix) | kspiderai.in');
+  console.log('[ks-ads.js] v11.4 ready (centered + ADVERTISEMENT-free) | kspiderai.in');
 
 })(window);
