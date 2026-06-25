@@ -606,52 +606,17 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
 .mf-bot{border-top:1px solid rgba(255,255,255,.08);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;max-width:1340px;margin:0 auto;font-size:12px;color:#475569}
 @keyframes ksPulse{0%,100%{box-shadow:0 0 10px rgba(34,197,94,.5);}50%{box-shadow:0 0 20px rgba(34,197,94,.9);}}
 
-/* ── KSpider Ads Banner Fix v1.0 ── */
-/* Hide ADVERTISEMENT label injected by ks-ads.js */
-.ks-ad-label,.ks-ads-label,.ad-label,
-[class*="ad-label"],[class*="adlabel"],
-[class*="advertisement-label"],[class*="advertisementLabel"],
-.ks-ad-wrap > span:first-child,
-[data-ks-slot] + span,
-[data-ks-slot] ~ .ad-badge {
-  display: none !important;
-  visibility: hidden !important;
-  opacity: 0 !important;
-}
-/* Remove any ::before/::after pseudo-elements that show ADVERTISEMENT text */
-[data-ks-slot]::before,
-[data-ks-slot]::after,
-.ad-slot::before,
-.ad-slot::after,
-.ad-top > div::before,
-.ad-top > div::after {
-  display: none !important;
-  content: none !important;
-}
-/* Proper ad banner centering with margin */
+/* ── KSpider Ads Banner Centering Fix v1.0 ── */
 .ad-top {
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
   padding: 8px 0 !important;
-  overflow: hidden !important;
-  position: relative !important;
 }
 [data-ks-slot="top-banner"],
 .ad-slot {
-  display: flex !important;
-  justify-content: center !important;
-  align-items: center !important;
-  width: 100% !important;
   max-width: 970px !important;
   margin: 0 auto !important;
-  text-align: center !important;
-}
-[data-ks-slot="top-banner"] > *,
-.ad-slot > * {
-  margin: 0 auto !important;
-  display: block !important;
-  max-width: 100% !important;
 }
 
 </style>
@@ -2619,45 +2584,6 @@ document.addEventListener("DOMContentLoaded",function(){ksRefInit("wa-bulk-sende
 <!-- Firebase SDK moved to ks-ads.js ensureFirebase() — no manual init needed -->
 
 <script src="ks-ads.js"></script>
-<!-- ✅ KSpider Ad Label Fix v1.0 — ks-ads.js ke baad — ADVERTISEMENT label remove karta hai -->
-<script>
-(function(){
-  function removeAdLabels(){
-    // Remove text nodes and elements containing "ADVERTISEMENT" or "ADVERTISEMNT"
-    var allEls = document.querySelectorAll('body *');
-    allEls.forEach(function(el){
-      // Skip ad slot containers themselves
-      if(el.hasAttribute('data-ks-slot') || el.classList.contains('ad-slot') || el.classList.contains('ad-top')) return;
-      var cls = (el.className||'').toString().toLowerCase();
-      var txt = (el.textContent||'').trim().toUpperCase();
-      if(
-        cls.indexOf('ad-label')>-1 || cls.indexOf('adlabel')>-1 ||
-        cls.indexOf('advertisement')>-1 ||
-        (txt === 'ADVERTISEMENT' || txt === 'ADVERTISEMNT' || txt === 'AD') && el.children.length === 0
-      ){
-        el.style.cssText = 'display:none!important;visibility:hidden!important;opacity:0!important;position:absolute!important;left:-9999px!important';
-      }
-    });
-  }
-  // Run after ads load
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){ setTimeout(removeAdLabels,800); setTimeout(removeAdLabels,2000); });
-  } else {
-    setTimeout(removeAdLabels,800);
-    setTimeout(removeAdLabels,2000);
-  }
-  // Also watch for dynamic injections
-  var _adLabelObs = new MutationObserver(function(mutations){
-    var needsCheck = false;
-    mutations.forEach(function(m){ if(m.addedNodes.length) needsCheck = true; });
-    if(needsCheck) setTimeout(removeAdLabels, 100);
-  });
-  document.addEventListener('DOMContentLoaded',function(){
-    _adLabelObs.observe(document.body, {childList:true, subtree:true});
-    setTimeout(function(){ _adLabelObs.disconnect(); }, 10000); // Stop after 10s
-  });
-})();
-</script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
 <script>
 (function(){
