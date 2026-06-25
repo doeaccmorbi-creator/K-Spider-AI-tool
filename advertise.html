@@ -584,7 +584,7 @@
         <div class="fg-row">
           <div>
             <label class="fl">Campaign Duration</label>
-            <select class="fi" id="f-duration">
+            <select class="fi" id="f-duration" onchange="advOnDurationChange()">
               <option value="">— Select —</option>
               <option value="7days">7 Days (Trial)</option>
               <option value="15days">15 Days</option>
@@ -620,6 +620,64 @@
               <option value="pan_india">🇮🇳 Pan-India</option>
               <option value="all">👥 All Users</option>
             </select>
+          </div>
+        </div>
+
+        <!-- ── PLAN PRICE DISPLAY (shows after duration select) ── -->
+        <div id="adv-price-box" style="display:none;margin-bottom:14px;border-radius:10px;overflow:hidden;border:1px solid rgba(232,82,10,.35)">
+          <div style="background:linear-gradient(135deg,rgba(232,82,10,.18),rgba(184,121,42,.12));padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+            <div>
+              <div style="font-size:.68rem;color:var(--t3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:2px">Campaign Price</div>
+              <div style="font-size:1.6rem;font-weight:900;color:var(--orange)" id="adv-price-amount">₹—</div>
+              <div style="font-size:.7rem;color:var(--t3)" id="adv-price-label">Select duration to see price</div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:.68rem;color:var(--t3);margin-bottom:4px">Includes</div>
+              <div style="font-size:.73rem;color:var(--t2);line-height:1.8">✅ Live in 24 hours<br>✅ All 5 ad slots<br>✅ Auto rotation</div>
+            </div>
+          </div>
+          <div style="background:rgba(232,82,10,.06);padding:8px 16px;font-size:.7rem;color:var(--t3)">
+            💡 Price admin-set hain aur final hain. GST applicable hogi.
+          </div>
+        </div>
+
+        <!-- ── UPI PAYMENT SECTION (shows after price loads) ── -->
+        <div id="adv-payment-section" style="display:none;margin-bottom:14px">
+          <div class="sec-divider">💳 Payment Details</div>
+          <div style="background:linear-gradient(135deg,rgba(5,150,105,.08),rgba(16,185,129,.05));border:1px solid rgba(5,150,105,.25);border-radius:10px;padding:14px 16px;margin-bottom:12px">
+            <div style="font-size:.8rem;font-weight:700;color:#34d399;margin-bottom:10px">📲 UPI Se Payment Karein</div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <div style="background:var(--bg3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 14px;flex:1;min-width:200px">
+                <div style="font-size:.65rem;color:var(--t3);margin-bottom:3px">UPI ID</div>
+                <div style="font-size:.92rem;font-weight:800;color:var(--t1);font-family:monospace;letter-spacing:.02em" id="adv-upi-id">Loading...</div>
+                <div style="font-size:.65rem;color:var(--t3);margin-top:2px" id="adv-upi-name"></div>
+              </div>
+              <button type="button" onclick="advCopyUPI()" style="background:rgba(5,150,105,.15);border:1px solid rgba(5,150,105,.35);color:#34d399;padding:10px 16px;border-radius:8px;font-size:.78rem;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">📋 Copy UPI ID</button>
+            </div>
+            <div style="margin-top:10px;background:var(--bg3);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px">
+              <div style="font-size:.65rem;color:var(--t3);margin-bottom:4px">Amount to Pay</div>
+              <div style="font-size:1.3rem;font-weight:900;color:var(--orange)" id="adv-pay-amount">₹—</div>
+              <div style="font-size:.65rem;color:var(--t4);margin-top:2px">K Spider AI — Ad Campaign</div>
+            </div>
+            <div style="margin-top:10px;background:rgba(232,82,10,.07);border:1px solid rgba(232,82,10,.2);border-radius:8px;padding:10px 14px;font-size:.75rem;color:var(--t2);line-height:1.7">
+              <strong style="color:var(--orange)">📌 Steps:</strong><br>
+              1️⃣ UPI ID copy karein<br>
+              2️⃣ GPay / PhonePe / Paytm kholein<br>
+              3️⃣ UPI ID se exact amount pay karein<br>
+              4️⃣ Screenshot ya UTR number neeche paste karein
+            </div>
+          </div>
+
+          <div class="fg">
+            <label class="fl">UTR / Transaction ID <em>*</em></label>
+            <input class="fi" id="adv-utr" type="text" placeholder="12-digit UTR ya Transaction ID enter karein" maxlength="30" oninput="advOnUTRInput()" style="font-family:monospace;font-size:.9rem;letter-spacing:.04em">
+            <div style="font-size:.65rem;color:var(--t3);margin-top:4px">💡 Bank app ya UPI app me payment complete hone ke baad UTR/Transaction ID milega</div>
+          </div>
+
+          <div class="fg">
+            <label class="fl">Payment Screenshot URL <span style="color:var(--t4);font-weight:400">(optional - recommended)</span></label>
+            <input class="fi" id="adv-ss-url" type="url" placeholder="https://drive.google.com/... ya koi image hosting URL">
+            <div style="font-size:.65rem;color:var(--t3);margin-top:4px">💡 Screenshot Google Drive ya ImgBB pe upload karke link paste karein — approval fast hogi</div>
           </div>
         </div>
 
@@ -1345,6 +1403,202 @@ function updateAdvPreview() {
   }
 }
 
+// ── ADV PRICING SYSTEM v1.0 ────────────────────────────────────────────
+// Admin se set ki gayi campaign pricing load karna
+var _advPricing = null;   // { '7days':70, '15days':140, ... }
+var _advUPIData = null;   // { upiId, upiName }
+
+var _advDurationMap = {
+  '7days':    { key:'7days',   label:'7 Days',          firestoreKey:'p7d'  },
+  '15days':   { key:'15days',  label:'15 Days',         firestoreKey:'p15d' },
+  '1month':   { key:'1month',  label:'1 Month',         firestoreKey:'p1m'  },
+  '3months':  { key:'3months', label:'3 Months',        firestoreKey:'p3m'  },
+  '6months':  { key:'6months', label:'6 Months',        firestoreKey:'p6m'  },
+  '1year':    { key:'1year',   label:'1 Year',          firestoreKey:'p1y'  },
+  'ongoing':  { key:'ongoing', label:'Ongoing/Month',   firestoreKey:'pom'  }
+};
+
+// Load pricing + UPI from Firestore on page load
+function _advLoadPricingAndUPI(){
+  if(!_db) return;
+
+  // ── Helper to parse pricing from doc data ──
+  function _parsePricing(d){
+    return {
+      '7days':   parseInt(d.p7d  || d['7days']  || d.d7  || 0) || 0,
+      '15days':  parseInt(d.p15d || d['15days'] || d.d15 || 0) || 0,
+      '1month':  parseInt(d.p1m  || d['1month'] || d.m1  || 0) || 0,
+      '3months': parseInt(d.p3m  || d['3months']|| d.m3  || 0) || 0,
+      '6months': parseInt(d.p6m  || d['6months']|| d.m6  || 0) || 0,
+      '1year':   parseInt(d.p1y  || d['1year']  || d.y1  || 0) || 0,
+      'ongoing': parseInt(d.pom  || d['ongoing']|| d.om  || 0) || 0
+    };
+  }
+
+  // Try 'adCampaignPricing' first, then 'adsPricing', then 'settings'
+  var _pricingPaths = [
+    ['settings', 'adCampaignPricing'],
+    ['settings', 'adsPricing'],
+    ['settings', 'pricing'],
+    ['admin_settings', 'adCampaignPricing']
+  ];
+  var _pricingIdx = 0;
+
+  function _tryNextPricingDoc(){
+    if(_pricingIdx >= _pricingPaths.length) return;
+    var p = _pricingPaths[_pricingIdx++];
+    _db.collection(p[0]).doc(p[1]).get()
+      .then(function(doc){
+        if(doc.exists && doc.data()){
+          var parsed = _parsePricing(doc.data());
+          var hasAny = Object.values(parsed).some(function(v){ return v > 0; });
+          if(hasAny){
+            _advPricing = parsed;
+            var sel = (document.getElementById('f-duration')||{}).value;
+            if(sel) advOnDurationChange();
+          } else {
+            _tryNextPricingDoc();
+          }
+        } else {
+          _tryNextPricingDoc();
+        }
+      }).catch(function(){ _tryNextPricingDoc(); });
+  }
+  _tryNextPricingDoc();
+
+  // Load UPI/payment settings — try multiple paths
+  var _upiPaths = [
+    ['settings','paymentSettings'],
+    ['settings','platformSettings'],
+    ['settings','general'],
+    ['admin_settings','payment']
+  ];
+  var _upiIdx = 0;
+  function _tryNextUPIDoc(){
+    if(_upiIdx >= _upiPaths.length) return;
+    var p = _upiPaths[_upiIdx++];
+    _db.collection(p[0]).doc(p[1]).get()
+      .then(function(doc){
+        if(doc.exists && doc.data()){
+          var d = doc.data();
+          var uid = d.upiId || d.upi_id || d.upi || d.UPI || '';
+          if(uid){
+            _advUPIData = {
+              upiId:   uid,
+              upiName: d.upiName || d.upi_name || d.accountName || d.account_name || 'K Spider AI'
+            };
+            var upiEl  = document.getElementById('adv-upi-id');
+            var nameEl = document.getElementById('adv-upi-name');
+            if(upiEl)  upiEl.textContent  = _advUPIData.upiId;
+            if(nameEl) nameEl.textContent = _advUPIData.upiName;
+          } else {
+            _tryNextUPIDoc();
+          }
+        } else {
+          _tryNextUPIDoc();
+        }
+      }).catch(function(){ _tryNextUPIDoc(); });
+  }
+  _tryNextUPIDoc();
+}
+
+// Called when duration dropdown changes
+function advOnDurationChange(){
+  var val = (document.getElementById('f-duration')||{}).value || '';
+  var priceBox = document.getElementById('adv-price-box');
+  var paySection = document.getElementById('adv-payment-section');
+  var submitBtn  = document.getElementById('submit-btn');
+
+  if(!val){
+    if(priceBox)    priceBox.style.display   = 'none';
+    if(paySection)  paySection.style.display = 'none';
+    return;
+  }
+
+  var dInfo = _advDurationMap[val];
+  var price = _advPricing ? (_advPricing[val] || 0) : 0;
+
+  // Show price box
+  if(priceBox){
+    priceBox.style.display = 'block';
+    var amtEl   = document.getElementById('adv-price-amount');
+    var lblEl   = document.getElementById('adv-price-label');
+    if(amtEl){
+      if(price > 0){
+        amtEl.textContent = '₹' + price.toLocaleString('en-IN');
+      } else {
+        amtEl.textContent = _advPricing ? '₹0 (Free)' : '⏳ Loading...';
+      }
+    }
+    if(lblEl) lblEl.textContent = 'for ' + (dInfo ? dInfo.label : val) + ' Campaign';
+  }
+
+  // Show UPI payment section
+  if(paySection){
+    paySection.style.display = 'block';
+    var payAmtEl = document.getElementById('adv-pay-amount');
+    if(payAmtEl) payAmtEl.textContent = price > 0 ? '₹' + price.toLocaleString('en-IN') : (price === 0 && _advPricing ? '₹0 (Free)' : '⏳ Calculating...');
+
+    // Set UPI ID if already loaded
+    if(_advUPIData){
+      var upiEl  = document.getElementById('adv-upi-id');
+      var nameEl = document.getElementById('adv-upi-name');
+      if(upiEl)  upiEl.textContent  = _advUPIData.upiId   || 'Loading...';
+      if(nameEl) nameEl.textContent = _advUPIData.upiName  || '';
+    }
+  }
+
+  // Update submit button state
+  advUpdateSubmitBtn();
+}
+
+// Called when UTR input changes
+function advOnUTRInput(){
+  advUpdateSubmitBtn();
+}
+
+// Enable submit only when duration selected + UTR entered (if price > 0)
+function advUpdateSubmitBtn(){
+  var btn = document.getElementById('submit-btn');
+  if(!btn) return;
+  var duration = (document.getElementById('f-duration')||{}).value || '';
+  var utr      = ((document.getElementById('adv-utr')||{}).value || '').trim();
+  var price    = _advPricing && duration ? (_advPricing[duration] || 0) : -1;
+
+  // If pricing not loaded yet or price is 0, allow submit freely
+  // If price > 0, UTR is mandatory
+  if(price > 0 && !utr){
+    btn.disabled = true;
+    btn.textContent = '🔒 UTR Enter Karein — Phir Submit';
+    btn.style.opacity = '.5';
+  } else {
+    btn.disabled = false;
+    btn.textContent = '📤 Submit Ad Request';
+    btn.style.opacity = '1';
+  }
+}
+
+function advCopyUPI(){
+  var id = (_advUPIData && _advUPIData.upiId) ? _advUPIData.upiId : (document.getElementById('adv-upi-id')||{}).textContent || '';
+  if(!id || id === 'Loading...'){ advToast('⚠️ UPI ID abhi load ho raha hai, thoda wait karein'); return; }
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(id).then(function(){ advToast('📋 UPI ID copied: ' + id); });
+  } else {
+    var ta = document.createElement('textarea');
+    ta.value = id; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    advToast('📋 UPI ID copied!');
+  }
+}
+
+// Init on load
+document.addEventListener('DOMContentLoaded', function(){
+  _advLoadPricingAndUPI();
+  // Initial button state
+  var btn = document.getElementById('submit-btn');
+  if(btn){ btn.disabled = false; } // Default enabled until duration+price logic kicks in
+});
+// ── END PRICING SYSTEM ──────────────────────────────────────────────────
+
 function submitRequest(){
   var company     = (document.getElementById('f-company').value||'').trim();
   var name        = (document.getElementById('f-name').value||'').trim();
@@ -1382,6 +1636,16 @@ function submitRequest(){
   if(!name)     { advToast('⚠️ Contact person name required'); return; }
   if(!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ advToast('⚠️ Valid email required'); return; }
   if(!phone)    { advToast('⚠️ WhatsApp number required'); return; }
+
+  // ── Payment validation ──
+  var advUTR   = ((document.getElementById('adv-utr')||{}).value||'').trim();
+  var advSS    = ((document.getElementById('adv-ss-url')||{}).value||'').trim();
+  var advPrice = _advPricing && duration ? (_advPricing[duration] || 0) : 0;
+  if(advPrice > 0 && !advUTR){
+    advToast('⚠️ UTR / Transaction ID required — payment karke UTR enter karein');
+    document.getElementById('adv-utr').focus();
+    return;
+  }
 
   var btn_el = document.getElementById('submit-btn');
   btn_el.disabled = true; btn_el.textContent = '⏳ Checking...';
@@ -1446,6 +1710,14 @@ function submitRequest(){
       htmlAdStyle:  adType==='html'?(document.getElementById('hg-ad-style')||{value:''}).value||'':null
     },
     status: 'pending', source: 'advertise.html',
+    // Payment info
+    payment: {
+      amount:     advPrice || null,
+      utr:        advUTR   || null,
+      screenshot: advSS    || null,
+      upiId:      (_advUPIData && _advUPIData.upiId) ? _advUPIData.upiId : null,
+      status:     advUTR ? 'utr_submitted' : 'pending'
+    },
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
@@ -1464,6 +1736,8 @@ function submitRequest(){
         phone:     data.phone   || '',
         adType:    data.adType  || '',
         duration:  data.duration|| '',
+        amount:    advPrice     || 0,
+        utr:       advUTR       || '',
         requestId: docRef.id,
         createdAt: new Date().toISOString(),
         read:      false
