@@ -1,6 +1,16 @@
 /*!
- * K SPIDER AI — ks-ads.js  v11.1
+ * K SPIDER AI — ks-ads.js  v11.2
  * www.kspiderai.in | By Gaurang Raval & Khush Raval | 2026
+ *
+ * UPDATES v11.2:
+ *  ✅ Image alt text fix — alt="" so "Advertisement" text never shows if image fails
+ *  ✅ Image onerror — broken image slot auto-hides instead of showing alt text
+ *     (Fixes: "ADVERTISEMNT" text visible on left side behind ad banner)
+ *
+ * UPDATES v11.1 (previous):
+ *  ✅ Overflow-safe scaling via ResizeObserver
+ *  ✅ html/body overflow-x:hidden
+ *  ✅ Leaderboard responsive CSS for 728x90 / 970x90
  *
  * UPDATES v11.0:
  *  ✅ Screen jump fix — height lock + fade cross-transition
@@ -210,8 +220,11 @@
     /* ── IMAGE ── */
     if (ad.type === 'image') {
       if (!ad.imgUrl) { inner.style.display = 'none'; return; }
-      var imgTag = '<img src="' + esc(ad.imgUrl) + '" alt="' + esc(ad.imgAlt || 'Advertisement') + '" ' +
-        'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy">';
+      /* alt="" intentional — prevents "Advertisement" text showing if image fails to load.
+         onerror hides the broken slot cleanly instead of showing alt text. */
+      var imgTag = '<img src="' + esc(ad.imgUrl) + '" alt="" ' +
+        'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy" ' +
+        'onerror="this.closest(\'[data-ks-slot],[data-slot]\')&&(this.closest(\'[data-ks-slot],[data-slot]\').style.display=\'none\')">';
       html = hasLink
         ? '<a href="' + esc(clickUrl) + '" target="_blank" rel="noopener noreferrer sponsored" ' +
             'style="display:block;text-decoration:none" ' +
@@ -538,11 +551,11 @@
 
   /* Public API */
   global.KsAds = {
-    version:   '11.1',
+    version:   '11.2',
     reload:    initAllSlots,
     trackClick:global.kspiderAdClick
   };
 
-  console.log('[ks-ads.js] v11.1 ready (overflow-safe) | kspiderai.in');
+  console.log('[ks-ads.js] v11.2 ready (overflow-safe + alt-fix) | kspiderai.in');
 
 })(window);
