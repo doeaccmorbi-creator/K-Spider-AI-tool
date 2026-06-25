@@ -1,6 +1,16 @@
 /*!
- * K SPIDER AI — ks-ads.js  v11.0
+ * K SPIDER AI — ks-ads.js  v11.2
  * www.kspiderai.in | By Gaurang Raval & Khush Raval | 2026
+ *
+ * UPDATES v11.2:
+ *  ✅ Image alt text fix — alt="" so "Advertisement" text never shows if image fails
+ *  ✅ Image onerror — broken image slot auto-hides instead of showing alt text
+ *     (Fixes: "ADVERTISEMNT" text visible on left side behind ad banner)
+ *
+ * UPDATES v11.1 (previous):
+ *  ✅ Overflow-safe scaling via ResizeObserver
+ *  ✅ html/body overflow-x:hidden
+ *  ✅ Leaderboard responsive CSS for 728x90 / 970x90
  *
  * UPDATES v11.0:
  *  ✅ Screen jump fix — height lock + fade cross-transition
@@ -59,12 +69,17 @@
     var s = document.createElement('style');
     s.id  = 'ks-ads-css';
     s.textContent = [
+      /* ── v11.1 OVERFLOW FIX: html/body never scroll horizontally because of ads ── */
+      'html{overflow-x:hidden}',
       /* Wrapper isolates layout — banner height changes don\'t shift page */
-      '.ks-ad-wrap{contain:layout style;width:100%;text-align:center}',
+      '.ks-ad-wrap{contain:layout style;width:100%;text-align:center;max-width:100vw;overflow:hidden;box-sizing:border-box}',
       /* Inner fades between banners — no pop/jump */
-      '.ks-ad-inner{display:inline-block;width:100%;box-sizing:border-box;overflow:hidden;',
+      '.ks-ad-inner{display:inline-block;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;',
         'border-radius:8px;transition:opacity .32s ease;will-change:opacity}',
       '.ks-ad-inner.ks-fading{opacity:0}',
+      /* ── v11.1: force every element inside an ad to respect container width ── */
+      '.ks-ad-inner *{max-width:100%;box-sizing:border-box}',
+      '.ks-ad-inner img,.ks-ad-inner video,.ks-ad-inner iframe{max-width:100%;height:auto;display:block}',
       /* Slot-specific min-heights */
       '[data-ks-slot="top-banner"] .ks-ad-inner,',
       '[data-slot="top-banner"] .ks-ad-inner{min-height:90px}',
@@ -77,7 +92,23 @@
       '[data-ks-slot="sidebar-left"] .ks-ad-inner,',
       '[data-ks-slot="sidebar-right"] .ks-ad-inner,',
       '[data-slot="sidebar-left"] .ks-ad-inner,',
-      '[data-slot="sidebar-right"] .ks-ad-inner{min-height:250px;width:300px;max-width:100%}'
+      '[data-slot="sidebar-right"] .ks-ad-inner{min-height:250px;width:300px;max-width:100%}',
+      /* ── v11.1 LEADERBOARD (728x90 / 970x90) RESPONSIVE FIX ──
+         Desktop: full 728/970px width, centered.
+         Tablet (≤900px): scales to viewport width.
+         Mobile (≤480px): drops to 320x50/100 safe size automatically. */
+      '.ks-ad-leaderboard{width:100%;max-width:728px;margin:0 auto;overflow:hidden}',
+      '.ks-ad-leaderboard.ks-lb-970{max-width:970px}',
+      '@media(max-width:900px){',
+        '.ks-ad-leaderboard,.ks-ad-leaderboard.ks-lb-970{max-width:100%}',
+      '}',
+      '@media(max-width:480px){',
+        '[data-ks-slot="top-banner"] .ks-ad-inner,',
+        '[data-slot="top-banner"] .ks-ad-inner,',
+        '[data-ks-slot="bottom-banner"] .ks-ad-inner,',
+        '[data-slot="bottom-banner"] .ks-ad-inner{min-height:50px}',
+        '.ks-ad-leaderboard{max-height:100px}',
+      '}'
     ].join('');
     (document.head || document.documentElement).appendChild(s);
   })();
@@ -189,8 +220,11 @@
     /* ── IMAGE ── */
     if (ad.type === 'image') {
       if (!ad.imgUrl) { inner.style.display = 'none'; return; }
-      var imgTag = '<img src="' + esc(ad.imgUrl) + '" alt="' + esc(ad.imgAlt || 'Advertisement') + '" ' +
-        'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy">';
+      /* alt="" intentional — prevents "Advertisement" text showing if image fails to load.
+         onerror hides the broken slot cleanly instead of showing alt text. */
+      var imgTag = '<img src="' + esc(ad.imgUrl) + '" alt="" ' +
+        'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy" ' +
+        'onerror="this.closest(\'[data-ks-slot],[data-slot]\')&&(this.closest(\'[data-ks-slot],[data-slot]\').style.display=\'none\')">';
       html = hasLink
         ? '<a href="' + esc(clickUrl) + '" target="_blank" rel="noopener noreferrer sponsored" ' +
             'style="display:block;text-decoration:none" ' +
@@ -353,6 +387,55 @@
   }
 
   /* ════════════════════════════════════════════════════════
+     v11.1 — VIEWPORT-SAFE SCALING (ResizeObserver)
+     Watches every ad slot; if rendered content is wider than
+     the slot/viewport, applies a CSS transform scale-down so
+     nothing overflows horizontally. Non-destructive — only
+     adds a transform, never changes underlying ad HTML.
+  ════════════════════════════════════════════════════════ */
+  function applyOverflowGuard(container, inner) {
+    function fit() {
+      if (!inner || !container) return;
+      // Reset any previous scaling before measuring
+      inner.style.transform = '';
+      inner.style.transformOrigin = 'top center';
+      var availW   = container.clientWidth || container.offsetWidth || window.innerWidth;
+      var contentW = inner.scrollWidth;
+      if (availW > 0 && contentW > availW + 1) {
+        var scale = availW / contentW;
+        inner.style.transform = 'scale(' + scale.toFixed(4) + ')';
+        // Compensate height so layout doesn\'t leave a gap
+        var h = inner.scrollHeight * scale;
+        container.style.height = h + 'px';
+      } else {
+        container.style.height = '';
+      }
+    }
+    fit();
+    // Re-fit on resize (debounced via ResizeObserver where available)
+    if (typeof ResizeObserver !== 'undefined') {
+      try {
+        var ro = new ResizeObserver(function() { fit(); });
+        ro.observe(container);
+        if (!container._ksRO) container._ksRO = ro;
+      } catch (e) {}
+    } else {
+      window.addEventListener('resize', fit);
+    }
+  }
+
+  /* Detect 728x90 / 970x90 style leaderboard ads and tag with
+     a responsive class so the CSS rules above apply cleanly. */
+  function tagLeaderboardSize(container, ad) {
+    var w = parseInt(ad.width || (ad.size && String(ad.size).split('x')[0]) || 0, 10);
+    if (w >= 970) {
+      container.classList.add('ks-ad-leaderboard', 'ks-lb-970');
+    } else if (w >= 600) {
+      container.classList.add('ks-ad-leaderboard');
+    }
+  }
+
+  /* ════════════════════════════════════════════════════════
      SLOT MANAGEMENT
   ════════════════════════════════════════════════════════ */
   var _slotData   = {};   /* key → {ads, idx, timer, heightLocked} */
@@ -389,9 +472,16 @@
 
         var inner = getInner(container);
         container.style.display = 'block';
+        // v11.1: ensure container itself never overflows viewport
+        container.style.maxWidth = '100%';
+        container.style.overflow = 'hidden';
+        container.style.boxSizing = 'border-box';
 
         /* Render first ad */
+        tagLeaderboardSize(container, ads[0]);
         renderAd(inner, ads[0]);
+        // v11.1: scale down if content wider than slot/viewport
+        setTimeout(function(){ applyOverflowGuard(container, inner); }, 60);
 
         /* Start rotation if multiple ads */
         if (ads.length > 1) {
@@ -413,8 +503,11 @@
             inner.classList.add('ks-fading');
             setTimeout(function() {
               state.idx = (state.idx + 1) % state.ads.length;
+              tagLeaderboardSize(container, state.ads[state.idx]);
               renderAd(inner, state.ads[state.idx]);
               inner.classList.remove('ks-fading');
+              // v11.1: re-check overflow after each rotation
+              setTimeout(function(){ applyOverflowGuard(container, inner); }, 60);
             }, 300);
           }, ms);
         }
@@ -433,6 +526,8 @@
       /* Apply contain:layout style so this element is isolated */
       el.style.contain     = 'layout style';
       el.style.width       = '100%';
+      el.style.maxWidth    = '100%';      /* v11.1: never exceed parent */
+      el.style.overflow    = 'hidden';    /* v11.1: clip any oversize content */
       el.style.textAlign   = 'center';
       el.style.boxSizing   = 'border-box';
       el.style.margin      = '0 auto';
@@ -456,11 +551,11 @@
 
   /* Public API */
   global.KsAds = {
-    version:   '11.0',
+    version:   '11.2',
     reload:    initAllSlots,
     trackClick:global.kspiderAdClick
   };
 
-  console.log('[ks-ads.js] v11.0 ready | kspiderai.in');
+  console.log('[ks-ads.js] v11.2 ready (overflow-safe + alt-fix) | kspiderai.in');
 
 })(window);
