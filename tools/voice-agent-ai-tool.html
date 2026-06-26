@@ -1563,76 +1563,6 @@ textarea:focus-visible{
 }
 /* 768px handled by full responsive system above */
 
-
-/* ══ KSpider Ads — 5-slot standard v1.0 ══════════════════════════════
-   Professional ad centering — same as Google Ads layout.
-   No "Advertisement" span text. No left overflow.
-   ════════════════════════════════════════════════════════════════════ */
-/* Remove any legacy Advertisement label spans */
-.ad-banner > span.ad-lbl,
-.ad-banner > span[style*="letter-spacing"],
-[data-ks-slot] + span,
-span.ks-ad-label { display:none!important; }
-
-/* Wrapper containers */
-.ks-ad-top,.ks-ad-mid,.ks-ad-mid2,.ks-ad-mid3,.ks-ad-footer,
-.ad-top,.ad-bottom,.ad-after-tool,.ad-content,.ad-inline,.ad-banner {
-  width:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  padding:6px 0;
-  box-sizing:border-box;
-  overflow:hidden;
-  background:transparent;
-}
-.ks-ad-top, .ad-top    { margin-top:0; border-bottom:1px solid rgba(128,128,128,.12); }
-.ks-ad-footer,.ad-bottom{ border-top:1px solid rgba(128,128,128,.12); margin-top:8px; }
-
-/* Slot containers — center + max-width like Google 970px leaderboard */
-[data-ks-slot] {
-  display:block;
-  width:100%;
-  max-width:970px;
-  margin:0 auto;
-  text-align:center;
-  box-sizing:border-box;
-  overflow:hidden;
-  border-radius:8px;
-}
-/* Mid / in-content slots smaller max-width */
-.ks-ad-mid [data-ks-slot],
-.ks-ad-mid2 [data-ks-slot],
-.ks-ad-mid3 [data-ks-slot],
-.ad-content [data-ks-slot],
-.ad-after-tool [data-ks-slot] {
-  max-width:728px;
-}
-/* Min heights — no layout jump */
-.ks-ad-top [data-ks-slot],
-.ad-top [data-ks-slot]    { min-height:90px; }
-.ks-ad-mid [data-ks-slot],
-.ks-ad-mid2 [data-ks-slot],
-.ks-ad-mid3 [data-ks-slot],
-.ad-content [data-ks-slot],
-.ad-after-tool [data-ks-slot] { min-height:100px; }
-.ks-ad-footer [data-ks-slot],
-.ad-bottom [data-ks-slot] { min-height:90px; }
-/* Hide empty slots — no blank space */
-.ks-ad-top:has([data-ks-slot]:empty),
-.ks-ad-mid:has([data-ks-slot]:empty),
-.ks-ad-mid2:has([data-ks-slot]:empty),
-.ks-ad-mid3:has([data-ks-slot]:empty),
-.ks-ad-footer:has([data-ks-slot]:empty),
-.ad-banner:has([data-ks-slot]:empty) { display:none!important; }
-/* Responsive */
-@media(max-width:760px){
-  [data-ks-slot]{ max-width:100%; border-radius:6px; }
-  .ks-ad-mid [data-ks-slot],
-  .ks-ad-mid2 [data-ks-slot],
-  .ks-ad-mid3 [data-ks-slot] { max-width:100%; }
-}
-/* ═══════════════════════════════════════════════════════════════════ */
 </style>
 
 <!-- ── GOOGLE ANALYTICS ── -->
@@ -1784,6 +1714,7 @@ span.ks-ad-label { display:none!important; }
 
 <!-- ── ADSENSE: HEADER (hidden until AdSense approved) ── -->
 <div class="ks-ad-wrap ks-ad-header">
+  <span class="ks-ad-label">Advertisement</span>
   <div data-ks-slot="top-banner"></div>
 </div>
 <!-- ════════ HEADER ════════ -->
@@ -2106,6 +2037,7 @@ span.ks-ad-label { display:none!important; }
 
 <!-- ── ADSENSE: MID-CONTENT (hidden until approved) ── -->
 <div class="ks-ad-wrap ks-ad-mid">
+  <span class="ks-ad-label">Advertisement</span>
   <div data-ks-slot="in-content"></div>
 </div>
 
@@ -3394,8 +3326,34 @@ function toggleFS(){
 }
 </script>
 <!-- ── K SPIDER ADMIN AD MANAGER ── -->
-
-
+<script src="ks-ads.js"></script>
+<!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
+<script>
+(function(){
+  function applyNoJumpPatch(){
+    var slots = document.querySelectorAll('[data-ks-slot]');
+    slots.forEach(function(slot){
+      if(slot.dataset.noJumpPatched) return;
+      slot.dataset.noJumpPatched = '1';
+      var locked = false;
+      var obs = new MutationObserver(function(){
+        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
+          slot.style.minHeight = slot.offsetHeight + 'px';
+          locked = true;
+          obs.disconnect();
+        }
+      });
+      obs.observe(slot, {childList:true, subtree:true});
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
+  } else {
+    setTimeout(applyNoJumpPatch, 400);
+  }
+  window.ksAdNoJumpPatch = applyNoJumpPatch;
+})();
+</script>
 
 <!-- ── K SPIDER MAX SECURITY ── -->
 <script>
@@ -3433,6 +3391,7 @@ function toggleFS(){
 
   <!-- KSpider Admin Ad Manager — Footer Slot -->
   <div class="ks-ad-wrap ks-ad-footer">
+    <span class="ks-ad-label">Advertisement</span>
     <div data-ks-slot="bottom-banner"></div>
   </div>
 
@@ -3471,7 +3430,6 @@ function toggleFS(){
       <li>⌨️ Full keyboard shortcuts panel</li>
       <li>📡 Live API status indicator in header</li>
       <li>⚡ <strong>Groq AI support (FREE forever)</strong> — Llama 3.3 70B model</li>
-<div class="ks-ad-mid2"><div data-ks-slot="after-result"></div></div>
       <li>🔑 Multi-provider API engine — Groq / Cloudflare / Anthropic</li>
     </ul>
     <h3>Core Platform Features</h3>
@@ -4080,7 +4038,6 @@ async function summarizeChat(){
     body.textContent=summary||'Summary unavailable.';
     haptic('success');
   }catch(e){
-<div class="ks-ad-mid3"><div data-ks-slot="mid-banner"></div></div>
     body.textContent='⚠️ Summary failed: '+e.message;
   }
 }
@@ -4108,27 +4065,7 @@ function exportChatHTML(){
     const txt=m.querySelector('.mbody')?m.querySelector('.mbody').textContent:m.textContent;
     return `<div style="margin:10px 0;padding:10px 14px;border-radius:12px;max-width:80%;${isBot?'background:#1a2a3a;color:#00d4ff;':'background:#0a3a2a;color:#00e896;margin-left:auto;text-align:right;'}"><strong>${isBot?'🤖 AI':'👤 You'}:</strong><br>${txt.replace(/</g,'&lt;')}</div>`;
   }).join('');
-  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VOXAI Pro Chat — ${new Date().toLocaleDateString()}</title><style>body{background:#030610;font-family:sans-serif;padding:20px;max-width:600px;margin:0 auto;}h1{color:#00d4ff;font-size:16px;}footer{color:#444;font-size:11px;margin-top:30px;text-align:center;}</style></head><body><h1>🎙️ VOXAI Pro Chat Export</h1><p style="color:#666;font-size:12px">${new Date().toLocaleString()} | K Spider AI — www.kspiderai.in</p><hr style="border-color:#1a2a3a">${rows}<footer>Generated by VOXAI Pro | Created by Gaurang Raval &amp; Khush Raval<br>www.kspiderai.in | youtube.com/@KSpider4Kreation</footer><script src="ks-ads.js"></script>
-<!-- ✅ KSpider No-Jump Patch — prevents layout shift when ad loads -->
-<script>
-(function(){
-  function ksNoJump(){
-    document.querySelectorAll('[data-ks-slot]').forEach(function(sl){
-      if(sl.dataset.njp) return; sl.dataset.njp='1';
-      new MutationObserver(function(_,ob){
-        if(sl.innerHTML.trim() && sl.offsetHeight>20){
-          sl.style.minHeight=sl.offsetHeight+'px'; ob.disconnect();
-        }
-      }).observe(sl,{childList:true,subtree:true});
-    });
-  }
-  document.readyState==='loading'
-    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNoJump,400);})
-    : setTimeout(ksNoJump,400);
-  window.ksAdNoJumpPatch=ksNoJump;
-})();
-</script>
-</body></html>`;
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>VOXAI Pro Chat — ${new Date().toLocaleDateString()}</title><style>body{background:#030610;font-family:sans-serif;padding:20px;max-width:600px;margin:0 auto;}h1{color:#00d4ff;font-size:16px;}footer{color:#444;font-size:11px;margin-top:30px;text-align:center;}</style></head><body><h1>🎙️ VOXAI Pro Chat Export</h1><p style="color:#666;font-size:12px">${new Date().toLocaleString()} | K Spider AI — www.kspiderai.in</p><hr style="border-color:#1a2a3a">${rows}<footer>Generated by VOXAI Pro | Created by Gaurang Raval &amp; Khush Raval<br>www.kspiderai.in | youtube.com/@KSpider4Kreation</footer></body></html>`;
   const a=document.createElement('a');
   a.href='data:text/html;charset=utf-8,'+encodeURIComponent(html);
   a.download=`voxai-chat-${Date.now()}.html`;
