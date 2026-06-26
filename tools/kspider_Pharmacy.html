@@ -852,76 +852,6 @@ body { background:var(--BG); color:var(--T1); }
 .ad-content [data-ks-slot]{min-height:120px;}
 .ad-inline [data-ks-slot]{min-height:60px;}
 .ad-sidebar [data-ks-slot]{min-height:250px;}
-
-/* ══ KSpider Ads — 5-slot standard v1.0 ══════════════════════════════
-   Professional ad centering — same as Google Ads layout.
-   No "Advertisement" span text. No left overflow.
-   ════════════════════════════════════════════════════════════════════ */
-/* Remove any legacy Advertisement label spans */
-.ad-banner > span.ad-lbl,
-.ad-banner > span[style*="letter-spacing"],
-[data-ks-slot] + span,
-span.ks-ad-label { display:none!important; }
-
-/* Wrapper containers */
-.ks-ad-top,.ks-ad-mid,.ks-ad-mid2,.ks-ad-mid3,.ks-ad-footer,
-.ad-top,.ad-bottom,.ad-after-tool,.ad-content,.ad-inline,.ad-banner {
-  width:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  padding:6px 0;
-  box-sizing:border-box;
-  overflow:hidden;
-  background:transparent;
-}
-.ks-ad-top, .ad-top    { margin-top:0; border-bottom:1px solid rgba(128,128,128,.12); }
-.ks-ad-footer,.ad-bottom{ border-top:1px solid rgba(128,128,128,.12); margin-top:8px; }
-
-/* Slot containers — center + max-width like Google 970px leaderboard */
-[data-ks-slot] {
-  display:block;
-  width:100%;
-  max-width:970px;
-  margin:0 auto;
-  text-align:center;
-  box-sizing:border-box;
-  overflow:hidden;
-  border-radius:8px;
-}
-/* Mid / in-content slots smaller max-width */
-.ks-ad-mid [data-ks-slot],
-.ks-ad-mid2 [data-ks-slot],
-.ks-ad-mid3 [data-ks-slot],
-.ad-content [data-ks-slot],
-.ad-after-tool [data-ks-slot] {
-  max-width:728px;
-}
-/* Min heights — no layout jump */
-.ks-ad-top [data-ks-slot],
-.ad-top [data-ks-slot]    { min-height:90px; }
-.ks-ad-mid [data-ks-slot],
-.ks-ad-mid2 [data-ks-slot],
-.ks-ad-mid3 [data-ks-slot],
-.ad-content [data-ks-slot],
-.ad-after-tool [data-ks-slot] { min-height:100px; }
-.ks-ad-footer [data-ks-slot],
-.ad-bottom [data-ks-slot] { min-height:90px; }
-/* Hide empty slots — no blank space */
-.ks-ad-top:has([data-ks-slot]:empty),
-.ks-ad-mid:has([data-ks-slot]:empty),
-.ks-ad-mid2:has([data-ks-slot]:empty),
-.ks-ad-mid3:has([data-ks-slot]:empty),
-.ks-ad-footer:has([data-ks-slot]:empty),
-.ad-banner:has([data-ks-slot]:empty) { display:none!important; }
-/* Responsive */
-@media(max-width:760px){
-  [data-ks-slot]{ max-width:100%; border-radius:6px; }
-  .ks-ad-mid [data-ks-slot],
-  .ks-ad-mid2 [data-ks-slot],
-  .ks-ad-mid3 [data-ks-slot] { max-width:100%; }
-}
-/* ═══════════════════════════════════════════════════════════════════ */
 </style>
 <link rel="manifest" href="data:application/json;charset=utf-8,{
   &quot;name&quot;: &quot;K Spider AI Pharmacy Pro&quot;,
@@ -1088,7 +1018,7 @@ span.ks-ad-label { display:none!important; }
 </head>
 <body>
 <!-- ✅ KSpider Ad Top -->
-<div class="ks-ad-top"><div data-ks-slot="top-banner"></div></div>
+<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="top-banner"></div></div>
 
 <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
 <!-- SIDEBAR -->
@@ -4039,27 +3969,7 @@ function downloadPDF(content, filename){
   <div class="footer">Powered by K Spider AI Tool · www.kspiderai.in · https://www.youtube.com/@KSpider4Kreation<br>
   © ${new Date().getFullYear()} K Spider AI Tool. All rights reserved. By Gaurang Raval &amp; Khush Raval.</div>
   <scr'+'ipt>window.onload=function(){window.print();}<\/scr'+'ipt>
-  <script src="ks-ads.js"></script>
-<!-- ✅ KSpider No-Jump Patch — prevents layout shift when ad loads -->
-<script>
-(function(){
-  function ksNoJump(){
-    document.querySelectorAll('[data-ks-slot]').forEach(function(sl){
-      if(sl.dataset.njp) return; sl.dataset.njp='1';
-      new MutationObserver(function(_,ob){
-        if(sl.innerHTML.trim() && sl.offsetHeight>20){
-          sl.style.minHeight=sl.offsetHeight+'px'; ob.disconnect();
-        }
-      }).observe(sl,{childList:true,subtree:true});
-    });
-  }
-  document.readyState==='loading'
-    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNoJump,400);})
-    : setTimeout(ksNoJump,400);
-  window.ksAdNoJumpPatch=ksNoJump;
-})();
-</script>
-</body></html>`);
+  </body></html>`);
   win.document.close();
   saveHistory('PDF Export', content, 'PDF Download');
   toast('📄 PDF ready — Print dialog opened!', 'success');
@@ -4327,7 +4237,6 @@ if(document.readyState==='loading'){
 /* ════════════════════════════════════════════════════════════
    K SPIDER AI — GOOGLE SHEET HEALTH TIPS LIBRARY MODULE
    Sheet: K Spider AI curated pharmacy health tips
-<div class="ks-ad-mid2"><div data-ks-slot="after-result"></div></div>
    CSV URL: https://docs.google.com/spreadsheets/d/e/...
    Features: Fetch → Filter → Select → Compose → WA Share
    By: Gaurang Raval & Khush Raval | kspiderai.in
@@ -5505,7 +5414,6 @@ function suggestHashtags(){
   const el = g('socHashtags');
   const chips = g('htChips');
   if(!el||!chips) return;
-<div class="ks-ad-mid3"><div data-ks-slot="mid-banner"></div></div>
   const suggested = new Set(HASHTAG_MAP.kspider.concat(HASHTAG_MAP.india));
   Object.entries(HASHTAG_MAP).forEach(([key, tags])=>{ if(text.includes(key)) tags.forEach(t=>suggested.add(t)); });
   chips.innerHTML = [...suggested].map(tag=>`<span class="ht-chip" onclick="addHashtag('${tag}')">${tag}</span>`).join('');
@@ -6407,14 +6315,36 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
 
 
 <!-- ✅ KSpider Ad Mid -->
-<div class="ks-ad-mid"><div data-ks-slot="in-content"></div></div>
+<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
 
 <!-- ✅ KSpider Admin Ad Manager -->
-
-
+<script src="ks-ads.js"></script>
+<!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
+<script>
+(function(){
+  function applyNoJumpPatch(){
+    document.querySelectorAll('[data-ks-slot]').forEach(function(slot){
+      if(slot.dataset.noJumpPatched)return;
+      slot.dataset.noJumpPatched='1';
+      var locked=false;
+      var obs=new MutationObserver(function(){
+        if(!locked&&slot.innerHTML.trim()&&slot.offsetHeight>20){
+          slot.style.minHeight=slot.offsetHeight+'px';
+          locked=true;obs.disconnect();
+        }
+      });
+      obs.observe(slot,{childList:true,subtree:true});
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){setTimeout(applyNoJumpPatch,400);});
+  }else{setTimeout(applyNoJumpPatch,400);}
+  window.ksAdNoJumpPatch=applyNoJumpPatch;
+})();
+</script>
 
 <!-- ✅ KSpider Ad Bottom -->
-<div class="ks-ad-footer"><div data-ks-slot="bottom-banner"></div></div>
+<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ✅ K Spider Admin API Router v3.0 -->
 <script>
