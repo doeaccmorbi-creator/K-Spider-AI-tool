@@ -1205,6 +1205,76 @@
   .legal-body h3 { font-size: 0.95rem; font-weight: 600; color: var(--text); margin: 16px 0 6px; }
   .legal-body a { color: var(--accent); }
 
+
+/* ══ KSpider Ads — 5-slot standard v1.0 ══════════════════════════════
+   Professional ad centering — same as Google Ads layout.
+   No "Advertisement" span text. No left overflow.
+   ════════════════════════════════════════════════════════════════════ */
+/* Remove any legacy Advertisement label spans */
+.ad-banner > span.ad-lbl,
+.ad-banner > span[style*="letter-spacing"],
+[data-ks-slot] + span,
+span.ks-ad-label { display:none!important; }
+
+/* Wrapper containers */
+.ks-ad-top,.ks-ad-mid,.ks-ad-mid2,.ks-ad-mid3,.ks-ad-footer,
+.ad-top,.ad-bottom,.ad-after-tool,.ad-content,.ad-inline,.ad-banner {
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:6px 0;
+  box-sizing:border-box;
+  overflow:hidden;
+  background:transparent;
+}
+.ks-ad-top, .ad-top    { margin-top:0; border-bottom:1px solid rgba(128,128,128,.12); }
+.ks-ad-footer,.ad-bottom{ border-top:1px solid rgba(128,128,128,.12); margin-top:8px; }
+
+/* Slot containers — center + max-width like Google 970px leaderboard */
+[data-ks-slot] {
+  display:block;
+  width:100%;
+  max-width:970px;
+  margin:0 auto;
+  text-align:center;
+  box-sizing:border-box;
+  overflow:hidden;
+  border-radius:8px;
+}
+/* Mid / in-content slots smaller max-width */
+.ks-ad-mid [data-ks-slot],
+.ks-ad-mid2 [data-ks-slot],
+.ks-ad-mid3 [data-ks-slot],
+.ad-content [data-ks-slot],
+.ad-after-tool [data-ks-slot] {
+  max-width:728px;
+}
+/* Min heights — no layout jump */
+.ks-ad-top [data-ks-slot],
+.ad-top [data-ks-slot]    { min-height:90px; }
+.ks-ad-mid [data-ks-slot],
+.ks-ad-mid2 [data-ks-slot],
+.ks-ad-mid3 [data-ks-slot],
+.ad-content [data-ks-slot],
+.ad-after-tool [data-ks-slot] { min-height:100px; }
+.ks-ad-footer [data-ks-slot],
+.ad-bottom [data-ks-slot] { min-height:90px; }
+/* Hide empty slots — no blank space */
+.ks-ad-top:has([data-ks-slot]:empty),
+.ks-ad-mid:has([data-ks-slot]:empty),
+.ks-ad-mid2:has([data-ks-slot]:empty),
+.ks-ad-mid3:has([data-ks-slot]:empty),
+.ks-ad-footer:has([data-ks-slot]:empty),
+.ad-banner:has([data-ks-slot]:empty) { display:none!important; }
+/* Responsive */
+@media(max-width:760px){
+  [data-ks-slot]{ max-width:100%; border-radius:6px; }
+  .ks-ad-mid [data-ks-slot],
+  .ks-ad-mid2 [data-ks-slot],
+  .ks-ad-mid3 [data-ks-slot] { max-width:100%; }
+}
+/* ═══════════════════════════════════════════════════════════════════ */
 </style>
 
 <!-- ✅ Two-Layer Anti-Bypass Guard -->
@@ -1502,7 +1572,7 @@
     <!-- AD: Sidebar / After Stats -->
     <div class="ad-banner ad-sidebar">
       <div class="ad-label">Advertisement</div>
-      <div data-ks-slot="sidebar-left"></div>
+      <div data-ks-slot="mid-banner"></div>
     </div>
 
   </aside>
@@ -1528,7 +1598,7 @@
     <!-- AD: Inside Content -->
     <div class="ad-banner ad-content">
       <div class="ad-label">Advertisement</div>
-      <div data-ks-slot="in-content"></div>
+      
     </div>
 
     <div class="seo-grid">
@@ -2395,7 +2465,27 @@ function exportPage() {
       + '  <a href="' + promo.url + '" class="promo-cta" target="_blank" rel="noopener">' + promo.cta + '</a>\n'
       + '</div>\n'
       + '<footer>Powered by <strong>K Spider LinkShare 🕷️</strong> &middot; kspiderai.in</footer>\n'
-      + '</body>\n</html>';
+      + '<script src="ks-ads.js"></script>
+<!-- ✅ KSpider No-Jump Patch — prevents layout shift when ad loads -->
+<script>
+(function(){
+  function ksNoJump(){
+    document.querySelectorAll('[data-ks-slot]').forEach(function(sl){
+      if(sl.dataset.njp) return; sl.dataset.njp='1';
+      new MutationObserver(function(_,ob){
+        if(sl.innerHTML.trim() && sl.offsetHeight>20){
+          sl.style.minHeight=sl.offsetHeight+'px'; ob.disconnect();
+        }
+      }).observe(sl,{childList:true,subtree:true});
+    });
+  }
+  document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNoJump,400);})
+    : setTimeout(ksNoJump,400);
+  window.ksAdNoJumpPatch=ksNoJump;
+})();
+</script>
+</body>\n</html>';
 
     // Method 1: Blob URL
     try {
@@ -2523,34 +2613,8 @@ init();
      K SPIDER AD SYSTEM — ks-ads.js (Admin Ad Manager)
      data-ks-slot divs se ads load hoti hain Firestore se
 ═══════════════════════════════════════════════════ -->
-<script src="ks-ads.js"></script>
-<!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
-<script>
-(function(){
-  function applyNoJumpPatch(){
-    var slots = document.querySelectorAll('[data-ks-slot]');
-    slots.forEach(function(slot){
-      if(slot.dataset.noJumpPatched) return;
-      slot.dataset.noJumpPatched = '1';
-      var locked = false;
-      var obs = new MutationObserver(function(){
-        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
-          slot.style.minHeight = slot.offsetHeight + 'px';
-          locked = true;
-          obs.disconnect();
-        }
-      });
-      obs.observe(slot, {childList:true, subtree:true});
-    });
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
-  } else {
-    setTimeout(applyNoJumpPatch, 400);
-  }
-  window.ksAdNoJumpPatch = applyNoJumpPatch;
-})();
-</script>
+
+
 
 <!-- ═══════════════════════════════════════════════════
      K SPIDER MAX SECURITY — Anti-Theft Protocol
