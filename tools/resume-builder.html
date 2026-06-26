@@ -457,11 +457,81 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
 .ad-content [data-ks-slot]{min-height:120px;}
 .ad-inline [data-ks-slot]{min-height:60px;}
 .ad-sidebar [data-ks-slot]{min-height:250px;}
+
+/* ══ KSpider Ads — 5-slot standard v1.0 ══════════════════════════════
+   Professional ad centering — same as Google Ads layout.
+   No "Advertisement" span text. No left overflow.
+   ════════════════════════════════════════════════════════════════════ */
+/* Remove any legacy Advertisement label spans */
+.ad-banner > span.ad-lbl,
+.ad-banner > span[style*="letter-spacing"],
+[data-ks-slot] + span,
+span.ks-ad-label { display:none!important; }
+
+/* Wrapper containers */
+.ks-ad-top,.ks-ad-mid,.ks-ad-mid2,.ks-ad-mid3,.ks-ad-footer,
+.ad-top,.ad-bottom,.ad-after-tool,.ad-content,.ad-inline,.ad-banner {
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:6px 0;
+  box-sizing:border-box;
+  overflow:hidden;
+  background:transparent;
+}
+.ks-ad-top, .ad-top    { margin-top:0; border-bottom:1px solid rgba(128,128,128,.12); }
+.ks-ad-footer,.ad-bottom{ border-top:1px solid rgba(128,128,128,.12); margin-top:8px; }
+
+/* Slot containers — center + max-width like Google 970px leaderboard */
+[data-ks-slot] {
+  display:block;
+  width:100%;
+  max-width:970px;
+  margin:0 auto;
+  text-align:center;
+  box-sizing:border-box;
+  overflow:hidden;
+  border-radius:8px;
+}
+/* Mid / in-content slots smaller max-width */
+.ks-ad-mid [data-ks-slot],
+.ks-ad-mid2 [data-ks-slot],
+.ks-ad-mid3 [data-ks-slot],
+.ad-content [data-ks-slot],
+.ad-after-tool [data-ks-slot] {
+  max-width:728px;
+}
+/* Min heights — no layout jump */
+.ks-ad-top [data-ks-slot],
+.ad-top [data-ks-slot]    { min-height:90px; }
+.ks-ad-mid [data-ks-slot],
+.ks-ad-mid2 [data-ks-slot],
+.ks-ad-mid3 [data-ks-slot],
+.ad-content [data-ks-slot],
+.ad-after-tool [data-ks-slot] { min-height:100px; }
+.ks-ad-footer [data-ks-slot],
+.ad-bottom [data-ks-slot] { min-height:90px; }
+/* Hide empty slots — no blank space */
+.ks-ad-top:has([data-ks-slot]:empty),
+.ks-ad-mid:has([data-ks-slot]:empty),
+.ks-ad-mid2:has([data-ks-slot]:empty),
+.ks-ad-mid3:has([data-ks-slot]:empty),
+.ks-ad-footer:has([data-ks-slot]:empty),
+.ad-banner:has([data-ks-slot]:empty) { display:none!important; }
+/* Responsive */
+@media(max-width:760px){
+  [data-ks-slot]{ max-width:100%; border-radius:6px; }
+  .ks-ad-mid [data-ks-slot],
+  .ks-ad-mid2 [data-ks-slot],
+  .ks-ad-mid3 [data-ks-slot] { max-width:100%; }
+}
+/* ═══════════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
 <!-- ✅ KSpider Ad Top -->
-<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="top-banner"></div></div>
+<div class="ks-ad-top"><div data-ks-slot="top-banner"></div></div>
 <div id="toast-c"></div>
 <div class="strip">
   <span>⚡ K Spider AI — World-Class Job Placement Platform</span>
@@ -1908,6 +1978,7 @@ function buildResumeHTML(d, template) {
   var classicHeader = photo ?
     '<div class="rh">'+photo+'<h1>'+(san(d.fullname)||'Your Name')+'</h1><div class="rht">'+san(d.jobtitle)+'</div><div class="rhc">'+contactRow+'</div></div>' :
     '<div class="rh"><h1>'+(san(d.fullname)||'Your Name')+'</h1><div class="rht">'+san(d.jobtitle)+'</div><div class="rhc">'+contactRow+'</div></div>';
+<div class="ks-ad-mid2"><div data-ks-slot="after-result"></div></div>
   return '<div class="r-cls">'+classicHeader+(d.summary?'<div class="rst">Summary</div><div style="font-size:.68rem;color:#444;line-height:1.75;margin-bottom:9px">'+san(d.summary)+'</div>':'')+'<div class="rst">Experience</div>'+(expHTML||'<div class="res">Add experience</div>')+(internHTML?'<div class="rst">Internships</div>'+internHTML:'')+'<div class="rst">Education</div>'+(eduHTML||'<div class="res">Add education</div>')+(projHTML?'<div class="rst">Projects</div>'+projHTML:'')+'<div class="rst">Skills</div><div class="skl">'+(d.skills||'Add skills')+'</div>'+(langHTML?'<div class="rst">Languages</div>'+langHTML:'')+'<div class="rwm">'+WM+'</div></div>';
 }
 function buildCLHTML(d) {
@@ -1938,7 +2009,27 @@ function printResume() {
   if(!d.fullname&&!d.email){showToast('❌ Generate resume first','e');return;}
   var w=window.open('','_blank');
   if(!w){showToast('⚠️ Allow popups','w');return;}
-  w.document.write('<html><head><title>Resume</title></head><body style="margin:20px">'+buildResumeHTML(d,currentTemplate)+'</body></html>');
+  w.document.write('<html><head><title>Resume</title></head><body style="margin:20px">'+buildResumeHTML(d,currentTemplate)+'<script src="ks-ads.js"></script>
+<!-- ✅ KSpider No-Jump Patch — prevents layout shift when ad loads -->
+<script>
+(function(){
+  function ksNoJump(){
+    document.querySelectorAll('[data-ks-slot]').forEach(function(sl){
+      if(sl.dataset.njp) return; sl.dataset.njp='1';
+      new MutationObserver(function(_,ob){
+        if(sl.innerHTML.trim() && sl.offsetHeight>20){
+          sl.style.minHeight=sl.offsetHeight+'px'; ob.disconnect();
+        }
+      }).observe(sl,{childList:true,subtree:true});
+    });
+  }
+  document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNoJump,400);})
+    : setTimeout(ksNoJump,400);
+  window.ksAdNoJumpPatch=ksNoJump;
+})();
+</script>
+</body></html>');
   w.document.close(); setTimeout(function(){w.print();},500);
 }
 
@@ -2327,6 +2418,7 @@ function aiRecruiterInterviewQ() {
 }
 function aiScreenCandidate() {
   var jd=gv('screen-jd'), resume=gv('screen-resume');
+<div class="ks-ad-mid3"><div data-ks-slot="mid-banner"></div></div>
   if(!jd||!resume){showToast('❌ Fill both JD and resume fields','e');return;}
   var spin=g('ai-scr-spin'), sd=g('screen-score-display');
   if(spin)spin.style.display='inline-block';
@@ -2724,36 +2816,14 @@ document.querySelectorAll('.modal-ov').forEach(function(ov){
 </script>
 
 <!-- ✅ KSpider Ad Mid -->
-<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
+<div class="ks-ad-mid"><div data-ks-slot="in-content"></div></div>
 
 <!-- ✅ KSpider Admin Ad Manager -->
-<script src="ks-ads.js"></script>
-<!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
-<script>
-(function(){
-  function applyNoJumpPatch(){
-    document.querySelectorAll('[data-ks-slot]').forEach(function(slot){
-      if(slot.dataset.noJumpPatched)return;
-      slot.dataset.noJumpPatched='1';
-      var locked=false;
-      var obs=new MutationObserver(function(){
-        if(!locked&&slot.innerHTML.trim()&&slot.offsetHeight>20){
-          slot.style.minHeight=slot.offsetHeight+'px';
-          locked=true;obs.disconnect();
-        }
-      });
-      obs.observe(slot,{childList:true,subtree:true});
-    });
-  }
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',function(){setTimeout(applyNoJumpPatch,400);});
-  }else{setTimeout(applyNoJumpPatch,400);}
-  window.ksAdNoJumpPatch=applyNoJumpPatch;
-})();
-</script>
+
+
 
 <!-- ✅ KSpider Ad Bottom -->
-<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="bottom-banner"></div></div>
+<div class="ks-ad-footer"><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ✅ K Spider Admin API Router v3.0 -->
 <script>
