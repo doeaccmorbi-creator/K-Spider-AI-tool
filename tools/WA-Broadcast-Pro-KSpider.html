@@ -878,76 +878,6 @@ tbody tr:hover{background:rgba(232,93,0,.025);}
 .ad-slot{ overflow:visible; transition:opacity .3s; }
 
 
-
-/* ══ KSpider Ads — 5-slot standard v1.0 ══════════════════════════════
-   Professional ad centering — same as Google Ads layout.
-   No "Advertisement" span text. No left overflow.
-   ════════════════════════════════════════════════════════════════════ */
-/* Remove any legacy Advertisement label spans */
-.ad-banner > span.ad-lbl,
-.ad-banner > span[style*="letter-spacing"],
-[data-ks-slot] + span,
-span.ks-ad-label { display:none!important; }
-
-/* Wrapper containers */
-.ks-ad-top,.ks-ad-mid,.ks-ad-mid2,.ks-ad-mid3,.ks-ad-footer,
-.ad-top,.ad-bottom,.ad-after-tool,.ad-content,.ad-inline,.ad-banner {
-  width:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  padding:6px 0;
-  box-sizing:border-box;
-  overflow:hidden;
-  background:transparent;
-}
-.ks-ad-top, .ad-top    { margin-top:0; border-bottom:1px solid rgba(128,128,128,.12); }
-.ks-ad-footer,.ad-bottom{ border-top:1px solid rgba(128,128,128,.12); margin-top:8px; }
-
-/* Slot containers — center + max-width like Google 970px leaderboard */
-[data-ks-slot] {
-  display:block;
-  width:100%;
-  max-width:970px;
-  margin:0 auto;
-  text-align:center;
-  box-sizing:border-box;
-  overflow:hidden;
-  border-radius:8px;
-}
-/* Mid / in-content slots smaller max-width */
-.ks-ad-mid [data-ks-slot],
-.ks-ad-mid2 [data-ks-slot],
-.ks-ad-mid3 [data-ks-slot],
-.ad-content [data-ks-slot],
-.ad-after-tool [data-ks-slot] {
-  max-width:728px;
-}
-/* Min heights — no layout jump */
-.ks-ad-top [data-ks-slot],
-.ad-top [data-ks-slot]    { min-height:90px; }
-.ks-ad-mid [data-ks-slot],
-.ks-ad-mid2 [data-ks-slot],
-.ks-ad-mid3 [data-ks-slot],
-.ad-content [data-ks-slot],
-.ad-after-tool [data-ks-slot] { min-height:100px; }
-.ks-ad-footer [data-ks-slot],
-.ad-bottom [data-ks-slot] { min-height:90px; }
-/* Hide empty slots — no blank space */
-.ks-ad-top:has([data-ks-slot]:empty),
-.ks-ad-mid:has([data-ks-slot]:empty),
-.ks-ad-mid2:has([data-ks-slot]:empty),
-.ks-ad-mid3:has([data-ks-slot]:empty),
-.ks-ad-footer:has([data-ks-slot]:empty),
-.ad-banner:has([data-ks-slot]:empty) { display:none!important; }
-/* Responsive */
-@media(max-width:760px){
-  [data-ks-slot]{ max-width:100%; border-radius:6px; }
-  .ks-ad-mid [data-ks-slot],
-  .ks-ad-mid2 [data-ks-slot],
-  .ks-ad-mid3 [data-ks-slot] { max-width:100%; }
-}
-/* ═══════════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
@@ -2249,6 +2179,7 @@ span.ks-ad-label { display:none!important; }
   <!-- Tool Introduction -->
   <!-- ═══ KSpider Admin Ad Manager — Mid-Content ═══ -->
   <div class="ks-ad-wrap ks-ad-mid">
+    <span class="ks-ad-label">Advertisement</span>
     <div data-ks-slot="in-content"></div>
   </div>
 
@@ -2659,6 +2590,7 @@ span.ks-ad-label { display:none!important; }
 <!-- ═══ PROFESSIONAL FOOTER ═══ -->
 <!-- ═══ KSpider Admin Ad Manager — Bottom Banner ═══ -->
 <div class="ks-ad-wrap ks-ad-footer" style="margin:0;">
+  <span class="ks-ad-label">Advertisement</span>
   <div data-ks-slot="bottom-banner"></div>
 </div>
 
@@ -3925,7 +3857,6 @@ function toggleFaq(el){
 // ═══════════════════════════════════════════════════════
 function showLegal(id){
   document.querySelectorAll('.legal-content').forEach(function(el){el.classList.remove('show');});
-<div class="ks-ad-mid2"><div data-ks-slot="after-result"></div></div>
   document.querySelectorAll('.ltab').forEach(function(el){el.classList.remove('sel');});
   var content=document.getElementById('legal-'+id);
   if(content)content.classList.add('show');
@@ -4888,7 +4819,6 @@ function renderCRM(){
       }).join('')
       +'</div></div>'
       +'<input type="text" placeholder="Note add karo..." value="'+((crm.note||'').replace(/"/g,'&quot;'))+'" onchange="setCRMNote(\''+c.digits+'\',this.value)" style="font-size:.74rem;margin-bottom:6px;">'
-<div class="ks-ad-mid3"><div data-ks-slot="mid-banner"></div></div>
       +'<div style="display:flex;gap:6px;align-items:center;font-size:.72rem;color:var(--t2);">'
       +'<span>📅 Follow-up:</span>'
       +'<input type="date" value="'+(crm.followup||'')+'" onchange="setCRMFollowup(\''+c.digits+'\',this.value)" style="font-size:.72rem;padding:3px 7px;">'
@@ -5552,8 +5482,34 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
   else{ document.addEventListener('DOMContentLoaded', tryFBInit); }
 })();
 </script>
-
-
+<script src="ks-ads.js"></script>
+<!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
+<script>
+(function(){
+  function applyNoJumpPatch(){
+    var slots = document.querySelectorAll('[data-ks-slot]');
+    slots.forEach(function(slot){
+      if(slot.dataset.noJumpPatched) return;
+      slot.dataset.noJumpPatched = '1';
+      var locked = false;
+      var obs = new MutationObserver(function(){
+        if(!locked && slot.innerHTML.trim() && slot.offsetHeight > 20){
+          slot.style.minHeight = slot.offsetHeight + 'px';
+          locked = true;
+          obs.disconnect();
+        }
+      });
+      obs.observe(slot, {childList:true, subtree:true});
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',function(){ setTimeout(applyNoJumpPatch,400); });
+  } else {
+    setTimeout(applyNoJumpPatch, 400);
+  }
+  window.ksAdNoJumpPatch = applyNoJumpPatch;
+})();
+</script>
 <script>
 /* ══════════════════════════════════════════════════════════════
    KS REFERRAL BANNER SYSTEM
@@ -5846,26 +5802,6 @@ async function _ksProxy(body){
 </script>
 <script>
 window.ksSanitize=function(str){var d=document.createElement('div');d.appendChild(document.createTextNode(str||''));return d.innerHTML;};
-</script>
-<script src="ks-ads.js"></script>
-<!-- ✅ KSpider No-Jump Patch — prevents layout shift when ad loads -->
-<script>
-(function(){
-  function ksNoJump(){
-    document.querySelectorAll('[data-ks-slot]').forEach(function(sl){
-      if(sl.dataset.njp) return; sl.dataset.njp='1';
-      new MutationObserver(function(_,ob){
-        if(sl.innerHTML.trim() && sl.offsetHeight>20){
-          sl.style.minHeight=sl.offsetHeight+'px'; ob.disconnect();
-        }
-      }).observe(sl,{childList:true,subtree:true});
-    });
-  }
-  document.readyState==='loading'
-    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNoJump,400);})
-    : setTimeout(ksNoJump,400);
-  window.ksAdNoJumpPatch=ksNoJump;
-})();
 </script>
 </body>
 </html>
