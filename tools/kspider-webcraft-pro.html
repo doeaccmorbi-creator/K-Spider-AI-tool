@@ -1314,6 +1314,76 @@ h1, h2, h3 {
 /* Footer */
 #ks-ad-slot-4 { padding: 4px 0 8px; }
 /* END AD SLOTS */
+
+/* ══ KSpider Ads — 5-slot standard v1.0 ══════════════════════════════
+   Professional ad centering — same as Google Ads layout.
+   No "Advertisement" span text. No left overflow.
+   ════════════════════════════════════════════════════════════════════ */
+/* Remove any legacy Advertisement label spans */
+.ad-banner > span.ad-lbl,
+.ad-banner > span[style*="letter-spacing"],
+[data-ks-slot] + span,
+span.ks-ad-label { display:none!important; }
+
+/* Wrapper containers */
+.ks-ad-top,.ks-ad-mid,.ks-ad-mid2,.ks-ad-mid3,.ks-ad-footer,
+.ad-top,.ad-bottom,.ad-after-tool,.ad-content,.ad-inline,.ad-banner {
+  width:100%;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding:6px 0;
+  box-sizing:border-box;
+  overflow:hidden;
+  background:transparent;
+}
+.ks-ad-top, .ad-top    { margin-top:0; border-bottom:1px solid rgba(128,128,128,.12); }
+.ks-ad-footer,.ad-bottom{ border-top:1px solid rgba(128,128,128,.12); margin-top:8px; }
+
+/* Slot containers — center + max-width like Google 970px leaderboard */
+[data-ks-slot] {
+  display:block;
+  width:100%;
+  max-width:970px;
+  margin:0 auto;
+  text-align:center;
+  box-sizing:border-box;
+  overflow:hidden;
+  border-radius:8px;
+}
+/* Mid / in-content slots smaller max-width */
+.ks-ad-mid [data-ks-slot],
+.ks-ad-mid2 [data-ks-slot],
+.ks-ad-mid3 [data-ks-slot],
+.ad-content [data-ks-slot],
+.ad-after-tool [data-ks-slot] {
+  max-width:728px;
+}
+/* Min heights — no layout jump */
+.ks-ad-top [data-ks-slot],
+.ad-top [data-ks-slot]    { min-height:90px; }
+.ks-ad-mid [data-ks-slot],
+.ks-ad-mid2 [data-ks-slot],
+.ks-ad-mid3 [data-ks-slot],
+.ad-content [data-ks-slot],
+.ad-after-tool [data-ks-slot] { min-height:100px; }
+.ks-ad-footer [data-ks-slot],
+.ad-bottom [data-ks-slot] { min-height:90px; }
+/* Hide empty slots — no blank space */
+.ks-ad-top:has([data-ks-slot]:empty),
+.ks-ad-mid:has([data-ks-slot]:empty),
+.ks-ad-mid2:has([data-ks-slot]:empty),
+.ks-ad-mid3:has([data-ks-slot]:empty),
+.ks-ad-footer:has([data-ks-slot]:empty),
+.ad-banner:has([data-ks-slot]:empty) { display:none!important; }
+/* Responsive */
+@media(max-width:760px){
+  [data-ks-slot]{ max-width:100%; border-radius:6px; }
+  .ks-ad-mid [data-ks-slot],
+  .ks-ad-mid2 [data-ks-slot],
+  .ks-ad-mid3 [data-ks-slot] { max-width:100%; }
+}
+/* ═══════════════════════════════════════════════════════════════════ */
 </style>
 </head>
 <body>
@@ -1323,6 +1393,8 @@ h1, h2, h3 {
 <!-- ── KS TOP BANNER AD SLOT ── -->
 
 <!-- Offline Bar -->
+<div class="ks-ad-top"><div data-ks-slot="top-banner"></div></div>
+
 <div class="offline-bar" id="offlineBar">
   <span class="offline-dot" style="display:inline-block;margin-right:6px;"></span>
   📴 Offline Mode — Sab features kaam kar rahe hain local data se
@@ -4207,7 +4279,6 @@ www.kspiderai.in
 <!-- Sticky Ad -->
 <div class="ad-sticky" id="adSticky">
   <div class="ad-sticky-x" onclick="document.getElementById('adSticky').style.display='none'">✕</div>
-  <span class="ad-label">Advertisement</span>
   <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="3333333333" data-ad-format="banner" data-full-width-responsive="true"></ins>
   <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>(adsbygoogle=window.adsbygoogle||[]).push({});</script>
 </div>
@@ -4755,6 +4826,7 @@ function buildPreview() {
     + [['500+','Happy Clients'],['10+','Years'],['1000+','Projects'],['24/7','Support']].map(function(x){
         return '<div style="color:#fff;"><div style="font-size:2rem;font-weight:'+fontWeight+';font-family:\''+headFont+'\',sans-serif;">'+x[0]+'</div><div style="opacity:.85;font-size:.78rem;font-family:\''+bfBase+'\',sans-serif;">'+x[1]+'</div></div>';
       }).join('') + '</div></section>' : '';
+<div class="ks-ad-mid"><div data-ks-slot="in-content"></div></div>
 
   // Special offer
   var offerHTML = (showOffer && b.offer) ? '<section style="background:linear-gradient(135deg,'+pc+','+pc2+');padding:40px 20px;text-align:center;" class="'+ac+'"><div style="font-size:2rem;margin-bottom:8px;">🎫</div><h2 style="color:#fff;font-size:1.5rem;font-weight:'+fontWeight+';font-family:\''+headFont+'\',sans-serif;margin-bottom:8px;">Special Offer!</h2><p style="color:rgba(255,255,255,.9);margin-bottom:16px;font-family:\''+bfBase+'\',sans-serif;">'+b.offer+'</p><a href="tel:'+b.phone+'" style="background:#fff;color:'+pc+';padding:12px 26px;border-radius:'+btnBR+';font-weight:700;text-decoration:none;font-size:'+szBtn+';">📞 Claim Now</a></section>' : '';
@@ -5039,7 +5111,27 @@ function buildPreview() {
     +ksBanners.popup+'\n'
     +cookieBar+'\n'
     +(anim!=='none'?'\u003cscript>var _obs=new IntersectionObserver(function(entries){entries.forEach(function(e){if(e.isIntersecting)e.target.style.animationPlayState=\'running\';});},{threshold:.15});document.querySelectorAll(\'.wba\').forEach(function(el){el.style.animationPlayState=\'paused\';_obs.observe(el);});\u003c/script>\n':'')
-    +'</body>\n</html>';
+    +'<script src="ks-ads.js"></script>
+<!-- ✅ KSpider No-Jump Patch — prevents layout shift when ad loads -->
+<script>
+(function(){
+  function ksNoJump(){
+    document.querySelectorAll('[data-ks-slot]').forEach(function(sl){
+      if(sl.dataset.njp) return; sl.dataset.njp='1';
+      new MutationObserver(function(_,ob){
+        if(sl.innerHTML.trim() && sl.offsetHeight>20){
+          sl.style.minHeight=sl.offsetHeight+'px'; ob.disconnect();
+        }
+      }).observe(sl,{childList:true,subtree:true});
+    });
+  }
+  document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNoJump,400);})
+    : setTimeout(ksNoJump,400);
+  window.ksAdNoJumpPatch=ksNoJump;
+})();
+</script>
+</body>\n</html>';
 
   var frame = document.getElementById('previewFrame');
   if(frame) frame.srcdoc = previewHTML;
@@ -6646,6 +6738,7 @@ async function generateWithAI() {
       .replace(/[\u0060]{3}json|[\u0060]{3}/g,'').trim();
     // Extract JSON even if wrapped in extra text
     var jsonMatch = raw.match(/\{[\s\S]*\}/);
+<div class="ks-ad-mid2"><div data-ks-slot="after-result"></div></div>
     var data = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
 
     var setField = function(id, val) {
@@ -8023,6 +8116,7 @@ function buildLiveSheetLoaderScript(opts) {
     + '  .then(function(r){if(!r.ok)throw new Error("HTTP "+r.status);return r.text();})\n'
     + '  .then(function(t){_render(_pCsv(t));})\n'
     + '  .catch(function(e){'
+<div class="ks-ad-mid3"><div data-ks-slot="mid-banner"></div></div>
     + '    var w=document.getElementById("_pdataWrap");'
     + '    if(w)w.innerHTML="<div style=\'text-align:center;padding:24px;color:#DC2626;\'>\u26A0\uFE0F Sheet load failed: "+e.message+".<br><small>Sheet publicly published hai? (File \u2192 Share \u2192 Publish to web)</small></div>";'
     + '  });\n'
@@ -10410,5 +10504,6 @@ function appLoadFromActiveDb() {
 
 
 
+<div class="ks-ad-footer"><div data-ks-slot="bottom-banner"></div></div>
 </body>
 </html>
