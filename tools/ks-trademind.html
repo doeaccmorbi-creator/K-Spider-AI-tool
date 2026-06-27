@@ -5834,17 +5834,9 @@ document.addEventListener('keydown', function(e) {
 
 function copyMsg(card) {
   var text = card.innerText.replace('tap to copy', '').trim();
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(function() {
-      showToast('✅ Message copied! Paste it on WhatsApp.');
-      if (typeof gtag !== 'undefined') {
-        gtag('event', 'share_message_copied', { event_category: 'engagement' });
-      }
-    }).catch(function() {
-      fallbackCopy(text);
-    });
-  } else {
-    fallbackCopy(text);
+  _ksUniversalCopy(text, '✅ Message copied! Paste it on WhatsApp.', '❌ Copy failed. Please copy manually.');
+  if (typeof gtag !== 'undefined') {
+    gtag('event', 'share_message_copied', { event_category: 'engagement' });
   }
 }
 
@@ -7473,11 +7465,7 @@ function _buildReportText() {
 function copyDailyReport() {
   var output = document.getElementById('report-output');
   if(!output || !output.textContent) return;
-  navigator.clipboard.writeText(output.textContent).then(function(){
-    showToast('📋 रिपोर्ट कॉपी हो गई!');
-  }).catch(function(){
-    showToast('⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
-  });
+  _ksUniversalCopy(output.textContent, '📋 रिपोर्ट कॉपी हो गई!', '⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
 }
 
 function downloadDailyReport() {
@@ -7637,11 +7625,7 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn) {
 function _seoCopyText(idx) {
   var el = document.getElementById('seo-thumb-opt-' + idx);
   if(!el || !el.textContent) return;
-  navigator.clipboard.writeText(el.textContent).then(function(){
-    showToast('📋 Thumbnail prompt कॉपी हो गया!');
-  }).catch(function(){
-    showToast('⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
-  });
+  _ksUniversalCopy(el.textContent, '📋 Thumbnail prompt कॉपी हो गया!', '⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
 }
 
 var _lastThumbContext = null;
@@ -7787,11 +7771,7 @@ function generateYouTubeSEOKit() {
 function _seoCopy(elId) {
   var el = document.getElementById(elId);
   if(!el || !el.textContent) return;
-  navigator.clipboard.writeText(el.textContent).then(function(){
-    showToast('📋 कॉपी हो गया!');
-  }).catch(function(){
-    showToast('⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
-  });
+  _ksUniversalCopy(el.textContent, '📋 कॉपी हो गया!', '⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
 }
 
 // Track scroll depth
