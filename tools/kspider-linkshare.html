@@ -1311,6 +1311,36 @@
   };
 })();
 </script>
+<style>
+/* KSpider Ads — Centering & Slot Fix (additive only, no override) */
+/* Wrapper divs — flex center, no bleed */
+.ks-ad-mid2, .ks-ad-mid3 {
+  width:100%; display:flex; justify-content:center;
+  align-items:center; padding:6px 0; box-sizing:border-box;
+  overflow:hidden; background:transparent;
+}
+/* after-result and mid-banner slot centering */
+[data-ks-slot="after-result"],
+[data-ks-slot="mid-banner"] {
+  display:block; max-width:728px; margin:0 auto;
+  text-align:center; box-sizing:border-box;
+  min-height:100px; overflow:hidden; border-radius:6px;
+}
+/* Remove Advertisement placeholder text inside slots */
+[data-ks-slot]:not(:has(*)) { color:transparent !important; font-size:0 !important; }
+/* Existing slot wrapper centering fix — only add flex, don't change anything else */
+.ad-banner, .ad-top, .ad-bottom, .ad-content, .ad-inline {
+  display:flex !important; justify-content:center !important;
+  align-items:center !important; overflow:hidden !important;
+}
+/* All slots: center + no overflow bleed */
+[data-ks-slot] { margin-left:auto !important; margin-right:auto !important; }
+@media(max-width:760px) {
+  [data-ks-slot="after-result"], [data-ks-slot="mid-banner"] {
+    max-width:100%; border-radius:4px;
+  }
+}
+</style>
 </head>
 <body>
 
@@ -1332,7 +1362,6 @@
 
 <!-- TOP BANNER AD -->
 <div class="ad-banner ad-top">
-  <div class="ad-label">Advertisement</div>
   <div data-ks-slot="top-banner"></div>
 </div>
 
@@ -1440,7 +1469,6 @@
       <div class="section-title">🔗 Your Link</div>
       <!-- AD: Below Tool Title -->
       <div class="ad-banner ad-inline" style="margin-bottom:12px;">
-        <div class="ad-label">Advertisement</div>
         <div data-ks-slot="in-content"></div>
       </div>
       <div class="share-url-box">
@@ -1501,8 +1529,7 @@
 
     <!-- AD: Sidebar / After Stats -->
     <div class="ad-banner ad-sidebar">
-      <div class="ad-label">Advertisement</div>
-      <div data-ks-slot="sidebar-left"></div>
+      <div data-ks-slot="mid-banner"></div>
     </div>
 
   </aside>
@@ -1511,7 +1538,6 @@
 
 <!-- AD: After Tool Output / Below Main App -->
 <div class="ad-banner ad-after-tool">
-  <div class="ad-label">Advertisement</div>
   <div data-ks-slot="after-result"></div>
 </div>
 
@@ -1527,8 +1553,7 @@
 
     <!-- AD: Inside Content -->
     <div class="ad-banner ad-content">
-      <div class="ad-label">Advertisement</div>
-      <div data-ks-slot="in-content"></div>
+      
     </div>
 
     <div class="seo-grid">
@@ -1694,7 +1719,6 @@
 
 <!-- ===== BOTTOM BANNER AD ===== -->
 <div class="ad-banner ad-bottom">
-  <div class="ad-label">Advertisement</div>
   <div data-ks-slot="bottom-banner"></div>
 </div>
 
@@ -2395,7 +2419,7 @@ function exportPage() {
       + '  <a href="' + promo.url + '" class="promo-cta" target="_blank" rel="noopener">' + promo.cta + '</a>\n'
       + '</div>\n'
       + '<footer>Powered by <strong>K Spider LinkShare 🕷️</strong> &middot; kspiderai.in</footer>\n'
-      + '</body>\n</html>';
+      + '<\/body>\n<\/html>';
 
     // Method 1: Blob URL
     try {
@@ -2523,7 +2547,6 @@ init();
      K SPIDER AD SYSTEM — ks-ads.js (Admin Ad Manager)
      data-ks-slot divs se ads load hoti hain Firestore se
 ═══════════════════════════════════════════════════ -->
-<script src="ks-ads.js"></script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
 <script>
 (function(){
@@ -2583,6 +2606,26 @@ init();
     d.appendChild(document.createTextNode(str||''));
     return d.innerHTML;
   };
+})();
+</script>
+
+<script src="ks-ads.js"></script>
+<!-- KSpider No-Jump Patch v1.1 -->
+<script>
+(function(){
+  function ksNJ(){
+    document.querySelectorAll('[data-ks-slot]').forEach(function(s){
+      if(s._njp) return; s._njp=1;
+      var mo=new MutationObserver(function(){
+        if(s.innerHTML.trim() && s.offsetHeight>20){
+          s.style.minHeight=s.offsetHeight+'px'; mo.disconnect();
+        }
+      }); mo.observe(s,{childList:true,subtree:true});
+    });
+  }
+  document.readyState==='loading'
+    ? document.addEventListener('DOMContentLoaded',function(){setTimeout(ksNJ,300);})
+    : setTimeout(ksNJ,300);
 })();
 </script>
 </body>
