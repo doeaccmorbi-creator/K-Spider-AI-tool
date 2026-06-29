@@ -1933,8 +1933,10 @@ gtag('config', 'G-PLBHWMHEC1');
    3. Paste the sheet ID below (the long alphanumeric string in the URL)
    SHEET URL FORMAT: https://docs.google.com/spreadsheets/d/SHEET_ID/pub?output=csv
 ════════════════════════════════════════════════════════════ */
-const GSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQ1FJnEK-VViSowheMmBAfJge4ly7EIZ8YrJUwmAPqxzBhB49uWfZfHil0UO5jyuLadpDYY_65saMeE/pub?gid=0&single=true&output=csv';
-// ✅ KSpiderAI — Live Google Sheet connected. If fetch fails, 300 embedded questions used as fallback.
+const GSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_QIlYAhCXhczdhOkUpFhl3QZ7RVySD3Dn29DMEb_Qu2BF4pe2w_oH7olBuZwBEmgyb84-xFpyCrHT/pub?gid=1369967707&single=true&output=csv';
+// ✅ KSpiderAI — Live Google Sheet (English) connected. If fetch fails, embedded questions used as fallback.
+const GSHEET_CSV_URL_GU = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_QIlYAhCXhczdhOkUpFhl3QZ7RVySD3Dn29DMEb_Qu2BF4pe2w_oH7olBuZwBEmgyb84-xFpyCrHT/pub?gid=1287064384&single=true&output=csv';
+// ✅ KSpiderAI — Live Google Sheet (Gujarati) connected. Gujarati questions fetched directly — no translation API needed.
 
 /* ════════════════════════════════════════════════════════════
    QUESTIONS DATABASE — 100 Expert RTO Questions
@@ -2267,9 +2269,14 @@ let QUESTIONS = [
     const badge = document.getElementById('sheet-status');
     if (badge) badge.textContent = '⏳ Fetching latest questions...';
 
-    const res = await fetch(GSHEET_CSV_URL, { cache: 'no-cache' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const csv = await res.text();
+    // Fetch both English and Gujarati CSVs in parallel
+    const [resEN, resGU] = await Promise.all([
+      fetch(GSHEET_CSV_URL, { cache: 'no-cache' }),
+      GSHEET_CSV_URL_GU ? fetch(GSHEET_CSV_URL_GU, { cache: 'no-cache' }) : Promise.resolve(null)
+    ]);
+    if (!resEN.ok) throw new Error('HTTP ' + resEN.status);
+    const csv = await resEN.text();
+    const csvGU = (resGU && resGU.ok) ? await resGU.text() : null;
 
     // ── Robust CSV parser — handles quoted fields, embedded commas & newlines ──
     function parseCSVRow(row) {
@@ -2373,6 +2380,67 @@ let QUESTIONS = [
         testCatSelEl.value = CATEGORIES.includes(prev) ? prev : 'All';
       }
     }
+
+    // ── Parse Gujarati CSV and populate translCache['gu'] ──
+    // This allows Gujarati questions to be served directly from the Sheet
+    // instead of using MyMemory translation API — faster & accurate.
+    if (csvGU) {
+      try {
+        const allLinesGU = splitCSVLines(csvGU);
+        const headerLineGU = allLinesGU[0] || '';
+        const headerColsGU = parseCSVRow(headerLineGU).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        const colIdxGU = {
+          id:          headerColsGU.findIndex(h => h === 'id' || h === 'sno' || h === 'sr'),
+          question:    headerColsGU.findIndex(h => h.includes('question')),
+          optA:        headerColsGU.findIndex(h => h === 'optiona' || h === 'a' || h === 'opt1' || h === 'option1'),
+          optB:        headerColsGU.findIndex(h => h === 'optionb' || h === 'b' || h === 'opt2' || h === 'option2'),
+          optC:        headerColsGU.findIndex(h => h === 'optionc' || h === 'c' || h === 'opt3' || h === 'option3'),
+          optD:        headerColsGU.findIndex(h => h === 'optiond' || h === 'd' || h === 'opt4' || h === 'option4'),
+          answer:      headerColsGU.findIndex(h => h.includes('correct') || h.includes('answer') || h === 'ans'),
+          explanation: headerColsGU.findIndex(h => h.includes('explanation') || h.includes('explain') || h.includes('reason')),
+          category:    headerColsGU.findIndex(h => h.includes('category') || h.includes('topic') || h.includes('subject'))
+        };
+        if (colIdxGU.question < 0) { colIdxGU.id=0; colIdxGU.question=1; colIdxGU.optA=2; colIdxGU.optB=3; colIdxGU.optC=4; colIdxGU.optD=5; colIdxGU.answer=6; colIdxGU.explanation=8; colIdxGU.category=9; }
+        const dataLinesGU = allLinesGU.slice(1);
+        if (!translCache['gu']) translCache['gu'] = {};
+        let guCount = 0;
+        dataLinesGU.forEach((row, idx) => {
+          const cols = parseCSVRow(row);
+          if (cols.length < 4) return;
+          const get = (i) => (i >= 0 && i < cols.length) ? cols[i].replace(/^\"|\"$/g, '').trim() : '';
+          const question    = get(colIdxGU.question);
+          const optA        = get(colIdxGU.optA);
+          const optB        = get(colIdxGU.optB);
+          const optC        = get(colIdxGU.optC);
+          const optD        = get(colIdxGU.optD);
+          const explanation = get(colIdxGU.explanation);
+          const idRaw       = get(colIdxGU.id);
+          if (!question || !optA) return;
+          const qId = parseInt(idRaw) || (idx + 1);
+          const options = [optA, optB, optC || '', optD || ''].filter(o => o);
+          // Match by position (same row index = same question as English)
+          const enQ = QUESTIONS[idx];
+          const matchId = enQ ? enQ.id : qId;
+          translCache['gu'][matchId] = {
+            ...( enQ || { id: qId, answer: 0, category: 'General' } ),
+            question, options, explanation
+          };
+          guCount++;
+        });
+        // Persist Gujarati sheet translations to localStorage for offline use
+        try {
+          const existing = JSON.parse(localStorage.getItem('rto_trcache_gu') || '{}');
+          Object.assign(existing, translCache['gu']);
+          localStorage.setItem('rto_trcache_gu', JSON.stringify(existing));
+        } catch(e) {}
+        if (badge && guCount > 0) {
+          badge.textContent = '✅ ' + (parsed.length || 0) + ' EN + ' + guCount + ' GU Questions Loaded · Live';
+        }
+      } catch(guErr) {
+        console.info('Gujarati sheet fetch parse error:', guErr.message);
+      }
+    }
+
   } catch (e) {
     const badge = document.getElementById('sheet-status');
     if (badge) badge.textContent = '📦 Using 300 embedded questions (offline mode)';
