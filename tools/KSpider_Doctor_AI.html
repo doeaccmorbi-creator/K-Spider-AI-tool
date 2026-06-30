@@ -27,13 +27,28 @@ const firebaseConfig = {
   appId: "1:940003391760:web:8617000465b6991d348d95"
 };
 
-// Init Firebase
-if (typeof firebase === 'undefined') {
-  document.addEventListener('DOMContentLoaded', function() {
-    document.body.innerHTML = '<div style="position:fixed;inset:0;background:#0b2545;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:DM Sans,sans-serif;color:white;text-align:center;padding:20px;"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;">K Spider Doctor AI</div><div style="font-size:15px;color:rgba(255,255,255,0.8);max-width:400px;">Please open this app from the website.<br><a href=\'https://kspiderai.in/doctor\' style=\'color:#00c9a7;\'>👉 kspiderai.in/doctor</a></div><a href=\'https://kspiderai.in/doctor\' style=\'margin-top:16px;background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;\'>Open K Spider AI</a></div>';
-  });
-} else {
-  if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+// Init Firebase — with retry logic
+var _ksFirebaseRetries = 0;
+function _ksTryInitFirebase() {
+  if (typeof firebase !== 'undefined') {
+    if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+    return true;
+  }
+  return false;
+}
+if (!_ksTryInitFirebase()) {
+  var _ksFbWaitInterval = setInterval(function() {
+    _ksFirebaseRetries++;
+    if (_ksTryInitFirebase()) { clearInterval(_ksFbWaitInterval); return; }
+    if (_ksFirebaseRetries >= 16) {
+      clearInterval(_ksFbWaitInterval);
+      var fn = function() {
+        var isOff = typeof navigator!=='undefined' && navigator.onLine===false;
+        document.body.innerHTML = '<div style="position:fixed;inset:0;background:#0b2545;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:sans-serif;color:white;text-align:center;padding:20px;"><div style="font-size:48px">🕷️</div><div style="font-size:22px;font-weight:700;">K Spider Doctor AI</div><div style="font-size:15px;opacity:0.8;max-width:400px;line-height:1.5;">'+(isOff?'You appear to be offline. Check your connection.':'Could not load services. Try disabling ad-blockers or check your connection.')+'</div><button onclick="location.reload()" style="background:#00c9a7;color:white;padding:12px 28px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;">🔄 Retry</button><a href="https://kspiderai.in/doctor" style="color:rgba(255,255,255,0.4);font-size:13px;">Or open kspiderai.in/doctor</a></div>';
+      };
+      if (document.readyState==='loading') document.addEventListener('DOMContentLoaded',fn); else fn();
+    }
+  }, 500);
 }
 const _ksAuth = typeof firebase !== 'undefined' ? firebase.auth() : null;
 const _ksDb   = typeof firebase !== 'undefined' ? firebase.firestore() : null;
@@ -2656,7 +2671,7 @@ function toggleDarkMode() {
       </div><!-- /#saas-dashboard-overview -->
 
       <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; SAAS APPOINTMENTS SECTION (NEW) &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-      <div id="saas-appointments" class="section" style="display:none;" style="display:none;">
+      <div id="saas-appointments" class="section" style="display:none;">
         <div class="saas-section-header">
           <div>
             <div class="saas-section-title">&#x1F4C5; Appointments</div>
@@ -2700,7 +2715,7 @@ function toggleDarkMode() {
       </div><!-- /#saas-appointments -->
 
       <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; SAAS BILLING SECTION (NEW) &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-      <div id="saas-billing" class="section" style="display:none;" style="display:none;">
+      <div id="saas-billing" class="section" style="display:none;">
         <div class="saas-section-header">
           <div>
             <div class="saas-section-title">&#x1F4B0; Billing</div>
@@ -2775,7 +2790,7 @@ function toggleDarkMode() {
       </div><!-- /#saas-billing -->
 
       <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; SAAS LAB MANAGEMENT SECTION (NEW) &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-      <div id="saas-lab-mgmt" class="section" style="display:none;" style="display:none;">
+      <div id="saas-lab-mgmt" class="section" style="display:none;">
         <div class="saas-section-header">
           <div>
             <div class="saas-section-title">&#x1F9EA; Lab Management</div>
@@ -2813,7 +2828,7 @@ function toggleDarkMode() {
       </div><!-- /#saas-lab-mgmt -->
 
       <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; SAAS ANALYTICS SECTION (NEW) &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-      <div id="saas-analytics" class="section" style="display:none;" style="display:none;">
+      <div id="saas-analytics" class="section" style="display:none;">
         <div class="saas-section-header">
           <div>
             <div class="saas-section-title">&#x1F4CA; Analytics</div>
@@ -2879,7 +2894,7 @@ function toggleDarkMode() {
 <div class="container" id="saas-original-container">
 
 <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; PATIENT DATABASE SECTION &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-<div id="ks-patient-db" class="section" style="display:none;" style="display:none;">
+<div id="ks-patient-db" class="section" style="display:none;">
 <div style="padding:16px 20px;">
 
 <!-- HEADER -->
@@ -3085,7 +3100,7 @@ function toggleDarkMode() {
 </div><!-- /ks-patient-db section -->
 
 <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; CSV MANAGER SECTION &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-<div id="ks-csv-manager" class="section" style="display:none;" style="display:none;">
+<div id="ks-csv-manager" class="section" style="display:none;">
 <div style="padding:16px 20px;">
 
 <h2 style="margin:0 0 4px;font-size:1.3rem;font-weight:700;color:var(--primary);">&#x1F4C4; CSV Data Manager</h2>
@@ -3306,6 +3321,9 @@ function toggleDarkMode() {
      Search brands by generic content, find generic by brand,
      Add/Edit/Delete brands &#x2014; Doctor's personal brand reference
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
+
+</div><!-- /#dashboard (was missing) -->
+
 <div id="brand-db" class="section" style="display:none;">
 <div style="padding:16px 20px 0 20px;">
 
@@ -8719,9 +8737,9 @@ function normalizeSymptom(sym) {
 // ══════════════════════════════════════════════════════════════
 
 function _switchSectionReal(id, btn) {
-  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
   var target = document.getElementById(id);
-  if (target) target.classList.add('active');
+  if (target) { target.classList.add('active'); target.style.display = 'block'; }
   document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
   if (btn) btn.classList.add('active');
   // New section hooks (no recursion)
@@ -14789,7 +14807,7 @@ setTimeout(function() {
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
 
 <!-- &#x2500;&#x2500;&#x2500; ADVANCED OPD QUEUE SECTION &#x2500;&#x2500;&#x2500; -->
-<div id="adv-opd-queue" class="section" style="display:none;" style="display:none;">
+<div id="adv-opd-queue" class="section" style="display:none;">
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
 
     <!-- Add Patient Form -->
@@ -14890,7 +14908,7 @@ setTimeout(function() {
 </div>
 
 <!-- &#x2500;&#x2500;&#x2500; ADVANCED APPOINTMENT SCHEDULER &#x2500;&#x2500;&#x2500; -->
-<div id="adv-appointments" class="section" style="display:none;" style="display:none;">
+<div id="adv-appointments" class="section" style="display:none;">
   <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:20px;margin-bottom:20px;">
 
     <!-- Book Appointment Form -->
@@ -15009,7 +15027,7 @@ setTimeout(function() {
      - Clean structured prescription output
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
 
-<div id="adv-eprescription" class="section" style="display:none;" style="display:none;">
+<div id="adv-eprescription" class="section" style="display:none;">
 
   <!-- &#x2500;&#x2500; Top Toolbar &#x2500;&#x2500; -->
   <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:20px;background:white;padding:14px 18px;border-radius:12px;border:1px solid #e8edf5;box-shadow:0 2px 8px rgba(11,60,93,0.06);">
@@ -15125,7 +15143,7 @@ setTimeout(function() {
      - BMI + Health Tools
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
 
-<div id="adv-ai-diagnosis" class="section" style="display:none;" style="display:none;">
+<div id="adv-ai-diagnosis" class="section" style="display:none;">
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
 
@@ -15274,7 +15292,7 @@ setTimeout(function() {
      &#x2705; FEATURE SET 4: PATIENT ENGAGEMENT
      - WhatsApp Integration | Follow-up Reminder System
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-<div id="adv-patient-engagement" class="section" style="display:none;" style="display:none;">
+<div id="adv-patient-engagement" class="section" style="display:none;">
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
 
@@ -15442,7 +15460,7 @@ setTimeout(function() {
      &#x2705; FEATURE SET 5: CLINIC ADMINISTRATION
      - Advanced Billing | Analytics Dashboard | Lab Integration
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-<div id="adv-clinic-admin" class="section" style="display:none;" style="display:none;">
+<div id="adv-clinic-admin" class="section" style="display:none;">
 
   <!-- &#x2500;&#x2500; Tab Navigation &#x2500;&#x2500; -->
   <div style="display:flex;gap:0;background:white;border-radius:12px;border:1px solid #e8edf5;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(11,60,93,0.06);">
@@ -15745,7 +15763,7 @@ setTimeout(function() {
      &#x2705; FEATURE SET 6: SECURITY & COMPLIANCE STRUCTURE
      - DPDP Act | ABDM Health ID | Emergency Features
      &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
-<div id="adv-compliance" class="section" style="display:none;" style="display:none;">
+<div id="adv-compliance" class="section" style="display:none;">
 
   <!-- Emergency Floating Panel (always visible when in compliance section) -->
   <div style="background:linear-gradient(135deg,#7f1d1d,#dc2626);border-radius:14px;padding:20px;margin-bottom:20px;border:3px solid #ef4444;color:white;">
@@ -16000,9 +16018,10 @@ function _saasSwitchSectionReal(sectionId, title, subtitle, btn) {
     }
     // Extra: handle sections added outside saas-original-container (e.g. brand-db)
     const extraTarget = document.getElementById(sectionId);
-    if (extraTarget && !extraTarget.classList.contains('active')) {
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    if (extraTarget) {
+      document.querySelectorAll('.section').forEach(s => { s.classList.remove('active'); s.style.display = 'none'; });
       extraTarget.classList.add('active');
+      extraTarget.style.display = 'block';
     }
     // Init hooks for extra sections
     if (sectionId === 'brand-db' && typeof brandDBInit === 'function') {
@@ -16477,7 +16496,21 @@ window.addEventListener('load', () => {
           'clinical-scores': ['🎯 Clinical Scores', 'Evidence-based scoring systems'],
           'vitals-tracker': ['📈 Vitals Tracker', 'Monitor patient vitals'],
           'rx-templates': ['📋 Rx Templates', 'Saved prescription templates']
-        };
+        ,
+          'brand-db': ['🏷️ Brand Medicine DB', 'Search brands by content'],
+          'ks-patient-db': ['🧑‍⚕️ Patient Database', 'UHID · Records · History'],
+          'ks-csv-manager': ['📄 CSV Manager', 'Import · Export · Backup'],
+          'saas-appointments': ['📅 Appointments', 'Manage patient appointments'],
+          'saas-billing': ['💰 Billing', 'Invoice & payment management'],
+          'saas-lab-mgmt': ['🧪 Lab Management', 'Lab orders & results'],
+          'saas-analytics': ['📊 Analytics', 'Clinic performance metrics'],
+          'adv-opd-queue': ['🏥 OPD Queue', "Today's patient queue"],
+          'adv-appointments': ['📅 Appointments', 'Manage appointments'],
+          'adv-eprescription': ['📝 e-Prescription', 'Build & print prescriptions'],
+          'adv-ai-diagnosis': ['🤖 AI Diagnosis', 'AI-assisted decision support'],
+          'adv-patient-engagement': ['💬 Patient Engagement', 'WhatsApp & reminders'],
+          'adv-clinic-admin': ['🏥 Clinic Admin', 'Analytics, billing & lab orders'],
+          'adv-compliance': ['🔒 Compliance & Emergency', 'DPDP · ABDM · Emergency']};
         const [title, sub] = titleMap[sectionId] || [sectionId, ''];
         const titleEl = document.getElementById('saas-topbar-title');
         const subEl = document.getElementById('saas-topbar-sub');
