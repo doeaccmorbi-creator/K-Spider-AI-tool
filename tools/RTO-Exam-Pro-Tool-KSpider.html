@@ -1937,6 +1937,8 @@ const GSHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_QIlYA
 // ✅ KSpiderAI — Live Google Sheet (English) connected. If fetch fails, embedded questions used as fallback.
 const GSHEET_CSV_URL_GU = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_QIlYAhCXhczdhOkUpFhl3QZ7RVySD3Dn29DMEb_Qu2BF4pe2w_oH7olBuZwBEmgyb84-xFpyCrHT/pub?gid=1287064384&single=true&output=csv';
 // ✅ KSpiderAI — Live Google Sheet (Gujarati) connected. Gujarati questions fetched directly — no translation API needed.
+const GSHEET_CSV_URL_HI = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS_QIlYAhCXhczdhOkUpFhl3QZ7RVySD3Dn29DMEb_Qu2BF4pe2w_oH7olBuZwBEmgyb84-xFpyCrHT/pub?gid=2038564768&single=true&output=csv';
+// ✅ KSpiderAI — Live Google Sheet (Hindi) connected. Hindi questions fetched directly — no translation API needed.
 
 /* ════════════════════════════════════════════════════════════
    QUESTIONS DATABASE — 100 Expert RTO Questions
@@ -2269,14 +2271,16 @@ let QUESTIONS = [
     const badge = document.getElementById('sheet-status');
     if (badge) badge.textContent = '⏳ Fetching latest questions...';
 
-    // Fetch both English and Gujarati CSVs in parallel
-    const [resEN, resGU] = await Promise.all([
+    // Fetch English, Gujarati, and Hindi CSVs in parallel
+    const [resEN, resGU, resHI] = await Promise.all([
       fetch(GSHEET_CSV_URL, { cache: 'no-cache' }),
-      GSHEET_CSV_URL_GU ? fetch(GSHEET_CSV_URL_GU, { cache: 'no-cache' }) : Promise.resolve(null)
+      GSHEET_CSV_URL_GU ? fetch(GSHEET_CSV_URL_GU, { cache: 'no-cache' }) : Promise.resolve(null),
+      GSHEET_CSV_URL_HI ? fetch(GSHEET_CSV_URL_HI, { cache: 'no-cache' }) : Promise.resolve(null)
     ]);
     if (!resEN.ok) throw new Error('HTTP ' + resEN.status);
     const csv = await resEN.text();
     const csvGU = (resGU && resGU.ok) ? await resGU.text() : null;
+    const csvHI = (resHI && resHI.ok) ? await resHI.text() : null;
 
     // ── Robust CSV parser — handles quoted fields, embedded commas & newlines ──
     function parseCSVRow(row) {
@@ -2438,6 +2442,66 @@ let QUESTIONS = [
         }
       } catch(guErr) {
         console.info('Gujarati sheet fetch parse error:', guErr.message);
+      }
+    }
+
+    // ── Parse Hindi CSV and populate translCache['hi'] ──
+    // This allows Hindi questions to be served directly from the Sheet
+    // instead of using MyMemory translation API — faster & accurate.
+    if (csvHI) {
+      try {
+        const allLinesHI = splitCSVLines(csvHI);
+        const headerLineHI = allLinesHI[0] || '';
+        const headerColsHI = parseCSVRow(headerLineHI).map(h => h.toLowerCase().replace(/[^a-z0-9]/g, ''));
+        const colIdxHI = {
+          id:          headerColsHI.findIndex(h => h === 'id' || h === 'sno' || h === 'sr'),
+          question:    headerColsHI.findIndex(h => h.includes('question')),
+          optA:        headerColsHI.findIndex(h => h === 'optiona' || h === 'a' || h === 'opt1' || h === 'option1'),
+          optB:        headerColsHI.findIndex(h => h === 'optionb' || h === 'b' || h === 'opt2' || h === 'option2'),
+          optC:        headerColsHI.findIndex(h => h === 'optionc' || h === 'c' || h === 'opt3' || h === 'option3'),
+          optD:        headerColsHI.findIndex(h => h === 'optiond' || h === 'd' || h === 'opt4' || h === 'option4'),
+          answer:      headerColsHI.findIndex(h => h.includes('correct') || h.includes('answer') || h === 'ans'),
+          explanation: headerColsHI.findIndex(h => h.includes('explanation') || h.includes('explain') || h.includes('reason')),
+          category:    headerColsHI.findIndex(h => h.includes('category') || h.includes('topic') || h.includes('subject'))
+        };
+        if (colIdxHI.question < 0) { colIdxHI.id=0; colIdxHI.question=1; colIdxHI.optA=2; colIdxHI.optB=3; colIdxHI.optC=4; colIdxHI.optD=5; colIdxHI.answer=6; colIdxHI.explanation=8; colIdxHI.category=9; }
+        const dataLinesHI = allLinesHI.slice(1);
+        if (!translCache['hi']) translCache['hi'] = {};
+        let hiCount = 0;
+        dataLinesHI.forEach((row, idx) => {
+          const cols = parseCSVRow(row);
+          if (cols.length < 4) return;
+          const get = (i) => (i >= 0 && i < cols.length) ? cols[i].replace(/^\"|\"$/g, '').trim() : '';
+          const question    = get(colIdxHI.question);
+          const optA        = get(colIdxHI.optA);
+          const optB        = get(colIdxHI.optB);
+          const optC        = get(colIdxHI.optC);
+          const optD        = get(colIdxHI.optD);
+          const explanation = get(colIdxHI.explanation);
+          const idRaw       = get(colIdxHI.id);
+          if (!question || !optA) return;
+          const qId = parseInt(idRaw) || (idx + 1);
+          const options = [optA, optB, optC || '', optD || ''].filter(o => o);
+          // Match by position (same row index = same question as English)
+          const enQ = QUESTIONS[idx];
+          const matchId = enQ ? enQ.id : qId;
+          translCache['hi'][matchId] = {
+            ...( enQ || { id: qId, answer: 0, category: 'General' } ),
+            question, options, explanation
+          };
+          hiCount++;
+        });
+        // Persist Hindi sheet translations to localStorage for offline use
+        try {
+          const existing = JSON.parse(localStorage.getItem('rto_trcache_hi') || '{}');
+          Object.assign(existing, translCache['hi']);
+          localStorage.setItem('rto_trcache_hi', JSON.stringify(existing));
+        } catch(e) {}
+        if (badge && hiCount > 0) {
+          badge.textContent = '✅ ' + (parsed.length || 0) + ' EN + ' + (Object.keys(translCache['gu']||{}).length) + ' GU + ' + hiCount + ' HI Questions Loaded · Live';
+        }
+      } catch(hiErr) {
+        console.info('Hindi sheet fetch parse error:', hiErr.message);
       }
     }
 
