@@ -2499,6 +2499,55 @@ ul { list-style: none; }
 .ad-content [data-ks-slot]{min-height:120px;}
 .ad-inline [data-ks-slot]{min-height:60px;}
 .ad-sidebar [data-ks-slot]{min-height:250px;}
+
+/* ═══════════════════════════════════════════════
+   ENTERPRISE COMPONENTS CSS
+═══════════════════════════════════════════════ */
+.legal-tab-btn {
+  padding:7px 14px;border-radius:99px;border:1px solid var(--border);
+  background:var(--bg-input);color:var(--text-muted);font-size:.76rem;
+  font-weight:700;cursor:pointer;transition:all .2s;white-space:nowrap;
+}
+.legal-tab-btn.active,.legal-tab-btn:hover {
+  background:var(--primary);color:#fff;border-color:var(--primary);
+}
+.biz-card {
+  background:var(--bg-card);border:1px solid var(--border);border-radius:14px;
+  overflow:hidden;transition:all .2s;cursor:pointer;
+}
+.biz-card:hover { border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 20px rgba(24,119,242,.15); }
+.biz-cover { height:80px;background:linear-gradient(135deg,var(--primary),#0d5dbf);position:relative;overflow:hidden; }
+.biz-logo { width:52px;height:52px;border-radius:10px;border:3px solid var(--bg-card);object-fit:cover;position:absolute;bottom:-20px;left:14px; }
+.biz-body { padding:26px 14px 14px; }
+.biz-name { font-weight:800;font-size:.92rem;color:var(--text-primary);margin-bottom:2px; }
+.biz-cat  { font-size:.72rem;color:var(--primary);font-weight:700;margin-bottom:6px; }
+.biz-info { font-size:.74rem;color:var(--text-muted);line-height:1.6; }
+.biz-badge { display:inline-flex;align-items:center;gap:3px;font-size:.66rem;font-weight:800;padding:2px 8px;border-radius:99px; }
+.biz-badge.verified { background:#dbeafe;color:#1d4ed8; }
+.biz-badge.open     { background:#dcfce7;color:#15803d; }
+.biz-badge.closed   { background:#fee2e2;color:#dc2626; }
+.seller-stat-card {
+  background:var(--bg-input);border-radius:12px;padding:16px;text-align:center;
+}
+.seller-stat-val { font-size:1.6rem;font-weight:900;color:var(--primary); }
+.seller-stat-lbl { font-size:.72rem;color:var(--text-muted);font-weight:700;margin-top:2px; }
+.hl-result-card {
+  background:var(--bg-card);border:1px solid var(--border);border-radius:12px;
+  padding:14px;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:all .2s;
+}
+.hl-result-card:hover { border-color:var(--primary); }
+.nav-section-label { font-size:.66rem;font-weight:800;color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:.1em;padding:8px 12px 2px; }
+.legal-section { margin-bottom:24px; }
+.legal-section h3 { font-size:1rem;font-weight:800;color:var(--text-primary);margin-bottom:8px;
+  padding-bottom:6px;border-bottom:1px solid var(--border); }
+.legal-section p { margin-bottom:10px;line-height:1.8; }
+.legal-section ul { padding-left:18px;margin-bottom:10px; }
+.legal-section ul li { margin-bottom:5px;line-height:1.7; }
+.seller-dash-tab { padding:10px 16px;border:none;background:none;font-size:.82rem;
+  font-weight:700;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer;white-space:nowrap; }
+.seller-dash-tab.active { color:var(--primary);border-bottom-color:var(--primary); }
+[data-theme="dark"] .biz-card { background:var(--bg-card); }
 </style>
 <!-- ✅ K Spider Dual Security Guard -->
 <script src="/tool-guard.js"></script>
@@ -2904,6 +2953,21 @@ ul { list-style: none; }
     </div>
     <div class="nav-item" id="nav-legal" onclick="navigateTo('legal')">
       <span class="nav-icon"><i class="fas fa-shield-alt"></i></span> Legal & Policy
+
+    <div class="sidebar-divider"></div>
+    <div class="nav-section-label" style="padding:4px 12px;font-size:.68rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-top:4px">🏪 SELLER</div>
+    <div class="nav-item" id="nav-seller-register" onclick="navigateTo('seller-register')">
+      <span class="nav-icon"><i class="fas fa-store"></i></span> Become a Seller
+    </div>
+    <div class="nav-item" id="nav-seller-dashboard" onclick="navigateTo('seller-dashboard')">
+      <span class="nav-icon"><i class="fas fa-tachometer-alt"></i></span> Seller Dashboard
+    </div>
+    <div class="nav-item" id="nav-businesses" onclick="navigateTo('businesses')">
+      <span class="nav-icon"><i class="fas fa-building"></i></span> Business Directory
+    </div>
+    <div class="nav-item" id="nav-hyperlocal" onclick="navigateTo('hyperlocal')">
+      <span class="nav-icon"><i class="fas fa-map-marker-alt"></i></span> Near Me
+    </div>
 
     <div class="sidebar-divider"></div>
     <div class="sidebar-footer-brand">
@@ -4835,6 +4899,11 @@ function navigateTo(page) {
   if(page === 'notifications' && window._FB_READY) loadNotifications();
   if(page === 'messages' && window._FB_READY && typeof loadRealConversations === 'function') loadRealConversations();
   if(page === 'marketplace' && window._FB_READY) { loadMarketplaceProducts(); updateCartBadge(); }
+  if(page === 'seller-register') loadSellerRegisterPage();
+  if(page === 'seller-dashboard') loadSellerDashboard();
+  if(page === 'businesses') { loadBusinessDirectory(); }
+  if(page === 'hyperlocal') loadHyperlocalPage();
+  if(page === 'legal-hub') showLegalDoc('privacy');
 }
 
 /* ============================================================
@@ -8810,6 +8879,919 @@ function ksDirect(){
     },1000);
   }
 })();
+</script>
+
+    <!-- ═══════════════════════════════════════════════════════
+         SELLER REGISTRATION PAGE
+    ═══════════════════════════════════════════════════════ -->
+    <div id="page-seller-register" class="page hidden">
+      <div style="max-width:680px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:2.5rem;margin-bottom:8px">🏪</div>
+            <div style="font-weight:900;font-size:1.4rem;color:var(--text-primary)">Become a K Spider Seller</div>
+            <div style="font-size:.85rem;color:var(--text-muted);margin-top:6px">Sell to millions of buyers across India. Start your business online today!</div>
+          </div>
+
+          <!-- Benefits Bar -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
+            <div style="background:linear-gradient(135deg,#1877F2,#0d5dbf);border-radius:10px;padding:14px;text-align:center;color:#fff">
+              <i class="fas fa-users" style="font-size:1.4rem;margin-bottom:6px;display:block"></i>
+              <div style="font-size:.75rem;font-weight:700">Crores of Buyers</div>
+            </div>
+            <div style="background:linear-gradient(135deg,#16a34a,#15803d);border-radius:10px;padding:14px;text-align:center;color:#fff">
+              <i class="fas fa-rupee-sign" style="font-size:1.4rem;margin-bottom:6px;display:block"></i>
+              <div style="font-size:.75rem;font-weight:700">Lowest Commission</div>
+            </div>
+            <div style="background:linear-gradient(135deg,#d97706,#b45309);border-radius:10px;padding:14px;text-align:center;color:#fff">
+              <i class="fas fa-headset" style="font-size:1.4rem;margin-bottom:6px;display:block"></i>
+              <div style="font-size:.75rem;font-weight:700">24/7 Support</div>
+            </div>
+          </div>
+
+          <div id="seller-reg-msg" style="display:none;border-radius:10px;padding:12px 16px;margin-bottom:14px;font-size:.85rem;font-weight:700"></div>
+
+          <form onsubmit="submitSellerRegistration(event)" style="display:flex;flex-direction:column;gap:12px">
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);padding-bottom:6px;border-bottom:1px solid var(--border)">👤 Owner / Contact Details</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">Owner Name *</label><input class="form-input" id="sr-owner" placeholder="Full Name" required></div>
+              <div><label class="form-label">Mobile Number *</label><input class="form-input" id="sr-mobile" type="tel" placeholder="+91 9999999999" required></div>
+            </div>
+            <div><label class="form-label">Email Address *</label><input class="form-input" id="sr-email" type="email" placeholder="business@email.com" required></div>
+
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);padding-bottom:6px;border-bottom:1px solid var(--border);margin-top:4px">🏢 Business Information</div>
+            <div><label class="form-label">Business / Shop Name *</label><input class="form-input" id="sr-bizname" placeholder="e.g. Raval Electronics Store" required></div>
+            <div><label class="form-label">Business Description *</label><textarea class="form-textarea" id="sr-biz-desc" placeholder="Describe your business, products you sell, years of experience..." rows="3" required></textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">Business Category *</label>
+                <select class="form-input" id="sr-biz-cat" required>
+                  <option value="">Select Category</option>
+                  <option>Electronics & Gadgets</option><option>Mobile Phones</option>
+                  <option>Fashion & Clothing</option><option>Footwear</option>
+                  <option>Home & Kitchen</option><option>Furniture</option>
+                  <option>Books & Stationery</option><option>Food & Grocery</option>
+                  <option>Beauty & Skincare</option><option>Health & Pharmacy</option>
+                  <option>Agriculture & Farming</option><option>Automotive</option>
+                  <option>Services</option><option>Real Estate</option>
+                  <option>Education</option><option>Travel & Tourism</option>
+                  <option>Handicrafts & Handmade</option><option>Other</option>
+                </select>
+              </div>
+              <div><label class="form-label">Business Type</label>
+                <select class="form-input" id="sr-biz-type">
+                  <option>Individual / Sole Proprietor</option>
+                  <option>Partnership Firm</option>
+                  <option>Private Limited Company</option>
+                  <option>LLP</option>
+                  <option>Public Limited Company</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);padding-bottom:6px;border-bottom:1px solid var(--border);margin-top:4px">📍 Business Address</div>
+            <div><label class="form-label">Full Address *</label><input class="form-input" id="sr-address" placeholder="Shop No., Building, Street, Area" required></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">City *</label><input class="form-input" id="sr-city" placeholder="e.g. Vadodara" required></div>
+              <div><label class="form-label">PIN Code *</label><input class="form-input" id="sr-pin" placeholder="e.g. 390001" maxlength="6" required></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">State *</label><select class="form-input" id="sr-state" required>
+                <option value="">Select State</option>
+                <option>Gujarat</option><option>Maharashtra</option><option>Rajasthan</option>
+                <option>Delhi</option><option>Karnataka</option><option>Tamil Nadu</option>
+                <option>Uttar Pradesh</option><option>West Bengal</option><option>Madhya Pradesh</option>
+                <option>Telangana</option><option>Andhra Pradesh</option><option>Kerala</option>
+                <option>Punjab</option><option>Haryana</option><option>Bihar</option>
+                <option>Odisha</option><option>Assam</option><option>Jharkhand</option>
+                <option>Chhattisgarh</option><option>Uttarakhand</option><option>Goa</option>
+                <option>Other</option>
+              </select></div>
+              <div><label class="form-label">Country</label><input class="form-input" value="India" id="sr-country" readonly></div>
+            </div>
+
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);padding-bottom:6px;border-bottom:1px solid var(--border);margin-top:4px">💰 Payment & Tax (Optional)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">UPI ID</label><input class="form-input" id="sr-upi" placeholder="name@upi"></div>
+              <div><label class="form-label">GST Number (Optional)</label><input class="form-input" id="sr-gst" placeholder="22AAAAA0000A1Z5"></div>
+            </div>
+            <div><label class="form-label">PAN Number (Optional)</label><input class="form-input" id="sr-pan" placeholder="ABCDE1234F"></div>
+
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);padding-bottom:6px;border-bottom:1px solid var(--border);margin-top:4px">🕐 Business Hours</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">Opening Time</label><input type="time" class="form-input" id="sr-open" value="09:00"></div>
+              <div><label class="form-label">Closing Time</label><input type="time" class="form-input" id="sr-close" value="21:00"></div>
+            </div>
+            <div><label class="form-label">Working Days</label>
+              <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:6px" id="sr-days">
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Mon" checked> Mon</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Tue" checked> Tue</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Wed" checked> Wed</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Thu" checked> Thu</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Fri" checked> Fri</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Sat" checked> Sat</label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:.8rem;cursor:pointer"><input type="checkbox" value="Sun"> Sun</label>
+              </div>
+            </div>
+
+            <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);padding-bottom:6px;border-bottom:1px solid var(--border);margin-top:4px">🔗 Online Presence (Optional)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">WhatsApp</label><input class="form-input" id="sr-whatsapp" placeholder="91XXXXXXXXXX"></div>
+              <div><label class="form-label">Website</label><input class="form-input" id="sr-website" placeholder="https://yoursite.com"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div><label class="form-label">Instagram</label><input class="form-input" id="sr-instagram" placeholder="@handle"></div>
+              <div><label class="form-label">YouTube</label><input class="form-input" id="sr-youtube" placeholder="Channel URL"></div>
+            </div>
+
+            <!-- Registration Fee Notice -->
+            <div id="sr-fee-box" style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:10px;padding:14px">
+              <div style="font-weight:800;font-size:.9rem;color:#92400e;margin-bottom:6px"><i class="fas fa-rupee-sign"></i> Registration Fee</div>
+              <div id="sr-fee-amount" style="font-size:1.3rem;font-weight:900;color:#92400e;margin-bottom:6px">₹0 <span style="font-size:.75rem;font-weight:400;color:#78350f">(Introductory Offer — FREE)</span></div>
+              <div style="font-size:.75rem;color:#78350f">Admin review required. Approval takes 24-48 hours after submission.</div>
+            </div>
+
+            <!-- T&C -->
+            <label style="display:flex;align-items:flex-start;gap:10px;font-size:.8rem;color:var(--text-secondary);cursor:pointer">
+              <input type="checkbox" id="sr-terms" style="margin-top:2px;width:16px;height:16px" required>
+              <span>I agree to the K Spider <strong>Seller Agreement</strong>, <strong>Marketplace Policy</strong>, and <strong>Terms of Service</strong>. I confirm that all information provided is accurate and I am authorized to sell the listed products/services.</span>
+            </label>
+
+            <button type="submit" id="sr-submit-btn" class="form-save-btn" style="font-size:1rem">
+              <i class="fas fa-store"></i> Submit Seller Application
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         SELLER DASHBOARD PAGE
+    ═══════════════════════════════════════════════════════ -->
+    <div id="page-seller-dashboard" class="page hidden">
+      <div style="max-width:1000px;margin:0 auto;padding:20px 16px">
+        <div id="seller-dash-content">
+          <div style="text-align:center;padding:40px;color:var(--text-muted)">
+            <i class="fas fa-spinner fa-spin" style="font-size:2rem;display:block;margin-bottom:10px"></i>
+            Loading Seller Dashboard...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         BUSINESS DIRECTORY PAGE
+    ═══════════════════════════════════════════════════════ -->
+    <div id="page-businesses" class="page hidden">
+      <div style="max-width:1000px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px">
+            <div class="page-section-title" style="margin:0"><i class="fas fa-building"></i> Business Directory</div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <input type="text" id="biz-search" oninput="searchBusinesses()" placeholder="🔍 Search businesses, shops, services..." style="flex:1;min-width:200px;padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem;outline:none">
+            <input type="text" id="biz-pin" oninput="searchBusinesses()" placeholder="PIN code" maxlength="6" style="width:100px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem;outline:none">
+            <select id="biz-cat-filter" onchange="searchBusinesses()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.82rem;outline:none">
+              <option value="">All Categories</option>
+              <option>Electronics & Gadgets</option><option>Fashion & Clothing</option>
+              <option>Home & Kitchen</option><option>Food & Grocery</option>
+              <option>Beauty & Skincare</option><option>Health & Pharmacy</option>
+              <option>Agriculture & Farming</option><option>Services</option>
+              <option>Education</option><option>Real Estate</option><option>Other</option>
+            </select>
+          </div>
+          <div id="businesses-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
+            <div style="text-align:center;padding:40px;color:var(--text-muted);grid-column:1/-1">
+              <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;display:block;margin-bottom:8px"></i>
+              Loading businesses...
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         HYPERLOCAL / NEAR ME PAGE
+    ═══════════════════════════════════════════════════════ -->
+    <div id="page-hyperlocal" class="page hidden">
+      <div style="max-width:900px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <div class="page-section-title" style="margin:0"><i class="fas fa-map-marker-alt"></i> Near Me — Hyperlocal Discovery</div>
+          </div>
+          <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:14px">Discover businesses, products & services near your location</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <input type="text" id="hl-pin" placeholder="Enter your PIN code" maxlength="6" style="flex:1;min-width:140px;padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem;outline:none">
+            <button onclick="loadHyperlocal()" style="padding:9px 18px;border-radius:8px;border:none;background:#1877F2;color:#fff;font-weight:700;cursor:pointer"><i class="fas fa-search-location"></i> Find Near Me</button>
+            <button onclick="detectMyLocation()" style="padding:9px 18px;border-radius:8px;border:1.5px solid var(--primary);background:none;color:var(--primary);font-weight:700;cursor:pointer"><i class="fas fa-crosshairs"></i> Use My Location</button>
+          </div>
+          <!-- Tabs -->
+          <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px">
+            <button onclick="switchHlTab('businesses')" id="hl-tab-biz" style="padding:10px 18px;border:none;background:none;font-size:.84rem;font-weight:700;color:var(--primary);border-bottom:2px solid var(--primary);cursor:pointer">🏪 Businesses</button>
+            <button onclick="switchHlTab('products')" id="hl-tab-prod" style="padding:10px 18px;border:none;background:none;font-size:.84rem;font-weight:700;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer">📦 Products</button>
+            <button onclick="switchHlTab('services')" id="hl-tab-svc" style="padding:10px 18px;border:none;background:none;font-size:.84rem;font-weight:700;color:var(--text-muted);border-bottom:2px solid transparent;cursor:pointer">🛠 Services</button>
+          </div>
+          <div id="hyperlocal-results">
+            <div style="text-align:center;padding:40px;color:var(--text-muted)">
+              <i class="fas fa-map-marker-alt" style="font-size:3rem;opacity:.2;display:block;margin-bottom:14px"></i>
+              Enter a PIN code or use your location to discover nearby businesses & products!
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════════
+         LEGAL HUB PAGE (Full Enterprise Legal)
+    ═══════════════════════════════════════════════════════ -->
+    <div id="page-legal-hub" class="page hidden">
+      <div style="max-width:800px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div class="page-section-title"><i class="fas fa-balance-scale"></i> Legal Hub — K Spider India</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px">
+            <button onclick="showLegalDoc('privacy')" class="legal-tab-btn active" id="ltab-privacy">Privacy Policy</button>
+            <button onclick="showLegalDoc('terms')" class="legal-tab-btn" id="ltab-terms">Terms & Conditions</button>
+            <button onclick="showLegalDoc('seller')" class="legal-tab-btn" id="ltab-seller">Seller Agreement</button>
+            <button onclick="showLegalDoc('buyer')" class="legal-tab-btn" id="ltab-buyer">Buyer Agreement</button>
+            <button onclick="showLegalDoc('refund')" class="legal-tab-btn" id="ltab-refund">Refund & Returns</button>
+            <button onclick="showLegalDoc('shipping')" class="legal-tab-btn" id="ltab-shipping">Shipping Policy</button>
+            <button onclick="showLegalDoc('marketplace')" class="legal-tab-btn" id="ltab-marketplace">Marketplace Policy</button>
+            <button onclick="showLegalDoc('community')" class="legal-tab-btn" id="ltab-community">Community Guidelines</button>
+            <button onclick="showLegalDoc('disclaimer')" class="legal-tab-btn" id="ltab-disclaimer">Disclaimer</button>
+          </div>
+          <div id="legal-doc-content" style="font-size:.85rem;line-height:1.8;color:var(--text-secondary)"></div>
+        </div>
+      </div>
+    </div>
+
+
+<!-- ═══ K SPIDER ENTERPRISE MODULE v1.0 ═══ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   K SPIDER INDIA — ENTERPRISE MODULE v1.0
+   Seller Registration · Seller Dashboard · Business Directory
+   Hyperlocal Discovery · Legal Hub · Admin Panel Extensions
+   Developed by Gaurang Raval & Khush Raval — kspiderai.in
+═══════════════════════════════════════════════════════════════════════ */
+
+/* ── SELLER REGISTRATION ── */
+function loadSellerRegisterPage(){
+  if(!STATE.currentUser){
+    showToast('Please login to register as a seller','error');
+    navigateTo('feed');
+    document.getElementById('fb-auth-overlay')?.classList.remove('hidden');
+    return;
+  }
+  // Pre-fill known data
+  const u = STATE.currentUser;
+  const setV = (id,v) => { const el=document.getElementById(id); if(el&&v) el.value=v; };
+  setV('sr-owner', u.name);
+  setV('sr-email', u.email);
+  setV('sr-city',  u.city);
+  // Load registration fee from Firestore admin config
+  if(window._FB_READY){
+    window._fb.getDoc(window._fb.doc(window._fb.db,'admin_config','marketplace'))
+      .then(snap => {
+        const fee = snap.exists() ? (snap.data().sellerRegFee||0) : 0;
+        const feeEl = document.getElementById('sr-fee-amount');
+        if(feeEl) feeEl.innerHTML = fee > 0
+          ? `₹${fee} <span style="font-size:.7rem;color:#78350f">One-time registration fee</span>`
+          : '₹0 <span style="font-size:.75rem;font-weight:400;color:#78350f">(Currently FREE)</span>';
+      }).catch(()=>{});
+  }
+}
+
+async function submitSellerRegistration(e){
+  e.preventDefault();
+  if(!STATE.currentUser || !window._currentUser){
+    showMsg('seller-reg-msg','error','Please login first'); return;
+  }
+  const g = id => document.getElementById(id)?.value?.trim();
+  const data = {
+    ownerName:   g('sr-owner'),     mobile:      g('sr-mobile'),
+    email:       g('sr-email'),     bizName:     g('sr-bizname'),
+    description: g('sr-biz-desc'), category:    g('sr-biz-cat'),
+    bizType:     g('sr-biz-type'), address:     g('sr-address'),
+    city:        g('sr-city'),      pin:         g('sr-pin'),
+    state:       g('sr-state'),     country:     g('sr-country')||'India',
+    upi:         g('sr-upi'),       gst:         g('sr-gst'),
+    pan:         g('sr-pan'),       whatsapp:    g('sr-whatsapp'),
+    website:     g('sr-website'),   instagram:   g('sr-instagram'),
+    youtube:     g('sr-youtube'),
+    openTime:    g('sr-open'),      closeTime:   g('sr-close'),
+    workingDays: Array.from(document.querySelectorAll('#sr-days input:checked')).map(i=>i.value),
+    userId:      window._currentUser.uid,
+    status:      'pending',
+    submittedAt: window._fb.serverTimestamp(),
+    _clientTs:   Date.now(),
+    approved:    false,
+  };
+
+  if(!data.ownerName||!data.mobile||!data.bizName||!data.description||!data.category||!data.address||!data.city||!data.pin||!data.state){
+    showMsg('seller-reg-msg','error','Please fill all required fields (*)'); return;
+  }
+  if(!/^\d{6}$/.test(data.pin)){ showMsg('seller-reg-msg','error','Please enter a valid 6-digit PIN code'); return; }
+
+  const btn = document.getElementById('sr-submit-btn');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...'; }
+
+  try{
+    // Check if already applied
+    const existing = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'sellers'),
+      window._fb.where('userId','==',window._currentUser.uid), window._fb.limit(1)
+    ));
+    if(!existing.empty){
+      const s = existing.docs[0].data();
+      showMsg('seller-reg-msg', s.status==='approved'?'success':'info',
+        s.status==='approved' ? '✅ You are already an approved seller!' :
+        `⏳ Your application is ${s.status}. Admin will review within 24-48 hours.`);
+      if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-store"></i> Submit Seller Application'; }
+      return;
+    }
+
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'sellers'), data);
+
+    // Notify admin
+    const adminSnap = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'users'),
+      window._fb.where('isAdmin','==',true), window._fb.limit(5)
+    ));
+    adminSnap.forEach(adminDoc=>{
+      window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{
+        toUserId: adminDoc.id, fromUserId: window._currentUser.uid,
+        fromName: STATE.currentUser.name, fromAvatar: STATE.currentUser.avatar,
+        type:'seller_apply',
+        message: `🏪 New seller application: ${data.bizName} (${data.city}, ${data.state})`,
+        read:false, createdAt: window._fb.serverTimestamp()
+      }).catch(()=>{});
+    });
+
+    // Update user role
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',window._currentUser.uid),{
+      sellerStatus:'pending', sellerBizName: data.bizName
+    });
+
+    showMsg('seller-reg-msg','success','✅ Application submitted! Admin will review within 24-48 hours. Check notifications for updates.');
+    document.querySelector('#page-seller-register form')?.reset();
+  }catch(err){
+    showMsg('seller-reg-msg','error','Error: '+(err.message||'Please try again'));
+    console.error('submitSellerRegistration:',err);
+  }
+  if(btn){ btn.disabled=false; btn.innerHTML='<i class="fas fa-store"></i> Submit Seller Application'; }
+}
+
+function showMsg(elId, type, msg){
+  const el = document.getElementById(elId); if(!el) return;
+  el.style.display='block';
+  el.style.background = type==='error'?'#FEF2F2':type==='success'?'#DCFCE7':'#EFF6FF';
+  el.style.color      = type==='error'?'#dc2626':type==='success'?'#15803d':'#1d4ed8';
+  el.style.border     = `1px solid ${type==='error'?'#fca5a5':type==='success'?'#86efac':'#93c5fd'}`;
+  el.style.borderRadius='8px'; el.style.padding='10px 14px';
+  el.textContent = msg;
+  setTimeout(()=>{ if(type!=='success') el.style.display='none'; }, 6000);
+}
+
+/* ── SELLER DASHBOARD ── */
+async function loadSellerDashboard(){
+  const el = document.getElementById('seller-dash-content');
+  if(!el) return;
+  if(!STATE.currentUser || !window._currentUser){
+    el.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-muted)">Please login to access Seller Dashboard</div>';
+    return;
+  }
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
+  try{
+    const selSnap = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'sellers'),
+      window._fb.where('userId','==',window._currentUser.uid), window._fb.limit(1)
+    ));
+
+    if(selSnap.empty){
+      el.innerHTML = `<div style="text-align:center;padding:50px 20px">
+        <div style="font-size:3rem;margin-bottom:14px">🏪</div>
+        <div style="font-weight:800;font-size:1.15rem;color:var(--text-primary);margin-bottom:8px">You're not a seller yet</div>
+        <div style="font-size:.85rem;color:var(--text-muted);margin-bottom:20px">Register as a seller to list your products and reach millions of buyers across India.</div>
+        <button onclick="navigateTo('seller-register')" style="padding:12px 28px;border-radius:10px;border:none;background:#1877F2;color:#fff;font-weight:700;cursor:pointer;font-size:.95rem"><i class="fas fa-store"></i> Register as Seller</button>
+      </div>`;
+      return;
+    }
+
+    const seller = { id: selSnap.docs[0].id, ...selSnap.docs[0].data() };
+    const isPending = seller.status === 'pending';
+    const isApproved = seller.status === 'approved';
+
+    if(isPending){
+      el.innerHTML = `<div style="background:linear-gradient(135deg,#fef3c7,#fde68a);border:1px solid #f59e0b;border-radius:14px;padding:24px;text-align:center;margin-bottom:16px">
+        <div style="font-size:2rem;margin-bottom:8px">⏳</div>
+        <div style="font-weight:800;font-size:1.05rem;color:#92400e">Application Under Review</div>
+        <div style="font-size:.83rem;color:#78350f;margin-top:6px">Your seller application for <strong>${esc(seller.bizName||'')}</strong> is being reviewed. Expected: 24-48 hours.</div>
+      </div>`;
+      return;
+    }
+
+    if(!isApproved){
+      el.innerHTML = `<div style="background:#FEF2F2;border:1px solid #fca5a5;border-radius:14px;padding:24px;text-align:center">
+        <div style="font-size:2rem;margin-bottom:8px">❌</div>
+        <div style="font-weight:800;color:#dc2626">Application Rejected</div>
+        <div style="font-size:.83rem;color:#7f1d1d;margin-top:6px">Contact admin at kspider221206@gmail.com for more information.</div>
+        <button onclick="navigateTo('seller-register')" style="margin-top:14px;padding:10px 22px;border-radius:8px;border:none;background:#1877F2;color:#fff;font-weight:700;cursor:pointer">Re-apply</button>
+      </div>`;
+      return;
+    }
+
+    // ── APPROVED SELLER DASHBOARD ──
+    // Get seller's products and orders
+    const [prodSnap, orderSnap] = await Promise.all([
+      window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'products'),window._fb.where('createdBy','==',window._currentUser.uid))),
+      window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'orders'),window._fb.limit(100)))
+    ]);
+
+    const myProducts = []; prodSnap.forEach(d=>myProducts.push({id:d.id,...d.data()}));
+    const allOrders = []; orderSnap.forEach(d=>allOrders.push({id:d.id,...d.data()}));
+    const myProductIds = new Set(myProducts.map(p=>p.id));
+    const myOrders = allOrders.filter(o=>(o.items||[]).some(i=>myProductIds.has(i.productId)));
+    const totalRevenue = myOrders.filter(o=>o.status==='confirmed').reduce((s,o)=>s+(o.total||0),0);
+    const pendingOrders = myOrders.filter(o=>o.status==='pending').length;
+
+    el.innerHTML = `
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#1877F2,#0d5dbf);border-radius:14px;padding:20px;color:#fff;margin-bottom:16px;display:flex;align-items:center;gap:14px">
+        <div style="width:56px;height:56px;border-radius:12px;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:1.6rem">🏪</div>
+        <div>
+          <div style="font-weight:900;font-size:1.1rem">${esc(seller.bizName||'My Business')}</div>
+          <div style="font-size:.8rem;opacity:.85">${esc(seller.category||'')} · ${esc(seller.city||'')} ${esc(seller.pin||'')}</div>
+          <div style="margin-top:4px"><span style="background:rgba(255,255,255,.2);border-radius:99px;padding:2px 10px;font-size:.7rem;font-weight:700">✅ Verified Seller</span></div>
+        </div>
+        <button onclick="navigateTo('marketplace')" style="margin-left:auto;padding:8px 16px;border-radius:8px;border:none;background:rgba(255,255,255,.2);color:#fff;font-weight:700;cursor:pointer;font-size:.8rem"><i class="fas fa-plus"></i> Add Product</button>
+      </div>
+
+      <!-- Stats -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px">
+        <div class="seller-stat-card"><div class="seller-stat-val">${myProducts.length}</div><div class="seller-stat-lbl">Products</div></div>
+        <div class="seller-stat-card"><div class="seller-stat-val">${myOrders.length}</div><div class="seller-stat-lbl">Total Orders</div></div>
+        <div class="seller-stat-card" ${pendingOrders?'style="background:#fef3c7"':''}>
+          <div class="seller-stat-val" style="${pendingOrders?'color:#d97706':''}">${pendingOrders}</div>
+          <div class="seller-stat-lbl">Pending</div>
+        </div>
+        <div class="seller-stat-card"><div class="seller-stat-val" style="font-size:1.1rem">₹${totalRevenue.toLocaleString('en-IN')}</div><div class="seller-stat-lbl">Revenue</div></div>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:14px;overflow-x:auto">
+        <button onclick="showSellerTab('products')" class="seller-dash-tab active" id="stab-products">📦 My Products</button>
+        <button onclick="showSellerTab('orders')" class="seller-dash-tab" id="stab-orders">📋 Orders</button>
+        <button onclick="showSellerTab('settings')" class="seller-dash-tab" id="stab-settings">⚙️ Business Settings</button>
+      </div>
+
+      <!-- Tab Content -->
+      <div id="seller-tab-content">
+        ${renderSellerProductsTab(myProducts)}
+      </div>
+    `;
+
+    window._sellerData = { seller, myProducts, myOrders };
+  }catch(err){
+    console.error('loadSellerDashboard:',err);
+    el.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load dashboard. Please try again.</div>';
+  }
+}
+
+function renderSellerProductsTab(products){
+  if(!products.length) return `<div style="text-align:center;padding:40px;color:var(--text-muted)">
+    <i class="fas fa-box-open" style="font-size:2rem;opacity:.3;display:block;margin-bottom:10px"></i>
+    No products yet. <button onclick="navigateTo('marketplace')" style="background:none;border:none;color:var(--primary);font-weight:700;cursor:pointer">Add your first product →</button>
+  </div>`;
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px">
+    ${products.map(p=>`
+      <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;gap:10px;align-items:flex-start">
+        ${p.image?`<img src="${p.image}" style="width:46px;height:46px;border-radius:8px;object-fit:cover;flex-shrink:0">`:'<div style="width:46px;height:46px;border-radius:8px;background:var(--bg-card);display:flex;align-items:center;justify-content:center;flex-shrink:0">📦</div>'}
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:700;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</div>
+          <div style="font-size:.75rem;color:var(--primary);font-weight:700">₹${(p.price||0).toLocaleString('en-IN')}</div>
+          <div style="font-size:.7rem;color:${(p.stock||0)>0?'#16a34a':'#ef4444'}">${(p.stock||0)>0?`Stock: ${p.stock}`:'Out of Stock'}</div>
+        </div>
+        <button onclick="deleteProduct('${p.id}')" title="Delete" style="background:none;border:none;color:#ef4444;cursor:pointer;flex-shrink:0"><i class="fas fa-trash"></i></button>
+      </div>`).join('')}
+  </div>`;
+}
+
+function showSellerTab(tab){
+  document.querySelectorAll('.seller-dash-tab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('stab-'+tab)?.classList.add('active');
+  const content = document.getElementById('seller-tab-content'); if(!content) return;
+  const {myProducts, myOrders, seller} = window._sellerData || {};
+  if(tab==='products') content.innerHTML = renderSellerProductsTab(myProducts||[]);
+  else if(tab==='orders') content.innerHTML = renderSellerOrdersTab(myOrders||[]);
+  else if(tab==='settings') content.innerHTML = renderSellerSettingsTab(seller||{});
+}
+
+function renderSellerOrdersTab(orders){
+  if(!orders.length) return '<div style="text-align:center;padding:40px;color:var(--text-muted)">No orders yet</div>';
+  const statusColor = {pending:'#d97706',confirmed:'#16a34a',rejected:'#ef4444'};
+  return orders.sort((a,b)=>(b._clientTs||0)-(a._clientTs||0)).map(o=>`
+    <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-weight:700;font-size:.84rem;color:var(--text-primary)">${esc(o.userName||'Customer')}</div>
+        <span style="font-size:.72rem;padding:2px 10px;border-radius:99px;font-weight:800;background:${statusColor[o.status]||'#6b7280'}22;color:${statusColor[o.status]||'#6b7280'}">${(o.status||'pending').toUpperCase()}</span>
+      </div>
+      <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:4px">${(o.items||[]).map(i=>esc(i.title)+' ×'+i.qty).join(', ')}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-weight:800;color:#1877F2">₹${(o.total||0).toLocaleString('en-IN')}</span>
+        <span style="font-size:.7rem;color:var(--text-muted)">UTR: ${esc(o.utr||'—')}</span>
+      </div>
+    </div>`).join('');
+}
+
+function renderSellerSettingsTab(seller){
+  return `<div style="display:flex;flex-direction:column;gap:14px">
+    <div style="background:var(--bg-input);border-radius:10px;padding:16px">
+      <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);margin-bottom:12px">Business Information</div>
+      <div style="font-size:.83rem;color:var(--text-secondary);display:flex;flex-direction:column;gap:6px">
+        <div><strong>Business Name:</strong> ${esc(seller.bizName||'—')}</div>
+        <div><strong>Category:</strong> ${esc(seller.category||'—')}</div>
+        <div><strong>City / PIN:</strong> ${esc(seller.city||'—')} ${esc(seller.pin||'')}</div>
+        <div><strong>Hours:</strong> ${esc(seller.openTime||'—')} – ${esc(seller.closeTime||'—')}</div>
+        <div><strong>Working Days:</strong> ${(seller.workingDays||[]).join(', ')||'—'}</div>
+        <div><strong>UPI ID:</strong> ${esc(seller.upi||'Not set')}</div>
+        <div><strong>GST:</strong> ${esc(seller.gst||'Not provided')}</div>
+      </div>
+    </div>
+    <div style="background:linear-gradient(135deg,#f0f9ff,#e0f2fe);border:1px solid #bae6fd;border-radius:10px;padding:14px">
+      <div style="font-size:.82rem;color:#0c4a6e"><i class="fas fa-info-circle"></i> To update business details, please contact admin at kspider221206@gmail.com or use the Seller Support chat.</div>
+    </div>
+    <button onclick="navigateTo('marketplace')" style="padding:12px;border-radius:10px;border:none;background:#1877F2;color:#fff;font-weight:700;cursor:pointer"><i class="fas fa-plus"></i> Add New Product to Marketplace</button>
+  </div>`;
+}
+
+/* ── BUSINESS DIRECTORY ── */
+async function loadBusinessDirectory(){
+  searchBusinesses();
+}
+
+async function searchBusinesses(){
+  const grid = document.getElementById('businesses-grid'); if(!grid) return;
+  const q   = (document.getElementById('biz-search')?.value||'').toLowerCase();
+  const pin = (document.getElementById('biz-pin')?.value||'').trim();
+  const cat = (document.getElementById('biz-cat-filter')?.value||'');
+
+  grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);grid-column:1/-1"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+  if(!window._FB_READY){ grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);grid-column:1/-1">Connecting to Firebase...</div>'; setTimeout(searchBusinesses,1500); return; }
+
+  try{
+    let snap = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'sellers'),
+      window._fb.where('status','==','approved'),
+      window._fb.limit(60)
+    ));
+    let sellers = [];
+    snap.forEach(d=>sellers.push({id:d.id,...d.data()}));
+
+    if(q)   sellers = sellers.filter(s=>(s.bizName||'').toLowerCase().includes(q)||(s.description||'').toLowerCase().includes(q)||(s.city||'').toLowerCase().includes(q));
+    if(pin) sellers = sellers.filter(s=>(s.pin||'').startsWith(pin));
+    if(cat) sellers = sellers.filter(s=>s.category===cat);
+
+    if(!sellers.length){
+      grid.innerHTML = '<div style="text-align:center;padding:50px 20px;color:var(--text-muted);grid-column:1/-1"><i class="fas fa-store" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:12px"></i>No businesses found matching your search.<br><span style="font-size:.8rem">Try a different keyword or PIN code</span></div>';
+      return;
+    }
+
+    grid.innerHTML = sellers.map(s=>{
+      const now = new Date(); const h=now.getHours(), m=now.getMinutes();
+      const curTime = h*60+m;
+      const [oh,om] = (s.openTime||'09:00').split(':').map(Number);
+      const [ch,cm] = (s.closeTime||'21:00').split(':').map(Number);
+      const isOpen  = curTime >= oh*60+om && curTime <= ch*60+cm;
+      const today   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][now.getDay()];
+      const isWorkDay = (s.workingDays||['Mon','Tue','Wed','Thu','Fri','Sat']).includes(today);
+      const openNow  = isOpen && isWorkDay;
+      return `
+        <div class="biz-card" onclick="viewBusinessProfile('${s.id}')">
+          <div class="biz-cover" style="background:linear-gradient(135deg,${['#1877F2','#16a34a','#d97706','#7c3aed','#dc2626'][Math.abs(s.bizName?.charCodeAt(0)||0)%5]},#0d5dbf)">
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:2rem;opacity:.3">🏪</div>
+          </div>
+          <div class="biz-body">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:5px">
+              <div>
+                <div class="biz-name">${esc(s.bizName||'Business')}</div>
+                <div class="biz-cat">${esc(s.category||'')}</div>
+              </div>
+              <span class="biz-badge ${openNow?'open':'closed'}">${openNow?'Open':'Closed'}</span>
+            </div>
+            <div class="biz-info">
+              <div><i class="fas fa-map-marker-alt" style="width:14px;color:var(--primary)"></i> ${esc(s.city||'')}${s.pin?' - '+s.pin:''}, ${esc(s.state||'India')}</div>
+              <div><i class="fas fa-clock" style="width:14px;color:var(--primary)"></i> ${esc(s.openTime||'09:00')} – ${esc(s.closeTime||'21:00')}</div>
+              ${s.whatsapp?`<div><i class="fab fa-whatsapp" style="width:14px;color:#25D366"></i> <a href="https://wa.me/91${s.whatsapp}" onclick="event.stopPropagation()" target="_blank" style="color:#25D366;font-weight:700">WhatsApp</a></div>`:''}
+            </div>
+            <div style="display:flex;gap:6px;margin-top:10px">
+              <button onclick="event.stopPropagation();viewBusinessProfile('${s.id}')" style="flex:1;padding:7px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer"><i class="fas fa-store"></i> View Shop</button>
+              ${s.whatsapp?`<button onclick="event.stopPropagation();window.open('https://wa.me/91${s.whatsapp}','_blank')" style="padding:7px 12px;border-radius:8px;border:1px solid #25D366;background:none;color:#25D366;font-size:.74rem;font-weight:700;cursor:pointer"><i class="fab fa-whatsapp"></i></button>`:''}
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+  }catch(err){
+    console.error('searchBusinesses:',err);
+    grid.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted);grid-column:1/-1">Could not load businesses</div>';
+  }
+}
+
+async function viewBusinessProfile(sellerId){
+  // Show business in a modal
+  const existing = document.getElementById('biz-profile-modal'); if(existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'biz-profile-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px';
+  modal.innerHTML = '<div style="background:var(--bg-secondary);border-radius:16px;max-width:520px;width:100%;max-height:90vh;overflow-y:auto;padding:22px"><div style="text-align:center;padding:20px"><i class="fas fa-spinner fa-spin"></i></div></div>';
+  modal.addEventListener('click',e=>{ if(e.target===modal)modal.remove(); });
+  document.body.appendChild(modal);
+  const inner = modal.querySelector('div > div');
+  try{
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db,'sellers',sellerId));
+    if(!snap.exists()){ inner.innerHTML='<div style="text-align:center;padding:30px">Business not found</div>'; return; }
+    const s = snap.data();
+    const prodSnap = await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'products'),window._fb.where('createdBy','==',s.userId),window._fb.limit(8)));
+    let prods=[]; prodSnap.forEach(d=>prods.push({id:d.id,...d.data()}));
+    inner.innerHTML = `
+      <button onclick="document.getElementById('biz-profile-modal').remove()" style="float:right;background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer;margin-bottom:8px">×</button>
+      <div style="clear:both">
+        <div style="background:linear-gradient(135deg,#1877F2,#0d5dbf);height:80px;border-radius:12px;margin-bottom:14px;display:flex;align-items:center;justify-content:center;font-size:2.5rem;opacity:.4">🏪</div>
+        <div style="font-weight:900;font-size:1.1rem;color:var(--text-primary);margin-bottom:2px">${esc(s.bizName||'')}</div>
+        <div style="font-size:.78rem;color:var(--primary);font-weight:700;margin-bottom:8px">${esc(s.category||'')}</div>
+        <div style="font-size:.82rem;color:var(--text-secondary);line-height:1.7;margin-bottom:12px">${esc(s.description||'')}</div>
+        <div style="display:flex;flex-direction:column;gap:6px;font-size:.8rem;color:var(--text-secondary);margin-bottom:14px">
+          <div><i class="fas fa-map-marker-alt" style="width:18px;color:var(--primary)"></i> ${esc(s.address||'')} ${esc(s.city||'')} ${esc(s.pin||'')} ${esc(s.state||'')}</div>
+          <div><i class="fas fa-clock" style="width:18px;color:var(--primary)"></i> ${esc(s.openTime||'09:00')} – ${esc(s.closeTime||'21:00')} | ${(s.workingDays||[]).join(', ')}</div>
+          ${s.whatsapp?`<div><i class="fab fa-whatsapp" style="width:18px;color:#25D366"></i> <a href="https://wa.me/91${s.whatsapp}" target="_blank" style="color:#25D366;font-weight:700">+91 ${s.whatsapp}</a></div>`:''}
+          ${s.website?`<div><i class="fas fa-globe" style="width:18px;color:var(--primary)"></i> <a href="${s.website}" target="_blank" style="color:var(--primary)">${esc(s.website)}</a></div>`:''}
+        </div>
+        ${prods.length?`<div style="font-weight:800;font-size:.88rem;color:var(--text-primary);margin-bottom:8px">Products (${prods.length})</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px">
+            ${prods.map(p=>`<div onclick="document.getElementById('biz-profile-modal').remove();showProductDetail('${p.id}')" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;cursor:pointer">
+              ${p.image?`<img src="${p.image}" style="width:100%;height:70px;object-fit:cover">`:'<div style="height:70px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;background:var(--bg-input)">📦</div>'}
+              <div style="padding:5px;font-size:.7rem;font-weight:700;color:var(--text-primary)">${esc((p.title||'').slice(0,22))}</div>
+              <div style="padding:0 5px 5px;font-size:.72rem;color:var(--primary);font-weight:800">₹${(p.price||0).toLocaleString('en-IN')}</div>
+            </div>`).join('')}
+          </div>`:''}
+        ${s.whatsapp?`<button onclick="window.open('https://wa.me/91${s.whatsapp}?text=Hi, I found your business on K Spider India. I want to enquire about your products.','_blank')" style="width:100%;margin-top:14px;padding:12px;border-radius:10px;border:none;background:#25D366;color:#fff;font-weight:700;cursor:pointer;font-size:.9rem"><i class="fab fa-whatsapp"></i> WhatsApp Business</button>`:''}
+      </div>`;
+  }catch(err){ inner.innerHTML='<div style="text-align:center;padding:30px">Could not load business</div>'; }
+}
+
+/* ── HYPERLOCAL / NEAR ME ── */
+function loadHyperlocalPage(){
+  // Auto-fill PIN from user profile
+  const pinEl = document.getElementById('hl-pin');
+  if(pinEl && STATE.currentUser?.pin) pinEl.value = STATE.currentUser.pin;
+  window._hlActiveTab = 'businesses';
+}
+
+function switchHlTab(tab){
+  window._hlActiveTab = tab;
+  ['businesses','products','services'].forEach(t=>{
+    const btn = document.getElementById('hl-tab-'+t);
+    if(btn){ btn.style.color = t===tab?'var(--primary)':'var(--text-muted)'; btn.style.borderBottomColor = t===tab?'var(--primary)':'transparent'; }
+  });
+  loadHyperlocal();
+}
+
+async function detectMyLocation(){
+  if(!navigator.geolocation){ showToast('Location not supported on this device','error'); return; }
+  showToast('Detecting location...','info');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {latitude,longitude} = pos.coords;
+    // Reverse geocode using free API
+    try{
+      const r = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data = await r.json();
+      const pin = data?.address?.postcode||'';
+      if(pin){ document.getElementById('hl-pin').value = pin; showToast(`Location detected: ${pin}`,'success'); loadHyperlocal(); }
+      else showToast('Could not detect PIN code','error');
+    }catch(e){ showToast('Could not get location details','error'); }
+  }, ()=>showToast('Location permission denied','error'));
+}
+
+async function loadHyperlocal(){
+  const pin = (document.getElementById('hl-pin')?.value||'').trim();
+  const results = document.getElementById('hyperlocal-results'); if(!results) return;
+  if(!pin){ results.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-map-marker-alt" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:10px"></i>Please enter a PIN code to discover nearby businesses & products.</div>'; return; }
+  results.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Finding nearby...</div>';
+  if(!window._FB_READY){ setTimeout(loadHyperlocal,1200); return; }
+  const tab = window._hlActiveTab || 'businesses';
+  try{
+    if(tab==='businesses'||tab==='services'){
+      const snap = await window._fb.getDocs(window._fb.query(
+        window._fb.collection(window._fb.db,'sellers'),
+        window._fb.where('status','==','approved'),
+        window._fb.where('pin','==',pin),
+        window._fb.limit(20)
+      ));
+      let sellers=[]; snap.forEach(d=>sellers.push({id:d.id,...d.data()}));
+      if(tab==='services') sellers=sellers.filter(s=>['Services','Education','Health & Pharmacy','Travel & Tourism'].includes(s.category));
+      if(!sellers.length){ results.innerHTML=`<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-search" style="font-size:2rem;opacity:.2;display:block;margin-bottom:10px"></i>No ${tab} found in PIN ${pin}. <br><small>Try a nearby PIN code.</small></div>`; return; }
+      results.innerHTML = `<div style="margin-bottom:12px;font-size:.82rem;color:var(--text-muted)"><i class="fas fa-map-marker-alt"></i> Found <strong>${sellers.length}</strong> ${tab} near PIN <strong>${pin}</strong></div>
+        ${sellers.map(s=>`<div class="hl-result-card" onclick="viewBusinessProfile('${s.id}')">
+          <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,#1877F2,#0d5dbf);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">🏪</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:700;font-size:.88rem;color:var(--text-primary)">${esc(s.bizName||'')}</div>
+            <div style="font-size:.74rem;color:var(--primary);font-weight:700">${esc(s.category||'')}</div>
+            <div style="font-size:.73rem;color:var(--text-muted)"><i class="fas fa-clock"></i> ${esc(s.openTime||'—')} – ${esc(s.closeTime||'—')}</div>
+          </div>
+          <button onclick="event.stopPropagation();viewBusinessProfile('${s.id}')" style="padding:7px 12px;border-radius:8px;border:none;background:var(--primary);color:#fff;font-size:.74rem;font-weight:700;cursor:pointer;flex-shrink:0">View</button>
+        </div>`).join('')}`;
+    }else{
+      // Products near PIN
+      const snap = await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'products'),window._fb.limit(30)));
+      let prods=[]; snap.forEach(d=>prods.push({id:d.id,...d.data()}));
+      if(!prods.length){ results.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No products available yet</div>'; return; }
+      results.innerHTML = `<div style="margin-bottom:12px;font-size:.82rem;color:var(--text-muted)"><i class="fas fa-box"></i> Showing <strong>${prods.length}</strong> products — delivery available to PIN <strong>${pin}</strong></div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+          ${prods.map(p=>`<div class="product-card" onclick="showProductDetail('${p.id}')" style="cursor:pointer">
+            <div class="product-img">${p.image?`<img src="${p.image}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`:'<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem">📦</div>'}</div>
+            <div class="product-info" style="padding:8px"><div style="font-size:.78rem;font-weight:700;color:var(--text-primary)">${esc((p.title||'').slice(0,25))}</div><div style="color:var(--primary);font-weight:800;font-size:.85rem">₹${(p.price||0).toLocaleString('en-IN')}</div></div>
+          </div>`).join('')}
+        </div>`;
+    }
+  }catch(err){ console.error('loadHyperlocal:',err); results.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load results. Check connection.</div>'; }
+}
+
+/* ── LEGAL HUB ── */
+function showLegalDoc(doc){
+  document.querySelectorAll('.legal-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('ltab-'+doc)?.classList.add('active');
+  const el = document.getElementById('legal-doc-content'); if(!el) return;
+  el.innerHTML = KS_LEGAL_DOCS[doc] || '<div style="padding:20px;color:var(--text-muted)">Document not available</div>';
+}
+
+const KS_LEGAL_DOCS = {
+privacy: `<div class="legal-section"><h3>Privacy Policy</h3>
+<p><strong>Effective Date: June 2026 | Last Updated: June 2026</strong></p>
+<p>K Spider India ("Platform", "we", "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, store, and protect your personal information when you use our platform at kspiderai.in.</p>
+<h3>Information We Collect</h3>
+<ul><li><strong>Account Information:</strong> Name, email, phone number, profile picture via Google Sign-In or email registration</li>
+<li><strong>Business Information:</strong> Business name, address, PIN code, GST, PAN (for sellers)</li>
+<li><strong>Transaction Data:</strong> Order details, UPI transaction IDs, delivery addresses</li>
+<li><strong>Usage Data:</strong> Pages visited, posts viewed, search queries, device information, IP address</li>
+<li><strong>Location Data:</strong> PIN code, city (for hyperlocal features) — only with your permission</li>
+<li><strong>Content:</strong> Posts, comments, images, and messages you create on the platform</li></ul>
+<h3>How We Use Your Information</h3>
+<ul><li>Provide and improve our services</li><li>Process orders and payments</li>
+<li>Show relevant local content and recommendations</li><li>Send notifications about orders, offers, and updates</li>
+<li>Prevent fraud and ensure platform security</li><li>Comply with legal obligations</li></ul>
+<h3>Data Sharing</h3>
+<p>We do not sell your personal data. We share data only: (1) with your explicit consent, (2) with Firebase/Google for platform infrastructure, (3) when required by law, (4) for fraud prevention.</p>
+<h3>Data Security</h3>
+<p>We use Firebase's enterprise-grade security infrastructure. All data is encrypted in transit and at rest. We employ role-based access controls and regular security audits.</p>
+<h3>Your Rights</h3>
+<ul><li>Access, correct, or delete your personal data</li><li>Opt out of marketing communications</li><li>Data portability</li><li>Lodge a complaint with authorities</li></ul>
+<p>Contact: kspider221206@gmail.com | www.kspiderai.in</p></div>`,
+
+terms: `<div class="legal-section"><h3>Terms & Conditions</h3>
+<p><strong>Effective: June 2026 | Governing Law: Laws of India</strong></p>
+<p>By accessing K Spider India, you agree to these Terms. If you disagree, please discontinue use immediately.</p>
+<h3>Platform Nature</h3>
+<p>K Spider India is a technology intermediary platform that connects buyers and independent sellers. We are NOT a party to any transaction between buyers and sellers. We act solely as a facilitator.</p>
+<h3>User Responsibilities</h3>
+<ul><li>You must be 18+ years of age to use this platform</li>
+<li>You are responsible for all content you post</li>
+<li>You must not post false, misleading, or illegal content</li>
+<li>You must not violate any applicable law</li>
+<li>You are responsible for maintaining account security</li></ul>
+<h3>Prohibited Activities</h3>
+<ul><li>Selling prohibited, counterfeit, or illegal products</li>
+<li>Spamming or sending unsolicited messages</li>
+<li>Impersonating other users or businesses</li>
+<li>Hacking, scraping, or unauthorized access</li>
+<li>Circumventing our payment or security systems</li></ul>
+<h3>Limitation of Liability</h3>
+<p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, K SPIDER INDIA SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES ARISING FROM YOUR USE OF THE PLATFORM, TRANSACTIONS BETWEEN BUYERS AND SELLERS, OR ANY CONTENT POSTED BY USERS.</p>
+<h3>Dispute Resolution</h3>
+<p>Any disputes shall be resolved through arbitration in Vadodara, Gujarat, India under the Arbitration & Conciliation Act, 1996.</p></div>`,
+
+seller: `<div class="legal-section"><h3>Seller Agreement</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<p>This Seller Agreement governs your participation as a seller on K Spider India. By registering as a seller, you agree to all terms herein.</p>
+<h3>Seller Obligations</h3>
+<ul><li>Provide accurate, truthful business and product information</li>
+<li>Ensure all products listed are legal and not prohibited</li>
+<li>Honor all confirmed orders promptly</li>
+<li>Process returns and refunds per our policy</li>
+<li>Maintain quality standards for products and packaging</li>
+<li>Respond to buyer queries within 24 hours</li></ul>
+<h3>Commission & Fees</h3>
+<ul><li>Registration Fee: As displayed at time of registration (subject to change)</li>
+<li>Transaction Commission: 0% initially — Platform reserves right to introduce commission with 30-day notice</li>
+<li>Featured Listings: Available as per admin-set rates</li></ul>
+<h3>Seller Warranties</h3>
+<p>Seller warrants that: (1) products don't infringe any IP rights, (2) all product information is accurate, (3) seller has authority to sell listed products, (4) GST/tax compliance is seller's sole responsibility.</p>
+<h3>Platform Rights</h3>
+<p>K Spider India reserves the right to remove any listing, suspend any seller account, and withhold payments in case of policy violations, fraud, or excessive customer complaints.</p>
+<h3>Indemnification</h3>
+<p>Seller agrees to indemnify and hold harmless K Spider India from any claims, damages, or losses arising from seller's products, transactions, or policy violations.</p></div>`,
+
+buyer: `<div class="legal-section"><h3>Buyer Agreement</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<h3>Buyer Rights</h3>
+<ul><li>Right to accurate product information</li><li>Right to return products per return policy</li>
+<li>Right to file complaints about sellers</li><li>Right to refunds for undelivered/defective products</li></ul>
+<h3>Buyer Responsibilities</h3>
+<ul><li>Verify product details before purchase</li><li>Make payments only through platform-approved channels</li>
+<li>Provide accurate delivery address</li><li>Report issues within the return window</li></ul>
+<h3>Platform as Intermediary</h3>
+<p>K Spider India is an intermediary platform. All transactions are between buyers and independent sellers. The platform facilitates but is not party to any purchase agreement. Buyers should exercise due diligence before purchasing.</p>
+<h3>Payment Safety</h3>
+<p>Always make payments through our secure UPI checkout. Never pay directly to sellers outside the platform. K Spider India is not responsible for payments made outside the platform.</p></div>`,
+
+refund: `<div class="legal-section"><h3>Refund & Return Policy</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<h3>Return Windows</h3>
+<ul><li>7-Day Return: Most products eligible for 7-day return from delivery</li>
+<li>15-Day Return: Electronics and premium products</li>
+<li>No Return: Digital products, food items, customized products</li></ul>
+<h3>Refund Process</h3>
+<ul><li>Refund requests submitted within return window via My Orders section</li>
+<li>Admin reviews within 24-48 hours</li>
+<li>Approved refunds processed within 3-7 business days</li>
+<li>Refunds credited to original payment method (UPI)</li></ul>
+<h3>Conditions for Return</h3>
+<ul><li>Product must be unused and in original packaging</li>
+<li>Product must not be damaged by buyer</li>
+<li>Proof of purchase required</li></ul>
+<h3>Platform Guarantee</h3>
+<p>If a seller fails to process a legitimate refund, K Spider India may intervene and process the refund on seller's behalf, subject to investigation.</p></div>`,
+
+shipping: `<div class="legal-section"><h3>Shipping Policy</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<h3>Shipping Partners</h3>
+<p>Sellers use their preferred courier services. K Spider India is not a logistics provider.</p>
+<h3>Delivery Timelines</h3>
+<ul><li>Standard: 3-7 business days</li><li>Express: 1-2 business days (where available)</li>
+<li>Hyperlocal (same city): Same day or next day (seller-specific)</li></ul>
+<h3>Shipping Charges</h3>
+<p>Shipping charges are set by individual sellers and displayed on product pages. Some sellers offer free shipping.</p>
+<h3>Tracking</h3>
+<p>Tracking information is provided by the seller after dispatch. Check your order in My Orders section.</p>
+<h3>Failed Delivery</h3>
+<p>In case of failed delivery, seller will attempt re-delivery. After 3 failed attempts, order may be returned to seller and refund initiated.</p></div>`,
+
+marketplace: `<div class="legal-section"><h3>Marketplace Policy</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<h3>Platform as Technology Intermediary</h3>
+<p>K Spider India operates as a technology intermediary under the Information Technology Act, 2000 and IT (Intermediary Guidelines) Rules, 2021. We provide a platform for buyers and sellers to transact and do not control, own, or sell any products listed on the platform.</p>
+<h3>Seller Verification</h3>
+<p>All sellers undergo admin verification before listing products. However, K Spider India does not guarantee the accuracy of seller-provided information.</p>
+<h3>Prohibited Products</h3>
+<ul><li>Alcohol, tobacco, drugs, and controlled substances</li>
+<li>Weapons, ammunition, and explosives</li>
+<li>Counterfeit or pirated goods</li>
+<li>Adult content or materials</li>
+<li>Endangered species or wildlife products</li>
+<li>Stolen goods</li>
+<li>Prescription medicines without proper licensing</li>
+<li>Any product prohibited under Indian law</li></ul>
+<h3>Dispute Resolution</h3>
+<p>Buyer-seller disputes should first be resolved directly. If unresolved, raise a complaint through our support channel. K Spider India will mediate in good faith but is not bound to any outcome.</p></div>`,
+
+community: `<div class="legal-section"><h3>Community Guidelines</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<h3>Be Respectful</h3>
+<ul><li>Treat all community members with respect and dignity</li>
+<li>No harassment, bullying, or hate speech</li>
+<li>No discrimination based on religion, caste, gender, or ethnicity</li></ul>
+<h3>Content Standards</h3>
+<ul><li>No adult, explicit, or NSFW content</li>
+<li>No violent or disturbing content</li>
+<li>No misinformation or fake news</li>
+<li>No spam or repetitive content</li>
+<li>No copyright-infringing content</li></ul>
+<h3>Business Conduct</h3>
+<ul><li>No misleading product claims</li>
+<li>No fake reviews or ratings</li>
+<li>Honest representation of products and services</li></ul>
+<h3>Enforcement</h3>
+<p>Violations may result in: content removal, temporary suspension, permanent ban, legal action. We use automated moderation and community reporting.</p></div>`,
+
+disclaimer: `<div class="legal-section"><h3>Disclaimer & Limitation of Liability</h3>
+<p><strong>Last Updated: June 2026</strong></p>
+<h3>General Disclaimer</h3>
+<p>K Spider India provides this platform "AS IS" and "AS AVAILABLE" without warranties of any kind, express or implied.</p>
+<h3>Product Disclaimer</h3>
+<p>All products listed are offered by independent sellers. K Spider India does not own, inspect, or guarantee any products. Buyers transact with sellers at their own risk and discretion.</p>
+<h3>Limitation of Liability</h3>
+<p>TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW:</p>
+<ul><li>K Spider India's total liability shall not exceed ₹1,000 or the transaction amount, whichever is lower</li>
+<li>No liability for indirect, consequential, or punitive damages</li>
+<li>No liability for transactions conducted outside the platform</li>
+<li>No liability for third-party services, apps, or websites linked from the platform</li></ul>
+<h3>GST Disclaimer</h3>
+<p>Sellers are solely responsible for collecting and remitting applicable GST. K Spider India is not responsible for sellers' tax compliance.</p>
+<h3>Force Majeure</h3>
+<p>K Spider India shall not be liable for delays or failures caused by events beyond our reasonable control including natural disasters, government actions, internet outages, or pandemics.</p>
+<h3>Contact</h3>
+<p>For legal queries: kspider221206@gmail.com | www.kspiderai.in | Vadodara, Gujarat, India</p></div>`
+};
+
+/* esc() already defined earlier in marketplace engine — reused here */
+
 </script>
 </body>
 </html>
