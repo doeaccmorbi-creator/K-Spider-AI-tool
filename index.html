@@ -8180,247 +8180,275 @@ function saveProfileData(e) {
    K Spider AI | kspiderai.in
 ═══════════════════════════════════════════════════════════════ */
 
-var _kspBizSheetData = {};   // { CategoryName: [tip1, tip2, ...], ... }
-var _kspBizSheetLoaded = false;
+var _kspBizSheetData    = {};
+var _kspBizSheetLoaded  = false;
 var _kspBizSheetLoading = false;
-var KSP_BIZ_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQI0ic6FUYFjVEwo-lhcPezyIBhdsd28ZW9p1AJE001IRUe6e_DVxoC9QdrH3deLA/pub?output=csv';
+var KSP_BIZ_SHEET_URL   = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQI0ic6FUYFjVEwo-lhcPezyIBhdsd28ZW9p1AJE001IRUe6e_DVxoC9QdrH3deLA/pub?output=csv';
 
-/* ── Parse CSV text into { Category: [tips...] } ── */
-function kspParseBizCSV(csv) {
-  var lines = csv.split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
-  var result = {};
-  var headers = [];
-  lines.forEach(function(line, i) {
-    var cols = line.split(',').map(function(c){ return c.replace(/^"|"$/g,'').trim(); });
-    if (i === 0) { headers = cols; return; }
-    var cat = cols[0];
-    if (!cat) return;
-    if (!result[cat]) result[cat] = [];
-    for (var j = 1; j < cols.length; j++) {
-      if (cols[j]) result[cat].push(cols[j]);
-    }
-  });
-  return result;
-}
-
-/* ── Fetch helper: direct + CORS proxy fallback ── */
+/* ─────────────────────────────────────────────────────────────
+   UNIVERSAL CSV FETCH — allorigins primary, then direct, then corsproxy
+───────────────────────────────────────────────────────────────*/
 function _kspFetchCSV(url, onSuccess, onError) {
-  var PROXIES = [
-    '',   // direct first
-    'https://api.allorigins.win/raw?url=',
-    'https://corsproxy.io/?'
+  var tried = 0;
+  var URLS = [
+    'https://api.allorigins.win/raw?url=' + encodeURIComponent(url),
+    url,
+    'https://corsproxy.io/?' + encodeURIComponent(url)
   ];
-  var idx = 0;
-  function tryNext() {
-    if (idx >= PROXIES.length) { onError(new Error('All fetches failed')); return; }
-    var attempt = PROXIES[idx++];
-    var fetchUrl = attempt ? attempt + encodeURIComponent(url) : url;
-    fetch(fetchUrl, { cache: 'no-cache' })
+  function attempt() {
+    if (tried >= URLS.length) { onError('All attempts failed'); return; }
+    var fetchUrl = URLS[tried++];
+    fetch(fetchUrl)
       .then(function(r) {
         if (!r.ok) throw new Error('HTTP ' + r.status);
         return r.text();
       })
-      .then(function(text) {
-        if (!text || text.trim().length < 10) throw new Error('Empty response');
-        onSuccess(text);
+      .then(function(txt) {
+        if (!txt || txt.trim().length < 5) throw new Error('Empty');
+        // If returned HTML (login page / error), retry
+        if (txt.trim().indexOf('<!DOCTYPE') === 0 || txt.trim().indexOf('<html') === 0) throw new Error('Got HTML');
+        onSuccess(txt);
       })
       .catch(function(e) {
-        console.warn('[KSpider] Fetch attempt ' + idx + ' failed:', e.message, '— trying next...');
-        tryNext();
+        console.warn('[KSpider] CSV fetch attempt ' + tried + ' failed:', e.message);
+        attempt();
       });
   }
-  tryNext();
+  attempt();
 }
 
-/* ── Load sheet, populate dropdown, optionally set saved category ── */
+/* ─────────────────────────────────────────────────────────────
+   FLEXIBLE CSV PARSER — handles multiple sheet layouts
+───────────────────────────────────────────────────────────────*/
+function _kspParseCSV(csv) {
+  // Robust CSV split: handles quoted fields with commas
+  function splitRow(row) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < row.length; i++) {
+      var ch = row[i];
+      if (ch === '"' && !inQ) { inQ = true; continue; }
+      if (ch === '"' && inQ) { if (row[i+1] === '"') { cur += '"'; i++; } else { inQ = false; } continue; }
+      if (ch === ',' && !inQ) { result.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    result.push(cur.trim());
+    return result;
+  }
+
+  var lines = csv.split('\n').map(function(l){ return l.replace(/\r/g,'').trim(); }).filter(Boolean);
+  if (lines.length < 2) return {};
+
+  var headers = splitRow(lines[0]);
+  var result  = {};
+
+  for (var i = 1; i < lines.length; i++) {
+    var cols = splitRow(lines[i]);
+    var cat  = cols[0];
+    if (!cat) continue;
+    if (!result[cat]) result[cat] = [];
+
+    // Collect ALL non-empty values from cols 1 onward
+    for (var j = 1; j < cols.length; j++) {
+      var val = cols[j];
+      if (!val) continue;
+      // If a cell contains semicolons, split further
+      var parts = val.split(';').map(function(v){ return v.trim(); }).filter(Boolean);
+      parts.forEach(function(p){ if (result[cat].indexOf(p) === -1) result[cat].push(p); });
+    }
+  }
+
+  // Also try: first row might be category names (no header, single column)
+  if (Object.keys(result).length === 0) {
+    lines.forEach(function(l) {
+      var cat = splitRow(l)[0];
+      if (cat) result[cat] = [];
+    });
+  }
+  return result;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   LOAD SHEET → POPULATE DROPDOWN
+───────────────────────────────────────────────────────────────*/
 function kspBizLoadSheet(savedCat) {
-  var sel = document.getElementById('ksp-biz-cat');
+  var sel    = document.getElementById('ksp-biz-cat');
   var loader = document.getElementById('ksp-biz-cat-loader');
   if (!sel) return;
 
-  if (_kspBizSheetLoaded) {
-    kspBizPopulateDropdown(savedCat);
-    return;
-  }
+  if (_kspBizSheetLoaded) { _kspBizPopulate(savedCat); return; }
   if (_kspBizSheetLoading) return;
   _kspBizSheetLoading = true;
-  if (loader) loader.textContent = '\u23F3 Loading...';
+
+  if (loader) loader.innerHTML = '<span style="color:var(--gold)">&#9203; Loading...</span>';
+  sel.innerHTML = '<option value="">⏳ Categories load ho rahi hain...</option>';
 
   _kspFetchCSV(KSP_BIZ_SHEET_URL,
     function(csv) {
-      _kspBizSheetData = kspParseBizCSV(csv);
-      _kspBizSheetLoaded = true;
+      var data = _kspParseCSV(csv);
       _kspBizSheetLoading = false;
-      if (loader) loader.textContent = '\u2705 Loaded';
-      kspBizPopulateDropdown(savedCat);
+      if (Object.keys(data).length === 0) {
+        if (loader) loader.innerHTML = '<span style="color:#f87171;">&#9888; No categories found</span>';
+        sel.innerHTML = '<option value="">-- Sheet mein data nahi mila --</option>';
+        console.warn('[KSpider] Sheet fetched but 0 categories parsed. Raw:', csv.substring(0,300));
+        return;
+      }
+      _kspBizSheetData   = data;
+      _kspBizSheetLoaded = true;
+      if (loader) loader.innerHTML = '<span style="color:#4ade80;">&#10003; ' + Object.keys(data).length + ' categories</span>';
+      _kspBizPopulate(savedCat);
     },
     function(err) {
       _kspBizSheetLoading = false;
-      if (loader) loader.innerHTML = '<span style="color:#f87171;cursor:pointer;" onclick="kspBizLoadSheet(\'' + (savedCat||'') + '\')">\u26A0\uFE0F Retry</span>';
-      console.warn('[KSpider] Biz sheet load error:', err);
+      if (loader) loader.innerHTML = '<span style="color:#f87171;cursor:pointer;" onclick="kspBizRetry()">&#9888; Retry</span>';
+      sel.innerHTML = '<option value="">-- Load failed, retry karo --</option>';
+      console.warn('[KSpider] Sheet load failed:', err);
     }
   );
 }
 
-/* ── Populate category dropdown from loaded data ── */
-function kspBizPopulateDropdown(savedCat) {
+function kspBizRetry() {
+  _kspBizSheetLoading = false;
+  _kspBizSheetLoaded  = false;
+  kspBizLoadSheet('');
+}
+
+/* ─────────────────────────────────────────────────────────────
+   POPULATE DROPDOWN
+───────────────────────────────────────────────────────────────*/
+function _kspBizPopulate(savedCat) {
   var sel = document.getElementById('ksp-biz-cat');
   if (!sel) return;
   sel.innerHTML = '<option value="">-- Category Select Karo --</option>';
   Object.keys(_kspBizSheetData).forEach(function(cat) {
     var opt = document.createElement('option');
-    opt.value = cat;
-    opt.textContent = cat;
+    opt.value = cat; opt.textContent = cat;
     if (savedCat && cat === savedCat) opt.selected = true;
     sel.appendChild(opt);
   });
   if (savedCat) kspBizCatChanged();
 }
 
-/* ── On category change: show checkboxes ── */
+/* ─────────────────────────────────────────────────────────────
+   ON CATEGORY CHANGE → SHOW CHECKBOXES
+───────────────────────────────────────────────────────────────*/
 function kspBizCatChanged() {
-  var sel = document.getElementById('ksp-biz-cat');
+  var sel  = document.getElementById('ksp-biz-cat');
   var wrap = document.getElementById('ksp-biz-tips-wrap');
-  var box = document.getElementById('ksp-biz-checkboxes');
-  var msgBox = document.getElementById('ksp-biz-msg-box');
+  var box  = document.getElementById('ksp-biz-checkboxes');
+  var mb   = document.getElementById('ksp-biz-msg-box');
   if (!sel || !wrap || !box) return;
   var cat = sel.value;
-  if (!cat || !_kspBizSheetData[cat]) { wrap.style.display = 'none'; return; }
+  if (!cat) { wrap.style.display = 'none'; return; }
 
-  var tips = _kspBizSheetData[cat];
   box.innerHTML = '';
-  tips.forEach(function(tip, idx) {
-    var uid = 'ksp-biz-cb-' + idx;
-    var label = document.createElement('label');
-    label.style.cssText = 'display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.75rem;color:var(--t2);transition:border-color .2s;';
-    label.innerHTML = '<input type="checkbox" id="' + uid + '" value="' + tip.replace(/"/g,'&quot;') + '" checked style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer;"><span>' + tip + '</span>';
-    label.onmouseover = function(){ this.style.borderColor = 'var(--gold)'; };
-    label.onmouseout  = function(){ this.style.borderColor = 'rgba(255,255,255,.1)'; };
-    box.appendChild(label);
+  var tips = (_kspBizSheetData[cat] || []);
+
+  // Fixed info checkboxes (purple)
+  [
+    { id:'ksp-cb-bizname', lbl:'&#128204; Business Name',  checked:true },
+    { id:'ksp-cb-bizaddr', lbl:'&#128205; Address',        checked:true },
+    { id:'ksp-cb-bizwa',   lbl:'&#128241; WhatsApp No.',   checked:true }
+  ].forEach(function(d) {
+    box.appendChild(_kspCbLabel(d.id, d.lbl, d.checked, 'rgba(124,58,237,.15)', 'rgba(124,58,237,.3)'));
   });
 
-  // Default selects: add business info checkboxes at top
-  var defaults = [
-    { id:'ksp-cb-bizname', label:'Business Name', checked:true },
-    { id:'ksp-cb-bizaddr', label:'Address / Location', checked:true },
-    { id:'ksp-cb-bizwa',   label:'WhatsApp Contact', checked:true }
-  ];
-  defaults.reverse().forEach(function(d) {
-    var label = document.createElement('label');
-    label.style.cssText = 'display:flex;align-items:center;gap:6px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.25);border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.75rem;color:var(--t2);transition:border-color .2s;';
-    label.innerHTML = '<input type="checkbox" id="' + d.id + '" ' + (d.checked?'checked':'') + ' style="accent-color:var(--gold);width:14px;height:14px;cursor:pointer;"><span>\uD83D\uDCCC ' + d.label + '</span>';
-    box.insertBefore(label, box.firstChild);
+  // Sheet tip checkboxes (green tint)
+  tips.forEach(function(tip, idx) {
+    box.appendChild(_kspCbLabel('ksp-biz-cb-' + idx, tip, true, 'var(--bg3)', 'rgba(255,255,255,.1)'));
   });
 
   wrap.style.display = 'block';
-  if (msgBox) msgBox.style.display = 'none';
+  if (mb) mb.style.display = 'none';
 }
 
-/* ── Generate WhatsApp promo message ── */
-function kspGeneratePromoMsg() {
-  var sel   = document.getElementById('ksp-biz-cat');
-  var name  = (document.getElementById('ksp-biz-name') || {}).value || '';
-  var wa    = (document.getElementById('ksp-biz-wa')   || {}).value || '';
-  var addr  = (document.getElementById('ksp-biz-addr') || {}).value || '';
-  var uName = (document.getElementById('ksp-name')     || {}).value || '';
-  var msgBox  = document.getElementById('ksp-biz-msg-box');
-  var msgText = document.getElementById('ksp-biz-msg-text');
-  if (!sel || !msgBox || !msgText) return;
+function _kspCbLabel(id, lbl, checked, bg, border) {
+  var label = document.createElement('label');
+  label.style.cssText = 'display:flex;align-items:center;gap:6px;background:' + bg + ';border:1px solid ' + border + ';border-radius:8px;padding:6px 10px;cursor:pointer;font-size:.74rem;color:var(--t2);transition:border-color .2s;';
+  label.innerHTML = '<input type="checkbox" id="' + id + '" ' + (checked ? 'checked' : '') + ' style="accent-color:var(--gold);width:13px;height:13px;cursor:pointer;"><span>' + lbl + '</span>';
+  return label;
+}
 
-  var cat = sel ? sel.value : '';
+/* ─────────────────────────────────────────────────────────────
+   GENERATE WHATSAPP PROMO MESSAGE
+───────────────────────────────────────────────────────────────*/
+function kspGeneratePromoMsg() {
+  var cat   = (document.getElementById('ksp-biz-cat')  || {}).value || '';
+  var bName = (document.getElementById('ksp-biz-name') || {}).value || '';
+  var bWA   = (document.getElementById('ksp-biz-wa')   || {}).value || '';
+  var bAddr = (document.getElementById('ksp-biz-addr') || {}).value || '';
+  var uName = (document.getElementById('ksp-name')     || {}).value || '';
+  var mb    = document.getElementById('ksp-biz-msg-box');
+  var mt    = document.getElementById('ksp-biz-msg-text');
+  if (!mb || !mt) return;
+
   if (!cat) {
-    if (typeof toast === 'function') toast('\u26A0\uFE0F Pehle Business Category select karo!', 'warn', 3000);
+    if (typeof toast === 'function') toast('⚠️ Pehle Business Category select karo!', 'warn', 3000);
+    else alert('Pehle Business Category select karo!');
     return;
   }
 
-  // Collect selected tip checkboxes
-  var tipCbs = document.querySelectorAll('#ksp-biz-checkboxes input[type=checkbox]');
-  var selectedTips = [];
-  tipCbs.forEach(function(cb) {
-    if (cb.checked && cb.value) selectedTips.push(cb.value);
+  var inclName = !!(document.getElementById('ksp-cb-bizname') || {}).checked;
+  var inclAddr = !!(document.getElementById('ksp-cb-bizaddr') || {}).checked;
+  var inclWA   = !!(document.getElementById('ksp-cb-bizwa')   || {}).checked;
+
+  // Collect tip checkboxes
+  var tips = [];
+  document.querySelectorAll('#ksp-biz-checkboxes input[type=checkbox]').forEach(function(cb) {
+    if (cb.checked && cb.id.indexOf('ksp-biz-cb-') === 0) tips.push(cb.parentElement.querySelector('span').textContent);
   });
 
-  // Check business info flags
-  var inclName = (document.getElementById('ksp-cb-bizname') || {}).checked !== false;
-  var inclAddr = (document.getElementById('ksp-cb-bizaddr') || {}).checked !== false;
-  var inclWA   = (document.getElementById('ksp-cb-bizwa')   || {}).checked !== false;
+  var greetings = ['🌟 *Aaj Ka Gyan* 🌟','💡 *Aaj Ki Khaas Baat* 💡','🌿 *Aaj Ka Business Mantra* 🌿','✨ *Aaj Ka Success Tip* ✨','🚀 *Aaj Ka Pro Tip* 🚀','🏆 *Aaj Ki Khaas Jaankari* 🏆'];
+  var ctas = ['Hamare saath judein aur apne business ko nayi unchai par le jaayein! 🚀','Aaj hi contact karein aur apna business badhayein! 💼','Quality aur trust ke saath aapki seva mein hamesha taiyar! 🌟','Aapki success humari priority hai! 🏆'];
+  var g = greetings[Math.floor(Math.random()*greetings.length)];
+  var cta = ctas[Math.floor(Math.random()*ctas.length)];
+  var today = new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 
-  // Greetings pool
-  var greetings = [
-    '\uD83C\uDF1F *Aaj Ka Gyan* \uD83C\uDF1F',
-    '\uD83D\uDCA1 *Aaj Ki Khaas Baat* \uD83D\uDCA1',
-    '\uD83C\uDF3F *Aaj Ka Business Mantra* \uD83C\uDF3F',
-    '\u2728 *Aaj Ka Success Tip* \u2728',
-    '\uD83D\uDE80 *Aaj Ka Pro Tip* \uD83D\uDE80',
-    '\uD83C\uDFC6 *Aaj Ki Khaas Jaankari* \uD83C\uDFC6'
-  ];
-  var greeting = greetings[Math.floor(Math.random() * greetings.length)];
-
-  var today = new Date();
-  var dateStr = today.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-  var lines = [];
-  lines.push(greeting);
-  lines.push('\uD83D\uDCC5 ' + dateStr);
-  lines.push('');
-
-  if (inclName && name) lines.push('\uD83C\uDFEA *' + name + '*');
-  if (cat) lines.push('\uD83D\uDCC2 Category: *' + cat + '*');
-  if (inclAddr && addr) lines.push('\uD83D\uDCCD ' + addr);
-  lines.push('');
-
-  if (selectedTips.length > 0) {
-    lines.push('\uD83D\uDD25 *Aaj Ke Khaas Tips:*');
-    selectedTips.forEach(function(tip, i) {
-      lines.push((i+1) + '. ' + tip);
-    });
-    lines.push('');
+  var L = [];
+  L.push(g);
+  L.push('📅 ' + today);
+  L.push('');
+  if (inclName && bName) L.push('🏢 *' + bName + '*');
+  if (cat) L.push('📂 Category: *' + cat + '*');
+  if (inclAddr && bAddr) L.push('📍 ' + bAddr);
+  L.push('');
+  if (tips.length) {
+    L.push('🔥 *Aaj Ke Khaas Tips:*');
+    tips.forEach(function(t, i){ L.push((i+1) + '. ' + t); });
+    L.push('');
   }
+  L.push('💬 ' + cta);
+  L.push('');
+  if (inclWA && bWA) L.push('📱 WhatsApp: *' + bWA + '*');
+  if (uName) L.push('👤 ' + uName);
+  L.push('');
+  L.push('―――――――――――――――――');
+  L.push('📌 _Powered by K Spider AI — kspiderai.in_');
 
-  // Business-specific CTA
-  var ctas = [
-    'Hamare saath judein aur apne business ko nayi unchai par le jaayein! \uD83D\uDE80',
-    'Aaj hi contact karein aur apna business badhayein! \uD83D\uDCBC',
-    'Hamari service se apne customers ko khush karein! \uD83D\uDE0A',
-    'Quality aur trust ke saath aapki seva mein hamesha taiyar! \uD83C\uDF1F',
-    'Aapki success humari priority hai! \uD83C\uDFC6'
-  ];
-  lines.push('\uD83D\uDCAC ' + ctas[Math.floor(Math.random() * ctas.length)]);
-  lines.push('');
-
-  if (inclWA && wa) lines.push('\uD83D\uDCF1 WhatsApp: *' + wa + '*');
-  if (uName) lines.push('\uD83D\uDC64 ' + uName);
-  lines.push('');
-  lines.push('\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015\u2015');
-  lines.push('\uD83D\uDCCC _Powered by K Spider AI — kspiderai.in_');
-
-  var finalMsg = lines.join('\n');
-  msgText.textContent = finalMsg;
-  msgBox.style.display = 'block';
-  msgBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  mt.textContent = L.join('\n');
+  mb.style.display = 'block';
+  mb.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-/* ── Copy biz promo message ── */
+/* ─────────────────────────────────────────────────────────────
+   COPY + WHATSAPP SHARE
+───────────────────────────────────────────────────────────────*/
 function kspBizCopyMsg() {
   var el = document.getElementById('ksp-biz-msg-text');
   if (!el) return;
   var txt = el.textContent || el.innerText || '';
   if (typeof _ksUniversalCopy === 'function') { _ksUniversalCopy(txt); return; }
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(function(){ if(typeof toast==='function') toast('\u2705 Message copied!','success',2500); });
+    navigator.clipboard.writeText(txt).then(function(){ if(typeof toast==='function') toast('✅ Copied!','success',2500); });
   } else {
-    var ta = document.createElement('textarea');
-    ta.value = txt; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
-    if(typeof toast==='function') toast('\u2705 Message copied!','success',2500);
+    var ta = document.createElement('textarea'); ta.value = txt;
+    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    if(typeof toast==='function') toast('✅ Copied!','success',2500);
   }
 }
-
-/* ── WhatsApp share ── */
 function kspBizShareWA() {
   var el = document.getElementById('ksp-biz-msg-text');
   if (!el) return;
-  var txt = encodeURIComponent(el.textContent || el.innerText || '');
-  window.open('https://wa.me/?text=' + txt, '_blank');
+  window.open('https://wa.me/?text=' + encodeURIComponent(el.textContent || ''), '_blank');
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -8640,38 +8668,34 @@ function kspShareMsgItem(btn, platform){
 var _KSP_SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQo4nlojWUYkrNCIN_FKElO2DtkDJ6uvUsAI_qmDQr54OodipgQASC-uKkHGjCFDA/pub?output=csv';
 
 function kspLoadSheet(){
-  var loadEl  = document.getElementById('ksp-sheet-loading');
-  var contEl  = document.getElementById('ksp-sheet-content');
-  var errEl   = document.getElementById('ksp-sheet-error');
-  if(loadEl)  loadEl.style.display='block';
-  if(contEl)  contEl.style.display='none';
-  if(errEl)   errEl.style.display='none';
+  var loadEl = document.getElementById('ksp-sheet-loading');
+  var contEl = document.getElementById('ksp-sheet-content');
+  var errEl  = document.getElementById('ksp-sheet-error');
+  if(loadEl) loadEl.style.display='block';
+  if(contEl) contEl.style.display='none';
+  if(errEl)  errEl.style.display='none';
 
-  function _parseAndShow(csv){
-    var rows = csv.split('\n').filter(function(r){ return r.trim(); });
-    _kspAdvSheetRows = rows.map(function(row){
-      var cleaned = row.replace(/^"|"$/g,'').replace(/""/g,'"');
-      var cells = cleaned.split(',');
-      return cells[0].trim() || cleaned.trim();
-    }).filter(function(r){ return r.length > 3; });
+  function _parseAdv(csv) {
+    var rows = csv.split('\n').map(function(r){ return r.replace(/\r/g,'').trim(); }).filter(Boolean);
+    _kspAdvSheetRows = [];
+    rows.forEach(function(row) {
+      // Handle quoted CSV
+      var clean = row.replace(/^"|"$/g,'').replace(/""/g,'"');
+      var cells = clean.split(',');
+      var msg = cells[0].trim() || clean.trim();
+      if (msg.length > 3) _kspAdvSheetRows.push(msg);
+    });
     _kspAdvSheetIdx = 0;
-    if(_kspAdvSheetRows.length===0){ throw new Error('No data'); }
-    if(loadEl)  loadEl.style.display='none';
-    if(contEl)  contEl.style.display='block';
+    if (_kspAdvSheetRows.length === 0) throw new Error('No messages in sheet');
+    if(loadEl) loadEl.style.display='none';
+    if(contEl) contEl.style.display='block';
     kspSheetRender();
   }
 
-  if(typeof _kspFetchCSV === 'function'){
-    _kspFetchCSV(_KSP_SHEET_URL,
-      function(csv){ try{ _parseAndShow(csv); } catch(e){ if(loadEl) loadEl.style.display='none'; if(errEl) errEl.style.display='block'; } },
-      function(){ if(loadEl) loadEl.style.display='none'; if(errEl) errEl.style.display='block'; }
-    );
-  } else {
-    fetch(_KSP_SHEET_URL)
-      .then(function(r){ return r.text(); })
-      .then(function(csv){ _parseAndShow(csv); })
-      .catch(function(){ if(loadEl) loadEl.style.display='none'; if(errEl) errEl.style.display='block'; });
-  }
+  _kspFetchCSV(_KSP_SHEET_URL,
+    function(csv){ try{ _parseAdv(csv); } catch(e){ console.warn('[KSpider] Adv parse err:',e); if(loadEl) loadEl.style.display='none'; if(errEl) errEl.style.display='block'; } },
+    function(err){ console.warn('[KSpider] Adv sheet err:',err); if(loadEl) loadEl.style.display='none'; if(errEl) errEl.style.display='block'; }
+  );
 }
 
 function kspSheetRender(){
