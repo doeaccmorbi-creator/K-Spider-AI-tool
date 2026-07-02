@@ -2209,7 +2209,20 @@ const INBUILT_SHEETS = [
   {title:'🏆 GPSC Grand Test 2',     group:'🏆 Grand Tests',   url:'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=539414665&single=true&output=csv', colTitle:'', colSub:'', colYear:'', dataType:'exam'},
   {title:'🏆 GPSC Grand Test 3',     group:'🏆 Grand Tests',   url:'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1914813989&single=true&output=csv',colTitle:'', colSub:'', colYear:'', dataType:'exam'},
   {title:'🏆 UPSC Grand Test 1',     group:'🏆 Grand Tests',   url:'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1001329094&single=true&output=csv',colTitle:'', colSub:'', colYear:'', dataType:'exam'},
-  {title:'🏆 UPSC Grand Test 2',     group:'🏆 Grand Tests',   url:'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1179707850&single=true&output=csv',colTitle:'', colSub:'', colYear:'', dataType:'exam'}
+  {title:'🏆 UPSC Grand Test 2',     group:'🏆 Grand Tests',   url:'https://docs.google.com/spreadsheets/d/e/2PACX-1vTmEfXHdlQT99sSwVxfPZsEKN72T4y0M5I6EL7KKNPMZput2Nl3100zlrisUMtemI6X0UDWqLv4PTVW/pub?gid=1179707850&single=true&output=csv',colTitle:'', colSub:'', colYear:'', dataType:'exam'},
+  /* ═══════════════════════ 🎓 K SPIDER STUDY MATERIAL ═══════════════════════ */
+  {
+    title: '📖 KSpider Study Sheet 1',
+    group: '🎓 K Spider Study',
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQI0ic6FUYFjVEwo-lhcPezyIBhdsd28ZW9p1AJE001IRUe6e_DVxoC9QdrH3deLA/pub?gid=1188494741&single=true&output=csv',
+    colTitle: '', colSub: '', colYear: '', dataType: 'exam'
+  },
+  {
+    title: '📖 KSpider Study Sheet 2',
+    group: '🎓 K Spider Study',
+    url: 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQI0ic6FUYFjVEwo-lhcPezyIBhdsd28ZW9p1AJE001IRUe6e_DVxoC9QdrH3deLA/pub?gid=1416597720&single=true&output=csv',
+    colTitle: '', colSub: '', colYear: '', dataType: 'exam'
+  }
 ];
 
 function populateInbuiltDropdown(){
@@ -2374,6 +2387,16 @@ function renderPreview(){
   }).join('');
 }
 
+function pickField(row, ...keys){
+    for(const k of keys){
+      for(const col of Object.keys(row)){
+        if(col.toLowerCase().includes(k.toLowerCase()) && row[col] && row[col].trim())
+          return KS.clean(row[col]);
+      }
+    }
+    return '';
+  }
+
 /* ── BUILD FULL DATA BLOCK — ALL FIELDS COMPULSORY ── */
 function buildDataContext(row){
   return Object.entries(row).filter(([k,v])=>v&&v.trim&&v.trim()).map(([k,v])=>`${k}: ${v}`).join(' | ');
@@ -2410,15 +2433,7 @@ function generatePrompts(row){
   const inlineData   = buildInlineData(row);
 
   /* ── SMART FIELD EXTRACTION (works for ANY sheet column names) ── */
-  function pickField(row, ...keys){
-    for(const k of keys){
-      for(const col of Object.keys(row)){
-        if(col.toLowerCase().includes(k.toLowerCase()) && row[col] && row[col].trim())
-          return KS.clean(row[col]);
-      }
-    }
-    return '';
-  }
+  // pickField moved to global scope
   const genre    = pickField(row,'genre','type','category');
   const singer   = pickField(row,'singer','artist','vocalist','performer');
   const composer = pickField(row,'composer','music director','music');
@@ -3127,20 +3142,26 @@ Age: 18-45 | India | Interests: ${[genre,singer,sub,'Music','Indian Culture'].fi
 ${profileBlock ? `Brand voice: ${profileBlock}` : ''}${branding}`;
 
   // ── 4-PART SONG IMAGES ──
-  const fourPart = build4PartImagePrompts(row, getLangForPrompt);
-  prompts.music_4img_p1 = fourPart.music_4img_p1;
-  prompts.music_4img_p2 = fourPart.music_4img_p2;
-  prompts.music_4img_p3 = fourPart.music_4img_p3;
-  prompts.music_4img_p4 = fourPart.music_4img_p4;
+  try{
+    const fourPart = build4PartImagePrompts(row, getLangForPrompt);
+    prompts.music_4img_p1 = fourPart.music_4img_p1;
+    prompts.music_4img_p2 = fourPart.music_4img_p2;
+    prompts.music_4img_p3 = fourPart.music_4img_p3;
+    prompts.music_4img_p4 = fourPart.music_4img_p4;
+  }catch(e){ console.warn('4-part images error:',e); }
 
   // ── TEACHER EXPLANATION ──
-  prompts.music_teacher = buildTeacherExplanationPrompt(row, allFields, getLangForPrompt);
+  try{
+    prompts.music_teacher = buildTeacherExplanationPrompt(row, allFields, getLangForPrompt);
+  }catch(e){ console.warn('Teacher prompt error:',e); }
 
   // ── Inject Music Studio block into music_track ──
-  const msBlock = buildMusicStudioBlock(row);
-  if(msBlock && prompts.music_track){
-    prompts.music_track = prompts.music_track.replace('ALL MUSIC DATA:', msBlock + '\nALL MUSIC DATA:');
-  }
+  try{
+    const msBlock = buildMusicStudioBlock(row);
+    if(msBlock && prompts.music_track){
+      prompts.music_track = prompts.music_track.replace('ALL MUSIC DATA:', msBlock + '\nALL MUSIC DATA:');
+    }
+  }catch(e){ /* music studio block optional - ignore errors */ }
 
 
   return prompts;
@@ -3223,19 +3244,7 @@ function renderPrompts(prompts){
   appState.generatedPrompts = prompts;
 }
 
-function generateAllPrompts(){
-  if(!appState.selectedRow) return;
-  document.getElementById('ksPromptsLoading').style.display='flex';
-  document.getElementById('ksPromptsGrid').innerHTML='';
 
-  setTimeout(()=>{
-    const prompts = generatePrompts(appState.selectedRow);
-    document.getElementById('ksPromptsLoading').style.display='none';
-    renderPrompts(prompts);
-    renderWATemplates(appState.selectedRow);
-    gtag&&gtag('event','prompts_generated',{record:appState.selectedRow[appState.colTitle]||'unknown'});
-  }, 400);
-}
 
 /* ── WHATSAPP TEMPLATES ── */
 function renderWATemplates(row){
@@ -3480,14 +3489,22 @@ function generateAllPrompts(){
   document.getElementById('ksPromptsLoading').style.display='flex';
   document.getElementById('ksPromptsGrid').innerHTML='';
   setTimeout(()=>{
-    const prompts = generatePrompts(appState.selectedRow);
-    // Filter to only selected
-    const filtered = {};
-    appState.selectedPromptIds.forEach(id=>{ if(prompts[id]) filtered[id]=prompts[id]; });
-    document.getElementById('ksPromptsLoading').style.display='none';
-    renderPrompts(filtered);
-    renderWATemplates(appState.selectedRow);
-    if(typeof gtag!=='undefined') gtag('event','prompts_generated',{count:appState.selectedPromptIds.size});
+    try{
+      const prompts = generatePrompts(appState.selectedRow);
+      // Filter to only selected
+      const filtered = {};
+      appState.selectedPromptIds.forEach(id=>{ if(prompts[id]) filtered[id]=prompts[id]; });
+      // If nothing passed filter, show all
+      const finalPrompts = Object.keys(filtered).length > 0 ? filtered : prompts;
+      document.getElementById('ksPromptsLoading').style.display='none';
+      renderPrompts(finalPrompts);
+      renderWATemplates(appState.selectedRow);
+      if(typeof gtag!=='undefined') gtag('event','prompts_generated',{count:Object.keys(finalPrompts).length});
+    }catch(err){
+      document.getElementById('ksPromptsLoading').style.display='none';
+      console.error('Prompt generation error:',err);
+      showToast('⚠️ Error generating prompts: '+err.message);
+    }
   }, 350);
 }
 
@@ -3842,7 +3859,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   // Save Profile
   // Prompt type checkboxes
   renderPromptCheckboxes();
-  setAllCheckboxes(true);
+  setAllCheckboxes(true); // Selects ALL prompt types by default
+  // Force-populate selectedPromptIds as safety net
+  if(appState.selectedPromptIds.size === 0){
+    PROMPT_DEFS.forEach(d=>appState.selectedPromptIds.add(d.id));
+  }
 
   document.getElementById('ksSelectAll').onclick    = ()=> setAllCheckboxes(true);
   document.getElementById('ksSelectNone').onclick   = ()=> setAllCheckboxes(false);
