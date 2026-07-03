@@ -3890,6 +3890,77 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
     .catch(function(){ onFail(); });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   🔴 LIVE NIFTY / SENSEX INDEX + LIVE MARKET NEWS
+   ─────────────────────────────────────────────────────────────
+   100% free-forever, zero API key needed:
+     • Index quotes  → Yahoo Finance chart API (same proven source
+       already used by _fetchStooqPrice above — CORS-open, free)
+     • News headlines → 2-tier cascade: Yahoo Finance search/news
+       endpoint, then Google News RSS via rss2json free proxy.
+   If every live source fails (rare — e.g. network blocked), we
+   fall back to the existing static theme pool, but ALWAYS mark
+   it clearly as non-live so it is never shown as real data.
+═══════════════════════════════════════════════════════════════ */
+var _liveIndexData  = null;   // { nifty:{close,change,volume,live}, sensex:{...} }
+var _liveNewsData   = null;   // [{title, publisher, time, link, live}]
+var _liveNewsIsLive = false;
+
+function fetchLiveIndices(callback) {
+  var out = { nifty: null, sensex: null };
+  var pending = 2;
+  function step(){ pending--; if(pending<=0){ _liveIndexData = out; callback(out); } }
+  _fetchStooqPrice('NSE:NIFTY', function(d){
+    out.nifty = { close:d.close, change:d.change, volume:d.volume, live:true }; step();
+  }, function(){ out.nifty = null; step(); });
+  _fetchStooqPrice('BSE:SENSEX', function(d){
+    out.sensex = { close:d.close, change:d.change, volume:d.volume, live:true }; step();
+  }, function(){ out.sensex = null; step(); });
+}
+
+function _inferNewsDirection(title) {
+  var t = (title || '').toLowerCase();
+  var bull = ['rally','surge','gain','jump','higher','rise','soar','bullish','record high','upgrade','all-time high'];
+  var bear = ['fall','crash','lower','decline','drop','plunge','bearish','downgrade','slump','tumble','sell-off','selloff'];
+  for(var i=0;i<bull.length;i++){ if(t.indexOf(bull[i])!==-1) return 'bull'; }
+  for(var i=0;i<bear.length;i++){ if(t.indexOf(bear[i])!==-1) return 'bear'; }
+  return 'neutral';
+}
+
+function fetchLiveMarketNews(callback) {
+  fetch('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('Sensex Nifty share market India') + '&newsCount=8&quotesCount=0')
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var news = (data && data.news) || [];
+      if(!news.length) throw new Error('empty');
+      var items = news.slice(0,6).map(function(n){
+        return { title:n.title, publisher:n.publisher||'Yahoo Finance', time:n.providerPublishTime?new Date(n.providerPublishTime*1000):new Date(), link:n.link, live:true };
+      });
+      _liveNewsData = items; _liveNewsIsLive = true; callback(items, true);
+    })
+    .catch(function(){ _fetchNewsViaRSS(callback); });
+}
+
+function _fetchNewsViaRSS(callback) {
+  var rssUrl = 'https://news.google.com/rss/search?q=Sensex%20Nifty%20share%20market%20when:1d&hl=en-IN&gl=IN&ceid=IN:en';
+  fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl))
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      var items = (data && data.items) || [];
+      if(!items.length) throw new Error('empty');
+      var mapped = items.slice(0,6).map(function(it){
+        return { title:it.title, publisher:(it.source&&it.source.title)||'Google News', time:it.pubDate?new Date(it.pubDate):new Date(), link:it.link, live:true };
+      });
+      _liveNewsData = mapped; _liveNewsIsLive = true; callback(mapped, true);
+    })
+    .catch(function(){
+      var fallback = _TICKER_NEWS_POOL.slice(0,6).map(function(t){
+        return { title:t.h, publisher:'सामान्य थीम', time:new Date(), link:null, live:false, d:t.d };
+      });
+      _liveNewsData = fallback; _liveNewsIsLive = false; callback(fallback, false);
+    });
+}
+
 /* ── SOURCE 3: AI-powered analysis using admin Groq/Claude key ── */
 function _fetchAiSignal(sym, tf, priceData, onSuccess) {
   _loadAdminKey(function(apiKey, provider) {
@@ -7102,18 +7173,24 @@ function generateDailyReport() {
   _ensureReportData(function() {
     /* Make sure cap dashboard + predictions are populated too */
     if(!document.getElementById('cap-large-list').children.length) loadCapDashboard();
-    setTimeout(function() {
-      var reportText = _buildReportText();
-      output.textContent = reportText;
-      container.style.display = 'block';
-      document.getElementById('copy-report-btn').style.display = 'inline-block';
-      document.getElementById('download-report-btn').style.display = 'inline-block';
-      btn.disabled = false;
-      btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
-      var wordCount = reportText.split(/\s+/).length;
-      status.textContent = '✅ रिपोर्ट तैयार — लगभग ' + wordCount + ' शब्द — ' + _getTimeIST();
-      container.scrollIntoView({behavior:'smooth', block:'start'});
-    }, 600);
+    status.textContent = '📡 लाइव NIFTY/SENSEX और आज की मार्केट न्यूज़ लाई जा रही है...';
+    fetchLiveIndices(function() {
+      fetchLiveMarketNews(function() {
+        setTimeout(function() {
+          var reportText = _buildReportText();
+          output.textContent = reportText;
+          container.style.display = 'block';
+          document.getElementById('copy-report-btn').style.display = 'inline-block';
+          document.getElementById('download-report-btn').style.display = 'inline-block';
+          btn.disabled = false;
+          btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
+          var wordCount = reportText.split(/\s+/).length;
+          var liveTag = (_liveIndexData && (_liveIndexData.nifty||_liveIndexData.sensex)) ? ' | 🔴 LIVE index data' : ' | ⚠️ live index unavailable';
+          status.textContent = '✅ रिपोर्ट तैयार — लगभग ' + wordCount + ' शब्द — ' + _getTimeIST() + liveTag;
+          container.scrollIntoView({behavior:'smooth', block:'start'});
+        }, 400);
+      });
+    });
   });
 }
 
@@ -7205,25 +7282,82 @@ function _buildReportText() {
   }
   blank(); blank();
 
+  /* ════════════ SECTION 1B: LIVE NIFTY/SENSEX + WHY IT MOVED ════════════ */
+  push('───────────────────────────────────────────────────────────');
+  push('📈 अब देखते हैं आज NIFTY और SENSEX असल में कहाँ हैं — लाइव नंबर्स के साथ');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+
+  var liveIdx = _liveIndexData || { nifty:null, sensex:null };
+  var _idxLine = function(label, d) {
+    if(d && d.close) {
+      var dir = d.change >= 0 ? '🟢 ऊपर' : '🔴 नीचे';
+      return '   • ' + label + ': ' + d.close.toFixed(2) + ' pts   |   बदलाव: ' + (d.change>=0?'+':'') + d.change.toFixed(2) + '%   ' + dir + '   (✅ LIVE डेटा — Yahoo Finance)';
+    }
+    return '   • ' + label + ': ⚠️ लाइव डेटा अभी fetch नहीं हो पाया — कृपया NSE/BSE की ऑफिशियल साइट पर सटीक क्लोज़िंग वैल्यू चेक करें, कोई अनुमानित नंबर यहाँ नहीं दिखाया गया।';
+  };
+  push(_idxLine('NIFTY 50', liveIdx.nifty));
+  push(_idxLine('SENSEX', liveIdx.sensex));
+  blank();
+
+  var _niftyUp = liveIdx.nifty ? (liveIdx.nifty.change >= 0) : null;
+  if(_niftyUp !== null) {
+    push('तो आज इंडेक्स ' + (_niftyUp?'ऊपर':'नीचे') + ' बंद हुआ/चल रहा है। चलिए 3 एंगल से समझते हैं कि ऐसा क्यों हुआ —');
+    blank();
+    push('1️⃣ टेक्निकल एंगल: आज हमारे स्कैनर पर BUY:SELL:TRAP रेशियो रहा ' + buyCountEarly + ':' + sellCountEarly + ':' + trapCountEarly + ' — ' +
+      (buyCountEarly>sellCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ इंडेक्स की तेज़ी को सपोर्ट कर रही है।' : sellCountEarly>buyCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ भी कमज़ोर रही, जो इंडेक्स की गिरावट से मेल खाती है।' : 'यानी ब्रेड्थ आज मिला-जुला रहा।'));
+    push('2️⃣ इंस्टीट्यूशनल एंगल: FII+DII का नेट फ्लो आज ' + (mc.instNet>=0?'पॉज़िटिव':'निगेटिव') + ' रहा (' + (mc.instNet>=0?'+':'') + _fmtCr(mc.instNet) + ' करोड़) — ' +
+      ((mc.instNet>=0)===_niftyUp ? 'जो इंडेक्स की आज की चाल से मेल खाता है।' : 'ध्यान दें, शॉर्ट टर्म में institutional flow और index move हमेशा एक जैसे नहीं होते, इसमें lag भी हो सकता है।'));
+    push('3️⃣ न्यूज़/ग्लोबल एंगल: नीचे दी गई ताज़ा हेडलाइंस देखिए — ये सेंटीमेंट को समझने में मदद करेंगी:');
+  } else {
+    push('लाइव इंडेक्स डेटा अभी उपलब्ध नहीं है, इसलिए सटीक क्लोज़िंग लेवल के लिए कृपया NSE/BSE ऑफिशियल साइट चेक करें। नीचे दी गई ताज़ा हेडलाइंस से सेंटिमेंट का अंदाज़ा ज़रूर मिलेगा:');
+  }
+  blank();
+
+  var liveNewsList = _liveNewsData || [];
+  if(liveNewsList.length) {
+    liveNewsList.forEach(function(n, i) {
+      push((i+1) + '. ' + n.title + (n.live ? ('  — ' + n.publisher) : ''));
+    });
+    blank();
+    if(_liveNewsIsLive) {
+      push('📌 नोट: ऊपर की headlines रियल-टाइम सोर्स (Yahoo Finance / Google News) से आज ही ली गई हैं। लेकिन याद रखें —');
+      push('news और index move के बीच कारण-प्रभाव संबंध हमेशा 100% सिद्ध नहीं होता, इसलिए इन्हें "संभावित फैक्टर" मानें, अंतिम सच नहीं।');
+    } else {
+      push('⚠️ आज लाइव न्यूज़ सोर्स fetch नहीं हो पाया — ऊपर सिर्फ सामान्य मार्केट थीम्स हैं (असली आज की खबरें नहीं)।');
+      push('कृपया पब्लिश करने से पहले Moneycontrol, Economic Times या NSE/BSE ऑफिशियल साइट पर आज की असली खबर खुद कन्फर्म करें।');
+    }
+  } else {
+    push('⚠️ आज कोई न्यूज़ हेडलाइन fetch नहीं हो पाई — कृपया Moneycontrol, Economic Times या NSE/BSE ऑफिशियल साइट से आज की खबरें ज़रूर देख लें।');
+  }
+  blank(); blank();
+
   /* ════════════ SECTION 2: GLOBAL + NATIONAL NEWS FACTORS ════════════ */
   push('───────────────────────────────────────────────────────────');
-  push('🌍 अब बात करते हैं — आज मार्केट को हिला सकने वाली खबरें');
+  push('🌍 अब बात करते हैं — आज मार्केट को हिला सकने वाली बाकी खबरें और थीम्स');
   push('───────────────────────────────────────────────────────────');
   blank();
-  push('दोस्तों, मार्केट सिर्फ चार्ट से नहीं चलता — खबरें भी बहुत बड़ा रोल निभाती हैं। तो चलिए देखते हैं');
-  push('आज और हाल ही के कुछ ऐसे फैक्टर्स जो शेयर बाज़ार की दिशा तय कर सकते हैं:');
+  push('दोस्तों, मार्केट सिर्फ चार्ट से नहीं चलता — खबरें भी बहुत बड़ा रोल निभाती हैं। ऊपर हमने आज की असली');
+  push('headlines देख लीं, अब चलिए कुछ बाकी सेक्टर-वाइज़ थीम्स भी देख लेते हैं जो दिशा तय कर सकती हैं:');
   blank();
-  /* Use the existing news pool — already curated, no API needed */
-  var newsItems = _TICKER_NEWS_POOL.slice(0, 10);
+  /* Prefer live news for direction-tagging; fall back to curated static pool */
+  var newsItems;
+  if(_liveNewsData && _liveNewsData.length) {
+    newsItems = _liveNewsData.slice(0, 10).map(function(n) {
+      return { h: n.title, d: n.d || _inferNewsDirection(n.title) };
+    }).concat(_TICKER_NEWS_POOL.slice(0, 6));
+  } else {
+    newsItems = _TICKER_NEWS_POOL.slice(0, 10);
+  }
   newsItems.forEach(function(item, i) {
     var dirHindi = item.d==='bull' ? '🟢 तेज़ी की तरफ इशारा' : item.d==='bear' ? '🔴 मंदी की तरफ इशारा' : '⚪ अभी न्यूट्रल असर';
     push((i+1) + '. ' + item.h);
     push('   👉 असर: ' + dirHindi);
     blank();
   });
-  push('📌 एक बात ध्यान रखिए — ये पॉइंट्स सामान्य मार्केट पैटर्न पर आधारित हैं। अगर आपको बिल्कुल लेटेस्ट');
-  push('और रीयल-टाइम न्यूज़ चाहिए, तो NSE/BSE की ऑफिशियल वेबसाइट, Moneycontrol या Economic Times');
-  push('एक बार ज़रूर चेक कर लें — हम हमेशा कहते हैं, डबल-चेक करना कभी बुरा नहीं होता।');
+  push('📌 एक बात ध्यान रखिए — ऊपर की कुछ थीम्स सामान्य सेक्टर पैटर्न पर आधारित हैं (Section 1B की असली headlines');
+  push('से अलग)। अगर आपको बिल्कुल लेटेस्ट और रीयल-टाइम न्यूज़ चाहिए, तो NSE/BSE की ऑफिशियल वेबसाइट, Moneycontrol');
+  push('या Economic Times एक बार ज़रूर चेक कर लें — डबल-चेक करना कभी बुरा नहीं होता।');
   blank(); blank();
 
   /* ════════════ SECTION 3: TRAP STOCKS — DETAILED ════════════ */
