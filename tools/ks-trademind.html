@@ -2300,6 +2300,49 @@
 </section>
 
 <!-- ══════════════════════════════════════════════════════════════════
+     📈 HISTORICAL TREND ANALYSIS REPORT — 15D to 3 YEARS
+══════════════════════════════════════════════════════════════════ -->
+<section id="hist-report-section" style="position:relative;z-index:10;max-width:1536px;margin:24px auto 0;padding:0 16px">
+  <div class="flex items-center gap-3 mb-3">
+    <div class="section-label">📈 Historical Trend Analysis Report — 15 Days से 3 Years तक</div>
+    <div class="flex-1 h-px bg-slate-800"></div>
+    <span class="report-meta-chip">🚀 Auto-Generated</span>
+  </div>
+
+  <div class="glass" style="padding:16px;margin-bottom:12px">
+    <div style="font-size:.78rem;color:var(--text-muted);margin-bottom:12px;line-height:1.7">
+      कोई भी टाइमफ्रेम चुनें — <b style="color:var(--text-primary)">बेस्ट/वर्स्ट परफॉर्मर्स, ब्रेड्थ ट्रेंड, कैप-वाइज़ मूवमेंट और
+      FII/DII फ्लो</b> उसी अवधि के हिसाब से मिलेगा। Weekly/Monthly रिपोर्ट से अलग — यह लंबी अवधि के ट्रेंड पर फोकस करती है।
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="hist-period-btn size-btn" onclick="setHistPeriod('15d',this)">15 Days</button>
+      <button class="hist-period-btn size-btn active" onclick="setHistPeriod('1m',this)">1 Month</button>
+      <button class="hist-period-btn size-btn" onclick="setHistPeriod('3m',this)">3 Months</button>
+      <button class="hist-period-btn size-btn" onclick="setHistPeriod('6m',this)">6 Months</button>
+      <button class="hist-period-btn size-btn" onclick="setHistPeriod('1y',this)">1 Year</button>
+      <button class="hist-period-btn size-btn" onclick="setHistPeriod('2y',this)">2 Years</button>
+      <button class="hist-period-btn size-btn" onclick="setHistPeriod('3y',this)">3 Years</button>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <button id="gen-hist-report-btn" onclick="generateHistoricalReport()"
+        style="background:linear-gradient(135deg,#059669,#064e3b);border:none;border-radius:8px;padding:10px 22px;color:#fff;font-size:.82rem;font-weight:700;cursor:pointer">
+        📈 Historical रिपोर्ट जनरेट करें
+      </button>
+      <button id="copy-hist-report-btn" onclick="copyHistReport()" style="display:none;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.25);border-radius:8px;padding:10px 18px;color:#22d3ee;font-size:.78rem;font-weight:700;cursor:pointer">📋 कॉपी करें</button>
+      <button id="download-hist-report-btn" onclick="downloadHistReport()" style="display:none;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 18px;color:#fbbf24;font-size:.78rem;font-weight:700;cursor:pointer">⬇️ Download (.txt)</button>
+      <button id="gen-hist-seo-btn" onclick="generateHistSEOKit()" style="display:none;background:linear-gradient(135deg,#dc2626,#7f1d1d);border:none;border-radius:8px;padding:10px 18px;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer">🎬 इसी का SEO Kit बनाएं</button>
+      <span id="hist-report-status" style="font-size:.72rem;color:var(--text-muted)"></span>
+    </div>
+  </div>
+
+  <div id="hist-report-container" style="display:none">
+    <div class="glass" style="padding:16px">
+      <pre id="hist-report-output" style="white-space:pre-wrap;font-family:var(--font-mono);font-size:.76rem;line-height:1.7;color:var(--text-primary);margin:0"></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════
      🗂️ SECTION-WISE REPORT + SEO GENERATOR (every filter/tab → own report)
 ══════════════════════════════════════════════════════════════════ -->
 <section id="section-report-section" style="position:relative;z-index:10;max-width:1536px;margin:24px auto 0;padding:0 16px">
@@ -8163,6 +8206,231 @@ function generateWmSEOKit() {
     status.textContent = '✅ SEO किट तैयार — ' + _getTimeIST();
     seoContainer.scrollIntoView({behavior:'smooth', block:'start'});
   }, 500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   📈 HISTORICAL TREND ANALYSIS REPORT — 15D to 3 YEARS
+   ─────────────────────────────────────────────────────────────
+   Independent long-horizon report: best/worst performers, breadth
+   trend, cap-tier movement and FII/DII flow scaled to the chosen
+   period. Separate from Daily and Weekly/Monthly reports.
+═══════════════════════════════════════════════════════════════ */
+var _histPeriod = '1m';
+var _histScannerData = [];
+
+function setHistPeriod(period, btn) {
+  _histPeriod = period;
+  document.querySelectorAll('.hist-period-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+}
+
+function generateHistoricalReport() {
+  var btn = document.getElementById('gen-hist-report-btn');
+  var status = document.getElementById('hist-report-status');
+  var container = document.getElementById('hist-report-container');
+  var output = document.getElementById('hist-report-output');
+  var periodLabels = { '15d':'15 दिन','1m':'1 महीना','3m':'3 महीने','6m':'6 महीने','1y':'1 साल','2y':'2 साल','3y':'3 साल' };
+
+  btn.disabled = true;
+  btn.textContent = '⏳ ' + (periodLabels[_histPeriod]||_histPeriod) + ' का एनालिसिस हो रहा है...';
+  status.textContent = '📡 लाइव डेटा जमा हो रहा है...';
+  container.style.display = 'none';
+
+  var prevPeriod = _scannerPeriod, prevSize = _scannerSize;
+  _scannerPeriod = _histPeriod;
+  if(_scannerSize < 100) _scannerSize = 100;
+
+  var fiiDiiPeriodMap = { '15d':'7d','1m':'1m','3m':'1m','6m':'1m','1y':'1m','2y':'1m','3y':'1m' };
+
+  fetchScreenerBatch(getSymbolList().map(function(s){
+    if(s.indexOf(':') !== -1) return s;
+    return (_scannerMarket==='bse'?'BSE:':_scannerMarket==='crypto'?'BINANCE:':'NSE:') + s;
+  }), _scannerMarket, function(data, columns) {
+    _histScannerData = (data && data.length) ? data.map(function(raw){ return analyzeStock(raw, columns||[], _histPeriod); })
+                                              : getSymbolList().map(function(sym){ var sim=_generateSmartSimulatedData(sym,null); return _simToScanRow(sym, sim, _histPeriod); });
+
+    fetchLiveIndices(function(){
+      fetchLiveMarketNews(function(){
+        _getFiiDiiPeriodSummary(fiiDiiPeriodMap[_histPeriod]||'1m', function(fiiDii){
+          setTimeout(function(){
+            output.textContent = _buildHistReportText(_histPeriod, fiiDii);
+            container.style.display = 'block';
+            document.getElementById('copy-hist-report-btn').style.display = 'inline-block';
+            document.getElementById('download-hist-report-btn').style.display = 'inline-block';
+            document.getElementById('gen-hist-seo-btn').style.display = 'inline-block';
+            btn.disabled = false;
+            btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
+            status.textContent = '✅ ' + (periodLabels[_histPeriod]||_histPeriod) + ' रिपोर्ट तैयार — ' + _getTimeIST();
+            _scannerPeriod = prevPeriod; _scannerSize = prevSize;
+            container.scrollIntoView({behavior:'smooth', block:'start'});
+          }, 400);
+        });
+      });
+    });
+  });
+}
+
+function _buildHistReportText(period, fiiDii) {
+  var L = []; function push(s){L.push(s);} function blank(){L.push('');}
+  var periodLabels = { '15d':'पिछले 15 दिन','1m':'पिछला 1 महीना','3m':'पिछले 3 महीने','6m':'पिछले 6 महीने','1y':'पिछला 1 साल','2y':'पिछले 2 साल','3y':'पिछले 3 साल' };
+  var rangeLabel = periodLabels[period] || period;
+  var dateEn = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  var sd = _histScannerData || [];
+
+  push('═══════════════════════════════════════════════════════════');
+  push('📈 HISTORICAL TREND ANALYSIS REPORT — ' + rangeLabel);
+  push('रिपोर्ट तारीख़: ' + dateEn + ' | कुल स्कैन किए गए स्टॉक्स: ' + sd.length);
+  push('═══════════════════════════════════════════════════════════');
+  blank(); blank();
+
+  var liveIdx = _liveIndexData || {nifty:null, sensex:null};
+  push('───────────────────────────────────────────────────────────');
+  push('📊 SECTION 1 — करेंट लाइव इंडेक्स स्नैपशॉट');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  if(liveIdx.nifty)  push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
+  if(liveIdx.sensex) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
+  if(!liveIdx.nifty && !liveIdx.sensex) push('   ⚠️ लाइव इंडेक्स डेटा उपलब्ध नहीं।');
+  blank(); blank();
+
+  var sorted = sd.slice().sort(function(a,b){ return (parseFloat(b.chg)||0) - (parseFloat(a.chg)||0); });
+  var gainers = sorted.slice(0, 15);
+  var losers  = sorted.slice(-15).reverse();
+
+  push('───────────────────────────────────────────────────────────');
+  push('🟢 SECTION 2 — ' + rangeLabel + ' के टॉप 15 GAINERS (% change के आधार पर)');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  gainers.forEach(function(s,i){
+    var sym = s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');
+    push('   ' + (i+1) + '. ' + sym + ' — ' + (parseFloat(s.chg)>=0?'+':'') + s.chg + '% | ₹' + s.close + ' | ' + (s.alertType||'—'));
+  });
+  blank(); blank();
+
+  push('───────────────────────────────────────────────────────────');
+  push('🔴 SECTION 3 — ' + rangeLabel + ' के टॉप 15 LOSERS (% change के आधार पर)');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  losers.forEach(function(s,i){
+    var sym = s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');
+    push('   ' + (i+1) + '. ' + sym + ' — ' + (parseFloat(s.chg)>=0?'+':'') + s.chg + '% | ₹' + s.close + ' | ' + (s.alertType||'—'));
+  });
+  blank(); blank();
+
+  push('───────────────────────────────────────────────────────────');
+  push('📐 SECTION 4 — मार्केट ब्रेड्थ ट्रेंड (' + rangeLabel + ')');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  var buyC = sd.filter(function(s){return s.alertClass==='buy-sig';}).length;
+  var selC = sd.filter(function(s){return s.alertClass==='sell-sig';}).length;
+  var trpC = sd.filter(function(s){return s.alertClass==='trap';}).length;
+  push('   • BUY: ' + buyC + '   |   SELL: ' + selC + '   |   TRAP: ' + trpC);
+  push('   • रुझान: ' + (buyC>selC ? '🟢 इस अवधि में खरीदारी का माहौल हावी रहा' : selC>buyC ? '🔴 बिकवाली का दबाव ज़्यादा रहा' : '⚪ मिला-जुला ट्रेंड'));
+  blank();
+  ['large','mid','small','micro'].forEach(function(tier){
+    var list = sd.filter(function(s){ return s.capTier===tier; });
+    if(!list.length) return;
+    var avgChg = list.reduce(function(a,s){return a+(parseFloat(s.chg)||0);},0) / list.length;
+    var tierLabel = {large:'Large Cap',mid:'Mid Cap',small:'Small Cap',micro:'Micro Cap'}[tier];
+    push('   🏢 ' + tierLabel + ' (' + list.length + ' स्टॉक्स): औसत बदलाव ' + (avgChg>=0?'+':'') + avgChg.toFixed(2) + '%');
+  });
+  blank(); blank();
+
+  push('───────────────────────────────────────────────────────────');
+  push('🏦 SECTION 5 — FII/DII फ्लो (अनुमानित सामान्यीकरण — ' + rangeLabel + ' के अनुरूप)');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  if(!fiiDii.live) push('   ⚠️ NSE लाइव सोर्स ब्लॉक — सटीक ऐतिहासिक आंकड़े: https://www.fpi.nsdl.co.in/web/Reports/Fpi_Report.aspx');
+  push('   FII नेट (सैंपल विंडो): ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़');
+  push('   DII नेट (सैंपल विंडो): ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़');
+  push('   📌 नोट: ' + rangeLabel + ' जितनी लंबी अवधि के लिए दिन-ब-दिन सटीक FII/DII डेटा फ्री ब्राउज़र सोर्स से उपलब्ध नहीं —');
+  push('   पूरी ऐतिहासिक सीरीज़ के लिए NSDL/NSE की ऑफिशियल रिपोर्ट ज़रूर देखें।');
+  blank(); blank();
+
+  push('───────────────────────────────────────────────────────────');
+  push('🌍 SECTION 6 — मौजूदा मार्केट न्यूज़ (लाइव)');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  var nl = _liveNewsData || [];
+  if(nl.length) {
+    nl.slice(0,5).forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + (n.live?(' — '+n.publisher):'')); });
+    if(!_liveNewsIsLive) push('   ⚠️ सामान्य थीम्स हैं, असली नहीं।');
+  } else {
+    push('   ⚠️ न्यूज़ fetch नहीं हो पाई।');
+  }
+  blank(); blank();
+
+  push('───────────────────────────────────────────────────────────');
+  push('⚠️ DISCLAIMER: यह रिपोर्ट शिक्षा/सूचना उद्देश्य से है, SEBI-रजिस्टर्ड निवेश सलाह नहीं।');
+  push('निवेश से पहले रजिस्टर्ड फाइनेंशियल एडवाइजर से सलाह लें। पुराना प्रदर्शन भविष्य की गारंटी नहीं है।');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  push('🕷️ KS TradeMind — www.kspiderai.in — 100% फ्री, हमेशा के लिए फ्री');
+
+  return L.join('\n');
+}
+
+function copyHistReport() {
+  var output = document.getElementById('hist-report-output');
+  if(!output || !output.textContent) return;
+  _ksUniversalCopy(output.textContent, '📋 रिपोर्ट कॉपी हो गई!', '⚠️ कॉपी नहीं हो पाया — मैन्युअल सेलेक्ट करें');
+}
+
+function downloadHistReport() {
+  var output = document.getElementById('hist-report-output');
+  if(!output || !output.textContent) return;
+  var blob = new Blob([output.textContent], { type: 'text/plain;charset=utf-8' });
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  var dateForFile = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = 'KS-TradeMind-Historical-' + _histPeriod + '-' + dateForFile + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('⬇️ रिपोर्ट डाउनलोड हो गई!');
+}
+
+function generateHistSEOKit() {
+  if(!_histScannerData || !_histScannerData.length) return;
+  var seoContainer = document.getElementById('seo-container');
+  var status = document.getElementById('hist-report-status');
+  var periodLabels = { '15d':'15 दिन','1m':'1 महीना','3m':'3 महीने','6m':'6 महीने','1y':'1 साल','2y':'2 साल','3y':'3 साल' };
+  var periodWord = periodLabels[_histPeriod] || _histPeriod;
+  var dateEn = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  var mcSeo = getMarketContext();
+
+  var sorted = _histScannerData.slice().sort(function(a,b){ return (parseFloat(b.chg)||0) - (parseFloat(a.chg)||0); });
+  var topGainer = sorted[0] ? sorted[0].sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','') : 'ABC';
+  var topLoser  = sorted[sorted.length-1] ? sorted[sorted.length-1].sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','') : 'XYZ';
+
+  _lastThumbContext = { trapName:topLoser, buyName:topGainer, marketMoodEn:mcSeo.moodEn, dateEn:dateEn };
+  _renderThumbnailOptions(topLoser, topGainer, mcSeo.moodEn, dateEn);
+
+  var titles = [
+    periodWord + ' में सबसे ज़्यादा भागने वाला स्टॉक: ' + topGainer + ' — पूरा एनालिसिस (' + dateEn + ')',
+    'पिछले ' + periodWord + ' का Complete Market Trend Report — Gainers, Losers, FII/DII सब कुछ'
+  ];
+  document.getElementById('seo-titles').textContent = titles.map(function(t,i){return (i+1)+'. '+t;}).join('\n\n');
+
+  var desc = [
+    '📈 पिछले ' + periodWord + ' का Historical Trend Analysis — ' + dateEn, '',
+    '✅ टॉप 15 Gainers और टॉप 15 Losers', '📊 मार्केट ब्रेड्थ ट्रेंड और Cap-wise परफॉर्मेंस',
+    '🏦 FII/DII फ्लो पैटर्न', '', '🛠️ KS TradeMind से — 100% फ्री, हमेशा के लिए फ्री:', '👉 www.kspiderai.in',
+    '🕷️ KSpider4Kreation — By Gaurang Raval & Khush Raval', '',
+    '⚠️ शिक्षा/सूचना उद्देश्य से, SEBI-रजिस्टर्ड निवेश सलाह नहीं।'
+  ];
+  document.getElementById('seo-description').textContent = desc.join('\n');
+  document.getElementById('seo-tags').textContent = ['historical stock analysis','stock market trend',periodWord+' report','fii dii data','KS TradeMind','KSpider4Kreation'].join(', ');
+  var hashtags = ['#StockMarketTrend','#HistoricalAnalysis','#'+_histPeriod.toUpperCase(),'#KSTradeMind','#KSpider4Kreation'];
+  document.getElementById('seo-hashtags').textContent = hashtags.join(' ');
+  document.getElementById('seo-hashtags-display').innerHTML = hashtags.map(function(h){return '<span class="seo-tag-chip">'+h+'</span>';}).join('');
+  document.getElementById('seo-keywords').textContent = ['historical trend analysis', periodWord+' market report', 'kspiderai.in'].join(' | ');
+
+  seoContainer.style.display = 'block';
+  if(status) status.textContent = '✅ Historical (' + periodWord + ') SEO Kit तैयार — ' + _getTimeIST();
+  seoContainer.scrollIntoView({behavior:'smooth', block:'start'});
 }
 
 /* ═══════════════════════════════════════════════════════════════
