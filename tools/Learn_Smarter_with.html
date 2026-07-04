@@ -1946,7 +1946,7 @@ footer{background:#040D1E;color:#8AA4C8;padding:56px 20px 20px;}
 <!-- TOAST -->
 <div class="toast" id="toast-el"></div>
 <script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
-console.log('%c[KSpider Build] GT-FIX-2026-07-04-v2 — Grand Test gid safety-net active','color:#1546D0;font-weight:bold');
+console.log('%c[KSpider Build] GT-FIX-2026-07-04-v3 — Proxy cache-busting active (permanent fix)','color:#1546D0;font-weight:bold');
 // ===================== STATE =====================
 let selTopics=[], selYears=[], heroSel=[];
 let examQs=[], curQ=0, uAnswers=[], eTimer=null, eTimeLeft=0, eStart=null, eCfg={};
@@ -2496,25 +2496,32 @@ function isValidCSVResponse(text){
 }
 
 async function sheetFetchCSV(url) {
+  // CRITICAL FIX: free CORS proxies (allorigins, corsproxy.io, codetabs, etc.) cache
+  // responses server-side. Without a unique cache-buster, a proxy can serve back an
+  // OLD cached CSV for a completely different gid/URL that it happened to fetch
+  // earlier — this is the confirmed cause of "every Grand Test shows the same sheet".
+  // Appending a unique, single-use token to the URL guarantees a fresh origin fetch
+  // every single time, for every proxy in the chain.
+  var bust = 'ksv=' + Date.now() + Math.floor(Math.random()*100000);
+  var freshUrl = url + (url.indexOf('?') > -1 ? '&' : '?') + bust;
   var proxies = [
-    url,
-    'https://api.allorigins.win/get?url='+encodeURIComponent(url),
-    'https://corsproxy.io/?'+encodeURIComponent(url),
-    'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(url),
-    'https://api.allorigins.win/raw?url='+encodeURIComponent(url),
-    'https://thingproxy.freeboard.io/fetch/'+url,
-    'https://crossorigin.me/'+url
+    freshUrl,
+    'https://api.codetabs.com/v1/proxy?quest='+encodeURIComponent(freshUrl),
+    'https://api.allorigins.win/raw?url='+encodeURIComponent(freshUrl),
+    'https://api.allorigins.win/get?url='+encodeURIComponent(freshUrl),
+    'https://thingproxy.freeboard.io/fetch/'+freshUrl,
+    'https://corsproxy.io/?'+encodeURIComponent(freshUrl)
   ];
   for(var pi=0;pi<proxies.length;pi++){
     try{
       var ctrl=new AbortController();
       var tid=setTimeout(function(){ctrl.abort();},8000);
-      var r=await fetch(proxies[pi],{cache:'no-cache',signal:ctrl.signal});
+      var r=await fetch(proxies[pi],{cache:'no-store',signal:ctrl.signal});
       clearTimeout(tid);
       if(!r.ok) continue;
       var raw=await r.text();
       var txt=raw;
-      if(pi===1){try{var j=JSON.parse(raw);txt=j.contents||raw;}catch(e){txt=raw;}}
+      if(proxies[pi].indexOf('allorigins.win/get')>-1){try{var j=JSON.parse(raw);txt=j.contents||raw;}catch(e){txt=raw;}}
       if(isValidCSVResponse(txt)) return txt;
     }catch(e){}
   }
