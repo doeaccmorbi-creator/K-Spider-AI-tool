@@ -976,18 +976,20 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
   font-family:var(--fh);letter-spacing:.04em;transition:all .2s;white-space:nowrap;}
 .sr-chip:hover{background:rgba(0,212,255,.18);border-color:var(--cy);}
 
-/* ── Message reactions ── */
-.msg-react{display:flex;gap:4px;margin-top:4px;opacity:0;transition:opacity .2s;}
-.bot-msg:hover .msg-react{opacity:1;}
+/* ── Message reactions ──
+   NOTE: fixed selector — markup uses class="msg ai" not "bot-msg".
+   Also default-visible (not hover-only) since touch devices have no hover. */
+.msg-react{display:flex;gap:4px;margin-top:4px;opacity:.85;transition:opacity .2s;}
+.msg.ai:hover .msg-react{opacity:1;}
 .react-btn{background:none;border:1px solid var(--b);border-radius:12px;padding:2px 7px;
-  font-size:12px;cursor:pointer;transition:all .2s;color:var(--mu);}
+  font-size:12px;cursor:pointer;transition:all .2s;color:var(--mu);touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
 .react-btn:hover,.react-btn.on{background:rgba(0,212,255,.1);border-color:var(--cy);color:var(--cy);}
 .react-count{font-size:10px;margin-left:2px;}
 
 /* ── Copy last message btn ── */
 .copy-msg-btn{background:none;border:none;color:var(--mu);font-size:11px;cursor:pointer;
-  padding:2px 5px;border-radius:5px;transition:all .2s;opacity:0;}
-.bot-msg:hover .copy-msg-btn{opacity:1;}
+  padding:2px 5px;border-radius:5px;transition:all .2s;opacity:.85;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+.msg.ai:hover .copy-msg-btn{opacity:1;}
 .copy-msg-btn:hover{color:var(--cy);}
 
 /* ── AI Summary card ── */
@@ -1307,7 +1309,7 @@ textarea:focus-visible{
 
 /* ── Print styles ── */
 @media print{
-  #hdr,#nav,#input-bar,#fab-wrap,#site-footer,#voice-quick-ctrl,#chat-actions{ display:none !important; }
+  #hdr,#nav,#vbar,#fab-wrap,#site-footer,#voice-quick-ctrl,#chat-actions{ display:none !important; }
   body{ background:#fff; color:#000; }
   #chat-area{ overflow:visible; height:auto; }
   .msg{ page-break-inside:avoid; }
@@ -1476,7 +1478,7 @@ textarea:focus-visible{
   .agrid{ grid-template-columns:repeat(4,1fr); }
 
   /* Input bar bigger */
-  #input-bar{ padding:14px 20px; gap:12px; }
+  #irow{ padding:14px 20px; gap:12px; }
   #txtin{ font-size:14px; padding:12px 16px; }
 
   /* Footer drawer - full bottom */
@@ -1667,6 +1669,20 @@ textarea:focus-visible{
 <div id="offline-banner">📵 You are offline — AI features require internet</div>
 
 <!-- Keyboard Shortcuts Modal -->
+<!-- Voice Memo Modal -->
+<div id="memo-modal" onclick="if(event.target===this)closeMemoModal()" style="display:none;position:fixed;inset:0;z-index:10001;background:rgba(0,0,0,.7);align-items:center;justify-content:center;">
+  <div style="background:var(--panel);border:1px solid var(--b);border-radius:16px;padding:20px;max-width:360px;width:90%;max-height:80vh;overflow-y:auto;">
+    <h3 style="font-family:var(--fh);color:var(--cy);letter-spacing:.1em;font-size:12px;margin-bottom:14px;">🎙️ VOICE MEMOS</h3>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 0 16px;">
+      <button id="memo-rec-btn" onclick="toggleMemoRecording()" style="width:64px;height:64px;border-radius:50%;border:2px solid var(--cy);background:var(--cy2);color:var(--cy);font-size:24px;cursor:pointer;touch-action:manipulation;">🎙️</button>
+      <div id="memo-rec-status" style="font-size:11px;color:var(--tx2);font-family:var(--fh);letter-spacing:.05em;">Tap to record</div>
+    </div>
+    <div id="memo-list"></div>
+    <div id="memo-empty" style="font-size:12px;color:var(--mu);text-align:center;padding:10px 0;">Koi memo nahi hai abhi — record karke shuru karo!</div>
+    <button onclick="closeMemoModal()" style="margin-top:10px;width:100%;padding:9px;background:var(--cy);color:#000;border:none;border-radius:8px;font-family:var(--fh);cursor:pointer;font-weight:700;">Close</button>
+  </div>
+</div>
+
 <div id="kb-modal" onclick="if(event.target===this)toggleKB()">
   <div id="kb-box">
     <h3>⌨️ KEYBOARD SHORTCUTS</h3>
@@ -1701,6 +1717,8 @@ textarea:focus-visible{
   <div class="fab-sub" onclick="document.getElementById('how-it-works').style.display='block';closeFAB()">❓ How It Works</div>
   <div class="fab-sub" onclick="toggleKB()">⌨️ Shortcuts</div>
   <div class="fab-sub" onclick="goTab('pg-gen');toast('✨ Generate tab open!')">✨ Quick Generate</div>
+  <div class="fab-sub" onclick="openMemoModal()">🎙️ Voice Memo</div>
+  <div class="fab-sub" onclick="regenerateLast();closeFAB()">🔁 Regenerate Last</div>
   <button id="fab-main" onclick="toggleFAB()">⚡</button>
 </div>
 
@@ -1727,6 +1745,7 @@ textarea:focus-visible{
   <div class="hdr-mid">
     <div class="spill"><div class="sdot"></div><span id="hst">SETUP</span></div>
     <span id="provider-badge" style="display:none;font-size:9px;font-family:var(--fh);color:var(--mu);letter-spacing:.05em;padding:0 6px"></span>
+    <span id="session-timer" title="Session duration">00:00</span>
     <div class="cpill" id="cpill">📞 <span id="cdurh">0:00</span></div>
   </div>
   <div class="hdr-btns">
@@ -1769,10 +1788,29 @@ textarea:focus-visible{
     <button class="chat-act-btn" onclick="exportChatHTML()" title="Export HTML">📄 Export</button>
     <button class="chat-act-btn" id="autoscroll-btn" onclick="toggleAutoScroll()" title="Auto Scroll">⬇ Auto</button>
     <button class="chat-act-btn" onclick="copyAllChat()" title="Copy All">📋 Copy All</button>
+    <button class="chat-act-btn" onclick="regenerateLast()" title="Regenerate last reply">🔁 Regenerate</button>
     <button class="native-share-btn chat-act-btn" id="native-share-btn" onclick="nativeShare()" title="Share">📤 Share</button>
   </div>
 
+  <div id="voice-quick-ctrl">
+    <div class="vqc-item">
+      <span class="vqc-label">SPEED</span>
+      <input class="vqc-slider" type="range" min=".5" max="2" step=".1" value="1" oninput="vqcSpeedChange(this.value)">
+      <span class="vqc-val" id="vqc-speed-val">1.0x</span>
+    </div>
+    <div class="vqc-item">
+      <span class="vqc-label">PITCH</span>
+      <input class="vqc-slider" type="range" min=".5" max="2" step=".1" value="1" oninput="vqcPitchChange(this.value)">
+      <span class="vqc-val" id="vqc-pitch-val">1.0x</span>
+    </div>
+    <button class="vqc-btn on" id="vqc-auto" onclick="toggleAutoSpk()">🔊 Auto</button>
+  </div>
+
   <div id="chat-area">
+      <div id="summary-card">
+        <div class="stitle">📋 AI CHAT SUMMARY <span onclick="document.getElementById('summary-card').style.display='none'" style="float:right;cursor:pointer;color:var(--mu)">✕</span></div>
+        <div class="sbody" id="summary-body"></div>
+      </div>
       <div id="welcome">
         <div class="w-orb">🎙️</div>
         <div class="w-title">VOXAI <span>PRO 2.0</span></div>
@@ -1790,6 +1828,7 @@ textarea:focus-visible{
         </div>
       </div>
       <div id="msglist" style="display:none;flex-direction:column;gap:12px;"></div>
+      <div class="sr-wrap" id="sr-wrap"></div>
     </div>
 
     <div id="vbar">
@@ -1916,6 +1955,9 @@ textarea:focus-visible{
   <div class="pg" id="pg-gen">
     <div class="pscroll">
 
+    <div id="gen-two-col-wrap">
+    <div id="gen-left-col">
+
       <!-- Android TTS fix notice -->
       <div style="padding:12px 14px;background:rgba(0,212,255,.07);border:1px solid rgba(0,212,255,.25);border-radius:10px;font-size:13px;line-height:1.7;color:var(--tx2);">
         <b style="color:var(--cy)">📢 Speak karne ke liye:</b><br>
@@ -1990,6 +2032,9 @@ textarea:focus-visible{
         </div>
       </div>
 
+    </div>
+    <div id="gen-right-col">
+
       <!-- TTS -->
       <div class="card">
         <div class="ctitle">Text-to-Speech</div>
@@ -2056,11 +2101,17 @@ textarea:focus-visible{
       </div>
 
     </div>
+    </div>
+
+    </div>
   </div>
 
   <!-- ── PAGE: STATS ── -->
   <div class="pg" id="pg-stats">
     <div class="pscroll">
+
+    <div id="stats-two-col">
+    <div>
 
       <div class="ctitle">Session Metrics</div>
       <div class="mgrid" style="margin-bottom:13px">
@@ -2075,6 +2126,9 @@ textarea:focus-visible{
         <div class="sbar"><div class="spin" id="spin" style="left:60%"></div></div>
         <div class="slbls"><span>😠 Negative</span><span>😐 Neutral</span><span>😊 Positive</span></div>
       </div>
+
+    </div>
+    <div>
 
       <div class="card" style="margin-bottom:13px">
         <div class="ctitle">Emotion Detect</div>
@@ -2097,11 +2151,17 @@ textarea:focus-visible{
       </div>
 
     </div>
+    </div>
+
+    </div>
   </div>
 
   <!-- ── PAGE: CONFIG ── -->
   <div class="pg" id="pg-cfg">
     <div class="pscroll">
+
+    <div id="cfg-two-col">
+    <div>
 
       <div class="card">
         <div class="ctitle">Voice Agent</div>
@@ -2186,6 +2246,9 @@ textarea:focus-visible{
         <div class="ctitle" style="margin-bottom:7px">System Prompt</div>
         <textarea class="gtx" id="sysprompt" style="min-height:80px">You are a helpful, intelligent voice AI assistant. Be concise, friendly and accurate in your responses.</textarea>
       </div>
+
+    </div>
+    <div>
 
       <div class="card">
         <div class="ctitle">Audio Features</div>
@@ -2303,6 +2366,9 @@ textarea:focus-visible{
           <button class="btn rd" onclick="clearAll()">🗑️ Sab Clear Karo</button>
         </div>
       </div>
+
+    </div>
+    </div>
 
     </div>
   </div>
@@ -2603,6 +2669,35 @@ async function doInput(text){
 function hideWelcome(){
   document.getElementById('welcome').style.display='none';
   const ml=document.getElementById('msglist');ml.style.display='flex';
+}
+
+// ── Regenerate Last Response (new feature) ──
+async function regenerateLast(){
+  let lastUserIdx=-1;
+  for(let i=chatHist.length-1;i>=0;i--){ if(chatHist[i].role==='user'){ lastUserIdx=i; break; } }
+  if(lastUserIdx===-1){ toast('⚠️ Koi message nahi mila'); return; }
+  chatHist=chatHist.slice(0,lastUserIdx+1);
+  const ml=document.getElementById('msglist');
+  const msgs=ml?ml.querySelectorAll('.msg.ai'):[];
+  if(msgs.length) msgs[msgs.length-1].remove();
+  showTyping();
+  try{
+    const sysEl=document.getElementById('sysprompt');
+    const sys=(sysEl&&sysEl.value)||`You are ${agent.name}, a voice AI. Style: ${agent.style}. Be concise and conversational.`;
+    const reply=await callAI(sys, chatHist, 800);
+    if(!reply) throw new Error('Empty response from AI');
+    hideTyping();streamMsg(reply);
+    chatHist.push({role:'assistant',content:reply});
+    msgCount++;wordCount+=reply.split(/\s+/).length;
+    updSent(reply);updEm(reply);
+    if(autoSpeak)speakTx(reply);
+    try{haptic('success');}catch(e){}
+    toast('🔁 Response regenerated');
+  }catch(e){
+    hideTyping();
+    const hint=getProviderErrorHint((e&&e.message)||'');
+    addMsg('ai','⚠️ '+hint, agent.emoji);
+  }
 }
 
 function addMsg(role,text,av){
@@ -4567,6 +4662,85 @@ function toggleAutoSpk(){
   if(btn) btn.textContent = autoSpeak ? '🔊 Auto' : '🔇 Auto';
   toast(autoSpeak ? '🔊 Auto-speak ON' : '🔇 Auto-speak OFF');
   haptic('light');
+}
+
+// ── Voice Memos (new feature) ──
+let memoRecorder=null, memoChunks=[], memoList=[], memoStream=null, memoRecordSeconds=0, memoTimerInt=null;
+function openMemoModal(){
+  closeFAB();
+  const mm=document.getElementById('memo-modal');
+  if(mm) mm.style.display='flex';
+  renderMemoList();
+}
+function closeMemoModal(){
+  const mm=document.getElementById('memo-modal');
+  if(mm) mm.style.display='none';
+}
+async function toggleMemoRecording(){
+  const btn=document.getElementById('memo-rec-btn');
+  const status=document.getElementById('memo-rec-status');
+  if(!btn||!status) return;
+  if(memoRecorder && memoRecorder.state==='recording'){
+    memoRecorder.stop();
+    return;
+  }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
+    toast('⚠️ Recording is browser mein supported nahi hai'); return;
+  }
+  try{
+    memoStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    memoChunks=[];
+    memoRecorder=new MediaRecorder(memoStream);
+    memoRecorder.ondataavailable=function(e){ if(e.data.size>0) memoChunks.push(e.data); };
+    memoRecorder.onstop=function(){
+      const blob=new Blob(memoChunks,{type:'audio/webm'});
+      const url=URL.createObjectURL(blob);
+      const now=new Date();
+      memoList.unshift({url:url,name:'Memo '+now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}),dur:memoRecordSeconds});
+      memoStream.getTracks().forEach(function(t){t.stop();});
+      btn.style.borderColor='var(--cy)';btn.style.color='var(--cy)';btn.style.background='var(--cy2)';
+      status.textContent='Tap to record';
+      renderMemoList();
+      try{haptic('success');}catch(e){}
+      clearInterval(memoTimerInt);
+    };
+    memoRecorder.start();
+    btn.style.borderColor='var(--rd)';btn.style.color='var(--rd)';btn.style.background='rgba(255,56,96,.1)';
+    memoRecordSeconds=0;
+    status.textContent='🔴 Recording... 0s';
+    memoTimerInt=setInterval(function(){ memoRecordSeconds++; status.textContent='🔴 Recording... '+memoRecordSeconds+'s'; },1000);
+    try{haptic('light');}catch(e){}
+  }catch(e){
+    toast('⚠️ Mic access denied ya available nahi');
+  }
+}
+function renderMemoList(){
+  const wrap=document.getElementById('memo-list');
+  const empty=document.getElementById('memo-empty');
+  if(!wrap||!empty) return;
+  wrap.innerHTML='';
+  if(!memoList.length){ empty.style.display='block'; return; }
+  empty.style.display='none';
+  memoList.forEach(function(m,i){
+    const el=document.createElement('div');
+    el.className='memo-item';
+    el.innerHTML='<button class="memo-play" onclick="playMemo('+i+')">▶</button>'+
+      '<div class="memo-info"><div class="memo-name">'+m.name+'</div><div class="memo-dur">'+m.dur+'s</div></div>'+
+      '<button class="memo-del" onclick="deleteMemo('+i+')">🗑️</button>';
+    wrap.appendChild(el);
+  });
+}
+function playMemo(i){
+  const m=memoList[i]; if(!m) return;
+  const audio=new Audio(m.url);
+  audio.play().catch(function(){toast('⚠️ Playback failed');});
+}
+function deleteMemo(i){
+  const m=memoList[i]; if(!m) return;
+  URL.revokeObjectURL(m.url);
+  memoList.splice(i,1);
+  renderMemoList();
+  toast('🗑️ Memo deleted');
 }
 
 // ── Session Timer ──
