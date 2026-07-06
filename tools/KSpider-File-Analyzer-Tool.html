@@ -1103,6 +1103,9 @@ function finishDoc(file,text,ext){
 
 // ===== CSV ANALYZER =====
 function analyzeCSV(file){
+  const ext=getExt(file.name);
+  // Excel binary files (.xlsx/.xls) must NOT be read as plain text — route to proper XLSX parser
+  if(ext==='xlsx'||ext==='xls'){ analyzeExcelBinary(file); return; }
   const fr=new FileReader();
   fr.onload=e=>{
     const text=e.target.result;
@@ -1141,6 +1144,69 @@ function analyzeCSV(file){
     claudeText('Analyze this CSV dataset:\n\nFile: ' + file.name + '\nRows: ' + rows.length + ' | Columns: ' + headers.length + '\nHeaders: ' + headers.join(', ') + '\n\nColumn Analysis:\n' + csvColSummary + '\n\nSample (3 rows):\n' + JSON.stringify(rows.slice(0,3),null,2) + '\n\nProvide: 1) Dataset description 2) Data quality assessment 3) Key insights 4) Patterns or anomalies 5) Suggested analysis', 'ai-csv-result');
   };
   fr.readAsText(file);
+}
+
+// ===== EXCEL (.xlsx/.xls) BINARY ANALYZER =====
+// Real Excel files are ZIP/binary format — they must be read as an ArrayBuffer and
+// parsed with the XLSX library (already loaded in <head>), never as plain text.
+function analyzeExcelBinary(file){
+  const fr=new FileReader();
+  fr.onload=e=>{
+    try{
+      if(!window.XLSX){
+        showLoad(false);
+        showToast('❌ Excel library load nahi hui, internet check karo');
+        renderGenericResults(file);
+        return;
+      }
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array'});
+      const sheetNames=wb.SheetNames||[];
+      if(!sheetNames.length) throw new Error('No sheets found');
+      const firstSheet=wb.Sheets[sheetNames[0]];
+      const aoa=XLSX.utils.sheet_to_json(firstSheet,{header:1,defval:'',raw:false,blankrows:false});
+      const filtered=aoa.filter(r=>Array.isArray(r)&&r.some(c=>String(c).trim()!==''));
+      if(!filtered.length) throw new Error('Sheet is empty');
+      const headers=filtered[0].map((h,i)=>{const s=String(h==null?'':h).trim();return s||('Column'+(i+1));});
+      const rows=filtered.slice(1).map(r=>{
+        const obj={};
+        headers.forEach((h,i)=>{const v=r[i];obj[h]=(v===undefined||v===null)?'':String(v).trim();});
+        return obj;
+      }).filter(r=>Object.values(r).some(v=>v));
+
+      const colA=headers.map(h=>{
+        const vals=rows.map(r=>r[h]).filter(Boolean);
+        const nums=vals.map(Number).filter(v=>!isNaN(v));
+        const isNum=vals.length>0&&nums.length>vals.length*0.6;
+        const unique=[...new Set(vals)];
+        return{name:h,count:vals.length,unique:unique.length,isNum,
+          min:isNum?Math.min(...nums):null,max:isNum?Math.max(...nums):null,
+          avg:isNum?(nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2):null,
+          topVals:!isNum?unique.slice(0,3):null,
+        };
+      });
+
+      const textBlob=rows.map(r=>headers.map(h=>r[h]).join(' ')).join('\n');
+      const emails=[...new Set(textBlob.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g)||[])];
+      const phones=[...new Set(textBlob.match(/(?:\+91[-\s]?)?[6-9]\d{9}/g)||[])];
+      const sheetLbl=sheetNames.length>1?`Excel (${sheetNames.length} sheets)`:'Excel';
+
+      S.data={type:'csv',name:file.name,size:file.size,mimeType:file.type,
+        rows,headers,rowCount:rows.length,colCount:headers.length,
+        colA,emails,phones,delim:sheetLbl,preview:rows.slice(0,20),sheetNames,
+      };
+      S.csvRows=rows;
+      showLoad(false); renderCSVResults();
+      const csvColSummary=colA.map(c=>c.name+': '+(c.isNum?'Numeric (min:'+c.min+', max:'+c.max+', avg:'+c.avg+')':'Text ('+c.unique+' unique)')).join('\n');
+      claudeText('Analyze this Excel dataset:\n\nFile: '+file.name+'\nSheets: '+sheetNames.join(', ')+'\nRows: '+rows.length+' | Columns: '+headers.length+'\nHeaders: '+headers.join(', ')+'\n\nColumn Analysis:\n'+csvColSummary+'\n\nSample (3 rows):\n'+JSON.stringify(rows.slice(0,3),null,2)+'\n\nProvide: 1) Dataset description 2) Data quality assessment 3) Key insights 4) Patterns or anomalies 5) Suggested analysis','ai-csv-result');
+    }catch(err){
+      showLoad(false);
+      showToast('❌ Excel file parse nahi hui: '+err.message);
+      renderGenericResults(file);
+    }
+  };
+  fr.onerror=()=>{showLoad(false);showToast('❌ File read error');renderGenericResults(file);};
+  fr.readAsArrayBuffer(file);
 }
 
 // ===== JSON ANALYZER =====
@@ -1486,7 +1552,41 @@ function renderCSVResults(){
     +'<tbody>'+previewRows+'</tbody></table></div></div>'
     +'<div id="ai-csv-result"></div>'
   );
+  renderRebuildCSV();
   renderExportPanel();
+}
+
+// ===== REBUILD: CSV / EXCEL =====
+function renderRebuildCSV(){
+  const d=S.data;
+  document.getElementById('no-rebuild-msg').style.display='none';
+  document.getElementById('rebuild-content').style.display='block';
+  const headers=d.headers||[];
+  const rowsToShow=(d.rows||[]).slice(0,50);
+  const tableRows=rowsToShow.map((row,ri)=>'<tr>'+headers.map(h=>'<td contenteditable="true" class="csv-edit-cell" data-row="'+ri+'" data-col="'+escHtml(h)+'">'+escHtml(row[h]||'')+'</td>').join('')+'</tr>').join('');
+  document.getElementById('rebuild-content').innerHTML=
+    '<div class="card">'
+    +'<div class="card-header"><div class="card-title"><div class="dot"></div>🔄 Data Rebuild & Modify</div></div>'
+    +'<p style="font-size:12px;color:var(--text2);margin-bottom:10px">Neeche kisi bhi cell par click karke value edit karo (pehle '+rowsToShow.length+' rows dikhayi hain). "Save Changes" dabao, phir Export tab se CSV/Excel download karo.</p>'
+    +'<div class="csv-wrap"><table class="csv-table"><thead><tr>'+headers.map(h=>'<th>'+escHtml(h)+'</th>').join('')+'</tr></thead><tbody id="csv-edit-body">'+tableRows+'</tbody></table></div>'
+    +'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
+    +'<button class="btn btn-primary" onclick="saveCSVEdits()">💾 Save Changes</button>'
+    +'<button class="btn btn-secondary" onclick="switchTab(\'export\')">📤 Export Tab</button>'
+    +'</div>'
+    +((d.rows||[]).length>50?'<p style="font-size:11px;color:var(--text3);margin-top:8px">Note: Sirf pehle 50 rows edit ke liye dikhayi gayi hain — baaki rows export mein as-is include hongi.</p>':'')
+    +'</div>';
+}
+function saveCSVEdits(){
+  const body=document.getElementById('csv-edit-body');
+  if(!body||!S.data||!S.data.rows) return;
+  body.querySelectorAll('tr').forEach((tr,ri)=>{
+    tr.querySelectorAll('td').forEach(td=>{
+      const col=td.getAttribute('data-col');
+      if(S.data.rows[ri]) S.data.rows[ri][col]=td.textContent.trim();
+    });
+  });
+  S.csvRows=S.data.rows;
+  showToast('✅ Changes save ho gaye! Export tab se download karo.');
 }
 
 // ===== RENDER: JSON =====
