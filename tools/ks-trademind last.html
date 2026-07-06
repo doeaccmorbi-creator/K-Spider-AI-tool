@@ -2369,6 +2369,8 @@
       <button class="size-btn" onclick="generateSectionReport('pred-short')">📅 Prediction: Short Term</button>
       <button class="size-btn" onclick="generateSectionReport('pred-long')">📆 Prediction: Long Term</button>
       <button class="size-btn" onclick="generateSectionReport('capdash')">🏢 Market Cap Wise Report</button>
+      <button class="size-btn" onclick="generateSectionReport('w52')">📐 52-Week High/Low Report</button>
+      <button class="size-btn" onclick="generateSectionReport('sector')">🔄 Sector Rotation Report</button>
       <button class="size-btn" onclick="generateSectionReport('master')" style="background:linear-gradient(135deg,#7c3aed,#4c1d95);border-color:transparent;color:#fff;font-weight:800">⭐ MASTER Report (सब कुछ)</button>
     </div>
   </div>
@@ -4013,12 +4015,87 @@ function _fetchTVRecommend(sym, tf, onSuccess, onFail) {
 }
 
 /* ── SOURCE 2: Stooq live price data (CORS-friendly) ── */
+/* ── Generic JSON fetch with free CORS-proxy retry (2 proxies tried) ──
+   Many free financial/news JSON endpoints (Yahoo, NSE, rss2json)
+   intermittently fail direct browser fetch due to CORS/header
+   policies. This tries the direct URL first; if that fails, it
+   retries through TWO different free, key-free CORS relays before
+   giving up — genuinely increases the chance of REAL data without
+   ever fabricating a result. */
+function _corsFetchJSON(url, onSuccess, onFail) {
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.json(); })
+    .then(onSuccess)
+    .catch(function(){
+      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url))
+        .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.json(); })
+        .then(onSuccess)
+        .catch(function(){
+          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url))
+            .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.json(); })
+            .then(onSuccess)
+            .catch(onFail);
+        });
+    });
+}
+
+/* Same 3-attempt cascade but returns raw text — used for scraping
+   plain HTML pages (e.g. Moneycontrol) that don't need a login/session,
+   as an additional real-data source for FII/DII when NSE's API is
+   blocked. */
+function _corsFetchText(url, onSuccess, onFail) {
+  fetch(url)
+    .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
+    .then(onSuccess)
+    .catch(function(){
+      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url))
+        .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
+        .then(onSuccess)
+        .catch(function(){
+          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url))
+            .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
+            .then(onSuccess)
+            .catch(onFail);
+        });
+    });
+}
+
+/* Best-effort scrape of Moneycontrol's public FII/DII activity page as
+   a THIRD real-data source (NSE's own API needs a session cookie that
+   a stateless proxy can't establish, so this often succeeds when NSE
+   doesn't). STRICT validation: only accepted if we can confidently
+   extract exactly two sane numeric figures — otherwise we discard it
+   completely rather than risk showing a mis-parsed/wrong number. */
+function _scrapeMoneycontrolFiiDii(callback) {
+  _corsFetchText('https://www.moneycontrol.com/stocks/marketstats/fii_dii_activity/index.php',
+    function(html){
+      try {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var text = (doc.body && (doc.body.innerText || doc.body.textContent)) || '';
+        var fiiMatch = text.match(/FII\/FPI[^0-9\-]{0,60}(-?[\d,]+\.\d{1,2})/i) || text.match(/\bFII\b[^0-9\-]{0,60}(-?[\d,]+\.\d{1,2})/i);
+        var diiMatch = text.match(/\bDII\b[^0-9\-]{0,60}(-?[\d,]+\.\d{1,2})/i);
+        if(!fiiMatch || !diiMatch) { callback(null); return; }
+        var fiiVal = parseFloat(fiiMatch[1].replace(/,/g,''));
+        var diiVal = parseFloat(diiMatch[1].replace(/,/g,''));
+        if(isNaN(fiiVal) || isNaN(diiVal) || Math.abs(fiiVal) > 100000 || Math.abs(diiVal) > 100000) { callback(null); return; }
+        callback({ fiiNet: fiiVal, diiNet: diiVal, source: 'Moneycontrol' });
+      } catch(e) { callback(null); }
+    },
+    function(){ callback(null); }
+  );
+}
+
 function _fetchStooqPrice(sym, onSuccess, onFail) {
   /* Convert TradingView symbol to Stooq format */
   var s = sym.toUpperCase();
   var stooqSym = '';
-  if(s === 'NSE:NIFTY')      stooqSym = '%5ENSEI';
-  else if(s === 'BSE:SENSEX') stooqSym = '%5EBSESN';
+  var INDEX_MAP = {
+    'NSE:NIFTY':'%5ENSEI', 'BSE:SENSEX':'%5EBSESN', 'NSE:INDIAVIX':'%5EINDIAVIX',
+    'NSE:NIFTYBANK':'%5ENSEBANK', 'NSE:NIFTYIT':'%5ECNXIT', 'NSE:NIFTYAUTO':'%5ECNXAUTO',
+    'NSE:NIFTYPHARMA':'%5ECNXPHARMA', 'NSE:NIFTYFMCG':'%5ECNXFMCG', 'NSE:NIFTYMETAL':'%5ECNXMETAL',
+    'NSE:NIFTYENERGY':'%5ECNXENERGY', 'NSE:NIFTYREALTY':'%5ECNXREALTY'
+  };
+  if(INDEX_MAP[s]) stooqSym = INDEX_MAP[s];
   else if(s.indexOf('BINANCE:') !== -1) {
     stooqSym = s.replace('BINANCE:','').replace('USD','-USD');
   } else if(s.indexOf('NSE:') !== -1) {
@@ -4032,21 +4109,19 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
   }
 
   var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + stooqSym + '?interval=1d&range=5d';
-  fetch(url)
-    .then(function(r){ return r.json(); })
-    .then(function(data){
-      var res = data && data.chart && data.chart.result && data.chart.result[0];
-      if(!res){ throw new Error('no data'); }
-      var meta  = res.meta;
-      var close = meta.regularMarketPrice;
-      var prev  = meta.chartPreviousClose || meta.previousClose;
-      var chg   = prev ? ((close - prev) / prev * 100) : 0;
-      var vol   = meta.regularMarketVolume;
-      var hi52  = meta.fiftyTwoWeekHigh;
-      var lo52  = meta.fiftyTwoWeekLow;
-      onSuccess({ close:close, change:chg, volume:vol, hi52:hi52, lo52:lo52, raw:meta });
-    })
-    .catch(function(){ onFail(); });
+  _corsFetchJSON(url, function(data){
+    var res = data && data.chart && data.chart.result && data.chart.result[0];
+    if(!res){ onFail(); return; }
+    var meta  = res.meta;
+    var close = meta.regularMarketPrice;
+    var prev  = meta.chartPreviousClose || meta.previousClose;
+    var chg   = prev ? ((close - prev) / prev * 100) : 0;
+    var vol   = meta.regularMarketVolume;
+    var hi52  = meta.fiftyTwoWeekHigh;
+    var lo52  = meta.fiftyTwoWeekLow;
+    if(close === undefined || close === null) { onFail(); return; }
+    onSuccess({ close:close, change:chg, volume:vol, hi52:hi52, lo52:lo52, raw:meta });
+  }, onFail);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -4064,10 +4139,11 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
 var _liveIndexData  = null;   // { nifty:{close,change,volume,live}, sensex:{...} }
 var _liveNewsData   = null;   // [{title, publisher, time, link, live}]
 var _liveNewsIsLive = false;
+var _liveFiiDiiToday = null;  // { live:true/false, fiiNet, diiNet } — real fetch only, never fabricated
 
 function fetchLiveIndices(callback) {
-  var out = { nifty: null, sensex: null };
-  var pending = 2;
+  var out = { nifty: null, sensex: null, vix: null };
+  var pending = 3;
   function step(){ pending--; if(pending<=0){ _liveIndexData = out; callback(out); } }
   _fetchStooqPrice('NSE:NIFTY', function(d){
     out.nifty = { close:d.close, change:d.change, volume:d.volume, live:true }; step();
@@ -4075,6 +4151,36 @@ function fetchLiveIndices(callback) {
   _fetchStooqPrice('BSE:SENSEX', function(d){
     out.sensex = { close:d.close, change:d.change, volume:d.volume, live:true }; step();
   }, function(){ out.sensex = null; step(); });
+  _fetchStooqPrice('NSE:INDIAVIX', function(d){
+    out.vix = { close:d.close, change:d.change, live:true }; step();
+  }, function(){ out.vix = null; step(); });
+}
+
+/* ── Sector Rotation Tracker (expert-analyst addition) ──
+   Real, live-fetched sector indices (Yahoo Finance) — shows which
+   sectors are leading/lagging today, a core piece of professional
+   market analysis that was missing before. Only ever shown when
+   genuinely fetched; unavailable sectors are silently skipped. */
+var _liveSectorData = null;
+function fetchSectorIndices(callback) {
+  var sectors = [
+    { key:'bank',   label:'Nifty Bank',    sym:'NSE:NIFTYBANK' },
+    { key:'it',     label:'Nifty IT',      sym:'NSE:NIFTYIT' },
+    { key:'auto',   label:'Nifty Auto',    sym:'NSE:NIFTYAUTO' },
+    { key:'pharma', label:'Nifty Pharma',  sym:'NSE:NIFTYPHARMA' },
+    { key:'fmcg',   label:'Nifty FMCG',    sym:'NSE:NIFTYFMCG' },
+    { key:'metal',  label:'Nifty Metal',   sym:'NSE:NIFTYMETAL' },
+    { key:'energy', label:'Nifty Energy',  sym:'NSE:NIFTYENERGY' },
+    { key:'realty', label:'Nifty Realty',  sym:'NSE:NIFTYREALTY' }
+  ];
+  var out = [];
+  var pending = sectors.length;
+  function step(){ pending--; if(pending<=0){ _liveSectorData = out; callback(out); } }
+  sectors.forEach(function(s){
+    _fetchStooqPrice(s.sym, function(d){
+      out.push({ key:s.key, label:s.label, close:d.close, change:d.change, live:true }); step();
+    }, function(){ step(); });
+  });
 }
 
 function _inferNewsDirection(title) {
@@ -4087,37 +4193,35 @@ function _inferNewsDirection(title) {
 }
 
 function fetchLiveMarketNews(callback) {
-  fetch('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('Sensex Nifty share market India') + '&newsCount=8&quotesCount=0')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
+  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('Sensex Nifty share market India') + '&newsCount=8&quotesCount=0',
+    function(data){
       var news = (data && data.news) || [];
-      if(!news.length) throw new Error('empty');
+      if(!news.length) { _fetchNewsViaRSS(callback); return; }
       var items = news.slice(0,6).map(function(n){
         return { title:n.title, publisher:n.publisher||'Yahoo Finance', time:n.providerPublishTime?new Date(n.providerPublishTime*1000):new Date(), link:n.link, live:true };
       });
       _liveNewsData = items; _liveNewsIsLive = true; callback(items, true);
-    })
-    .catch(function(){ _fetchNewsViaRSS(callback); });
+    },
+    function(){ _fetchNewsViaRSS(callback); }
+  );
 }
 
 function _fetchNewsViaRSS(callback) {
   var rssUrl = 'https://news.google.com/rss/search?q=Sensex%20Nifty%20share%20market%20when:1d&hl=en-IN&gl=IN&ceid=IN:en';
-  fetch('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl))
-    .then(function(r){ return r.json(); })
-    .then(function(data){
+  _corsFetchJSON('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl),
+    function(data){
       var items = (data && data.items) || [];
-      if(!items.length) throw new Error('empty');
+      if(!items.length) { _liveNewsData = []; _liveNewsIsLive = false; callback([], false); return; }
       var mapped = items.slice(0,6).map(function(it){
         return { title:it.title, publisher:(it.source&&it.source.title)||'Google News', time:it.pubDate?new Date(it.pubDate):new Date(), link:it.link, live:true };
       });
       _liveNewsData = mapped; _liveNewsIsLive = true; callback(mapped, true);
-    })
-    .catch(function(){
-      var fallback = _TICKER_NEWS_POOL.slice(0,6).map(function(t){
-        return { title:t.h, publisher:'सामान्य थीम', time:new Date(), link:null, live:false, d:t.d };
-      });
-      _liveNewsData = fallback; _liveNewsIsLive = false; callback(fallback, false);
-    });
+    },
+    function(){
+      /* Genuinely no live news available — never invent/substitute fake headlines. */
+      _liveNewsData = []; _liveNewsIsLive = false; callback([], false);
+    }
+  );
 }
 
 /* ── SOURCE 3: AI-powered analysis using admin Groq/Claude key ── */
@@ -6303,21 +6407,11 @@ function loadFiiDiiData() {
 
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching data...</td></tr>';
 
-  /* Try NSE public FII/DII API */
-  var nseUrl = 'https://www.nseindia.com/api/fiidiiTradeReact';
-  fetch(nseUrl, {
-    headers: {
-      'Accept': 'application/json',
-      'Referer': 'https://www.nseindia.com/',
-      'User-Agent': 'Mozilla/5.0'
-    }
-  })
-  .then(function(r){ if(!r.ok) throw new Error('NSE API failed'); return r.json(); })
-  .then(function(data){ _renderFiiDii(data, exchange, period); })
-  .catch(function() {
-    /* NSE blocks direct browser fetch — use realistic generated data */
-    _renderFiiDiiSimulated(exchange, period);
-  });
+  /* Try NSE public FII/DII API (direct, then via free CORS relay) */
+  _corsFetchJSON('https://www.nseindia.com/api/fiidiiTradeReact',
+    function(data){ _renderFiiDii(data, exchange, period); },
+    function(){ _renderFiiDiiSimulated(exchange, period); }
+  );
 }
 
 function _renderFiiDii(data, exchange, period) {
@@ -6371,20 +6465,58 @@ function _renderFiiDii(data, exchange, period) {
 }
 
 function _renderFiiDiiSimulated(exchange, period) {
-  /* Live NSE API blocked (near-universal from browsers due to CORS/bot
-     detection). We NEVER present illustrative numbers as if they were
-     real. Show a clear warning + a direct link to the real NSDL/NSE
-     FII-DII page, and pull real recent news headlines about FII/DII
-     flows so the user still gets genuine, verifiable information. */
+  /* NSE's own API needs a browser session cookie that a stateless CORS
+     proxy can't establish, so it's blocked almost universally. Before
+     giving up, try one more genuinely real source: Moneycontrol's public
+     FII/DII page (no login/session needed) — strictly validated, only
+     accepted if we can confidently parse two real numbers. */
   var tbody = document.getElementById('fiidii-tbody');
   if(!tbody) return;
 
-  var warnRow = '<tr><td colspan="8" style="padding:14px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px">' +
-    '<div style="color:#fbbf24;font-weight:700;font-size:.76rem;margin-bottom:4px">⚠️ Live NSE FII/DII data अभी ब्राउज़र से ब्लॉक है (illustrative नंबर हैं, असली नहीं)</div>' +
-    '<div style="font-size:.7rem;color:var(--text-muted);line-height:1.6">नीचे की टेबल सिर्फ typical पैटर्न दिखाती है — पब्लिश करने से पहले सही आंकड़ों के लिए ' +
+  if(period === 'today') {
+    _scrapeMoneycontrolFiiDii(function(mc){
+      if(mc) { _renderFiiDiiSingleDayReal(mc, exchange); return; }
+      _renderFiiDiiHonestEmpty();
+    });
+  } else {
+    _renderFiiDiiHonestEmpty();
+  }
+}
+
+function _renderFiiDiiSingleDayReal(mc, exchange) {
+  var tbody = document.getElementById('fiidii-tbody');
+  if(!tbody) return;
+  var dateStr = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
+  tbody.innerHTML = '<tr>' +
+    '<td style="font-size:.72rem">' + dateStr + ' [✅ LIVE — ' + mc.source + ']</td>' +
+    '<td colspan="2" style="font-size:.72rem;color:var(--text-muted)">—</td>' +
+    '<td class="' + (mc.fiiNet>=0?'net-pos':'net-neg') + '">' + (mc.fiiNet>=0?'+':'') + _fmtCr(mc.fiiNet) + '</td>' +
+    '<td colspan="2" style="font-size:.72rem;color:var(--text-muted)">—</td>' +
+    '<td class="' + (mc.diiNet>=0?'net-pos':'net-neg') + '">' + (mc.diiNet>=0?'+':'') + _fmtCr(mc.diiNet) + '</td>' +
+    '<td style="font-size:.7rem;color:var(--text-muted)">' + exchange + '</td>' +
+    '</tr>';
+  _setEl2('fii-buy-total', '—'); _setEl2('fii-sell-total', '—');
+  var ne = document.getElementById('fii-net-total');
+  if(ne){ ne.textContent = (mc.fiiNet>=0?'+':'')+_fmtCr(mc.fiiNet); ne.style.color = mc.fiiNet>=0?'#10b981':'#f43f5e'; }
+  _setEl2('dii-buy-total', '—'); _setEl2('dii-sell-total', '—');
+  var de = document.getElementById('dii-net-total');
+  if(de){ de.textContent = (mc.diiNet>=0?'+':'')+_fmtCr(mc.diiNet); de.style.color = mc.diiNet>=0?'#10b981':'#f43f5e'; }
+}
+
+function _renderFiiDiiHonestEmpty() {
+  var tbody = document.getElementById('fiidii-tbody');
+  if(!tbody) return;
+
+  /* Live data genuinely unavailable from every real source we tried.
+     We NEVER fabricate a number to fill this table. Show a clean,
+     honest state + real news headlines if we can find any. */
+  tbody.innerHTML = '<tr><td colspan="8" style="padding:16px;text-align:center">' +
+    '<div style="color:#fbbf24;font-weight:700;font-size:.8rem;margin-bottom:6px">⚠️ Live NSE FII/DII data अभी उपलब्ध नहीं</div>' +
+    '<div style="font-size:.72rem;color:var(--text-muted);line-height:1.7;max-width:520px;margin:0 auto">' +
+    'यह टूल कभी भी अनुमानित/fake आंकड़े नहीं दिखाता। सटीक FII/DII आंकड़ों के लिए देखें: ' +
     '<a href="https://www.fpi.nsdl.co.in/web/Reports/Fpi_Report.aspx" target="_blank" style="color:#22d3ee">NSDL FPI Report</a> या ' +
-    '<a href="https://www.nseindia.com/reports/fii-dii" target="_blank" style="color:#22d3ee">NSE FII-DII page</a> ज़रूर देखें।</div>' +
-    '<div id="fiidii-live-news" style="margin-top:8px;font-size:.7rem;color:var(--text-secondary)">📡 आज की असली FII/DII संबंधित headlines लाई जा रही हैं...</div>' +
+    '<a href="https://www.nseindia.com/reports/fii-dii" target="_blank" style="color:#22d3ee">NSE FII-DII page</a></div>' +
+    '<div id="fiidii-live-news" style="margin-top:10px;font-size:.72rem;color:var(--text-secondary)"></div>' +
     '</td></tr>';
 
   fetchLiveMarketNews(function(items, isLive) {
@@ -6394,60 +6526,18 @@ function _renderFiiDiiSimulated(exchange, period) {
       var filtered = items.filter(function(n){ return /fii|dii|foreign|institutional|inflow|outflow/i.test(n.title); });
       var show = (filtered.length ? filtered : items).slice(0,3);
       newsBox.innerHTML = '🔴 आज की असली headlines: ' + show.map(function(n){ return n.title; }).join('  •  ');
-    } else {
-      newsBox.textContent = '⚠️ लाइव न्यूज़ भी अभी उपलब्ध नहीं — ऊपर दिए गए NSDL/NSE लिंक से सटीक आंकड़े चेक करें।';
     }
+    /* If no live news either, we simply say nothing further — no fake mention. */
   });
 
-  /* Realistic FII/DII data based on typical market patterns */
-  var days = period==='today' ? 1 : period==='7d' ? 7 : period==='1m' ? 22 : period==='3m' ? 66 : period==='6m' ? 132 : period==='1y' ? 260 : period==='2y' ? 260 : period==='3y' ? 260 : 22;
-  var rows = [];
-  var base = new Date();
-  var totalFiiBuy=0, totalFiiSell=0, totalDiiBuy=0, totalDiiSell=0;
-
-  for(var i=0; i<days; i++) {
-    var d = new Date(base);
-    d.setDate(d.getDate() - i);
-    /* Skip weekends */
-    if(d.getDay()===0||d.getDay()===6) continue;
-
-    var seed = d.getDate() * 137 + d.getMonth() * 31;
-    var rand  = (Math.sin(seed * 9301 + 49297) * 0.5 + 0.5);
-
-    var fiiBuy  = Math.round(5000 + rand * 25000);
-    var fiiSell = Math.round(4000 + (1-rand) * 22000);
-    var diiBuy  = Math.round(3000 + (1-rand) * 18000);
-    var diiSell = Math.round(2500 + rand * 15000);
-    var fiiNet  = fiiBuy - fiiSell;
-    var diiNet  = diiBuy - diiSell;
-
-    totalFiiBuy += fiiBuy; totalFiiSell += fiiSell;
-    totalDiiBuy += diiBuy; totalDiiSell += diiSell;
-
-    var dateStr = d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
-    rows.push('<tr style="opacity:.75">' +
-      '<td style="color:var(--text-muted);font-size:.72rem">' + dateStr + ' ⚠️</td>' +
-      '<td class="buy-amt">' + _fmtCr(fiiBuy) + '</td>' +
-      '<td class="sell-amt">' + _fmtCr(fiiSell) + '</td>' +
-      '<td class="' + (fiiNet>=0?'net-pos':'net-neg') + '">' + (fiiNet>=0?'+':'') + _fmtCr(fiiNet) + '</td>' +
-      '<td class="buy-amt">' + _fmtCr(diiBuy) + '</td>' +
-      '<td class="sell-amt">' + _fmtCr(diiSell) + '</td>' +
-      '<td class="' + (diiNet>=0?'net-pos':'net-neg') + '">' + (diiNet>=0?'+':'') + _fmtCr(diiNet) + '</td>' +
-      '<td style="font-size:.7rem;color:var(--text-muted)">' + exchange + '</td>' +
-      '</tr>');
-  }
-
-  tbody.innerHTML = warnRow + (rows.join('') || '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)">No data for selected period</td></tr>');
-  _setEl2('fii-buy-total',  _fmtCr(totalFiiBuy) + ' ⚠️');
-  _setEl2('fii-sell-total', _fmtCr(totalFiiSell) + ' ⚠️');
-  var fn = totalFiiBuy - totalFiiSell;
+  _setEl2('fii-buy-total', '—');
+  _setEl2('fii-sell-total', '—');
   var ne = document.getElementById('fii-net-total');
-  if(ne){ ne.textContent=(fn>=0?'+':'')+_fmtCr(fn)+' ⚠️'; ne.style.color=fn>=0?'#10b981':'#f43f5e'; }
-  _setEl2('dii-buy-total',  _fmtCr(totalDiiBuy) + ' ⚠️');
-  _setEl2('dii-sell-total', _fmtCr(totalDiiSell) + ' ⚠️');
-  var dn = totalDiiBuy - totalDiiSell;
+  if(ne){ ne.textContent = '—'; ne.style.color = 'var(--text-muted)'; }
+  _setEl2('dii-buy-total', '—');
+  _setEl2('dii-sell-total', '—');
   var de = document.getElementById('dii-net-total');
-  if(de){ de.textContent=(dn>=0?'+':'')+_fmtCr(dn)+' ⚠️'; de.style.color=dn>=0?'#10b981':'#f43f5e'; }
+  if(de){ de.textContent = '—'; de.style.color = 'var(--text-muted)'; }
 }
 
 function _fmtCr(n) {
@@ -7429,22 +7519,27 @@ function generateDailyReport() {
   _ensureReportData(function() {
     /* Make sure cap dashboard + predictions are populated too */
     if(!document.getElementById('cap-large-list').children.length) loadCapDashboard();
-    status.textContent = '📡 लाइव NIFTY/SENSEX और आज की मार्केट न्यूज़ लाई जा रही है...';
+    status.textContent = '📡 लाइव NIFTY/SENSEX/VIX और आज की मार्केट न्यूज़ लाई जा रही है...';
     fetchLiveIndices(function() {
-      fetchLiveMarketNews(function() {
-        setTimeout(function() {
-          var reportText = _buildReportText();
-          output.textContent = reportText;
-          container.style.display = 'block';
-          document.getElementById('copy-report-btn').style.display = 'inline-block';
-          document.getElementById('download-report-btn').style.display = 'inline-block';
-          btn.disabled = false;
-          btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
-          var wordCount = reportText.split(/\s+/).length;
-          var liveTag = (_liveIndexData && (_liveIndexData.nifty||_liveIndexData.sensex)) ? ' | 🔴 LIVE index data' : ' | ⚠️ live index unavailable';
-          status.textContent = '✅ रिपोर्ट तैयार — लगभग ' + wordCount + ' शब्द — ' + _getTimeIST() + liveTag;
-          container.scrollIntoView({behavior:'smooth', block:'start'});
-        }, 400);
+      fetchSectorIndices(function() {
+        fetchLiveMarketNews(function() {
+          _getFiiDiiPeriodSummary('today', function(fiiDiiToday) {
+            _liveFiiDiiToday = fiiDiiToday;
+            setTimeout(function() {
+              var reportText = _buildReportText();
+              output.textContent = reportText;
+              container.style.display = 'block';
+              document.getElementById('copy-report-btn').style.display = 'inline-block';
+              document.getElementById('download-report-btn').style.display = 'inline-block';
+              btn.disabled = false;
+              btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
+              var wordCount = reportText.split(/\s+/).length;
+              var liveTag = (_liveIndexData && (_liveIndexData.nifty||_liveIndexData.sensex)) ? ' | 🔴 LIVE index data' : ' | ⚠️ live index unavailable';
+              status.textContent = '✅ रिपोर्ट तैयार — लगभग ' + wordCount + ' शब्द — ' + _getTimeIST() + liveTag;
+              container.scrollIntoView({behavior:'smooth', block:'start'});
+            }, 400);
+          });
+        });
       });
     });
   });
@@ -7518,8 +7613,11 @@ function _buildReportText() {
   push('   • ⚠️ बेचने या बचने लायक (Genuine SELL) — ' + sellCount + ' (' + (sellCount/totalScanned*100).toFixed(1) + '%)');
   push('   • ➡️ अभी कुछ साफ़ नहीं (Neutral) — ' + neutralCount + ' (' + (neutralCount/totalScanned*100).toFixed(1) + '%)');
   blank();
-  push('🏦 संस्थागत निवेश (FII+DII) का आज का नेट फ्लो: ' + (mc.instNet>=0?'+':'') + _fmtCr(mc.instNet) + ' करोड़');
-  push('🎯 तो ओवरऑल आज मार्केट का मूड है: ' + marketMood + ' — यह टेक्निकल ब्रेड्थ और संस्थागत फ्लो दोनों को मिलाकर तय हुआ है, इसलिए कोई एक-दूसरे से उलझा हुआ निर्णय नहीं है।');
+  if(_liveFiiDiiToday && _liveFiiDiiToday.live) {
+    var todayInstNet = _liveFiiDiiToday.fiiNet + _liveFiiDiiToday.diiNet;
+    push('🏦 संस्थागत निवेश (FII+DII) का आज का नेट फ्लो: ' + (todayInstNet>=0?'+':'') + _fmtCr(todayInstNet) + ' करोड़ [✅ LIVE — NSE]');
+  }
+  push('🎯 तो ओवरऑल आज मार्केट का मूड है: ' + marketMood + ' — यह टेक्निकल ब्रेड्थ' + (_liveFiiDiiToday && _liveFiiDiiToday.live ? ' और संस्थागत फ्लो दोनों को मिलाकर तय हुआ है, इसलिए कोई एक-दूसरे से उलझा हुआ निर्णय नहीं है।' : ' के आधार पर तय हुआ है।'));
   blank();
 
   if(marketMood.indexOf('तेजी')!==-1) {
@@ -7538,83 +7636,97 @@ function _buildReportText() {
   }
   blank(); blank();
 
-  /* ════════════ SECTION 1B: LIVE NIFTY/SENSEX + WHY IT MOVED ════════════ */
-  push('───────────────────────────────────────────────────────────');
-  push('📈 अब देखते हैं आज NIFTY और SENSEX असल में कहाँ हैं — लाइव नंबर्स के साथ');
-  push('───────────────────────────────────────────────────────────');
-  blank();
-
+  /* ════════════ SECTION 1B: LIVE NIFTY/SENSEX + WHY IT MOVED ════════════
+     STRICT RULE: only ever print a line/point when it is backed by
+     genuinely live-fetched data. If a data point is unavailable, it is
+     skipped completely — no placeholder, no "unavailable" note, no
+     estimated number. */
   var liveIdx = _liveIndexData || { nifty:null, sensex:null };
-  var _idxLine = function(label, d) {
-    if(d && d.close) {
-      var dir = d.change >= 0 ? '🟢 ऊपर' : '🔴 नीचे';
-      return '   • ' + label + ': ' + d.close.toFixed(2) + ' pts   |   बदलाव: ' + (d.change>=0?'+':'') + d.change.toFixed(2) + '%   ' + dir + '   (✅ LIVE डेटा — Yahoo Finance)';
-    }
-    return '   • ' + label + ': ⚠️ लाइव डेटा अभी fetch नहीं हो पाया — कृपया NSE/BSE की ऑफिशियल साइट पर सटीक क्लोज़िंग वैल्यू चेक करें, कोई अनुमानित नंबर यहाँ नहीं दिखाया गया।';
-  };
-  push(_idxLine('NIFTY 50', liveIdx.nifty));
-  push(_idxLine('SENSEX', liveIdx.sensex));
-  blank();
+  var hasLiveIdx = !!(liveIdx.nifty && liveIdx.nifty.close) || !!(liveIdx.sensex && liveIdx.sensex.close);
+  var hasLiveFiiDii = !!(_liveFiiDiiToday && _liveFiiDiiToday.live);
+  var hasLiveNews = !!(_liveNewsData && _liveNewsData.length);
 
-  var _niftyUp = liveIdx.nifty ? (liveIdx.nifty.change >= 0) : null;
-  if(_niftyUp !== null) {
-    push('तो आज इंडेक्स ' + (_niftyUp?'ऊपर':'नीचे') + ' बंद हुआ/चल रहा है। चलिए 3 एंगल से समझते हैं कि ऐसा क्यों हुआ —');
+  if(hasLiveIdx || hasLiveFiiDii || hasLiveNews) {
+    push('───────────────────────────────────────────────────────────');
+    push('📈 अब देखते हैं आज NIFTY और SENSEX असल में कहाँ हैं — लाइव नंबर्स के साथ');
+    push('───────────────────────────────────────────────────────────');
     blank();
-    push('1️⃣ टेक्निकल एंगल: आज हमारे स्कैनर पर BUY:SELL:TRAP रेशियो रहा ' + buyCountEarly + ':' + sellCountEarly + ':' + trapCountEarly + ' — ' +
-      (buyCountEarly>sellCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ इंडेक्स की तेज़ी को सपोर्ट कर रही है।' : sellCountEarly>buyCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ भी कमज़ोर रही, जो इंडेक्स की गिरावट से मेल खाती है।' : 'यानी ब्रेड्थ आज मिला-जुला रहा।'));
-    push('2️⃣ इंस्टीट्यूशनल एंगल: FII+DII का नेट फ्लो आज ' + (mc.instNet>=0?'पॉज़िटिव':'निगेटिव') + ' रहा (' + (mc.instNet>=0?'+':'') + _fmtCr(mc.instNet) + ' करोड़) — ' +
-      ((mc.instNet>=0)===_niftyUp ? 'जो इंडेक्स की आज की चाल से मेल खाता है।' : 'ध्यान दें, शॉर्ट टर्म में institutional flow और index move हमेशा एक जैसे नहीं होते, इसमें lag भी हो सकता है।'));
-    push('3️⃣ न्यूज़/ग्लोबल एंगल: नीचे दी गई ताज़ा हेडलाइंस देखिए — ये सेंटीमेंट को समझने में मदद करेंगी:');
-  } else {
-    push('लाइव इंडेक्स डेटा अभी उपलब्ध नहीं है, इसलिए सटीक क्लोज़िंग लेवल के लिए कृपया NSE/BSE ऑफिशियल साइट चेक करें। नीचे दी गई ताज़ा हेडलाइंस से सेंटिमेंट का अंदाज़ा ज़रूर मिलेगा:');
-  }
-  blank();
 
-  var liveNewsList = _liveNewsData || [];
-  if(liveNewsList.length) {
-    liveNewsList.forEach(function(n, i) {
-      push((i+1) + '. ' + n.title + (n.live ? ('  — ' + n.publisher) : ''));
+    if(liveIdx.nifty && liveIdx.nifty.close) {
+      push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' pts   |   बदलाव: ' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%   ' + (liveIdx.nifty.change>=0?'🟢 ऊपर':'🔴 नीचे') + '   [✅ LIVE]');
+    }
+    if(liveIdx.sensex && liveIdx.sensex.close) {
+      push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' pts   |   बदलाव: ' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%   ' + (liveIdx.sensex.change>=0?'🟢 ऊपर':'🔴 नीचे') + '   [✅ LIVE]');
+    }
+    if(liveIdx.vix && liveIdx.vix.close) {
+      var vixMood = liveIdx.vix.close >= 20 ? '⚠️ हाई (डर/अनिश्चितता ज़्यादा)' : liveIdx.vix.close <= 13 ? '😌 लो (कॉम्प्लेसेंसी/स्थिरता)' : '⚪ नॉर्मल रेंज';
+      push('   • India VIX (Fear Index): ' + liveIdx.vix.close.toFixed(2) + ' (' + (liveIdx.vix.change>=0?'+':'') + liveIdx.vix.change.toFixed(2) + '%)   ' + vixMood + '   [✅ LIVE]');
+    }
+    if(hasLiveIdx) blank();
+
+    var _niftyUp = (liveIdx.nifty && liveIdx.nifty.close) ? (liveIdx.nifty.change >= 0) : null;
+    var angleNum = 1;
+    if(_niftyUp !== null) {
+      push('तो आज इंडेक्स ' + (_niftyUp?'ऊपर':'नीचे') + ' है। चलिए समझते हैं क्यों —');
+      blank();
+      push(angleNum + '️⃣ टेक्निकल एंगल: आज हमारे स्कैनर पर BUY:SELL:TRAP रेशियो रहा ' + buyCountEarly + ':' + sellCountEarly + ':' + trapCountEarly + ' — ' +
+        (buyCountEarly>sellCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ इंडेक्स की तेज़ी को सपोर्ट कर रही है।' : sellCountEarly>buyCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ भी कमज़ोर रही, जो इंडेक्स की गिरावट से मेल खाती है।' : 'यानी ब्रेड्थ आज मिला-जुला रहा।'));
+      angleNum++;
+    }
+    if(hasLiveFiiDii) {
+      var todayInstNet2 = _liveFiiDiiToday.fiiNet + _liveFiiDiiToday.diiNet;
+      push(angleNum + '️⃣ इंस्टीट्यूशनल एंगल: FII+DII का नेट फ्लो आज ' + (todayInstNet2>=0?'पॉज़िटिव':'निगेटिव') + ' रहा (' + (todayInstNet2>=0?'+':'') + _fmtCr(todayInstNet2) + ' करोड़) [✅ LIVE — NSE] — ' +
+        (_niftyUp!==null ? ((todayInstNet2>=0)===_niftyUp ? 'जो इंडेक्स की आज की चाल से मेल खाता है।' : 'ध्यान दें, शॉर्ट टर्म में institutional flow और index move हमेशा एक जैसे नहीं होते।') : ''));
+      angleNum++;
+    }
+    if(hasLiveNews) {
+      push(angleNum + '️⃣ न्यूज़/ग्लोबल एंगल: नीचे दी गई आज की असली हेडलाइंस देखिए:');
+      blank();
+      _liveNewsData.slice(0,6).forEach(function(n, i) {
+        push((i+1) + '. ' + n.title + ' — ' + n.publisher);
+      });
+      blank();
+      push('📌 नोट: ऊपर की headlines रियल-टाइम सोर्स (Yahoo Finance / Google News) से आज ही ली गई हैं। news और index');
+      push('move के बीच कारण-प्रभाव संबंध हमेशा 100% सिद्ध नहीं होता, इसलिए इन्हें "संभावित फैक्टर" मानें, अंतिम सच नहीं।');
+    }
+    blank(); blank();
+  }
+
+  /* ════════════ SECTION 1C: SECTOR ROTATION (real, live sector indices) ════════════
+     Professional market analysis staple — shows which sectors are
+     leading/lagging today. Only rendered with genuinely live data;
+     any sector that failed to fetch is silently skipped. */
+  var liveSectors = (_liveSectorData || []).filter(function(sc){ return sc.live; });
+  if(liveSectors.length >= 3) {
+    push('───────────────────────────────────────────────────────────');
+    push('🔄 सेक्टर रोटेशन — आज कौन सा सेक्टर आगे, कौन पीछे [✅ LIVE]');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    var sortedSectors = liveSectors.slice().sort(function(a,b){ return b.change - a.change; });
+    sortedSectors.forEach(function(sc){
+      push('   • ' + sc.label + ': ' + (sc.change>=0?'+':'') + sc.change.toFixed(2) + '%   ' + (sc.change>=0?'🟢':'🔴'));
     });
     blank();
-    if(_liveNewsIsLive) {
-      push('📌 नोट: ऊपर की headlines रियल-टाइम सोर्स (Yahoo Finance / Google News) से आज ही ली गई हैं। लेकिन याद रखें —');
-      push('news और index move के बीच कारण-प्रभाव संबंध हमेशा 100% सिद्ध नहीं होता, इसलिए इन्हें "संभावित फैक्टर" मानें, अंतिम सच नहीं।');
-    } else {
-      push('⚠️ आज लाइव न्यूज़ सोर्स fetch नहीं हो पाया — ऊपर सिर्फ सामान्य मार्केट थीम्स हैं (असली आज की खबरें नहीं)।');
-      push('कृपया पब्लिश करने से पहले Moneycontrol, Economic Times या NSE/BSE ऑफिशियल साइट पर आज की असली खबर खुद कन्फर्म करें।');
-    }
-  } else {
-    push('⚠️ आज कोई न्यूज़ हेडलाइन fetch नहीं हो पाई — कृपया Moneycontrol, Economic Times या NSE/BSE ऑफिशियल साइट से आज की खबरें ज़रूर देख लें।');
+    push('   📌 सबसे मजबूत सेक्टर: ' + sortedSectors[0].label + '   |   सबसे कमज़ोर सेक्टर: ' + sortedSectors[sortedSectors.length-1].label);
+    blank(); blank();
   }
-  blank(); blank();
 
-  /* ════════════ SECTION 2: GLOBAL + NATIONAL NEWS FACTORS ════════════ */
-  push('───────────────────────────────────────────────────────────');
-  push('🌍 अब बात करते हैं — आज मार्केट को हिला सकने वाली बाकी खबरें और थीम्स');
-  push('───────────────────────────────────────────────────────────');
-  blank();
-  push('दोस्तों, मार्केट सिर्फ चार्ट से नहीं चलता — खबरें भी बहुत बड़ा रोल निभाती हैं। ऊपर हमने आज की असली');
-  push('headlines देख लीं, अब चलिए कुछ बाकी सेक्टर-वाइज़ थीम्स भी देख लेते हैं जो दिशा तय कर सकती हैं:');
-  blank();
-  /* Prefer live news for direction-tagging; fall back to curated static pool */
-  var newsItems;
-  if(_liveNewsData && _liveNewsData.length) {
-    newsItems = _liveNewsData.slice(0, 10).map(function(n) {
-      return { h: n.title, d: n.d || _inferNewsDirection(n.title) };
-    }).concat(_TICKER_NEWS_POOL.slice(0, 6));
-  } else {
-    newsItems = _TICKER_NEWS_POOL.slice(0, 10);
-  }
-  newsItems.forEach(function(item, i) {
-    var dirHindi = item.d==='bull' ? '🟢 तेज़ी की तरफ इशारा' : item.d==='bear' ? '🔴 मंदी की तरफ इशारा' : '⚪ अभी न्यूट्रल असर';
-    push((i+1) + '. ' + item.h);
-    push('   👉 असर: ' + dirHindi);
+  /* ════════════ SECTION 2: NEWS-BASED SECTOR THEMES ════════════
+     Only rendered when we have genuinely live news to tag — never
+     falls back to a static/curated theme pool presented as market news. */
+  if(hasLiveNews) {
+    push('───────────────────────────────────────────────────────────');
+    push('🌍 अब बात करते हैं — आज की असली खबरों का सेंटीमेंट पर असर');
+    push('───────────────────────────────────────────────────────────');
     blank();
-  });
-  push('📌 एक बात ध्यान रखिए — ऊपर की कुछ थीम्स सामान्य सेक्टर पैटर्न पर आधारित हैं (Section 1B की असली headlines');
-  push('से अलग)। अगर आपको बिल्कुल लेटेस्ट और रीयल-टाइम न्यूज़ चाहिए, तो NSE/BSE की ऑफिशियल वेबसाइट, Moneycontrol');
-  push('या Economic Times एक बार ज़रूर चेक कर लें — डबल-चेक करना कभी बुरा नहीं होता।');
-  blank(); blank();
+    _liveNewsData.slice(0, 10).forEach(function(n, i) {
+      var dir = _inferNewsDirection(n.title);
+      var dirHindi = dir==='bull' ? '🟢 तेज़ी की तरफ इशारा' : dir==='bear' ? '🔴 मंदी की तरफ इशारा' : '⚪ अभी न्यूट्रल असर';
+      push((i+1) + '. ' + n.title + ' — ' + n.publisher);
+      push('   👉 असर: ' + dirHindi);
+      blank();
+    });
+  }
 
   /* ════════════ SECTION 3: TRAP STOCKS — DETAILED ════════════ */
   push('───────────────────────────────────────────────────────────');
@@ -7895,14 +8007,10 @@ function setWmReportMode(mode, btn) {
 }
 
 function _getFiiDiiPeriodSummary(period, callback) {
-  fetch('https://www.nseindia.com/api/fiidiiTradeReact', {
-    headers: { 'Accept':'application/json', 'Referer':'https://www.nseindia.com/', 'User-Agent':'Mozilla/5.0' }
-  })
-  .then(function(r){ if(!r.ok) throw new Error('fail'); return r.json(); })
-  .then(function(data){
+  _corsFetchJSON('https://www.nseindia.com/api/fiidiiTradeReact', function(data){
     var rows = Array.isArray(data) ? data : (data.data || []);
-    if(!rows.length) throw new Error('empty');
-    var days = period === '7d' ? 5 : 22;
+    if(!rows.length) { _fiiDiiTryMoneycontrol(period, callback); return; }
+    var days = period === 'today' ? 1 : period === '7d' ? 5 : 22;
     var slice = rows.slice(0, days);
     var t = { fiiBuy:0, fiiSell:0, diiBuy:0, diiSell:0 };
     slice.forEach(function(r){
@@ -7912,38 +8020,33 @@ function _getFiiDiiPeriodSummary(period, callback) {
       t.diiSell += parseFloat(r.diiSell || r.dii_sell || 0);
     });
     t.fiiNet = t.fiiBuy - t.fiiSell; t.diiNet = t.diiBuy - t.diiSell;
-    t.live = true; t.days = slice.length;
+    t.live = true; t.days = slice.length; t.source = 'NSE';
     callback(t);
-  })
-  .catch(function(){
-    var days = period === '7d' ? 5 : 22;
-    var t = { fiiBuy:0, fiiSell:0, diiBuy:0, diiSell:0 };
-    var base = new Date();
-    for(var i=0;i<days;i++){
-      var d = new Date(base); d.setDate(d.getDate()-i);
-      if(d.getDay()===0||d.getDay()===6) continue;
-      var seed = d.getDate()*137 + d.getMonth()*31;
-      var rand = (Math.sin(seed*9301+49297)*0.5+0.5);
-      t.fiiBuy  += Math.round(5000+rand*25000);
-      t.fiiSell += Math.round(4000+(1-rand)*22000);
-      t.diiBuy  += Math.round(3000+(1-rand)*18000);
-      t.diiSell += Math.round(2500+rand*15000);
-    }
-    t.fiiNet = t.fiiBuy - t.fiiSell; t.diiNet = t.diiBuy - t.diiSell;
-    t.live = false; t.days = days;
-    callback(t);
+  }, function(){
+    /* NSE API blocked — try Moneycontrol scrape (only for 'today', since
+       the page only ever shows the latest single day's figures) before
+       giving up entirely. Never substitutes an estimated/pattern number. */
+    _fiiDiiTryMoneycontrol(period, callback);
+  });
+}
+
+function _fiiDiiTryMoneycontrol(period, callback) {
+  if(period !== 'today') { callback({ live:false }); return; }
+  _scrapeMoneycontrolFiiDii(function(mc){
+    if(!mc) { callback({ live:false }); return; }
+    callback({ fiiNet: mc.fiiNet, diiNet: mc.diiNet, fiiBuy:null, fiiSell:null, diiBuy:null, diiSell:null, live:true, days:1, source: mc.source });
   });
 }
 
 function _getMutualFundNews(callback) {
-  fetch('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('mutual fund SIP inflow India AMFI') + '&newsCount=8&quotesCount=0')
-    .then(function(r){ return r.json(); })
-    .then(function(data){
+  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('mutual fund SIP inflow India AMFI') + '&newsCount=8&quotesCount=0',
+    function(data){
       var news = (data && data.news) || [];
-      if(!news.length) throw new Error('empty');
+      if(!news.length) { callback([], false); return; }
       callback(news.slice(0,4).map(function(n){ return { title:n.title, publisher:n.publisher||'Yahoo Finance' }; }), true);
-    })
-    .catch(function(){ callback([], false); });
+    },
+    function(){ callback([], false); }
+  );
 }
 
 function generateWeeklyMonthlyReport() {
@@ -8009,24 +8112,20 @@ function _buildWmReportText(mode, fiiDii, mfNews, mfLive) {
   push('═══════════════════════════════════════════════════════════');
   blank(); blank();
 
-  /* ── SECTION 1: LIVE INDEX SNAPSHOT ── */
-  push('───────────────────────────────────────────────────────────');
-  push('📈 SECTION 1 — आज का लाइव इंडेक्स स्नैपशॉट');
-  push('───────────────────────────────────────────────────────────');
-  blank();
+  /* ── SECTION 1: LIVE INDEX SNAPSHOT (only if we actually have live data) ── */
   var liveIdx = _liveIndexData || {nifty:null, sensex:null};
-  function idxLn(label, d){
-    if(d && d.close){
-      var dir = d.change>=0?'🟢':'🔴';
-      return '   • ' + label + ': ' + d.close.toFixed(2) + ' pts (' + (d.change>=0?'+':'') + d.change.toFixed(2) + '%) ' + dir + ' [✅ LIVE]';
-    }
-    return '   • ' + label + ': ⚠️ लाइव डेटा उपलब्ध नहीं — NSE/BSE साइट चेक करें।';
+  var hasIdx = !!(liveIdx.nifty && liveIdx.nifty.close) || !!(liveIdx.sensex && liveIdx.sensex.close);
+  if(hasIdx) {
+    push('───────────────────────────────────────────────────────────');
+    push('📈 SECTION 1 — आज का लाइव इंडेक्स स्नैपशॉट');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    if(liveIdx.nifty && liveIdx.nifty.close)  push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' pts (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) ' + (liveIdx.nifty.change>=0?'🟢':'🔴') + ' [✅ LIVE]');
+    if(liveIdx.sensex && liveIdx.sensex.close) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' pts (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) ' + (liveIdx.sensex.change>=0?'🟢':'🔴') + ' [✅ LIVE]');
+    blank(); blank();
   }
-  push(idxLn('NIFTY 50', liveIdx.nifty));
-  push(idxLn('SENSEX', liveIdx.sensex));
-  blank(); blank();
 
-  /* ── SECTION 2: MARKET BREADTH OVER PERIOD ── */
+  /* ── SECTION 2: MARKET BREADTH OVER PERIOD (real, computed from live scan) ── */
   push('───────────────────────────────────────────────────────────');
   push('📊 SECTION 2 — ' + rangeLabel + ' का मार्केट ब्रेड्थ (' + (_scannerData?_scannerData.length:0) + ' स्टॉक्स स्कैन किए गए)');
   push('───────────────────────────────────────────────────────────');
@@ -8049,54 +8148,48 @@ function _buildWmReportText(mode, fiiDii, mfNews, mfLive) {
   });
   blank(); blank();
 
-  /* ── SECTION 3: FII/DII INSTITUTIONAL FLOW ── */
-  push('───────────────────────────────────────────────────────────');
-  push('🏦 SECTION 3 — FII / DII संस्थागत निवेश (' + rangeLabel + ')');
-  push('───────────────────────────────────────────────────────────');
-  blank();
-  if(fiiDii.live) {
-    push('   ✅ यह डेटा NSE के लाइव सोर्स से लिया गया है (' + fiiDii.days + ' कारोबारी दिन)।');
-  } else {
-    push('   ⚠️ NSE का लाइव सोर्स ब्राउज़र से ब्लॉक है — नीचे के आंकड़े illustrative pattern हैं, असली नहीं।');
-    push('   सटीक आंकड़ों के लिए देखें: https://www.fpi.nsdl.co.in/web/Reports/Fpi_Report.aspx या https://www.nseindia.com/reports/fii-dii');
+  /* ── SECTION 3: FII/DII INSTITUTIONAL FLOW — only rendered when genuinely live ── */
+  if(fiiDii && fiiDii.live) {
+    push('───────────────────────────────────────────────────────────');
+    push('🏦 SECTION 3 — FII / DII संस्थागत निवेश (' + rangeLabel + ') [✅ LIVE — ' + (fiiDii.source||'NSE') + ']');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    if(fiiDii.fiiBuy !== null && fiiDii.fiiBuy !== undefined) {
+      push('   • FII कुल खरीदी: ₹' + _fmtCr(fiiDii.fiiBuy) + ' करोड़   |   FII कुल बिक्री: ₹' + _fmtCr(fiiDii.fiiSell) + ' करोड़');
+    }
+    push('   • FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़ ' + (fiiDii.fiiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)'));
+    if(fiiDii.diiBuy !== null && fiiDii.diiBuy !== undefined) {
+      push('   • DII कुल खरीदी: ₹' + _fmtCr(fiiDii.diiBuy) + ' करोड़   |   DII कुल बिक्री: ₹' + _fmtCr(fiiDii.diiSell) + ' करोड़');
+    }
+    push('   • DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़ ' + (fiiDii.diiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)'));
+    blank();
+    var combinedNet = fiiDii.fiiNet + fiiDii.diiNet;
+    push('   📌 कुल मिलाकर institutional flow ' + (combinedNet>=0?'पॉज़िटिव':'निगेटिव') + ' रहा — यह ' + (isWeekly?'हफ्ते':'महीने') + ' भर के market sentiment को समझने में मदद करता है।');
+    blank(); blank();
   }
-  blank();
-  push('   • FII कुल खरीदी: ₹' + _fmtCr(fiiDii.fiiBuy) + ' करोड़   |   FII कुल बिक्री: ₹' + _fmtCr(fiiDii.fiiSell) + ' करोड़');
-  push('   • FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़ ' + (fiiDii.fiiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)'));
-  push('   • DII कुल खरीदी: ₹' + _fmtCr(fiiDii.diiBuy) + ' करोड़   |   DII कुल बिक्री: ₹' + _fmtCr(fiiDii.diiSell) + ' करोड़');
-  push('   • DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़ ' + (fiiDii.diiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)'));
-  blank();
-  var combinedNet = fiiDii.fiiNet + fiiDii.diiNet;
-  push('   📌 कुल मिलाकर institutional flow ' + (combinedNet>=0?'पॉज़िटिव':'निगेटिव') + ' रहा — यह ' + (isWeekly?'हफ्ते':'महीने') + ' भर के market sentiment को समझने में मदद करता है।');
-  blank(); blank();
 
-  /* ── SECTION 4: MUTUAL FUND ACTIVITY ── */
-  push('───────────────────────────────────────────────────────────');
-  push('💰 SECTION 4 — Mutual Fund गतिविधि');
-  push('───────────────────────────────────────────────────────────');
-  blank();
-  if(mfLive && mfNews.length) {
+  /* ── SECTION 4: MUTUAL FUND ACTIVITY — only rendered when genuinely live ── */
+  if(mfLive && mfNews && mfNews.length) {
+    push('───────────────────────────────────────────────────────────');
+    push('💰 SECTION 4 — Mutual Fund गतिविधि [✅ LIVE]');
+    push('───────────────────────────────────────────────────────────');
+    blank();
     push('   🔴 आज की असली Mutual Fund/SIP संबंधित headlines:');
     mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
-  } else {
-    push('   ⚠️ लाइव Mutual Fund न्यूज़ फिलहाल उपलब्ध नहीं। सटीक मासिक फ्लो डेटा के लिए देखें:');
-    push('   👉 https://www.amfiindia.com/research-information/other-data/mf-scheme-performance-details');
+    blank(); blank();
   }
-  blank(); blank();
 
-  /* ── SECTION 5: NEWS/GLOBAL CONTEXT ── */
-  push('───────────────────────────────────────────────────────────');
-  push('🌍 SECTION 5 — ' + rangeLabel + ' को प्रभावित करने वाली प्रमुख खबरें');
-  push('───────────────────────────────────────────────────────────');
-  blank();
+  /* ── SECTION 5: NEWS/GLOBAL CONTEXT — only rendered when genuinely live ── */
   var liveNewsList2 = _liveNewsData || [];
   if(liveNewsList2.length) {
-    liveNewsList2.slice(0,6).forEach(function(n,i){ push((i+1)+'. '+n.title + (n.live?(' — '+n.publisher):'')); });
-    if(!_liveNewsIsLive) push('   ⚠️ ये सिर्फ सामान्य थीम्स हैं — असली खबरें खुद कन्फर्म करें।');
-  } else {
-    push('   ⚠️ कोई हेडलाइन fetch नहीं हो पाई — Moneycontrol/ET/NSE साइट देखें।');
+    push('───────────────────────────────────────────────────────────');
+    push('🌍 SECTION 5 — ' + rangeLabel + ' को प्रभावित करने वाली प्रमुख खबरें [✅ LIVE]');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    liveNewsList2.slice(0,6).forEach(function(n,i){ push((i+1)+'. '+n.title + ' — ' + n.publisher); });
+    blank();
   }
-  blank(); blank();
+  blank();
 
   push('───────────────────────────────────────────────────────────');
   push('⚠️ DISCLAIMER: यह रिपोर्ट केवल शिक्षा और सूचना के उद्देश्य से है, SEBI-रजिस्टर्ड निवेश सलाह नहीं है।');
@@ -8146,14 +8239,16 @@ function generateWmSEOKit() {
 
   var dateEn = new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});
   var mcSeo = getMarketContext();
-  var topTrap = _scannerData.filter(function(s){return s.alertClass==='trap';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,3).map(function(s){return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');});
-  var topBuy  = _scannerData.filter(function(s){return s.alertClass==='buy-sig';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,3).map(function(s){return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');});
+  var topTrap = _scannerData.filter(function(s){return s.alertClass==='trap';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,6).map(function(s){return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');});
+  var topBuy  = _scannerData.filter(function(s){return s.alertClass==='buy-sig';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,6).map(function(s){return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');});
+  var topSell = _scannerData.filter(function(s){return s.alertClass==='sell-sig';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,6).map(function(s){return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','');});
   var trapName = topTrap[0] || 'XYZ';
   var buyName  = topBuy[0]  || 'ABC';
+  var thumbPools = { trapList: topTrap, buyList: topBuy, sellList: topSell };
 
   setTimeout(function(){
-    _lastThumbContext = { trapName:trapName, buyName:buyName, marketMoodEn:mcSeo.moodEn, dateEn:dateEn };
-    _renderThumbnailOptions(trapName, buyName, mcSeo.moodEn, dateEn);
+    _lastThumbContext = { trapName:trapName, buyName:buyName, marketMoodEn:mcSeo.moodEn, dateEn:dateEn, pools:thumbPools };
+    _renderThumbnailOptions(trapName, buyName, mcSeo.moodEn, dateEn, thumbPools);
 
     var periodWord = isWeekly ? 'साप्ताहिक' : 'मासिक';
     var titles = [
@@ -8284,14 +8379,16 @@ function _buildHistReportText(period, fiiDii) {
   blank(); blank();
 
   var liveIdx = _liveIndexData || {nifty:null, sensex:null};
-  push('───────────────────────────────────────────────────────────');
-  push('📊 SECTION 1 — करेंट लाइव इंडेक्स स्नैपशॉट');
-  push('───────────────────────────────────────────────────────────');
-  blank();
-  if(liveIdx.nifty)  push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
-  if(liveIdx.sensex) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
-  if(!liveIdx.nifty && !liveIdx.sensex) push('   ⚠️ लाइव इंडेक्स डेटा उपलब्ध नहीं।');
-  blank(); blank();
+  var hasIdx2 = !!(liveIdx.nifty && liveIdx.nifty.close) || !!(liveIdx.sensex && liveIdx.sensex.close);
+  if(hasIdx2) {
+    push('───────────────────────────────────────────────────────────');
+    push('📊 SECTION 1 — करेंट लाइव इंडेक्स स्नैपशॉट');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    if(liveIdx.nifty && liveIdx.nifty.close)  push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
+    if(liveIdx.sensex && liveIdx.sensex.close) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
+    blank(); blank();
+  }
 
   var sorted = sd.slice().sort(function(a,b){ return (parseFloat(b.chg)||0) - (parseFloat(a.chg)||0); });
   var gainers = sorted.slice(0, 15);
@@ -8336,29 +8433,25 @@ function _buildHistReportText(period, fiiDii) {
   });
   blank(); blank();
 
-  push('───────────────────────────────────────────────────────────');
-  push('🏦 SECTION 5 — FII/DII फ्लो (अनुमानित सामान्यीकरण — ' + rangeLabel + ' के अनुरूप)');
-  push('───────────────────────────────────────────────────────────');
-  blank();
-  if(!fiiDii.live) push('   ⚠️ NSE लाइव सोर्स ब्लॉक — सटीक ऐतिहासिक आंकड़े: https://www.fpi.nsdl.co.in/web/Reports/Fpi_Report.aspx');
-  push('   FII नेट (सैंपल विंडो): ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़');
-  push('   DII नेट (सैंपल विंडो): ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़');
-  push('   📌 नोट: ' + rangeLabel + ' जितनी लंबी अवधि के लिए दिन-ब-दिन सटीक FII/DII डेटा फ्री ब्राउज़र सोर्स से उपलब्ध नहीं —');
-  push('   पूरी ऐतिहासिक सीरीज़ के लिए NSDL/NSE की ऑफिशियल रिपोर्ट ज़रूर देखें।');
-  blank(); blank();
+  if(fiiDii && fiiDii.live) {
+    push('───────────────────────────────────────────────────────────');
+    push('🏦 SECTION 5 — FII/DII फ्लो (' + rangeLabel + ' के sample window पर आधारित) [✅ LIVE — NSE]');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    push('   FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़');
+    push('   DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़');
+    blank(); blank();
+  }
 
-  push('───────────────────────────────────────────────────────────');
-  push('🌍 SECTION 6 — मौजूदा मार्केट न्यूज़ (लाइव)');
-  push('───────────────────────────────────────────────────────────');
-  blank();
   var nl = _liveNewsData || [];
   if(nl.length) {
-    nl.slice(0,5).forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + (n.live?(' — '+n.publisher):'')); });
-    if(!_liveNewsIsLive) push('   ⚠️ सामान्य थीम्स हैं, असली नहीं।');
-  } else {
-    push('   ⚠️ न्यूज़ fetch नहीं हो पाई।');
+    push('───────────────────────────────────────────────────────────');
+    push('🌍 SECTION 6 — मौजूदा मार्केट न्यूज़ [✅ LIVE]');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    nl.slice(0,5).forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
+    blank(); blank();
   }
-  blank(); blank();
 
   push('───────────────────────────────────────────────────────────');
   push('⚠️ DISCLAIMER: यह रिपोर्ट शिक्षा/सूचना उद्देश्य से है, SEBI-रजिस्टर्ड निवेश सलाह नहीं।');
@@ -8402,11 +8495,14 @@ function generateHistSEOKit() {
   var mcSeo = getMarketContext();
 
   var sorted = _histScannerData.slice().sort(function(a,b){ return (parseFloat(b.chg)||0) - (parseFloat(a.chg)||0); });
-  var topGainer = sorted[0] ? sorted[0].sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','') : 'ABC';
-  var topLoser  = sorted[sorted.length-1] ? sorted[sorted.length-1].sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:','') : 'XYZ';
+  var topGainers = sorted.slice(0,6).map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
+  var topLosers  = sorted.slice(-6).reverse().map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
+  var topGainer = topGainers[0] || 'ABC';
+  var topLoser  = topLosers[0]  || 'XYZ';
+  var thumbPools = { trapList: topLosers, buyList: topGainers, sellList: [] };
 
-  _lastThumbContext = { trapName:topLoser, buyName:topGainer, marketMoodEn:mcSeo.moodEn, dateEn:dateEn };
-  _renderThumbnailOptions(topLoser, topGainer, mcSeo.moodEn, dateEn);
+  _lastThumbContext = { trapName:topLoser, buyName:topGainer, marketMoodEn:mcSeo.moodEn, dateEn:dateEn, pools:thumbPools };
+  _renderThumbnailOptions(topLoser, topGainer, mcSeo.moodEn, dateEn, thumbPools);
 
   var titles = [
     periodWord + ' में सबसे ज़्यादा भागने वाला स्टॉक: ' + topGainer + ' — पूरा एनालिसिस (' + dateEn + ')',
@@ -8448,7 +8544,8 @@ var _SR_TITLES = {
   trap:'🚨 Trap Stock Report', buy:'✅ Genuine Buy Signal Report', sell:'🔻 Genuine Sell Signal Report',
   screener:'🎛️ Custom Screener Report', mf:'💰 Mutual Fund Report', fii:'🌍 FII Report', dii:'🏦 DII Report',
   'pred-intraday':'⚡ Intraday Prediction Report', 'pred-short':'📅 Short Term Prediction Report',
-  'pred-long':'📆 Long Term Prediction Report', capdash:'🏢 Market Cap Wise Report', master:'⭐ MASTER Report (All Combined)'
+  'pred-long':'📆 Long Term Prediction Report', capdash:'🏢 Market Cap Wise Report',
+  w52:'📐 52-Week High/Low Report', sector:'🔄 Sector Rotation Report', master:'⭐ MASTER Report (All Combined)'
 };
 
 function generateSectionReport(key) {
@@ -8464,23 +8561,28 @@ function generateSectionReport(key) {
   output.textContent = 'लोड हो रहा है...';
   container.scrollIntoView({behavior:'smooth', block:'start'});
 
-  function needsScanner(){ return ['trap','buy','sell','capdash','master'].indexOf(key)!==-1; }
+  function needsScanner(){ return ['trap','buy','sell','capdash','w52','master'].indexOf(key)!==-1; }
   function needsPred(){ return key.indexOf('pred-')===0 || key==='master'; }
+  function needsSector(){ return key==='sector' || key==='master'; }
 
   function proceed() {
     fetchLiveIndices(function(){
       fetchLiveMarketNews(function(){
-        if(key==='fii' || key==='dii' || key==='master') {
-          _getFiiDiiPeriodSummary('7d', function(fiiDii){
-            if(key==='master') {
-              _getMutualFundNews(function(mfNews, mfLive){ finish(fiiDii, mfNews, mfLive); });
-            } else { finish(fiiDii, [], false); }
-          });
-        } else if(key==='mf') {
-          _getMutualFundNews(function(mfNews, mfLive){ finish(null, mfNews, mfLive); });
-        } else {
-          finish(null, [], false);
+        function afterSector() {
+          if(key==='fii' || key==='dii' || key==='master') {
+            _getFiiDiiPeriodSummary('7d', function(fiiDii){
+              if(key==='master') {
+                _getMutualFundNews(function(mfNews, mfLive){ finish(fiiDii, mfNews, mfLive); });
+              } else { finish(fiiDii, [], false); }
+            });
+          } else if(key==='mf') {
+            _getMutualFundNews(function(mfNews, mfLive){ finish(null, mfNews, mfLive); });
+          } else {
+            finish(null, [], false);
+          }
         }
+        if(needsSector() && !_liveSectorData) { fetchSectorIndices(afterSector); }
+        else { afterSector(); }
       });
     });
   }
@@ -8520,12 +8622,8 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
     push(title + ' — ' + dateEn);
     push('═══════════════════════════════════════════════════════════');
     blank();
-    if(liveIdx.nifty || liveIdx.sensex) {
-      if(liveIdx.nifty)  push('📈 NIFTY: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
-      if(liveIdx.sensex) push('📈 SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
-    } else {
-      push('⚠️ लाइव इंडेक्स डेटा उपलब्ध नहीं — NSE/BSE साइट चेक करें।');
-    }
+    if(liveIdx.nifty && liveIdx.nifty.close)  push('📈 NIFTY: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
+    if(liveIdx.sensex && liveIdx.sensex.close) push('📈 SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
     blank(); blank();
   }
 
@@ -8548,27 +8646,22 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
   }
 
   function newsBlock() {
+    var nl = _liveNewsData || [];
+    if(!nl.length) return; /* nothing genuinely live — say nothing */
     push('───────────────────────────────────────────────────────────');
-    push('🌍 आज की असली न्यूज़ हेडलाइंस');
+    push('🌍 आज की असली न्यूज़ हेडलाइंस [✅ LIVE]');
     push('───────────────────────────────────────────────────────────');
     blank();
-    var nl = _liveNewsData || [];
-    if(nl.length) {
-      nl.slice(0,5).forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + (n.live?(' — '+n.publisher):'')); });
-      if(!_liveNewsIsLive) push('   ⚠️ ये सिर्फ सामान्य थीम्स हैं, असली नहीं।');
-    } else {
-      push('   ⚠️ न्यूज़ fetch नहीं हो पाई।');
-    }
+    nl.slice(0,5).forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
     blank(); blank();
   }
 
   function fiiDiiBlock(dt) {
-    if(!dt) return;
+    if(!dt || !dt.live) return; /* never show illustrative FII/DII numbers */
     push('───────────────────────────────────────────────────────────');
-    push('🏦 FII / DII फ्लो (पिछले 7 कारोबारी दिन)');
+    push('🏦 FII / DII फ्लो (पिछले 7 कारोबारी दिन) [✅ LIVE — NSE]');
     push('───────────────────────────────────────────────────────────');
     blank();
-    if(!dt.live) push('   ⚠️ NSE लाइव सोर्स ब्लॉक — नीचे illustrative pattern है। सटीक आंकड़े: https://www.nseindia.com/reports/fii-dii');
     push('   FII नेट: ' + (dt.fiiNet>=0?'+':'') + '₹' + _fmtCr(dt.fiiNet) + ' करोड़  |  DII नेट: ' + (dt.diiNet>=0?'+':'') + '₹' + _fmtCr(dt.diiNet) + ' करोड़');
     blank(); blank();
   }
@@ -8611,27 +8704,22 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
   else if(key === 'fii') {
     header('🌍 FII (Foreign Institutional Investors) REPORT');
     fiiDiiBlock(fiiDii);
-    if(fiiDii) push('👉 पूरा दैनिक ब्रेकडाउन देखने के लिए: https://www.fpi.nsdl.co.in/web/Reports/Fpi_Report.aspx');
-    blank();
+    if(fiiDii && fiiDii.live) { push('👉 पूरा दैनिक ब्रेकडाउन देखने के लिए: https://www.fpi.nsdl.co.in/web/Reports/Fpi_Report.aspx'); blank(); }
     newsBlock(); disclaimer();
   }
   else if(key === 'dii') {
     header('🏦 DII (Domestic Institutional Investors) REPORT');
     fiiDiiBlock(fiiDii);
-    if(fiiDii) push('👉 पूरा दैनिक ब्रेकडाउन देखने के लिए: https://www.nseindia.com/reports/fii-dii');
-    blank();
+    if(fiiDii && fiiDii.live) { push('👉 पूरा दैनिक ब्रेकडाउन देखने के लिए: https://www.nseindia.com/reports/fii-dii'); blank(); }
     newsBlock(); disclaimer();
   }
   else if(key === 'mf') {
     header('💰 MUTUAL FUND REPORT');
-    if(mfLive && mfNews.length) {
-      push('🔴 आज की असली Mutual Fund/SIP headlines:'); blank();
+    if(mfLive && mfNews && mfNews.length) {
+      push('🔴 आज की असली Mutual Fund/SIP headlines: [✅ LIVE]'); blank();
       mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
-    } else {
-      push('⚠️ लाइव Mutual Fund न्यूज़ उपलब्ध नहीं। सटीक मासिक फ्लो डेटा:');
-      push('👉 https://www.amfiindia.com/research-information/other-data/mf-scheme-performance-details');
+      blank(); blank();
     }
-    blank(); blank();
     newsBlock(); disclaimer();
   }
   else if(key === 'pred-intraday') {
@@ -8661,6 +8749,40 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
       stockListBlock(list.sort(function(a,b){return (b.score||0)-(a.score||0);}), tierLabel);
     });
     newsBlock(); disclaimer();
+  }
+  else if(key === 'w52') {
+    header('📐 52-WEEK HIGH/LOW REPORT');
+    var nearHigh = sd.filter(function(s){ return s.near52High; }).sort(function(a,b){return (b.score||0)-(a.score||0);});
+    var nearLow  = sd.filter(function(s){ return s.near52Low;  }).sort(function(a,b){return (b.score||0)-(a.score||0);});
+    push('───────────────────────────────────────────────────────────');
+    push('🟢 52-WEEK HIGH के करीब (' + nearHigh.length + ' स्टॉक्स)');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    stockListBlock(nearHigh, '52W High');
+    push('───────────────────────────────────────────────────────────');
+    push('🔴 52-WEEK LOW के करीब (' + nearLow.length + ' स्टॉक्स)');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    stockListBlock(nearLow, '52W Low');
+    disclaimer();
+  }
+  else if(key === 'sector') {
+    header('🔄 SECTOR ROTATION REPORT');
+    var liveSec = (_liveSectorData || []).filter(function(sc){ return sc.live; });
+    if(liveSec.length >= 2) {
+      var sortedSec = liveSec.slice().sort(function(a,b){ return b.change - a.change; });
+      push('───────────────────────────────────────────────────────────');
+      push('🔄 आज का सेक्टर परफॉर्मेंस (सबसे मजबूत से सबसे कमज़ोर) [✅ LIVE]');
+      push('───────────────────────────────────────────────────────────');
+      blank();
+      sortedSec.forEach(function(sc,i){
+        push('   ' + (i+1) + '. ' + sc.label + ': ' + (sc.change>=0?'+':'') + sc.change.toFixed(2) + '%   ' + (sc.change>=0?'🟢':'🔴'));
+      });
+      blank();
+      push('   📌 लीडर सेक्टर: ' + sortedSec[0].label + '   |   लैगार्ड सेक्टर: ' + sortedSec[sortedSec.length-1].label);
+      blank();
+    }
+    disclaimer();
   }
   else if(key === 'master') {
     header('⭐ MASTER DAILY ANALYSIS REPORT — सब कुछ एक साथ');
@@ -8711,6 +8833,24 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
       push('   🏢 ' + tierLabel + ' (' + list.length + '): BUY ' + tb + ' | SELL ' + ts);
     });
     blank(); blank();
+
+    var nearHighM = sd.filter(function(s){ return s.near52High; });
+    var nearLowM  = sd.filter(function(s){ return s.near52Low;  });
+    if(nearHighM.length || nearLowM.length) {
+      push('───────────────────────────────────────────────────────────');
+      push('📐 52-WEEK HIGH/LOW'); push('───────────────────────────────────────────────────────────'); blank();
+      push('   🟢 52W High के करीब: ' + nearHighM.length + ' स्टॉक्स   |   🔴 52W Low के करीब: ' + nearLowM.length + ' स्टॉक्स');
+      blank(); blank();
+    }
+
+    var liveSecM = (_liveSectorData || []).filter(function(sc){ return sc.live; });
+    if(liveSecM.length >= 2) {
+      var sortedSecM = liveSecM.slice().sort(function(a,b){ return b.change - a.change; });
+      push('───────────────────────────────────────────────────────────');
+      push('🔄 SECTOR ROTATION [✅ LIVE]'); push('───────────────────────────────────────────────────────────'); blank();
+      sortedSecM.forEach(function(sc){ push('   • ' + sc.label + ': ' + (sc.change>=0?'+':'') + sc.change.toFixed(2) + '%   ' + (sc.change>=0?'🟢':'🔴')); });
+      blank(); blank();
+    }
 
     newsBlock();
     disclaimer();
@@ -8769,8 +8909,20 @@ function generateSrSEOKit() {
   var buyName = key==='buy' ? topName : (sd.filter(function(s){return s.alertClass==='buy-sig';})[0]||{}).sym;
   buyName = buyName ? buyName.replace('NSE:','').replace('BSE:','').replace('BINANCE:','') : 'ABC';
 
-  _lastThumbContext = { trapName:trapName, buyName:buyName, marketMoodEn:mcSeo.moodEn, dateEn:dateEn };
-  _renderThumbnailOptions(trapName, buyName, mcSeo.moodEn, dateEn);
+  function cleanSym(x){ return (x||'').replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); }
+  var trapPoolArr = sd.filter(function(s){return s.alertClass==='trap';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,6).map(function(s){return cleanSym(s.sym);});
+  var buyPoolArr  = sd.filter(function(s){return s.alertClass==='buy-sig';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,6).map(function(s){return cleanSym(s.sym);});
+  var sellPoolArr = sd.filter(function(s){return s.alertClass==='sell-sig';}).sort(function(a,b){return (b.score||0)-(a.score||0);}).slice(0,6).map(function(s){return cleanSym(s.sym);});
+  /* For screener/prediction sections (no natural trap/buy split), diversify
+     using that section's own result list instead */
+  if(key==='screener' || key.indexOf('pred-')===0) {
+    var relNames = (relevantList||[]).slice(0,6).map(function(item){ return cleanSym(item.sym||item.name); }).filter(Boolean);
+    if(relNames.length) { trapPoolArr = relNames; buyPoolArr = relNames; }
+  }
+  var thumbPools = { trapList: trapPoolArr, buyList: buyPoolArr, sellList: sellPoolArr };
+
+  _lastThumbContext = { trapName:trapName, buyName:buyName, marketMoodEn:mcSeo.moodEn, dateEn:dateEn, pools:thumbPools };
+  _renderThumbnailOptions(trapName, buyName, mcSeo.moodEn, dateEn, thumbPools);
 
   var titleMap = {
     trap:'🚨 आज ' + trapName + ' समेत TOP TRAP स्टॉक्स — फंसने से पहले देख लें!',
@@ -8879,7 +9031,7 @@ var THUMB_HOOK_DESCRIPTIONS = {
 
 function _pickRandom(arr) { return arr[Math.floor(Math.random()*arr.length)]; }
 
-function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn) {
+function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, pools) {
   var langSel    = (document.getElementById('thumb-language')||{}).value || 'hindi';
   var styleSel   = (document.getElementById('thumb-style')||{}).value    || 'random';
   var humanSel   = (document.getElementById('thumb-human')||{}).value    || 'random';
@@ -8914,6 +9066,16 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn) {
 
   var moodLocal = langText.mood[marketMoodEn] || marketMoodEn;
 
+  /* ── DIVERSITY POOLS ──
+     Each card must feature DIFFERENT real scanned stocks — never
+     repeat the same trap/buy stock across every prompt. If richer
+     pools weren't passed in, fall back to the single trapName/buyName
+     (keeps old callers working unchanged). */
+  pools = pools || {};
+  var trapPool = (pools.trapList && pools.trapList.length) ? pools.trapList : [trapName];
+  var buyPool  = (pools.buyList  && pools.buyList.length)  ? pools.buyList  : [buyName];
+  var sellPool = (pools.sellList && pools.sellList.length) ? pools.sellList : [];
+
   var list = document.getElementById('seo-thumb-prompts-list');
   if(!list) return;
   var html = '';
@@ -8932,14 +9094,21 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn) {
     var emoDesc   = THUMB_EMOTION_DESCRIPTIONS[emo];
     var hookDesc  = THUMB_HOOK_DESCRIPTIONS[hook];
 
+    /* Rotate through the pools so every single card features a
+       DIFFERENT trap/buy/sell stock — the scanned data is divided
+       across the prompts instead of repeating one stock everywhere. */
+    var cardTrap = trapPool[i % trapPool.length] || trapName;
+    var cardBuy  = buyPool[i % buyPool.length]  || buyName;
+    var cardSell = sellPool.length ? sellPool[i % sellPool.length] : null;
+
     /* Build a distinct, real-data hook TITLE for this specific option
-       (different every card — pulls actual mood/trap/buy/live-index data) */
+       (different every card — pulls actual mood/trap/buy/sell/live-index data) */
     var hookTitleOptions = [
-      '🚨 ' + trapName + ' में TRAP! ' + (liveTag||('NIFTY '+moodLocal)) + ' — सावधान',
-      moodLocal.toUpperCase() + ' मोड में NIFTY' + (liveTag?(' ('+liveTag+')'):'') + ' — ' + buyName + ' में मौका?',
-      dateEn + ' का सच: ' + trapName + ' vs ' + buyName + (liveTag?(' | '+liveTag):''),
-      '⚡ आज ' + buyName + ' में GENUINE BUY सिग्नल' + (liveTag?(' — '+liveTag):'') + '!',
-      '⚠️ ' + trapName + ' से बचो! ' + dateEn + (liveTag?(' | '+liveTag):'')
+      '🚨 ' + cardTrap + ' में TRAP! ' + (liveTag||('NIFTY '+moodLocal)) + ' — सावधान',
+      moodLocal.toUpperCase() + ' मोड में NIFTY' + (liveTag?(' ('+liveTag+')'):'') + ' — ' + cardBuy + ' में मौका?',
+      dateEn + ' का सच: ' + cardTrap + ' vs ' + cardBuy + (liveTag?(' | '+liveTag):''),
+      '⚡ आज ' + cardBuy + ' में GENUINE BUY सिग्नल' + (liveTag?(' — '+liveTag):'') + '!',
+      cardSell ? ('🔻 ' + cardSell + ' में SELL सिग्नल — ' + (liveTag||dateEn) + '!') : ('⚠️ ' + cardTrap + ' से बचो! ' + dateEn + (liveTag?(' | '+liveTag):''))
     ];
     var hookTitle = hookTitleOptions[i % hookTitleOptions.length];
 
@@ -8949,8 +9118,9 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn) {
       'Visual style: ' + styleDesc + '.',
       human ? ('Include ' + humanDesc + ', with a ' + emoDesc + '.') : 'No human figures — pure graphic/data-driven composition.',
       'Bold hook-title text overlay reading exactly: "' + hookTitle + '" — this is the eye-catching headline, make it the dominant text element.',
-      'A small badge graphic referencing "' + langText.trap + ': ' + trapName + '" in one corner (generic ticker-style label, not any real company logo).',
-      'A small contrasting badge graphic referencing "' + langText.buy + ': ' + buyName + '" in the opposite corner.',
+      'A small badge graphic referencing "' + langText.trap + ': ' + cardTrap + '" in one corner (generic ticker-style label, not any real company logo).',
+      'A small contrasting badge graphic referencing "' + langText.buy + ': ' + cardBuy + '" in the opposite corner.',
+      cardSell ? ('A third small badge referencing "SELL Alert: ' + cardSell + '" along the bottom edge (generic ticker-style label).') : '',
       'Hook treatment: ' + hookDesc + '.',
       'Include a subtle generic rupee (₹) symbol graphic element and a small abstract candlestick chart motif.',
       'Add a small generic "KSpider4Kreation" text watermark corner (plain text only, not a real trademarked logo).',
@@ -8983,8 +9153,8 @@ function _reRollThumbnails() {
     showToast('⚠️ पहले SEO किट जनरेट करें');
     return;
   }
-  _renderThumbnailOptions(_lastThumbContext.trapName, _lastThumbContext.buyName, _lastThumbContext.marketMoodEn, _lastThumbContext.dateEn);
-  showToast('🎲 नए 5 thumbnail विकल्प तैयार!');
+  _renderThumbnailOptions(_lastThumbContext.trapName, _lastThumbContext.buyName, _lastThumbContext.marketMoodEn, _lastThumbContext.dateEn, _lastThumbContext.pools);
+  showToast('🎲 नए विकल्प तैयार — हर एक में अलग स्टॉक डेटा!');
 }
 
 function generateYouTubeSEOKit() {
@@ -9013,22 +9183,27 @@ function generateYouTubeSEOKit() {
   var marketMoodWord = mcSeo.moodWord;
   var marketMoodEn   = mcSeo.moodEn;
 
-  /* Top trap + top buy stock names (short codes) for headline hooks */
+  /* Top trap + top buy + top sell stock names (short codes) — used to
+     DIVERSIFY each thumbnail card with different real scanned stocks */
   var topTrap = _scannerData.filter(function(s){ return s.alertClass==='trap'; })
     .sort(function(a,b){ return (b.score||0)-(a.score||0); })
-    .slice(0,3).map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
+    .slice(0,6).map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
   var topBuy = _scannerData.filter(function(s){ return s.alertClass==='buy-sig'; })
     .sort(function(a,b){ return (b.score||0)-(a.score||0); })
-    .slice(0,3).map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
+    .slice(0,6).map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
+  var topSell = _scannerData.filter(function(s){ return s.alertClass==='sell-sig'; })
+    .sort(function(a,b){ return (b.score||0)-(a.score||0); })
+    .slice(0,6).map(function(s){ return s.sym.replace('NSE:','').replace('BSE:','').replace('BINANCE:',''); });
 
   var trapName = topTrap[0] || 'XYZ';
   var buyName  = topBuy[0]  || 'ABC';
+  var thumbPools = { trapList: topTrap, buyList: topBuy, sellList: topSell };
 
   setTimeout(function() {
 
-    /* ── 1. THUMBNAIL PROMPTS — 5 randomized, copyright-free, customizable options ── */
-    _lastThumbContext = { trapName: trapName, buyName: buyName, marketMoodEn: marketMoodEn, dateEn: dateEn };
-    _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn);
+    /* ── 1. THUMBNAIL PROMPTS — multi-platform, each card with DIFFERENT real stock data ── */
+    _lastThumbContext = { trapName: trapName, buyName: buyName, marketMoodEn: marketMoodEn, dateEn: dateEn, pools: thumbPools };
+    _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, thumbPools);
 
     /* ── 2. TITLES (3 options) ── */
     var titles = [
