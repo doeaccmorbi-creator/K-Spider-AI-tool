@@ -21457,5 +21457,643 @@ setInterval(function(){
 },30000);
 
 </script>
+
+<script>
+// ========================================================================
+// K SPIDER v6.0 - MASTER UPDATE
+// Multi-doctor auth, appointment flow with UHID, explain-to-patient,
+// Rx WhatsApp share, doctor notes, footer guide
+// ========================================================================
+
+// ── MULTI-DOCTOR AUTH SYSTEM ────────────────────────────────────────────
+var KS_DOCTORS_KEY = 'ks_doctors_v1';
+var KS_CURRENT_DOCTOR = 'ks_current_doctor';
+
+function ksGetDoctors() {
+  try { return JSON.parse(localStorage.getItem(KS_DOCTORS_KEY) || '[]'); } catch(e) { return []; }
+}
+function ksSaveDoctors(docs) { localStorage.setItem(KS_DOCTORS_KEY, JSON.stringify(docs)); }
+function ksGetCurrentDoctor() {
+  try { return JSON.parse(localStorage.getItem(KS_CURRENT_DOCTOR) || 'null'); } catch(e) { return null; }
+}
+function ksSetCurrentDoctor(doc) { localStorage.setItem(KS_CURRENT_DOCTOR, JSON.stringify(doc)); }
+
+// Register new doctor
+window.ksRegisterDoctor = function(name, mobile, password) {
+  if (!name || !mobile || !password) return { ok:false, msg:'All fields required' };
+  var docs = ksGetDoctors();
+  if (docs.find(function(d){ return d.mobile === mobile; })) return { ok:false, msg:'Mobile already registered' };
+  var doc = {
+    id: 'DOC_' + mobile + '_' + Date.now(),
+    name: name, mobile: mobile,
+    password: btoa(password), // basic obfuscation
+    username: mobile, // default username = mobile number
+    clinic: '', degree: 'MBBS', spec: 'General Physician',
+    reg: '', address: '', phone: mobile, email: '',
+    signature: '', logo: '',
+    createdAt: new Date().toISOString(),
+    patientCount: 0
+  };
+  docs.push(doc);
+  ksSaveDoctors(docs);
+  return { ok:true, doc:doc };
+};
+
+// Login doctor
+window.ksLoginDoctor = function(username, password) {
+  var docs = ksGetDoctors();
+  // username can be mobile OR custom username
+  var doc = docs.find(function(d){ return (d.mobile===username || d.username===username); });
+  if (!doc) return { ok:false, msg:'Doctor not found. Please register first.' };
+  if (doc.password !== btoa(password)) return { ok:false, msg:'Incorrect password' };
+  ksSetCurrentDoctor(doc);
+  ksApplyDoctorProfile(doc);
+  return { ok:true, doc:doc };
+};
+
+// Apply doctor profile to all form fields
+window.ksApplyDoctorProfile = function(doc) {
+  if (!doc) return;
+  // Sync to localStorage keys used throughout the app
+  localStorage.setItem('kspider_doctor_name', doc.name);
+  localStorage.setItem('kspider_clinic_name', doc.clinic || doc.name + ' Clinic');
+  localStorage.setItem('kspider_doctor_phone', doc.mobile);
+  localStorage.setItem('doctor_profile', JSON.stringify({
+    name: doc.name, clinic: doc.clinic, phone: doc.mobile,
+    degree: doc.degree, spec: doc.spec, reg: doc.reg, address: doc.address
+  }));
+  // Fill doctor-profile section inputs
+  var fieldMap = { doctor_name:doc.name, doctor_qual:doc.degree, doctor_spec:doc.spec,
+    doctor_reg:doc.reg, clinic_name:doc.clinic, doctor_address:doc.address,
+    doctor_phone:doc.mobile, doctor_email:doc.email };
+  Object.keys(fieldMap).forEach(function(id){
+    var el=document.getElementById(id); if(el&&fieldMap[id]) el.value=fieldMap[id];
+  });
+  // Update topbar with doctor name
+  var topbarName = document.getElementById('ks-dr-name-topbar');
+  if (topbarName) topbarName.textContent = 'Dr. ' + doc.name;
+  // Show doctor-specific data
+  ksLoadDoctorData(doc);
+};
+
+// Load doctor's own data (patients, appointments, prescriptions)
+window.ksLoadDoctorData = function(doc) {
+  if (!doc) return;
+  var docKey = 'doc_' + doc.id + '_';
+  // Patient DB scoped to this doctor
+  var docPts = JSON.parse(localStorage.getItem(docKey + 'patients') || '[]');
+  localStorage.setItem('ks_patient_db_v1', JSON.stringify(docPts));
+  // Appointments scoped to this doctor
+  var docAppts = JSON.parse(localStorage.getItem(docKey + 'appointments') || '[]');
+  localStorage.setItem('ks_appointments_v1', JSON.stringify(docAppts));
+  if (typeof ksPtRender==='function') ksPtRender();
+};
+
+// Save doctor data before switching/logout
+window.ksSaveDoctorData = function() {
+  var doc = ksGetCurrentDoctor();
+  if (!doc) return;
+  var docKey = 'doc_' + doc.id + '_';
+  var pts = JSON.parse(localStorage.getItem('ks_patient_db_v1') || '[]');
+  localStorage.setItem(docKey + 'patients', JSON.stringify(pts));
+  var appts = JSON.parse(localStorage.getItem('ks_appointments_v1') || '[]');
+  localStorage.setItem(docKey + 'appointments', JSON.stringify(appts));
+};
+
+// Logout
+window.ksLogoutDoctor = function() {
+  if (!confirm('Logout from K Spider Doctor AI?')) return;
+  ksSaveDoctorData();
+  localStorage.removeItem(KS_CURRENT_DOCTOR);
+  ksShowDoctorAuthModal();
+};
+
+// Update doctor profile
+window.ksUpdateDoctorProfile = function() {
+  var doc = ksGetCurrentDoctor();
+  if (!doc) return;
+  var g = function(id){ return (document.getElementById(id)||{value:''}).value.trim(); };
+  var updates = {
+    name: g('doctor_name')||doc.name, clinic: g('clinic_name'),
+    degree: g('doctor_qual'), spec: g('doctor_spec'),
+    reg: g('doctor_reg'), address: g('doctor_address'),
+    phone: g('doctor_phone'), email: g('doctor_email')
+  };
+  // New password?
+  var newPwd = g('ks-new-password');
+  if (newPwd) updates.password = btoa(newPwd);
+  // New username?
+  var newUser = g('ks-new-username');
+  if (newUser) updates.username = newUser;
+  Object.assign(doc, updates);
+  var docs = ksGetDoctors();
+  var idx = docs.findIndex(function(d){ return d.id===doc.id; });
+  if (idx>=0) docs[idx]=doc;
+  ksSaveDoctors(docs);
+  ksSetCurrentDoctor(doc);
+  ksApplyDoctorProfile(doc);
+  if (typeof showToast==='function') showToast('Profile updated successfully');
+  else alert('Profile updated!');
+};
+
+// Change password / username
+window.ksChangeCredentials = function() {
+  var doc = ksGetCurrentDoctor();
+  if (!doc) return;
+  var oldPwd = (document.getElementById('ks-old-password')||{value:''}).value;
+  var newPwd = (document.getElementById('ks-new-password')||{value:''}).value;
+  var newUser= (document.getElementById('ks-new-username')||{value:''}).value;
+  if (oldPwd && doc.password !== btoa(oldPwd)) { alert('Old password incorrect'); return; }
+  if (newPwd) doc.password = btoa(newPwd);
+  if (newUser) doc.username = newUser;
+  var docs = ksGetDoctors();
+  var idx = docs.findIndex(function(d){ return d.id===doc.id; });
+  if (idx>=0) docs[idx]=doc;
+  ksSaveDoctors(docs);
+  ksSetCurrentDoctor(doc);
+  if (typeof showToast==='function') showToast('Credentials updated!');
+  else alert('Credentials updated!');
+};
+
+// ── AUTH MODAL ──────────────────────────────────────────────────────────
+window.ksShowDoctorAuthModal = function() {
+  var modal = document.getElementById('ks-doctor-auth-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ks-doctor-auth-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:#0b2545;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
+    var box = document.createElement('div');
+    box.style.cssText = 'background:#fff;border-radius:16px;padding:32px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);';
+    box.innerHTML = '\
+<div style="text-align:center;margin-bottom:24px;">\
+<div style="font-size:48px;">\uD83D\uDD77\uFE0F</div>\
+<h2 style="color:#0b2545;margin:8px 0 4px;font-size:1.4rem;">K Spider Doctor AI</h2>\
+<p style="color:#64748b;font-size:0.83rem;margin:0;">Your private clinic management platform</p></div>\
+<div id="ks-auth-tabs" style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:20px;">\
+<button onclick="ksAuthTab(\'login\')" id="ks-tab-login" style="flex:1;padding:8px;border:none;background:none;font-weight:700;color:#2563eb;border-bottom:3px solid #2563eb;cursor:pointer;font-size:0.88rem;">Login</button>\
+<button onclick="ksAuthTab(\'register\')" id="ks-tab-reg" style="flex:1;padding:8px;border:none;background:none;font-weight:600;color:#64748b;cursor:pointer;font-size:0.88rem;">Register New Doctor</button>\
+</div>\
+<div id="ks-auth-login">\
+<div style="margin-bottom:12px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Mobile / Username</label><input id="ks-auth-user" type="text" placeholder="Your registered mobile number" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Password <span style="font-weight:400;">(default: your mobile number)</span></label><input id="ks-auth-pass" type="password" placeholder="Password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<button onclick="ksDoLogin()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:9px;font-size:0.93rem;font-weight:700;cursor:pointer;">\uD83D\uDD13 Login to My Account</button>\
+<div id="ks-auth-msg" style="margin-top:10px;font-size:0.82rem;text-align:center;"></div>\
+</div>\
+<div id="ks-auth-register" style="display:none;">\
+<div style="margin-bottom:10px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Full Name *</label><input id="ks-reg-name" type="text" placeholder="Dr. Full Name" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<div style="margin-bottom:10px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Mobile Number * <span style="font-weight:400;">(will be your username & default password)</span></label><input id="ks-reg-mobile" type="tel" placeholder="10-digit mobile" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Set Password <span style="font-weight:400;">(or leave blank to use mobile as password)</span></label><input id="ks-reg-pass" type="password" placeholder="Leave blank = use mobile number" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<button onclick="ksDoRegister()" style="width:100%;padding:12px;background:#059669;color:#fff;border:none;border-radius:9px;font-size:0.93rem;font-weight:700;cursor:pointer;">\u2705 Create My Account</button>\
+<div id="ks-reg-msg" style="margin-top:10px;font-size:0.82rem;text-align:center;"></div>\
+</div>\
+<p style="text-align:center;margin-top:16px;font-size:0.75rem;color:#94a3b8;">Your data stays private on this device. Each doctor has their own secure space.</p>';
+    modal.appendChild(box);
+    document.body.appendChild(modal);
+  }
+  modal.style.display = 'flex';
+};
+
+window.ksAuthTab = function(tab) {
+  document.getElementById('ks-auth-login').style.display    = tab==='login'    ? 'block' : 'none';
+  document.getElementById('ks-auth-register').style.display = tab==='register' ? 'block' : 'none';
+  document.getElementById('ks-tab-login').style.borderBottom= tab==='login'    ? '3px solid #2563eb' : '3px solid transparent';
+  document.getElementById('ks-tab-reg').style.borderBottom  = tab==='register' ? '3px solid #2563eb' : '3px solid transparent';
+  document.getElementById('ks-tab-login').style.color= tab==='login'?'#2563eb':'#64748b';
+  document.getElementById('ks-tab-reg').style.color  = tab==='register'?'#2563eb':'#64748b';
+};
+
+window.ksDoLogin = function() {
+  var user = (document.getElementById('ks-auth-user')||{value:''}).value.trim();
+  var pass = (document.getElementById('ks-auth-pass')||{value:''}).value.trim();
+  if (!user) { document.getElementById('ks-auth-msg').innerHTML='<span style="color:#dc2626;">Please enter your mobile/username</span>'; return; }
+  if (!pass) pass = user; // default password = username (mobile)
+  var result = ksLoginDoctor(user, pass);
+  var msgEl = document.getElementById('ks-auth-msg');
+  if (result.ok) {
+    msgEl.innerHTML = '<span style="color:#059669;">\u2705 Welcome Dr. '+result.doc.name+'!</span>';
+    setTimeout(function(){
+      var modal = document.getElementById('ks-doctor-auth-modal');
+      if (modal) modal.style.display = 'none';
+    }, 800);
+  } else {
+    msgEl.innerHTML = '<span style="color:#dc2626;">' + result.msg + '</span>';
+  }
+};
+
+window.ksDoRegister = function() {
+  var name   = (document.getElementById('ks-reg-name')||{value:''}).value.trim();
+  var mobile = (document.getElementById('ks-reg-mobile')||{value:''}).value.trim();
+  var pass   = (document.getElementById('ks-reg-pass')||{value:''}).value.trim() || mobile;
+  var msgEl  = document.getElementById('ks-reg-msg');
+  if (!name || !mobile) { msgEl.innerHTML='<span style="color:#dc2626;">Name and mobile are required</span>'; return; }
+  if (mobile.length < 10) { msgEl.innerHTML='<span style="color:#dc2626;">Enter valid 10-digit mobile</span>'; return; }
+  var result = ksRegisterDoctor(name, mobile, pass);
+  if (result.ok) {
+    msgEl.innerHTML = '<span style="color:#059669;">\u2705 Registered! Logging in...</span>';
+    ksSetCurrentDoctor(result.doc);
+    ksApplyDoctorProfile(result.doc);
+    setTimeout(function(){
+      var modal = document.getElementById('ks-doctor-auth-modal');
+      if (modal) modal.style.display = 'none';
+    }, 800);
+  } else {
+    msgEl.innerHTML = '<span style="color:#dc2626;">' + result.msg + '</span>';
+  }
+};
+
+// Add Logout + Dr name to topbar
+function ksInjectDoctorTopbar() {
+  var topbar = document.getElementById('saas-topbar');
+  if (!topbar || topbar.querySelector('#ks-dr-topbar-wrap')) return;
+  var wrap = document.createElement('div');
+  wrap.id = 'ks-dr-topbar-wrap';
+  wrap.style.cssText = 'display:flex;align-items:center;gap:8px;margin-left:auto;';
+  wrap.innerHTML = '<span id="ks-dr-name-topbar" style="font-size:0.8rem;font-weight:700;color:var(--primary);"></span>'
+    + '<button onclick="ksLogoutDoctor()" style="padding:4px 10px;background:#fee2e2;color:#dc2626;border:none;border-radius:6px;font-size:0.74rem;font-weight:700;cursor:pointer;">\uD83D\uDEAA Logout</button>';
+  topbar.appendChild(wrap);
+}
+
+// Add credential change inputs to doctor-profile section
+function ksInjectCredentialFields() {
+  var dpSec = document.getElementById('doctor-profile');
+  if (!dpSec || dpSec.querySelector('#ks-cred-section')) return;
+  var credDiv = document.createElement('div');
+  credDiv.id = 'ks-cred-section';
+  credDiv.style.cssText = 'background:linear-gradient(135deg,rgba(37,99,235,0.05),rgba(5,150,105,0.05));border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:16px;';
+  credDiv.innerHTML = '\
+<div style="font-weight:700;color:var(--primary);margin-bottom:12px;font-size:0.9rem;">\uD83D\uDD12 Change Login Credentials</div>\
+<div class="grid-2">\
+<div class="field"><label>New Username (optional)</label><input type="text" id="ks-new-username" placeholder="Leave blank to keep mobile"></div>\
+<div class="field"><label>Old Password</label><input type="password" id="ks-old-password" placeholder="Current password"></div>\
+</div>\
+<div class="field"><label>New Password</label><input type="password" id="ks-new-password" placeholder="Enter new password"></div>\
+<button onclick="ksChangeCredentials()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:0.85rem;">\uD83D\uDD12 Update Credentials</button>';
+  var saveBtn = dpSec.querySelector('button[onclick*="saveProfile"], button[onclick*="ksUpdateDoctorProfile"]');
+  if (saveBtn) {
+    saveBtn.setAttribute('onclick', 'ksUpdateDoctorProfile()');
+  }
+  dpSec.appendChild(credDiv);
+}
+
+// ── APPOINTMENT FLOW WITH UHID ──────────────────────────────────────────
+// Add extra fields to appointment form
+function ksEnhanceAppointmentForm() {
+  var apptForm = document.getElementById('appt-name');
+  if (!apptForm || document.getElementById('appt-village')) return;
+  var formWrap = apptForm.closest('.card');
+  if (!formWrap) return;
+
+  // Set default date = today, time = now
+  var apptDate = document.getElementById('appt-date');
+  if (apptDate && !apptDate.value) {
+    apptDate.value = new Date().toISOString().slice(0,10);
+  }
+
+  // Inject extra fields before the submit button row
+  var btnRow = formWrap.querySelector('div[style*="display:flex"]');
+  if (!btnRow) return;
+
+  var extraFields = document.createElement('div');
+  extraFields.innerHTML = '\
+<div class="grid-2">\
+<div class="field"><label>Date of Birth</label><input type="date" id="appt-dob" placeholder="DOB"></div>\
+<div class="field"><label>Gender</label><select id="appt-gender"><option value="Male">Male</option><option value="Female">Female</option><option value="Other">Other</option></select></div>\
+</div>\
+<div class="grid-2">\
+<div class="field"><label>Village / City *</label><input type="text" id="appt-village" placeholder="Village or City name"></div>\
+<div class="field"><label>State</label><select id="appt-state">\
+<option value="Gujarat" selected>Gujarat</option>\
+<option>Andhra Pradesh</option><option>Arunachal Pradesh</option><option>Assam</option><option>Bihar</option><option>Chhattisgarh</option>\
+<option>Goa</option><option>Haryana</option><option>Himachal Pradesh</option><option>Jharkhand</option><option>Karnataka</option>\
+<option>Kerala</option><option>Madhya Pradesh</option><option>Maharashtra</option><option>Manipur</option><option>Meghalaya</option>\
+<option>Mizoram</option><option>Nagaland</option><option>Odisha</option><option>Punjab</option><option>Rajasthan</option>\
+<option>Sikkim</option><option>Tamil Nadu</option><option>Telangana</option><option>Tripura</option><option>Uttar Pradesh</option>\
+<option>Uttarakhand</option><option>West Bengal</option><option>Delhi</option><option>Jammu & Kashmir</option><option>Ladakh</option>\
+<option>Puducherry</option><option>Chandigarh</option><option>Andaman & Nicobar</option><option>Lakshadweep</option><option>Dadra & NH</option>\
+</select></div>\
+</div>';
+  formWrap.insertBefore(extraFields, btnRow);
+
+  // Add UHID display field
+  var uhidField = document.createElement('div');
+  uhidField.className = 'field';
+  uhidField.innerHTML = '<label>Patient Unique ID (Auto-generated on booking)</label><input type="text" id="appt-uhid" placeholder="Generated on confirm" style="background:var(--light-bg);font-weight:700;color:var(--primary);" readonly>';
+  formWrap.insertBefore(uhidField, btnRow);
+}
+
+// Generate UHID from mobile + date + appt sequence
+function ksGenApptUHID(mobile, date, seqNum) {
+  var mob = (mobile||'').replace(/\D/g,'').slice(-4) || '0000'; // last 4 digits of mobile
+  var dt  = (date||new Date().toISOString().slice(0,10)).replace(/-/g,'').slice(2); // YYMMDD
+  var seq = String(seqNum||1).padStart(3,'0');
+  return 'KS' + mob + dt + seq; // e.g. KS98761406300001
+}
+
+// Patch apptBook to generate UHID and save patient profile
+var _origApptBook = window.apptBook;
+window.apptBook = function() {
+  // Generate UHID before booking
+  var mobile  = (document.getElementById('appt-phone')||{value:''}).value.trim();
+  var date    = (document.getElementById('appt-date')||{value:''}).value || new Date().toISOString().slice(0,10);
+  var appts   = JSON.parse(localStorage.getItem('ks_appointments_v1') || '[]');
+  var todayAppts = appts.filter(function(a){ return a.date === date; });
+  var seqNum  = todayAppts.length + 1;
+  var uhid    = ksGenApptUHID(mobile, date, seqNum);
+
+  // Set UHID in the form
+  var uhidEl = document.getElementById('appt-uhid');
+  if (uhidEl) uhidEl.value = uhid;
+  if (document.getElementById('patient_uhid')) document.getElementById('patient_uhid').value = uhid;
+
+  // Save patient profile with this UHID to patient DB
+  var name    = (document.getElementById('appt-name')||{value:''}).value.trim();
+  var age     = (document.getElementById('appt-age')||{value:''}).value.trim();
+  var dob     = (document.getElementById('appt-dob')||{value:''}).value.trim();
+  var gender  = (document.getElementById('appt-gender')||{value:''}).value.trim();
+  var village = (document.getElementById('appt-village')||{value:''}).value.trim();
+  var state   = (document.getElementById('appt-state')||{value:''}).value.trim();
+
+  if (name && mobile) {
+    var pts = JSON.parse(localStorage.getItem('ks_patient_db_v1') || '[]');
+    var existing = pts.findIndex(function(p){ return p.phone===mobile||p.uhid===uhid; });
+    var ptRecord = {
+      uhid: uhid, name: name, age: age, dob: dob, gender: gender||'Male',
+      phone: mobile, phone2:'', blood:'', type:'OPD',
+      address: (village?village+', ':'')+state, village: village, state: state||'Gujarat',
+      diagnosis:'', chronic:'', allergies:'', insurance:'', occupation:'',
+      referred:'', notes:'', registeredOn: new Date().toISOString(),
+      lastUpdated: new Date().toISOString(), visits:[]
+    };
+    if (existing >= 0) Object.assign(pts[existing], {lastUpdated:new Date().toISOString()});
+    else pts.unshift(ptRecord);
+    localStorage.setItem('ks_patient_db_v1', JSON.stringify(pts));
+    // Also save to doctor-scoped storage
+    ksSaveDoctorData();
+  }
+
+  // Call original
+  if (typeof _origApptBook === 'function') return _origApptBook.apply(this, arguments);
+};
+
+// ── EXPLAIN TO PATIENT (Hindi) ──────────────────────────────────────────
+window.ksExplainToPatient = async function() {
+  var g = function(id){ return (document.getElementById(id)||{value:''}).value||''; };
+  var ptName    = g('erx-pt-name') || 'Patient';
+  var diagnosis = g('erx-diagnosis') || g('primary_diagnosis') || '';
+  var medicines = [];
+  document.querySelectorAll('.erx-drug-name').forEach(function(el){ if(el.value) medicines.push(el.value); });
+  var investigations = g('erx-investigations') || '';
+  var instructions = g('erx-instructions') || '';
+  var followup = g('erx-followup-adv') || '';
+
+  if (!diagnosis && !medicines.length) {
+    alert('Please add diagnosis and medicines first, then click Explain to Patient.');
+    return;
+  }
+
+  // Show loading modal
+  ksShowExplainModal('loading');
+
+  var prompt = 'You are a doctor explaining to a patient in simple Hindi (Hinglish okay).\n\n'
+    + 'Patient name: ' + ptName + '\n'
+    + 'Diagnosis: ' + diagnosis + '\n'
+    + 'Medicines prescribed: ' + medicines.join(', ') + '\n'
+    + 'Investigations/Lab tests: ' + investigations + '\n'
+    + 'Instructions: ' + instructions + '\n'
+    + 'Follow-up: ' + followup + '\n\n'
+    + 'Write a warm, simple explanation IN HINDI that a non-medical person can understand:\n'
+    + '1. Aapko kya bimari hai (simple language mein)\n'
+    + '2. Har medicine kyun di gayi hai aur kaise leni hai\n'
+    + '3. Koi lab test kyun karvana hai\n'
+    + '4. Kya karna hai aur kya nahi karna hai\n'
+    + '5. Follow-up kab aana hai\n\n'
+    + 'Keep it warm, reassuring and easy to understand. Use emojis appropriately.';
+
+  try {
+    var response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+    });
+    var data = await response.json();
+    var explanation = data.content && data.content[0] ? data.content[0].text : 'Could not generate explanation.';
+    ksShowExplainModal('result', explanation, ptName);
+  } catch(e) {
+    ksShowExplainModal('error', 'Network error: ' + e.message);
+  }
+};
+
+window.ksShowExplainModal = function(state, content, ptName) {
+  var modal = document.getElementById('ks-explain-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ks-explain-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;';
+    document.body.appendChild(modal);
+  }
+  if (state === 'loading') {
+    modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:32px;max-width:480px;width:100%;text-align:center;"><div style="font-size:2rem;">\u23F3</div><div style="font-size:1rem;font-weight:700;color:var(--primary);margin-top:12px;">Generating patient explanation in Hindi...</div></div>';
+    modal.style.display = 'flex';
+    return;
+  }
+  if (state === 'error') {
+    modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:24px;max-width:480px;width:100%;"><div style="color:#dc2626;font-size:0.9rem;">\u274C ' + content + '</div><button onclick="document.getElementById(\'ks-explain-modal\').style.display=\'none\'" style="margin-top:12px;padding:8px 16px;border:none;border-radius:7px;cursor:pointer;background:var(--light-bg);">Close</button></div>';
+    modal.style.display = 'flex';
+    return;
+  }
+  // Result
+  var doctor = {}; try { doctor = JSON.parse(localStorage.getItem('doctor_profile')||'{}'); } catch(e) {}
+  var drName = doctor.name || localStorage.getItem('kspider_doctor_name') || 'Your Doctor';
+  var hospName = doctor.clinic || 'Our Clinic';
+  var waMsg = content + '\n\n\uD83C\uDFE5 ' + hospName + ' | Dr. ' + drName + '\n\uD83C\uDF10 kspiderai.in';
+  var ptPhone = (document.getElementById('erx-pt-phone')||document.getElementById('patient_phone')||{value:''}).value.replace(/\D/g,'');
+
+  modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:24px;max-width:600px;width:100%;max-height:88vh;overflow-y:auto;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
+    + '<h3 style="margin:0;color:var(--primary);font-size:1rem;">\uD83D\uDCC4 Patient Explanation (Hindi)</h3>'
+    + '<button onclick="document.getElementById(\'ks-explain-modal\').style.display=\'none\'" style="background:none;border:none;font-size:1.3rem;cursor:pointer;">\u2715</button></div>'
+    + '<div style="background:#f8fafc;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.7;white-space:pre-wrap;margin-bottom:14px;">' + content + '</div>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    + '<button onclick="ksPrintExplanation()" style="flex:1;padding:9px;background:#2563eb;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.84rem;font-weight:700;">\uD83D\uDDA8\uFE0F Print</button>'
+    + '<button onclick="window.open(\'https://wa.me/\'+(\''+ptPhone+'\'.replace(/\\D/g,\'\')?\'91\'+\''+ptPhone+'\'.replace(/\\D/g,\'\'):\'\')+\'?text=\'+encodeURIComponent(\''+waMsg.replace(/'/g,"\'").slice(0,500)+'\'),\'_blank\')" style="flex:1;padding:9px;background:linear-gradient(135deg,#128C7E,#25D366);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.84rem;font-weight:700;">\uD83D\uDCAC WhatsApp to Patient</button>'
+    + '</div></div>';
+  modal.style.display = 'flex';
+  window._ksExplainContent = content;
+};
+
+window.ksPrintExplanation = function() {
+  var content = window._ksExplainContent || '';
+  var w = window.open('','_blank');
+  w.document.write('<html><body style="font-family:sans-serif;padding:24px;"><h2>Patient Explanation</h2><pre style="white-space:pre-wrap;font-size:14px;line-height:1.7;">' + content + '</pre></body></html>');
+  w.print();
+};
+
+// Inject Explain to Patient button in e-Prescription
+function ksInjectExplainBtn() {
+  var erxSec = document.getElementById('adv-eprescription');
+  if (!erxSec || erxSec.querySelector('#ks-explain-btn')) return;
+  // Find the action buttons row
+  var genBtn = erxSec.querySelector('button[onclick*="erxGeneratePreview"]') ||
+               erxSec.querySelector('button[onclick*="generatePreview"]');
+  if (!genBtn) return;
+  var explainBtn = document.createElement('button');
+  explainBtn.id = 'ks-explain-btn';
+  explainBtn.setAttribute('onclick', 'ksExplainToPatient()');
+  explainBtn.style.cssText = 'padding:9px 16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.84rem;';
+  explainBtn.innerHTML = '\uD83D\uDCAC Explain to Patient (Hindi)';
+  genBtn.parentElement.insertBefore(explainBtn, genBtn.nextSibling);
+}
+
+// ── PRESCRIPTION NOTES + WHATSAPP ──────────────────────────────────────
+function ksInjectRxNotes() {
+  var erxSec = document.getElementById('adv-eprescription');
+  if (!erxSec || erxSec.querySelector('#ks-rx-notes-wrap')) return;
+  var notesWrap = document.createElement('div');
+  notesWrap.id = 'ks-rx-notes-wrap';
+  notesWrap.style.cssText = 'background:var(--card-bg);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px;';
+  notesWrap.innerHTML = '\
+<div style="font-weight:700;font-size:0.88rem;color:var(--primary);margin-bottom:8px;">\uD83D\uDCDD Doctor\'s Notes / Remarks</div>\
+<textarea id="ks-rx-doctor-notes" rows="3" placeholder="Private remarks or notes about this patient / visit..." style="width:100%;padding:9px 11px;border:1.5px solid var(--border);border-radius:7px;font-size:0.84rem;box-sizing:border-box;resize:vertical;"></textarea>\
+<div style="display:flex;align-items:center;gap:8px;margin-top:8px;">\
+<input type="checkbox" id="ks-notes-show-rx" checked style="width:16px;height:16px;cursor:pointer;">\
+<label for="ks-notes-show-rx" style="font-size:0.81rem;color:var(--text-light);cursor:pointer;">Show these notes on prescription printout</label>\
+</div>';
+  // Insert before the med rows
+  var medRows = erxSec.querySelector('#erx-med-rows');
+  if (medRows) medRows.parentElement.insertBefore(notesWrap, medRows);
+  else erxSec.appendChild(notesWrap);
+}
+
+function ksInjectRxWhatsApp() {
+  var erxSec = document.getElementById('adv-eprescription');
+  if (!erxSec || erxSec.querySelector('#ks-rx-wa-btn')) return;
+  var waBtn = document.createElement('button');
+  waBtn.id = 'ks-rx-wa-btn';
+  waBtn.setAttribute('onclick', 'ksShareRxWhatsApp()');
+  waBtn.style.cssText = 'width:100%;padding:10px;background:linear-gradient(135deg,#128C7E,#25D366);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;margin-top:8px;';
+  waBtn.innerHTML = '\uD83D\uDCAC Share Prescription via WhatsApp';
+  // Insert after the preview/print buttons
+  var printBtn = erxSec.querySelector('button[onclick*="printRx"]') || erxSec.querySelector('button[onclick*="print"]');
+  if (printBtn) printBtn.parentElement.appendChild(waBtn);
+  else erxSec.appendChild(waBtn);
+}
+
+window.ksShareRxWhatsApp = function() {
+  var g = function(id){ return (document.getElementById(id)||{value:''}).value||''; };
+  var ptName = g('erx-pt-name') || 'Patient';
+  var ptAge  = g('erx-pt-age');
+  var ptPhone= g('erx-pt-phone') || (document.getElementById('patient_phone')||{value:''}).value;
+  var diag   = g('erx-diagnosis');
+  var date   = g('erx-date') || new Date().toISOString().slice(0,10);
+  var refNo  = g('erx-refno');
+  var invest = g('erx-investigations');
+  var instr  = g('erx-instructions');
+  var fu     = g('erx-followup-adv');
+  var notes  = g('ks-rx-doctor-notes');
+  var showNotes = (document.getElementById('ks-notes-show-rx')||{checked:false}).checked;
+  var medicines = [];
+  document.querySelectorAll('.erx-drug-name').forEach(function(el,i){
+    if(el.value){
+      var row=el.closest('.erx-med-row');
+      var dose=row?((row.querySelector('.erx-dose')||{value:''}).value):'';
+      var freq=row?((row.querySelector('.erx-freq')||{value:''}).value):'';
+      var dur=row?((row.querySelector('.erx-duration')||{value:''}).value):'';
+      medicines.push((i+1)+'. '+el.value+(dose?' - '+dose:'')+(freq?' '+freq:'')+(dur?' x '+dur:''));
+    }
+  });
+  var doctor={};try{doctor=JSON.parse(localStorage.getItem('doctor_profile')||'{}');}catch(e){}
+  var drName=doctor.name||'Your Doctor';
+  var hospName=doctor.clinic||'Our Clinic';
+  var drPhone=doctor.phone||'';
+  var msg='\uD83C\uDFE5 *'+hospName+'*\nDr. '+drName+(doctor.degree?' ('+doctor.degree+')':'')+'\n';
+  if(drPhone) msg+='\uD83D\uDCDE '+drPhone+'\n';
+  msg+='\n\uD83D\uDCC5 Date: '+date+(refNo?' | Ref: '+refNo:'')+'\n';
+  msg+='Patient: *'+ptName+'*'+(ptAge?' | Age: '+ptAge+'yr':'')+'\n';
+  if(diag) msg+='\n\uD83D\uDD0D *Diagnosis:* '+diag+'\n';
+  if(medicines.length){ msg+='\n\uD83D\uDC8A *Medicines:*\n'+medicines.join('\n')+'\n'; }
+  if(invest) msg+='\n\uD83E\uDDEA *Investigations:* '+invest+'\n';
+  if(instr) msg+='\n\u2705 *Instructions:* '+instr+'\n';
+  if(fu) msg+='\n\uD83D\uDD04 *Follow-up:* '+fu+'\n';
+  if(notes && showNotes) msg+='\n\uD83D\uDCCB *Notes:* '+notes+'\n';
+  msg+='\n\uD83C\uDF10 _K Spider Doctor AI \u2014 kspiderai.in_';
+  var phone=ptPhone.replace(/\D/g,'');
+  window.open('https://wa.me/'+(phone?'91'+phone:'')+'?text='+encodeURIComponent(msg),'_blank');
+};
+
+// ── DOCTOR-SPECIFIC FOOTER (Usage Guide) ────────────────────────────────
+function ksInjectDoctorFooter() {
+  var footer = document.querySelector('.footer') || document.querySelector('footer');
+  if (!footer || footer.querySelector('#ks-doctor-guide')) return;
+  var guide = document.createElement('div');
+  guide.id = 'ks-doctor-guide';
+  guide.style.cssText = 'background:#0f172a;color:#94a3b8;padding:40px 24px;margin-top:0;';
+  guide.innerHTML = '\
+<div style="max-width:1200px;margin:0 auto;">\
+<h2 style="color:#38bdf8;font-size:1.2rem;margin-bottom:24px;border-bottom:1px solid #1e293b;padding-bottom:12px;">\uD83D\uDC68\u200D\u2695\uFE0F K Spider Doctor AI \u2014 Complete Feature Guide</h2>\
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;">\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDD12 Getting Started</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Register as a new doctor (mobile = default password)</li><li>\u2022 Fill your clinic profile in Doctor Profile section</li><li>\u2022 Your data stays private \u2014 each doctor has separate space</li><li>\u2022 Change username/password anytime in Doctor Profile</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDCC5 Appointment Workflow</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Book appointment \u2192 Unique ID auto-generated</li><li>\u2022 Unique ID = Mobile + Date + Sequence</li><li>\u2022 Search patient by UHID, mobile, or name</li><li>\u2022 All data auto-fills across OPD \u2192 Prescription \u2192 Billing</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDCDD OPD & Prescription</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Search patient \u2192 data auto-fills in OPD form</li><li>\u2022 Drug/Brand autocomplete while typing medicine names</li><li>\u2022 Side effects alert panel appears automatically</li><li>\u2022 "Build Prescription" \u2192 transfers all data to e-Rx</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDCCA AI Diagnosis Tools</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Enter symptoms \u2192 AI generates differential diagnosis</li><li>\u2022 Disease DB: 430+ conditions with ICD codes</li><li>\u2022 Drug interactions & pregnancy safety checks</li><li>\u2022 Clinical scores (GCS, SOFA, Wells, etc.)</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDCAC Prescription & WhatsApp</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Generate e-Prescription \u2192 Print or WhatsApp to patient</li><li>\u2022 "Explain to Patient" \u2192 Hindi explanation of diagnosis+medicines</li><li>\u2022 Doctor Notes: Add private remarks (show/hide on printout)</li><li>\u2022 Share health tips from Google Sheet via WhatsApp</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDCB0 Management Tools</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Billing: Create invoices with GST/discount support</li><li>\u2022 Live Queue: Track waiting/in-progress/complete patients</li><li>\u2022 Lab Reports: AI interpretation of CBC, LFT, KFT etc.</li><li>\u2022 CSV Manager: Export/import all data for backup</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDCCA Drug & Brand DB</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 1244+ drugs with doses, pregnancy categories, interactions</li><li>\u2022 275+ Indian brands with prices & clinical notes</li><li>\u2022 Add custom drugs/brands anytime via CSV or inline</li><li>\u2022 Export full database to Excel, edit, re-import</li></ul></div>\
+<div><h3 style="color:#38bdf8;font-size:0.9rem;margin-bottom:8px;">\uD83D\uDD04 Google Sheets Sync</h3><ul style="list-style:none;padding:0;font-size:0.8rem;line-height:2;"><li>\u2022 Auto-sync drugs, brands, patients from Google Sheets</li><li>\u2022 Deploy Apps Script for 2-way patient data save</li><li>\u2022 Health tips panel: Load from your Sheet \u2192 WhatsApp share</li><li>\u2022 Manual sync: CSV Manager \u2192 Sync Now button</li></ul></div>\
+</div>\
+<p style="margin-top:24px;font-size:0.75rem;text-align:center;color:#475569;">K Spider Doctor AI v6.0 \u2014 Designed for Indian Doctors \u2014 kspiderai.in \u2014 \u00A9 2026 K Spider AI Tools</p>\
+</div>';
+  footer.insertBefore(guide, footer.firstChild);
+}
+
+// ── INIT ────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    // Check if doctor is logged in (via KS multi-doctor system)
+    var currentDoc = ksGetCurrentDoctor();
+    if (currentDoc) {
+      ksApplyDoctorProfile(currentDoc);
+    } else {
+      // Check if any doctors are registered; if none, show Firebase login as before
+      // If doctors exist, show KS auth modal
+      var docs = ksGetDoctors();
+      if (docs.length > 0) ksShowDoctorAuthModal();
+      // If no doctors, tool works in single-doctor mode (Firebase auth handles it)
+    }
+
+    ksInjectDoctorTopbar();
+    ksInjectCredentialFields();
+    ksEnhanceAppointmentForm();
+    ksInjectExplainBtn();
+    ksInjectRxNotes();
+    ksInjectRxWhatsApp();
+    ksInjectDoctorFooter();
+
+    // Patch saasSwitchSection to re-inject on navigation
+    var _orig = window.saasSwitchSection;
+    if (_orig && !_orig._v6Patched) {
+      window.saasSwitchSection = function(id, title, sub, btn) {
+        var r = _orig.apply(this, arguments);
+        setTimeout(function() {
+          ksEnhanceAppointmentForm();
+          ksInjectExplainBtn();
+          ksInjectRxNotes();
+          ksInjectRxWhatsApp();
+          ksInjectDoctorFooter();
+        }, 200);
+        return r;
+      };
+      window.saasSwitchSection._v6Patched = true;
+    }
+
+    // Save data periodically
+    setInterval(ksSaveDoctorData, 60000);
+  }, 1000);
+});
+
+</script>
 </body>
 </html>
