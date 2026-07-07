@@ -1771,6 +1771,7 @@ textarea:focus-visible{
   <button class="tbtn" onclick="goTab(this,'stats')"><span class="ti">📊</span>STATS</button>
   <button class="tbtn" onclick="goTab(this,'cfg')"><span class="ti">⚙️</span>CONFIG</button>
   <button class="tbtn" onclick="goTab(this,'hist')"><span class="ti">🗂️</span>HISTORY</button>
+  <button class="tbtn" onclick="goTab(this,'kspider')"><span class="ti">🕷️</span>KSPIDER</button>
 </nav>
 
 <!-- ════════ MAIN CONTENT ════════ -->
@@ -2014,6 +2015,22 @@ textarea:focus-visible{
       <div class="card">
         <div class="ctitle">AI Text Generator</div>
         <textarea class="gtx" id="gen-prompt" placeholder="Apna prompt yahan likho… jaise: ek motivational speech likho, ya explain what is machine learning…" style="min-height:100px"></textarea>
+
+        <div class="slider-row" style="margin-top:10px">
+          <div class="stitle"><span class="slbl">📏 Explanation Length</span><span class="sval" id="gen-wc-val">500 words</span></div>
+          <input type="range" id="gen-wordcount" min="500" max="5000" step="100" value="500"
+            oninput="upd('gen-wc-val',this.value+' words')">
+          <div class="brow" style="margin-top:8px;flex-wrap:wrap;gap:6px">
+            <button class="btn" style="flex:0 0 auto;padding:6px 11px;font-size:11px" onclick="setGenWC(500)">Short · 500</button>
+            <button class="btn" style="flex:0 0 auto;padding:6px 11px;font-size:11px" onclick="setGenWC(1500)">Medium · 1500</button>
+            <button class="btn" style="flex:0 0 auto;padding:6px 11px;font-size:11px" onclick="setGenWC(3000)">Detailed · 3000</button>
+            <button class="btn" style="flex:0 0 auto;padding:6px 11px;font-size:11px" onclick="setGenWC(5000)">Deep Dive · 5000</button>
+          </div>
+          <div style="font-size:11px;color:var(--mu);margin-top:6px;line-height:1.5">
+            💡 Jitna zyada words chuno (500–5000), utna hi deep aur detailed explanation milega — AI automatically topic ko examples, context aur alag angles ke saath thoroughly cover karega. Bade explanations (3000+) mein AI khud-b-khud continue karke poora target complete karta hai.
+          </div>
+        </div>
+
         <div class="brow" style="margin-top:9px">
           <button class="btn cy" onclick="genText()">✨ Generate</button>
           <button class="btn pu" onclick="improveText()">🔧 Improve</button>
@@ -2029,6 +2046,7 @@ textarea:focus-visible{
           <button class="btn cy" onclick="copyOut()">📋 Copy</button>
           <button class="btn am" onclick="downloadOut()">💾 Save</button>
           <button class="btn rd" onclick="translateOut()">🔄 Translate</button>
+          <button class="btn" onclick="downloadSpeech(null,lastGenOutput)">⬇️ Download Speech</button>
         </div>
       </div>
 
@@ -2046,6 +2064,12 @@ textarea:focus-visible{
           <div class="vp" onclick="pickVP(this,1.4,1)"><div class="ve">⚡</div><div class="vn">Fast</div><div class="vd">1.4×</div></div>
           <div class="vp" onclick="pickVP(this,0.8,0.85)"><div class="ve">🌙</div><div class="vn">Calm</div><div class="vd">0.8×</div></div>
           <div class="vp" onclick="pickVP(this,1,1.3)"><div class="ve">😊</div><div class="vn">Cheerful</div><div class="vd">↑pitch</div></div>
+        </div>
+
+        <div class="ctitle" style="margin:10px 0 8px">Voice Gender</div>
+        <div class="vpgrid" style="grid-template-columns:1fr 1fr">
+          <div class="vp sel" id="gender-female" onclick="setTTSGender('female',this)"><div class="ve">👩</div><div class="vn">Female</div></div>
+          <div class="vp" id="gender-male" onclick="setTTSGender('male',this)"><div class="ve">👨</div><div class="vn">Male</div></div>
         </div>
 
         <div class="slider-row">
@@ -2074,6 +2098,10 @@ textarea:focus-visible{
           <button class="btn cy" onclick="speakTTS()">🔊 Speak</button>
           <button class="btn rd" onclick="stopTTS()">⏹ Stop</button>
         </div>
+        <div class="brow" style="margin-top:8px">
+          <button class="btn gr" onclick="downloadSpeech('tts-txt')">⬇️ Download Speech (Audio)</button>
+        </div>
+        <div id="dlspeech-status" style="font-size:11px;color:var(--mu);margin-top:6px;line-height:1.5;display:none"></div>
         <!-- Android help tip -->
         <div style="margin-top:10px;padding:10px 12px;background:rgba(255,183,0,.08);border:1px solid rgba(255,183,0,.25);border-radius:9px;font-size:12px;color:var(--am);line-height:1.6;">
           ⚠️ <b>Awaaz nahi aa rahi?</b> Phone ka volume badhao. Android mein pehle ek baar kuch bolo ya tap karo — phir Speak dabao. Chrome browser use karo.
@@ -2406,6 +2434,25 @@ textarea:focus-visible{
     </div>
   </div>
 
+  <!-- ── PAGE: KSPIDER AI WEBSITE ASSISTANT ── -->
+  <div class="pg" id="pg-kspider">
+    <div style="flex:0 0 auto;padding:14px 16px 10px;border-bottom:1px solid var(--b)">
+      <div class="ctitle">🕷️ KSpider AI — Website Assistant</div>
+      <p style="font-size:12px;color:var(--mu);margin-top:4px;line-height:1.6">kspiderai.in ke baare mein kuch bhi pucho — tools, pricing, earning, developers, sab kuch! Ye assistant poori website ki jaankari ke saath ready hai.</p>
+    </div>
+    <div id="ksa-msglist" style="flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:12px"></div>
+    <div style="flex:0 0 auto;padding:0 16px 8px;display:flex;flex-wrap:wrap;gap:6px">
+      <button class="chat-act-btn" onclick="ksaAsk('K Spider AI Tools kya hai aur kisne banaya hai?')">ℹ️ Website kya hai?</button>
+      <button class="chat-act-btn" onclick="ksaAsk('Website par kaunse kaunse free tools available hai?')">🛠️ Tools list</button>
+      <button class="chat-act-btn" onclick="ksaAsk('K Spider AI Tools se paise kaise kama sakte hai?')">💰 Earning</button>
+      <button class="chat-act-btn" onclick="ksaAsk('Is website ke developer/founder kaun hai aur contact kaise kare?')">👨‍💻 Developer & Contact</button>
+    </div>
+    <div style="flex:0 0 auto;display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--b)">
+      <input id="ksa-input" type="text" placeholder="Website ke baare mein pucho…" style="flex:1;background:var(--card);border:1px solid var(--b);border-radius:20px;padding:11px 16px;color:var(--tx);font-size:14px;outline:none" onkeydown="if(event.key==='Enter')ksaSend()">
+      <button onclick="ksaSend()" style="background:var(--cy);color:#000;border:none;border-radius:50%;width:42px;height:42px;font-size:16px;cursor:pointer;flex:0 0 auto">➤</button>
+    </div>
+  </div>
+
 </div><!-- /#wrap -->
 
 </div><!-- /#app-desktop-wrap -->
@@ -2571,6 +2618,7 @@ function goTab(btn,id){
     setTimeout(()=>{pgEl.style.opacity='1';},50);
   }
   if(id==='hist') try{loadHistoryPage();}catch(e){}
+  if(id==='kspider') try{initKsaWelcome();}catch(e){}
   try{closeFAB();}catch(e){}
   if(window.innerWidth<600) try{closeFooterDrawer();}catch(e){}
   try{haptic('light');}catch(e){}
@@ -2698,6 +2746,107 @@ async function regenerateLast(){
     const hint=getProviderErrorHint((e&&e.message)||'');
     addMsg('ai','⚠️ '+hint, agent.emoji);
   }
+}
+
+// ════════════════════════════════════════════
+//  KSPIDER AI — WEBSITE ASSISTANT (new feature)
+//  Dedicated chat, fully grounded on kspiderai.in content
+// ════════════════════════════════════════════
+const KSPIDER_KNOWLEDGE_BASE = `
+You are "KSpider AI Assistant" — the official AI help-desk agent for the website www.kspiderai.in (K Spider AI Tools). Answer ONLY using the facts below. Be warm, helpful, and concise. Reply in the same language/style the user writes in (Hindi/Hinglish/Gujarati/English) — most Indian users prefer friendly Hinglish. If someone asks something not covered below, politely say you're not 100% sure and suggest they email kspider221206@gmail.com or message the WhatsApp Channel/Group. Never invent facts, prices, or features not listed here.
+
+━━━ WHAT IS K SPIDER AI TOOLS ━━━
+K Spider AI Tools (kspiderai.in) is India's largest free AI tools platform — 400+ AI & utility tools across 17+ categories, in 22 languages, 100% free forever, no login required for most tools. Powered by multiple AI models: Claude (Anthropic), GPT-4o (OpenAI), Gemini (Google), Llama (Meta) and more via Puter.js — 400+ models explorable. Mission: give every Indian — student, doctor, lawyer, entrepreneur, freelancer — access to professional-grade AI tools at zero cost.
+
+Founded by: Gaurang Raval (Co-Founder · Developer) & Khush Raval (Co-Founder · Strategy), based in Surendranagar, Gujarat, India — 363001. Also on the team: Dr. Shreyansh Raval (Health Advisor, MBBS — runs the medical YouTube channel) and Priti Raval (Music Advisor — "Swar Se Ishwartak" channel). Brand: "K Spider for Kreation."
+
+━━━ MAIN TOOL CATEGORIES (17+) ━━━
+Doctor AI (clinical decision support for doctors — drug database with 1200+ drugs, 430+/265+ diseases, prescription builder, lab report interpreter, emergency alerts, drug interaction checker, growth charts — for registered medical practitioners only, 100% offline data storage), Resume Builder (ATS-friendly resumes, ready in seconds), Legal Document Generator (200+ India-compliant legal templates — NDAs, employment contracts, rental agreements, MOUs — template only, consult a lawyer), Image Tools (compress, convert JPG/PNG/WEBP/PDF, passport photo maker, resize/crop/rotate/watermark/batch), WhatsApp Tools (bulk sender to unsaved numbers, multi-language templates, WhatsApp automation), Business Consultant (market research, competitor analysis, pricing strategy, financial forecasts, growth blueprints), SEO tools (full SEO audit, keyword research, AI blog posts, meta tags, backlink strategy, rank tracking), Pharmacy Master Pro (pharmacy marketing — WhatsApp messages, health tips, offer posts, social content, SEO package generator), K Spider MultiPost (upload an image once, get a public Imgur URL, share to 13+ platforms — WhatsApp, Instagram, Facebook, YouTube, Telegram, Twitter/X, LinkedIn, Pinterest, Threads, ShareChat, Moj — with auto captions & hashtags), plus tools for Construction, Real Estate, HR & Recruitment, E-Commerce, Travel, Food & Restaurant, Interior Design, Fitness, Tech Startups and more.
+
+50+ Instant frontend utility tools (no AI/no sign-up, work instantly in browser): Calculators (Age, EMI, Percentage, SIP Returns, Discount, GST India, CGPA→Percentage, Salary Take-Home, Income Tax FY2024-25, Profit & Loss, Freelance Rate, ROI, BMI, TDEE/Calorie Needs, Water Intake, Ideal Weight), Converters (Length/Distance, Temperature, Weight, Currency approx, Data Size, Time Zone, Color HEX/RGB/HSL, Base64, URL encode/decode), Text tools (Word/Character Counter, Case Converter, Duplicate Line Remover, Find & Replace, Text Reverser/Palindrome, Lorem Ipsum Generator, JSON Formatter, Regex Tester, Google Search Preview), Generators (Password Generator, QR Code Generator, UUID/Random ID Generator, Hashtag Generator, Invoice Number Generator, Color Palette Generator).
+
+━━━ AI POWER SUITE (advanced tools) ━━━
+AI Image Generator (10 models), Text-to-Speech (50+ voices across 17 languages — English US/UK, Hindi, Gujarati, Tamil, Telugu, Marathi, Bengali, Kannada, Malayalam, French, German, Spanish, Japanese, Arabic; voice engines: Generative/Neural/Standard; example voices: Joanna, Matthew, Amy, Brian, Kajal, Aditi, Raveena and more — with Download Audio option), Vision Analyzer (image understanding via GPT-4o/Claude/Gemini — describe images, extract text, identify objects, analyze charts/rooms/food), OCR (Image-to-Text extraction via GPT-4o Vision, with Summarize & Translate), Multi-Model AI Chat (streaming chat across Claude Sonnet/Opus, GPT-5 Nano, GPT-4o, o3-mini, Gemini 2.5 Flash/Pro, Llama 3.3 70B, DeepSeek R1, Mistral 7B — with personas: Default AI, India Expert, Business, Health, Legal, Coder, KSpider AI), and an AI Model Explorer (400+ models via Puter.js, all free).
+
+━━━ HOW IT WORKS (5 steps) ━━━
+1. Visit kspiderai.in on any device (mobile/tablet/desktop), no app download needed. 2. Search or browse by 17+ categories. 3. Fill in the tool's form fields (more detail = better AI output). 4. Click Generate — the AI creates complete, professional content in seconds. 5. Copy the result, download it, or share directly to WhatsApp, Telegram, and 12+ other platforms.
+
+━━━ PRICING / PLANS ━━━
+Free tools are free forever after registration (most tools don't even need registration). Paid plans exist for power users: Site-Wide Premium Plan, Franchise Plan, and Per-Tool Individual Plans — these unlock advanced business/power-user tools like the AI Business Advisor, SEO dashboard, and 200+ legal document templates, plus early access, priority support and exclusive features. Refund Policy: request within 7 calendar days of activation (not from payment date) → 75% refund if approved (25% is non-refundable, covering UPI/admin/delivery costs); Per-Tool plans are also covered, and access is revoked once refunded. Free registrations are not covered by the refund policy.
+
+━━━ TERMS, PRIVACY & DISCLAIMERS ━━━
+Governed by Indian law (IT Act 2000, Consumer Protection Act 2019, DPDP Act 2023), jurisdiction Surendranagar/Ahmedabad, Gujarat. AI content is informational only — NOT professional medical, legal, or financial advice; always verify with a qualified professional (doctors for health, licensed advocates for legal docs, SEBI-registered advisers for finance). AI-generated content belongs to the user. No personal data is sold; AI inputs are processed in real time and not stored on their servers; most tools need no registration; not directed at children under 13. The site runs on Google AdSense (all ads labelled "Advertisement", ads never influence AI content).
+
+━━━ EARNING OPPORTUNITIES USING K SPIDER AI (real methods people use) ━━━
+• Freelancing (₹30K–1.5L/month): use the tools to deliver content writing, resumes (₹500-3000 each), legal drafting (₹1000-5000/doc), social media management (₹8000-25000/client) on Upwork/Fiverr/Internshala.
+• YouTube Monetization (₹15K-80K/month): AI-tips or tool-review channels; AdSense RPM ₹150-400/1000 views in the AI niche.
+• Digital Agency (₹50K-2L/month): offer AI-powered content/SEO/social/marketing services to local businesses, ₹8000-30000/client/month.
+• Affiliate Marketing (₹10K-50K/month or ₹5K-2L/month): promote AI tools/SaaS/courses, 5-70% commission.
+• Digital Products (₹20K-1L or up to ₹5L/month): sell AI-made eBooks/templates/courses on Gumroad/Instamojo/Payhip.
+• Blogging + AdSense (₹15K-75K/month): use Blog Writer/SEO Optimizer/Content Calendar tools to publish fast, rank faster with AI-written SEO content.
+• Google AdSense on your own site (₹3,000-1,50,000/month): RPM ₹50-400/1000 views — 7 ad slots are pre-built into the site template.
+• Sponsored Content (₹5,000-50,000/post): brands pay for featured tool slots/sponsored articles.
+• AI Coaching & Training (₹15,000-80,000/month): teach freelancers/students/businesses to use AI tools, ₹2,000-15,000/student.
+• Pharmacy-specific: 4-8% commission promoting health products; become a K Spider AI district reseller (₹5,000-25,000/month passive); PMBJP Janaushadhi Kendra angle (20-25% margin, govt approved).
+
+━━━ CONTACT & SOCIAL CHANNELS ━━━
+Primary email: kspider221206@gmail.com. Location: Surendranagar, Gujarat, India — 363001. Response time: 24-48 hrs.
+WhatsApp Channel: "K Spider Official" (whatsapp.com/channel/0029Vb7bJKz5PO15U1NeML3I). WhatsApp Community Group (chat.whatsapp.com/FKIc3m3SsgOLD8F5oKcmih). YouTube: @kspider4kreation (main), @doctorshreyanshraval (health), @swarseishwartak (music — Priti Raval). Instagram: @gaurang.m.raval. Telegram: K Spider Official. Facebook: K Spider Page. Pinterest: K Spider Pins. To suggest a new tool or report a bug: email or message the WhatsApp Group/Telegram Channel.
+
+━━━ RELATIONSHIP TO THIS TOOL (VOXAI Pro) ━━━
+VOXAI Pro (the voice-agent tool this assistant is running inside of) is one of the AI-powered tools built by K Spider AI / Gaurang Raval & Khush Raval, in the same "100% free AI for every Indian" spirit as kspiderai.in.
+`.trim();
+
+function ksaAddMsg(role, text){
+  const el=document.getElementById('ksa-msglist');
+  if(!el) return;
+  const d=document.createElement('div');
+  d.className='msg '+(role==='ai'?'ai':'u');
+  const t=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const safe=text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  d.innerHTML='<div class="mav">'+(role==='ai'?'🕷️':'🙂')+'</div>'+
+    '<div class="mbody">'+
+      '<div class="mmeta"><span class="mname">'+(role==='ai'?'KSpider AI':'Aap')+'</span><span class="mtime">'+t+'</span></div>'+
+      '<div class="mbbl">'+safe+'</div>'+
+    '</div>';
+  el.appendChild(d);
+  el.scrollTop=el.scrollHeight;
+}
+
+let ksaHist=[];
+async function ksaSend(){
+  const inp=document.getElementById('ksa-input');
+  const text=(inp&&inp.value||'').trim();
+  if(!text) return;
+  inp.value='';
+  await ksaAsk(text);
+}
+
+async function ksaAsk(text){
+  if(!text||!text.trim()) return;
+  ksaAddMsg('u', text);
+  ksaHist.push({role:'user',content:text});
+  const el=document.getElementById('ksa-msglist');
+  const typ=document.createElement('div');typ.className='msg ai';typ.id='_ksa_typ';
+  typ.innerHTML='<div class="mav">🕷️</div><div class="mbody"><div class="tdots"><div class="td"></div><div class="td"></div><div class="td"></div></div></div>';
+  if(el){ el.appendChild(typ); el.scrollTop=el.scrollHeight; }
+  try{
+    const reply = await callAI(KSPIDER_KNOWLEDGE_BASE, ksaHist, 900) || 'Maaf karna, jawab nahi mila. Email karo: kspider221206@gmail.com';
+    const t=document.getElementById('_ksa_typ'); if(t) t.remove();
+    ksaAddMsg('ai', reply);
+    ksaHist.push({role:'assistant',content:reply});
+    if(ksaHist.length>24) ksaHist=ksaHist.slice(-24);
+  }catch(e){
+    const t=document.getElementById('_ksa_typ'); if(t) t.remove();
+    const hint=getProviderErrorHint((e&&e.message)||'');
+    ksaAddMsg('ai','⚠️ '+hint);
+  }
+}
+
+function initKsaWelcome(){
+  const el=document.getElementById('ksa-msglist');
+  if(!el || el.children.length) return;
+  ksaAddMsg('ai','👋 Namaste! Main KSpider AI Website Assistant hoon. kspiderai.in ke baare mein — tools, pricing, earning, ya developers — kuch bhi pucho! 🕷️');
 }
 
 function addMsg(role,text,av){
@@ -2927,16 +3076,27 @@ function buildLangSysPrompt(baseTask){
   return `${baseTask}\n\nIMPORTANT: You MUST write your ENTIRE response in ${tgt} language only. Do not use English unless absolutely necessary for technical terms. Write naturally and fluently in ${tgt}.`;
 }
 
+function setGenWC(n){
+  const el=document.getElementById('gen-wordcount');
+  if(el){ el.value=n; upd('gen-wc-val',n+' words'); }
+}
+
 async function genText(){
   const prompt=validateInput(document.getElementById('gen-prompt'));if(!prompt){toast('⚠️ Prompt likho pehle');return;}
-  showOut('⏳ Generate ho raha hai…');
+  const wcEl=document.getElementById('gen-wordcount');
+  const targetWords=wcEl?(parseInt(wcEl.value,10)||500):500;
+  showOut('⏳ Generate ho raha hai… (target: '+targetWords+' words)');
   try{
-    const sys=buildLangSysPrompt('You are a helpful AI writer. Write high-quality, engaging content as requested.');
-    const out=await callAI(sys,[{role:'user',content:prompt}],1200)||'Koi jawab nahi mila.';
+    const sys=buildLangSysPrompt('You are a helpful AI writer. Write high-quality, engaging, in-depth content as requested. When a target word count is given, treat it as a firm requirement — write a thorough, well-structured, detailed explanation (with examples, context, and multiple angles) that reaches that length. Do not pad with repetition or filler; every sentence should add real value.');
+    const userMsg = targetWords>500
+      ? prompt+'\n\n[Instruction: Is topic ka ek detailed, deep explanation likho — approximately '+targetWords+' words mein. Poora topic thoroughly cover karo, examples aur alag alag angles ke saath. Repetition bilkul mat karo.]'
+      : prompt;
+    const out = await genTextChunked(sys, userMsg, targetWords);
     lastGenOutput=out;
     showOut(out);
-    upd('out-lang-label','✨ Output — '+getLangLabel());
-    toast('✅ Generate ho gaya — '+getLangLabel());
+    const actualWords=out.trim().split(/\s+/).filter(Boolean).length;
+    upd('out-lang-label','✨ Output — '+getLangLabel()+' · '+actualWords+' words');
+    toast('✅ Generate ho gaya — '+actualWords+' words');
   }catch(e){
     const em=e.message||'';
     let msg='⚠️ ';
@@ -2946,6 +3106,27 @@ async function genText(){
     else msg+=em||'Generate failed. Retry karo.';
     showOut(msg);
   }
+}
+
+// ── Auto-continuation for long (500–5000 word) explanations (new feature) ──
+async function genTextChunked(sys, userMsg, targetWords){
+  const perCallTokens=Math.min(8000, Math.max(1200, Math.round(targetWords*2.6)+400));
+  let messages=[{role:'user',content:userMsg}];
+  let full = await callAI(sys, messages, perCallTokens) || '';
+  let attempts=0;
+  while(attempts<4){
+    const words=full.trim().split(/\s+/).filter(Boolean).length;
+    if(words >= targetWords*0.85) break;
+    attempts++;
+    messages=messages.concat([
+      {role:'assistant',content:full},
+      {role:'user',content:'Continue the explanation from exactly where you left off — do not repeat anything already written. Keep going until the full explanation (~'+targetWords+' words total) is complete.'}
+    ]);
+    const cont = await callAI(sys, messages, perCallTokens) || '';
+    if(!cont.trim()) break;
+    full += (full.endsWith('\n')?'':'\n\n') + cont;
+  }
+  return full;
 }
 
 async function improveText(){
@@ -3089,64 +3270,124 @@ function loadVoices(){
   let n=0; const iv=setInterval(()=>{ if(voices.length||n++>30){clearInterval(iv);}else fill(); },300);
 }
 
-function getRVVoice(){
-  const map={
-    hi:'Hindi Female',gu:'Gujarati Female',mr:'Marathi Female',
-    bn:'Bengali Female',ta:'Tamil Female',te:'Telugu Female',
-    kn:'Kannada Female',ml:'Malayalam Female',pa:'Punjabi Female',
-    ur:'Urdu Female',en:'UK English Female',es:'Spanish Female',
-    fr:'French Female',de:'Deutsch Female',ja:'Japanese Female',
-    zh:'Chinese Female',ar:'Arabic Female',pt:'Brazilian Portuguese Female',ru:'Russian Female'
-  };
-  return map[lang.split('-')[0]] || 'UK English Female';
+// ── Voice Gender (new feature) ──
+let ttsGender = localStorage.getItem('ks_tts_gender') || 'female';
+function setTTSGender(g, el){
+  ttsGender = g;
+  try{ localStorage.setItem('ks_tts_gender', g); }catch(e){}
+  const fEl=document.getElementById('gender-female'), mEl=document.getElementById('gender-male');
+  if(fEl) fEl.classList.remove('sel');
+  if(mEl) mEl.classList.remove('sel');
+  if(el) el.classList.add('sel');
+  toast(g==='male' ? '👨 Male voice selected' : '👩 Female voice selected');
 }
+
+function getRVVoice(genderOverride){
+  const map={
+    hi:'Hindi',gu:'Gujarati',mr:'Marathi',
+    bn:'Bengali',ta:'Tamil',te:'Telugu',
+    kn:'Kannada',ml:'Malayalam',pa:'Punjabi',
+    ur:'Urdu',en:'UK English',es:'Spanish',
+    fr:'French',de:'Deutsch',ja:'Japanese',
+    zh:'Chinese',ar:'Arabic',pt:'Brazilian Portuguese',ru:'Russian'
+  };
+  const base = map[lang.split('-')[0]] || 'UK English';
+  const g = genderOverride || ttsGender;
+  return base+' '+(g==='male'?'Male':'Female');
+}
+
+// ── Split long text into natural sentence-based chunks so full
+//    500–5000 word explanations can be spoken (old version hard-truncated at 800 chars) ──
+function splitTextForTTS(text, maxLen){
+  maxLen = maxLen || 220;
+  const parts = text.split(/(?<=[.!?।॥])\s+/).filter(Boolean);
+  const chunks=[]; let cur='';
+  parts.forEach(p=>{
+    if((cur+' '+p).trim().length > maxLen && cur){ chunks.push(cur.trim()); cur=p; }
+    else cur = (cur ? cur+' ' : '') + p;
+  });
+  if(cur.trim()) chunks.push(cur.trim());
+  return chunks.length ? chunks : [text];
+}
+
+let ttsQueue=[], ttsQueueIdx=0;
 
 function speakTx(text){
   if(!text||!text.trim()) return;
-  const clean = text.replace(/[*#_`>•]/g,'').trim().substring(0,800);
+  const clean = text.replace(/[*#_`>•]/g,'').trim();
   if(!clean) return;
   stopTTS();
   showTTSPlayer(); setProgBar(0); setPPBtn('⏸');
   ttsActive = true;
+  ttsQueue = splitTextForTTS(clean, 220);
+  ttsQueueIdx = 0;
+  animProg(clean);
+  speakChunk();
+}
 
-  // PRIMARY: ResponsiveVoice — works in any iframe
+function speakChunk(){
+  if(!ttsActive) return;
+  if(ttsQueueIdx >= ttsQueue.length){
+    ttsActive=false; setPPBtn('▶'); setProgBar(100); clearInterval(ttsProgIv);
+    return;
+  }
+  const chunk = ttsQueue[ttsQueueIdx];
   if(rvReady && window.responsiveVoice){
-    window.responsiveVoice.speak(clean, getRVVoice(), {
+    window.responsiveVoice.speak(chunk, getRVVoice(), {
       rate   : Math.min(Math.max(+ttsRate||1, 0.5), 1.5),
       pitch  : Math.min(Math.max(+ttsPitch||1, 0.5), 2),
       volume : Math.min(Math.max(+ttsVol||1, 0.1), 1),
-      onstart: ()=>{ setPPBtn('⏸'); animProg(clean); },
-      onend  : ()=>{ setPPBtn('▶'); setProgBar(100); ttsActive=false; clearInterval(ttsProgIv); },
-      onerror: ()=>{ toast('⚠️ RV fail — native try…'); nativeSpeak(clean); }
+      onstart: ()=>{ setPPBtn('⏸'); },
+      onend  : ()=>{ if(!ttsActive)return; ttsQueueIdx++; speakChunk(); },
+      onerror: ()=>{
+        // e.g. no "Hindi Male" voice available on this device — fallback to Female, then native
+        if(ttsGender==='male'){
+          window.responsiveVoice.speak(chunk, getRVVoice('female'), {
+            rate   : Math.min(Math.max(+ttsRate||1, 0.5), 1.5),
+            pitch  : Math.min(Math.max(+ttsPitch||1, 0.5), 2),
+            volume : Math.min(Math.max(+ttsVol||1, 0.1), 1),
+            onstart: ()=>{ setPPBtn('⏸'); },
+            onend  : ()=>{ if(!ttsActive)return; ttsQueueIdx++; speakChunk(); },
+            onerror: ()=>{ nativeSpeakChunk(chunk); }
+          });
+          return;
+        }
+        nativeSpeakChunk(chunk);
+      }
     });
     return;
   }
-
-  // SECONDARY: native SpeechSynthesis
-  nativeSpeak(clean);
+  nativeSpeakChunk(chunk);
 }
 
-function nativeSpeak(clean){
+function nativeSpeakChunk(clean){
   if(!synth){ showNoTTS(); return; }
-  synth.cancel();
-  setTimeout(()=>{
-    const u = new SpeechSynthesisUtterance(clean);
-    u.rate=Math.min(Math.max(+ttsRate||1,0.5),2);
-    u.pitch=Math.min(Math.max(+ttsPitch||1,0.5),2);
-    u.volume=Math.min(Math.max(+ttsVol||1,0.1),1);
-    u.lang=lang;
-    const best=voices.find(v=>v.lang===lang)||voices.find(v=>v.lang.startsWith(lang.split('-')[0]))||voices[0];
-    if(best) u.voice=best;
-    u.onstart=()=>{ setPPBtn('⏸'); animProg(clean); };
-    u.onend=()=>{ setPPBtn('▶'); setProgBar(100); ttsActive=false; };
-    u.onerror=(e)=>{
-      if(e.error==='interrupted'||e.error==='canceled') return;
-      ttsActive=false; setPPBtn('▶');
-      showNoTTS();
-    };
-    try{ synth.speak(u); setTimeout(()=>{ if(synth.paused) synth.resume(); },300); }
-    catch(e){ showNoTTS(); }
-  },120);
+  const u = new SpeechSynthesisUtterance(clean);
+  u.rate=Math.min(Math.max(+ttsRate||1,0.5),2);
+  u.pitch=Math.min(Math.max(+ttsPitch||1,0.5),2);
+  u.volume=Math.min(Math.max(+ttsVol||1,0.1),1);
+  u.lang=lang;
+  const langBase=lang.split('-')[0];
+  const genderNames={
+    male:['male','david','mark','ravi','daniel','george','fred','alex','matthew','arthur','james','rishi'],
+    female:['female','zira','susan','samantha','priya','veena','heera','karen','moira','tessa','fiona','neerja']
+  };
+  const wantGender = ttsGender==='male' ? 'male' : 'female';
+  const otherGender = wantGender==='male' ? 'female' : 'male';
+  const sameLangVoices = voices.filter(v=>v.lang===lang || v.lang.startsWith(langBase));
+  let best = sameLangVoices.find(v=>genderNames[wantGender].some(n=>v.name.toLowerCase().includes(n)));
+  if(!best) best = sameLangVoices.find(v=>!genderNames[otherGender].some(n=>v.name.toLowerCase().includes(n)));
+  if(!best) best = sameLangVoices[0] || voices.find(v=>v.lang.startsWith('en')) || voices[0];
+  if(best) u.voice = best;
+  u.onstart=()=>{ setPPBtn('⏸'); };
+  u.onend=()=>{ if(!ttsActive)return; ttsQueueIdx++; speakChunk(); };
+  u.onerror=(e)=>{
+    if(e.error==='interrupted'||e.error==='canceled') return;
+    ttsActive=false; setPPBtn('▶');
+    showNoTTS();
+  };
+  try{ synth.speak(u); setTimeout(()=>{ if(synth.paused) synth.resume(); },300); }
+  catch(e){ showNoTTS(); }
 }
 
 function animProg(text){
@@ -3177,6 +3418,73 @@ Chrome mein address bar mein jao:<br>
 Output copy karo → Google Translate app → Speaker icon dabao<br><br>
 <button onclick="document.getElementById('_notts').remove()" style="background:#00d4ff;color:#000;border:none;border-radius:8px;padding:9px;font-weight:700;cursor:pointer;width:100%;font-size:13px">✕ Samajh Gaya</button>`;
   document.body.appendChild(b);
+}
+
+// ── Download Speech as Audio File (new feature) ──
+// Web Speech API / ResponsiveVoice do not expose raw audio directly, so we
+// record the tab's own audio output while the text is spoken, then offer it as a download.
+async function downloadSpeech(sourceElId, directText){
+  const text = directText || (sourceElId ? (document.getElementById(sourceElId)?.value||'') : '');
+  if(!text || !text.trim()){ toast('⚠️ Pehle kuch text likho ya generate karo'); return; }
+  const statusEl=document.getElementById('dlspeech-status');
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+    toast('⚠️ Ye browser recording support nahi karta — Chrome/Edge desktop try karo');
+    return;
+  }
+  if(statusEl){
+    statusEl.style.display='block';
+    statusEl.innerHTML='📢 Ek popup khulega — <b>"This Tab"</b> select karo aur <b>"Share tab audio"</b> checkbox zaroor ON karo, phir Share dabao.';
+  }
+  let stream;
+  try{
+    stream = await navigator.mediaDevices.getDisplayMedia({video:true, audio:true});
+  }catch(e){
+    toast('⚠️ Recording cancel ho gaya');
+    if(statusEl) statusEl.style.display='none';
+    return;
+  }
+  const audioTracks = stream.getAudioTracks();
+  if(!audioTracks.length){
+    toast('⚠️ Audio share nahi hua — "Share tab audio" checkbox zaroor check karo');
+    stream.getTracks().forEach(t=>t.stop());
+    if(statusEl) statusEl.style.display='none';
+    return;
+  }
+  stream.getVideoTracks().forEach(t=>t.stop());
+  const audioStream = new MediaStream(audioTracks);
+  const chunks=[];
+  let recorder;
+  try{ recorder = new MediaRecorder(audioStream); }
+  catch(e){
+    toast('⚠️ Recording start nahi hui');
+    stream.getTracks().forEach(t=>t.stop());
+    if(statusEl) statusEl.style.display='none';
+    return;
+  }
+  recorder.ondataavailable=function(e){ if(e.data.size>0) chunks.push(e.data); };
+  recorder.onstop=function(){
+    stream.getTracks().forEach(t=>t.stop());
+    if(!chunks.length){
+      toast('⚠️ Koi audio record nahi hui');
+      if(statusEl) statusEl.style.display='none';
+      return;
+    }
+    const blob=new Blob(chunks,{type:'audio/webm'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='voxai-speech-kspiderai-'+Date.now()+'.webm'; a.click();
+    if(statusEl){ statusEl.innerHTML='✅ Speech audio download ho gayi!'; setTimeout(function(){statusEl.style.display='none';},4000); }
+    toast('✅ Speech audio download ho gayi!');
+  };
+  recorder.start();
+  if(statusEl) statusEl.innerHTML='🔴 Recording ho raha hai… bolne do, khatam hone par file apne aap download hogi.';
+  speakTx(text);
+  const check=setInterval(function(){
+    if(!ttsActive){
+      clearInterval(check);
+      setTimeout(function(){ try{ recorder.stop(); }catch(e){} }, 500);
+    }
+  },300);
 }
 
 function stopTTS(){
@@ -4269,6 +4577,10 @@ window.addEventListener('load',()=>{
     }
   }catch(e){}
   try{const ht=document.getElementById('haptic-toggle');if(ht)ht.addEventListener('change',()=>{hapticEnabled=ht.checked;});}catch(e){}
+  try{
+    const gEl=document.getElementById(ttsGender==='male'?'gender-male':'gender-female');
+    if(gEl){ document.querySelectorAll('#gender-female,#gender-male').forEach(x=>x.classList.remove('sel')); gEl.classList.add('sel'); }
+  }catch(e){}
   try{const asw=document.getElementById('autospk-toggle');if(asw){asw.checked=autoSpeak;asw.addEventListener('change',()=>{autoSpeak=asw.checked;});}}catch(e){}
 });
 
