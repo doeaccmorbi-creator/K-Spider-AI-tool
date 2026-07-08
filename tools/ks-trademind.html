@@ -4023,15 +4023,15 @@ function _fetchTVRecommend(sym, tf, onSuccess, onFail) {
    giving up — genuinely increases the chance of REAL data without
    ever fabricating a result. */
 function _corsFetchJSON(url, onSuccess, onFail) {
-  fetch(url)
+  fetch(url, { cache:'no-store' })
     .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.json(); })
     .then(onSuccess)
     .catch(function(){
-      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url))
+      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { cache:'no-store' })
         .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.json(); })
         .then(onSuccess)
         .catch(function(){
-          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url))
+          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { cache:'no-store' })
             .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.json(); })
             .then(onSuccess)
             .catch(onFail);
@@ -4044,15 +4044,15 @@ function _corsFetchJSON(url, onSuccess, onFail) {
    as an additional real-data source for FII/DII when NSE's API is
    blocked. */
 function _corsFetchText(url, onSuccess, onFail) {
-  fetch(url)
+  fetch(url, { cache:'no-store' })
     .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
     .then(onSuccess)
     .catch(function(){
-      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url))
+      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { cache:'no-store' })
         .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
         .then(onSuccess)
         .catch(function(){
-          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url))
+          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { cache:'no-store' })
             .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
             .then(onSuccess)
             .catch(onFail);
@@ -4067,7 +4067,7 @@ function _corsFetchText(url, onSuccess, onFail) {
    extract exactly two sane numeric figures — otherwise we discard it
    completely rather than risk showing a mis-parsed/wrong number. */
 function _scrapeMoneycontrolFiiDii(callback) {
-  _corsFetchText('https://www.moneycontrol.com/stocks/marketstats/fii_dii_activity/index.php',
+  _corsFetchText('https://www.moneycontrol.com/stocks/marketstats/fii_dii_activity/index.php?_=' + Date.now(),
     function(html){
       try {
         var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -4108,7 +4108,7 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
     stooqSym = s.split(':')[1] || s;
   }
 
-  var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + stooqSym + '?interval=1d&range=5d';
+  var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + stooqSym + '?interval=1d&range=5d&_=' + Date.now();
   _corsFetchJSON(url, function(data){
     var res = data && data.chart && data.chart.result && data.chart.result[0];
     if(!res){ onFail(); return; }
@@ -4120,7 +4120,7 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
     var hi52  = meta.fiftyTwoWeekHigh;
     var lo52  = meta.fiftyTwoWeekLow;
     if(close === undefined || close === null) { onFail(); return; }
-    onSuccess({ close:close, change:chg, volume:vol, hi52:hi52, lo52:lo52, raw:meta });
+    onSuccess({ close:close, change:chg, volume:vol, hi52:hi52, lo52:lo52, marketTime:meta.regularMarketTime, raw:meta });
   }, onFail);
 }
 
@@ -4193,7 +4193,7 @@ function _inferNewsDirection(title) {
 }
 
 function fetchLiveMarketNews(callback) {
-  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('Sensex Nifty share market India') + '&newsCount=8&quotesCount=0',
+  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('Sensex Nifty share market India') + '&newsCount=8&quotesCount=0&_=' + Date.now(),
     function(data){
       var news = (data && data.news) || [];
       if(!news.length) { _fetchNewsViaRSS(callback); return; }
@@ -4208,7 +4208,7 @@ function fetchLiveMarketNews(callback) {
 
 function _fetchNewsViaRSS(callback) {
   var rssUrl = 'https://news.google.com/rss/search?q=Sensex%20Nifty%20share%20market%20when:1d&hl=en-IN&gl=IN&ceid=IN:en';
-  _corsFetchJSON('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl),
+  _corsFetchJSON('https://api.rss2json.com/v1/api.json?rss_url=' + encodeURIComponent(rssUrl) + '&_=' + Date.now(),
     function(data){
       var items = (data && data.items) || [];
       if(!items.length) { _liveNewsData = []; _liveNewsIsLive = false; callback([], false); return; }
@@ -6408,7 +6408,7 @@ function loadFiiDiiData() {
   tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching data...</td></tr>';
 
   /* Try NSE public FII/DII API (direct, then via free CORS relay) */
-  _corsFetchJSON('https://www.nseindia.com/api/fiidiiTradeReact',
+  _corsFetchJSON('https://www.nseindia.com/api/fiidiiTradeReact?_=' + Date.now(),
     function(data){ _renderFiiDii(data, exchange, period); },
     function(){ _renderFiiDiiSimulated(exchange, period); }
   );
@@ -8007,7 +8007,7 @@ function setWmReportMode(mode, btn) {
 }
 
 function _getFiiDiiPeriodSummary(period, callback) {
-  _corsFetchJSON('https://www.nseindia.com/api/fiidiiTradeReact', function(data){
+  _corsFetchJSON('https://www.nseindia.com/api/fiidiiTradeReact?_=' + Date.now(), function(data){
     var rows = Array.isArray(data) ? data : (data.data || []);
     if(!rows.length) { _fiiDiiTryMoneycontrol(period, callback); return; }
     var days = period === 'today' ? 1 : period === '7d' ? 5 : 22;
@@ -8039,7 +8039,7 @@ function _fiiDiiTryMoneycontrol(period, callback) {
 }
 
 function _getMutualFundNews(callback) {
-  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('mutual fund SIP inflow India AMFI') + '&newsCount=8&quotesCount=0',
+  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('mutual fund SIP inflow India AMFI') + '&newsCount=8&quotesCount=0&_=' + Date.now(),
     function(data){
       var news = (data && data.news) || [];
       if(!news.length) { callback([], false); return; }
@@ -9079,64 +9079,69 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, pools)
   var list = document.getElementById('seo-thumb-prompts-list');
   if(!list) return;
   var html = '';
-  var cardCount = platformSel === 'all' ? 4 : 5;
+  var gi = 0; /* global card index — keeps pool rotation & hook variety unique across ALL cards, even across platform groups */
 
-  for(var i=0; i<cardCount; i++) {
-    var platKey  = platformList[i % platformList.length];
-    var plat     = PLATFORM_SPECS[platKey];
-    var style = styleSel==='random' ? _pickRandom(styleKeys) : styleSel;
-    var human = humanSel==='random' ? _pickRandom(humanKeys) : humanSel;
-    var emo   = emoSel==='random'   ? _pickRandom(emoKeys)   : emoSel;
-    var hook  = hookSel==='random'  ? _pickRandom(hookKeys)  : hookSel;
+  platformList.forEach(function(platKey){
+    var plat = PLATFORM_SPECS[platKey];
+    html += '<div style="margin:16px 0 8px;padding-top:10px;border-top:1px dashed var(--border);font-weight:800;color:var(--text-primary);font-size:.85rem">' + plat.label + ' — 5 अलग Options (हर एक में अलग स्टॉक + अलग hook)</div>';
 
-    var styleDesc = THUMB_STYLE_DESCRIPTIONS[style];
-    var humanDesc = THUMB_HUMAN_DESCRIPTIONS[human];
-    var emoDesc   = THUMB_EMOTION_DESCRIPTIONS[emo];
-    var hookDesc  = THUMB_HOOK_DESCRIPTIONS[hook];
+    for(var pi=0; pi<5; pi++, gi++) {
+      var i = gi;
+      var style = styleSel==='random' ? _pickRandom(styleKeys) : styleSel;
+      var human = humanSel==='random' ? _pickRandom(humanKeys) : humanSel;
+      var emo   = emoSel==='random'   ? _pickRandom(emoKeys)   : emoSel;
+      var hook  = hookSel==='random'  ? _pickRandom(hookKeys)  : hookSel;
 
-    /* Rotate through the pools so every single card features a
-       DIFFERENT trap/buy/sell stock — the scanned data is divided
-       across the prompts instead of repeating one stock everywhere. */
-    var cardTrap = trapPool[i % trapPool.length] || trapName;
-    var cardBuy  = buyPool[i % buyPool.length]  || buyName;
-    var cardSell = sellPool.length ? sellPool[i % sellPool.length] : null;
+      var styleDesc = THUMB_STYLE_DESCRIPTIONS[style];
+      var humanDesc = THUMB_HUMAN_DESCRIPTIONS[human];
+      var emoDesc   = THUMB_EMOTION_DESCRIPTIONS[emo];
+      var hookDesc  = THUMB_HOOK_DESCRIPTIONS[hook];
 
-    /* Build a distinct, real-data hook TITLE for this specific option
-       (different every card — pulls actual mood/trap/buy/sell/live-index data) */
-    var hookTitleOptions = [
-      '🚨 ' + cardTrap + ' में TRAP! ' + (liveTag||('NIFTY '+moodLocal)) + ' — सावधान',
-      moodLocal.toUpperCase() + ' मोड में NIFTY' + (liveTag?(' ('+liveTag+')'):'') + ' — ' + cardBuy + ' में मौका?',
-      dateEn + ' का सच: ' + cardTrap + ' vs ' + cardBuy + (liveTag?(' | '+liveTag):''),
-      '⚡ आज ' + cardBuy + ' में GENUINE BUY सिग्नल' + (liveTag?(' — '+liveTag):'') + '!',
-      cardSell ? ('🔻 ' + cardSell + ' में SELL सिग्नल — ' + (liveTag||dateEn) + '!') : ('⚠️ ' + cardTrap + ' से बचो! ' + dateEn + (liveTag?(' | '+liveTag):''))
-    ];
-    var hookTitle = hookTitleOptions[i % hookTitleOptions.length];
+      /* Rotate through the pools so every single card features a
+         DIFFERENT trap/buy/sell stock — the scanned data is divided
+         across ALL prompts (across all platforms) instead of repeating
+         one stock everywhere. */
+      var cardTrap = trapPool[i % trapPool.length] || trapName;
+      var cardBuy  = buyPool[i % buyPool.length]  || buyName;
+      var cardSell = sellPool.length ? sellPool[i % sellPool.length] : null;
 
-    var promptParts = [
-      'Create an original, fully illustrated, copyright-free ' + plat.label + ' thumbnail/image for an Indian stock market daily analysis post.',
-      'Aspect ratio: ' + plat.ratio + ' — ' + plat.textNote + '.',
-      'Visual style: ' + styleDesc + '.',
-      human ? ('Include ' + humanDesc + ', with a ' + emoDesc + '.') : 'No human figures — pure graphic/data-driven composition.',
-      'Bold hook-title text overlay reading exactly: "' + hookTitle + '" — this is the eye-catching headline, make it the dominant text element.',
-      'A small badge graphic referencing "' + langText.trap + ': ' + cardTrap + '" in one corner (generic ticker-style label, not any real company logo).',
-      'A small contrasting badge graphic referencing "' + langText.buy + ': ' + cardBuy + '" in the opposite corner.',
-      cardSell ? ('A third small badge referencing "SELL Alert: ' + cardSell + '" along the bottom edge (generic ticker-style label).') : '',
-      'Hook treatment: ' + hookDesc + '.',
-      'Include a subtle generic rupee (₹) symbol graphic element and a small abstract candlestick chart motif.',
-      'Add a small generic "KSpider4Kreation" text watermark corner (plain text only, not a real trademarked logo).',
-      'IMPORTANT: fully original illustrated/generated artwork only — no real photographs of named/public individuals, no real company logos, no copyrighted characters, no copied chart screenshots from any platform, no third-party brand names — 100% original and platform-policy-safe.'
-    ];
-    var fullPrompt = promptParts.filter(Boolean).join(' ');
+      /* Build a distinct, real-data hook TITLE for this specific option
+         (different every card — pulls actual mood/trap/buy/sell/live-index data) */
+      var hookTitleOptions = [
+        '🚨 ' + cardTrap + ' में TRAP! ' + (liveTag||('NIFTY '+moodLocal)) + ' — सावधान',
+        moodLocal.toUpperCase() + ' मोड में NIFTY' + (liveTag?(' ('+liveTag+')'):'') + ' — ' + cardBuy + ' में मौका?',
+        dateEn + ' का सच: ' + cardTrap + ' vs ' + cardBuy + (liveTag?(' | '+liveTag):''),
+        '⚡ आज ' + cardBuy + ' में GENUINE BUY सिग्नल' + (liveTag?(' — '+liveTag):'') + '!',
+        cardSell ? ('🔻 ' + cardSell + ' में SELL सिग्नल — ' + (liveTag||dateEn) + '!') : ('⚠️ ' + cardTrap + ' से बचो! ' + dateEn + (liveTag?(' | '+liveTag):''))
+      ];
+      var hookTitle = hookTitleOptions[i % hookTitleOptions.length];
 
-    html += '<div class="thumb-opt-card">' +
-      '<div class="thumb-opt-head">' +
-        '<span class="thumb-opt-tag">' + plat.label + ' · ' + plat.ratio.split(' ')[0] + ' · ' + (styleLabels[style]||style) + ' · ' + (hookLabels[hook]||hook) + '</span>' +
-        '<button class="seo-copy-btn" onclick="_seoCopyText(' + i + ')">📋 Copy</button>' +
-      '</div>' +
-      '<div style="font-size:.72rem;color:#fbbf24;font-weight:700;margin:4px 0 2px">🪝 Hook Title: ' + hookTitle + '</div>' +
-      '<div class="thumb-opt-text" id="seo-thumb-opt-' + i + '">' + fullPrompt + '</div>' +
-    '</div>';
-  }
+      var promptParts = [
+        'Create an original, fully illustrated, copyright-free ' + plat.label + ' thumbnail/image for an Indian stock market daily analysis post.',
+        'Aspect ratio: ' + plat.ratio + ' — ' + plat.textNote + '.',
+        'Visual style: ' + styleDesc + '.',
+        human ? ('Include ' + humanDesc + ', with a ' + emoDesc + '.') : 'No human figures — pure graphic/data-driven composition.',
+        'Bold hook-title text overlay reading exactly: "' + hookTitle + '" — this is the eye-catching headline, make it the dominant text element.',
+        'A small badge graphic referencing "' + langText.trap + ': ' + cardTrap + '" in one corner (generic ticker-style label, not any real company logo).',
+        'A small contrasting badge graphic referencing "' + langText.buy + ': ' + cardBuy + '" in the opposite corner.',
+        cardSell ? ('A third small badge referencing "SELL Alert: ' + cardSell + '" along the bottom edge (generic ticker-style label).') : '',
+        'Hook treatment: ' + hookDesc + '.',
+        'Include a subtle generic rupee (₹) symbol graphic element and a small abstract candlestick chart motif.',
+        'Add a small generic "KSpider4Kreation" text watermark corner (plain text only, not a real trademarked logo).',
+        'IMPORTANT: fully original illustrated/generated artwork only — no real photographs of named/public individuals, no real company logos, no copyrighted characters, no copied chart screenshots from any platform, no third-party brand names — 100% original and platform-policy-safe.'
+      ];
+      var fullPrompt = promptParts.filter(Boolean).join(' ');
+
+      html += '<div class="thumb-opt-card">' +
+        '<div class="thumb-opt-head">' +
+          '<span class="thumb-opt-tag">' + plat.label + ' #' + (pi+1) + ' · ' + plat.ratio.split(' ')[0] + ' · ' + (styleLabels[style]||style) + ' · ' + (hookLabels[hook]||hook) + '</span>' +
+          '<button class="seo-copy-btn" onclick="_seoCopyText(' + i + ')">📋 Copy</button>' +
+        '</div>' +
+        '<div style="font-size:.72rem;color:#fbbf24;font-weight:700;margin:4px 0 2px">🪝 Hook Title: ' + hookTitle + '</div>' +
+        '<div class="thumb-opt-text" id="seo-thumb-opt-' + i + '">' + fullPrompt + '</div>' +
+      '</div>';
+    }
+  });
 
   list.innerHTML = html;
 }
