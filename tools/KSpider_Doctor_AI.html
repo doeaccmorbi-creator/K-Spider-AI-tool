@@ -3217,6 +3217,8 @@ function toggleDarkMode() {
 
 <!-- &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; DASHBOARD &#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550; -->
 <div id="dashboard" class="section active">
+<div id="ks-multi-doc-banner" style="background:linear-gradient(135deg,#0b2545,#1e3a8a);color:#fff;border-radius:10px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;"><div><div style="font-weight:700;font-size:0.88rem;">&#x1F512; Multi-Doctor Private Mode</div><div id="ks-auth-status-msg" style="font-size:0.76rem;opacity:0.85;">Register to get your own private clinic space</div></div><button onclick="ksShowDoctorAuthModal()" style="background:#fff;color:#0b2545;border:none;border-radius:7px;padding:7px 14px;font-weight:700;cursor:pointer;font-size:0.81rem;">&#x1F512; Login / Register</button></div>
+
 
   <!-- Google Adsense Code Area - TOP BANNER -->
   <!-- Google Adsense Code Area -->
@@ -21531,7 +21533,8 @@ window.ksApplyDoctorProfile = function(doc) {
   });
   // Update topbar with doctor name
   var topbarName = document.getElementById('ks-dr-name-topbar');
-  if (topbarName) topbarName.textContent = 'Dr. ' + doc.name;
+  if (topbarName) topbarName.textContent = (doc.name.toLowerCase().startsWith('dr') ? '' : 'Dr. ') + doc.name;
+  var ab=document.getElementById('ks-multi-doc-banner');if(ab){var sm=document.getElementById('ks-auth-status-msg');if(sm)sm.textContent='Logged in: '+doc.name+(doc.clinic?' | '+doc.clinic:'');ab.style.background='linear-gradient(135deg,#065f46,#059669)';var lb=ab.querySelector('button');if(lb){lb.textContent='Logout';lb.onclick=ksLogoutDoctor;}}
   // Show doctor-specific data
   ksLoadDoctorData(doc);
 };
@@ -21745,9 +21748,9 @@ function ksEnhanceAppointmentForm() {
 
   // Set default date = today, time = now
   var apptDate = document.getElementById('appt-date');
-  if (apptDate && !apptDate.value) {
-    apptDate.value = new Date().toISOString().slice(0,10);
-  }
+  if (apptDate && !apptDate.value) { apptDate.value = new Date().toISOString().slice(0,10); }
+  var apptTime = document.getElementById('appt-time-slot');
+  if (apptTime && !apptTime.value) { var now=new Date(),h=now.getHours(),m=now.getMinutes();if(m>0&&m<=30)m=30;else if(m>30){m=0;h++;}if(h>=9&&h<=20){var ampm=h>=12?'PM':'AM',h12=h>12?h-12:(h===0?12:h);var slot=String(h12).padStart(2,'0')+':'+String(m).padStart(2,'0')+' '+ampm;Array.from(apptTime.options).forEach(function(o){if(o.text===slot)apptTime.value=o.value;});}}
 
   // Inject extra fields before the submit button row
   var btnRow = formWrap.querySelector('div[style*="display:flex"]');
