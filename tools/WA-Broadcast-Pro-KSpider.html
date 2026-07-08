@@ -355,6 +355,8 @@ textarea{min-height:90px;resize:vertical;line-height:1.6;}
 .msg-preview-wrap{position:relative;background:var(--bg3);border:1.5px solid rgba(232,93,0,.3);border-radius:var(--r);padding:16px;margin-bottom:12px;}
 .msg-preview-lbl{font-size:.6rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#c44d00;margin-bottom:8px;}
 #msg-preview{font-size:.82rem;color:var(--t1);line-height:1.75;white-space:pre-wrap;font-family:'DM Sans',sans-serif;min-height:80px;}
+#car-msg-txt{font-size:.82rem;color:var(--t1);line-height:1.75;white-space:pre-wrap;font-family:'DM Sans',sans-serif;min-height:80px;}
+#car-counter{font-size:.72rem;font-weight:700;letter-spacing:1px;color:#c44d00;text-align:center;margin-bottom:8px;}
 .msg-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 /* ── BUTTONS ── */
@@ -1303,7 +1305,20 @@ tbody tr:hover{background:rgba(232,93,0,.025);}
         <button class="btn btn-ghost btn-sm" onclick="regenMsg()">🔄 Regenerate All</button>
         <button class="btn btn-g btn-sm" onclick="gotoStep(3)">Broadcast → </button>
       </div>
-      <div id="multi-msgs-list"></div>
+  <!-- ── OUTPUT: Built-in template messages — Previous/Next browse + Confirm (NO API key needed) ── -->
+  <div class="card gold-card" id="msg-carousel-wrap" style="display:none;">
+    <div class="sec-lbl gold">⚡ Built-in Messages — Browse &amp; Confirm Best Wala</div>
+    <div id="car-counter">1 / 5</div>
+    <div class="msg-preview-wrap">
+      <div class="msg-preview-lbl">Preview</div>
+      <div id="car-msg-txt"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-ghost" style="flex:1;" onclick="carouselPrevMsg()">◀ Previous</button>
+      <button class="btn btn-ghost" style="flex:1;" onclick="carouselNextMsg()">Next ▶</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-g" style="flex:1;padding:12px;" onclick="confirmCarouselMsg()">✅ Confirm This Message &amp; Continue</button>
     </div>
   </div>
 </div>
@@ -3320,9 +3335,9 @@ async function genMsgSmart(){
   if(_msgMode==='url') await genMsgFromUrl(count);
   else if(_msgMode==='ai') await genMsgAI(count);
   else {
-    // Manual mode — use original logic if count=1, else AI
+    // Manual mode — ALWAYS uses built-in templates, never requires an API key
     if(count<=1){ genMsg(); return; }
-    await genMsgManualMulti(count);
+    genMsgManualMultiTemplate(count);
   }
 }
 
@@ -3469,6 +3484,71 @@ async function genMsgManualMulti(count){
   }
 }
 
+// ── Manual multi-message generator using BUILT-IN TEMPLATES (NO API key ever required) ──
+function genMsgManualMultiTemplate(count){
+  var topic=(document.getElementById('topic')||{}).value.trim();
+  if(!topic){ toast('Topic/Subject daalo pehle!','warn'); document.getElementById('topic').focus(); return; }
+  var lang=(document.getElementById('msg-lang')||{}).value||'en';
+  var style=_selStyle;
+  var extra=(document.getElementById('extra-desc')||{}).value.trim();
+  var links=getSocialLinks();
+  var brand=getBranding();
+  var linksBlock=links.length?links.join('\n'):'';
+  var desc=extra||'✅ 100% Free | Made in India | Trusted by thousands';
+
+  var tpls=MSG_TEMPLATES[style]||MSG_TEMPLATES['viral'];
+  var arr=(tpls[lang]||tpls['en']||Object.values(tpls)[0]).slice();
+
+  // Shuffle a copy so the mix of built-in variants feels fresh each time
+  for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=arr[i]; arr[i]=arr[j]; arr[j]=tmp; }
+
+  var msgs=[];
+  for(var k=0;k<count;k++){
+    var tpl=arr[k%arr.length];
+    msgs.push(tpl
+      .replace(/\{TOPIC\}/g,topic)
+      .replace(/\{DESC\}/g,desc)
+      .replace(/\{LINKS\}/g,linksBlock?linksBlock+'\n\n':'')
+      .replace(/\{BRAND\}/g,brand));
+  }
+  _multiMsgs=msgs;
+  showMsgCarousel(msgs);
+  toast('✅ '+msgs.length+' built-in messages ready — Previous/Next se dekho!','ok',3500);
+}
+
+// ── Previous/Next carousel for built-in template messages (NO API key needed) ──
+var _carIdx=0;
+function showMsgCarousel(msgs){
+  var wrap=document.getElementById('msg-carousel-wrap');
+  if(!wrap||!msgs||!msgs.length) return;
+  _carIdx=0;
+  var rc=document.getElementById('msg-result-card'); if(rc) rc.style.display='none';
+  var mw=document.getElementById('multi-msgs-wrap'); if(mw) mw.classList.remove('show');
+  wrap.style.display='block';
+  renderMsgCarousel();
+  wrap.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderMsgCarousel(){
+  var msgs=_multiMsgs||[];
+  if(!msgs.length) return;
+  if(_carIdx<0)_carIdx=msgs.length-1;
+  if(_carIdx>=msgs.length)_carIdx=0;
+  var t=document.getElementById('car-msg-txt'); if(t) t.textContent=msgs[_carIdx];
+  var c=document.getElementById('car-counter'); if(c) c.textContent='Message '+(_carIdx+1)+' / '+msgs.length;
+}
+function carouselPrevMsg(){ _carIdx--; renderMsgCarousel(); }
+function carouselNextMsg(){ _carIdx++; renderMsgCarousel(); }
+function confirmCarouselMsg(){
+  var msgs=_multiMsgs||[];
+  if(!msgs.length) return;
+  _curMsg=msgs[_carIdx];
+  var prev=document.getElementById('msg-preview'); if(prev) prev.textContent=_curMsg;
+  var rc=document.getElementById('msg-result-card'); if(rc) rc.style.display='block';
+  var wrap=document.getElementById('msg-carousel-wrap'); if(wrap) wrap.style.display='none';
+  toast('✅ Message confirm ho gaya — ab broadcast kar sakte ho!','ok',3000);
+  if(rc) rc.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 // ── Show multiple messages ──
 function showMultiMsgs(msgs){
   var wrap = document.getElementById('multi-msgs-wrap');
@@ -3557,7 +3637,7 @@ function regenMsg(){
     document.getElementById('msg-preview').textContent=msg;
     toast('🔄 New variant!','ok',2000);
   } else {
-    genMsgManualMulti(count);
+    genMsgManualMultiTemplate(count);
   }
 }
 
