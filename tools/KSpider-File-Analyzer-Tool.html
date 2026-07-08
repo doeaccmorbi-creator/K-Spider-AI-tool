@@ -1945,16 +1945,17 @@ async function analyzeURL(){
     const domain=new URL(url).hostname;
     const purl=new URL(url);
     const isYT=url.includes('youtube.com')||url.includes('youtu.be');
+    const isYTChannel=isYT&&/youtube\.com\/(@|channel\/|c\/|user\/)/.test(url);
     const isIG=url.includes('instagram.com');
     const isTW=url.includes('twitter.com')||url.includes('x.com');
     const isFB=url.includes('facebook.com');
     const isLI=url.includes('linkedin.com');
     const isTG=url.includes('t.me')||url.includes('telegram');
-    const type=isYT?'YouTube':isIG?'Instagram':isTW?'Twitter/X':isFB?'Facebook':isLI?'LinkedIn':isTG?'Telegram':'Website';
+    const type=isYTChannel?'YouTube Channel':isYT?'YouTube':isIG?'Instagram':isTW?'Twitter/X':isFB?'Facebook':isLI?'LinkedIn':isTG?'Telegram':'Website';
     const icon=isYT?'▶️':isIG?'📸':isTW?'🐦':isFB?'📘':isLI?'💼':isTG?'✈️':'🌐';
 
     let ytMeta=null, videoId=null;
-    if(isYT){
+    if(isYT&&!isYTChannel){
       videoId=extractYTVideoId(url);
       if(videoId){
         const loadMsg=document.getElementById('url-load-msg');
@@ -1964,12 +1965,16 @@ async function analyzeURL(){
       }
     }
 
-    // Build AI prompt — rich for YouTube, generic for others
-    let aiResult='';
-    if(isYT && ytMeta){
-      aiResult=await claudeYTAnalyze(url,videoId,ytMeta);
-    } else {
-      aiResult=await claudeURLAnalyze(url,domain,type);
+    // Build AI prompt — rich for YouTube video, channel-aware, generic for others
+    let aiResult='', aiError='';
+    try{
+      if(isYT && !isYTChannel && ytMeta){
+        aiResult=await claudeYTAnalyze(url,videoId,ytMeta);
+      } else {
+        aiResult=await claudeURLAnalyze(url,domain,type);
+      }
+    }catch(aiErr){
+      aiError=aiErr.message||'AI analysis failed';
     }
 
     loadEl.classList.remove('show');
@@ -2004,8 +2009,17 @@ async function analyzeURL(){
       +'<a href="'+url+'" target="_blank" class="btn btn-secondary btn-sm">🔗 Open</a>'
       +'</div>';
 
-    const aiBox='<div class="ai-box" style="margin-top:14px"><div class="ai-badge">🤖 AI ANALYSIS</div>'
-      +'<div class="ai-text">'+(aiResult||'Analysis unavailable. Please retry.')+'</div></div>';
+    const aiBox=aiResult
+      ? '<div class="ai-box" style="margin-top:14px"><div class="ai-badge">🤖 AI ANALYSIS</div>'
+        +'<div class="ai-text">'+escHtml(aiResult)+'</div>'
+        +'<div style="margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="copyText(this.closest(\'.ai-box\').querySelector(\'.ai-text\').innerText)">📋 Copy Analysis</button></div></div>'
+      : '<div class="ai-box" style="margin-top:14px;border-color:var(--red)"><div class="ai-badge">⚠️ AI ANALYSIS FAILED</div>'
+        +'<div class="ai-text" style="color:var(--yellow)">AI analysis nahi ho payi. Reason: '+escHtml(aiError||'Unknown error')+'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-top:8px">Default server busy/down ho sakta hai. Apni khud ki free Anthropic API key daalo (upar "🔑 Custom API Key" section) taaki direct AI se analysis ho.</div>'
+        +'<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">'
+        +'<button class="btn btn-secondary btn-sm" onclick="analyzeURL()">🔄 Retry</button>'
+        +'<a href="https://console.anthropic.com/keys" target="_blank" class="btn btn-primary btn-sm">🔑 Get Free API Key</a>'
+        +'</div></div>';
 
     const exportBtn='<div class="export-row">'
       +'<button class="btn btn-secondary btn-sm" onclick="copyText(\''+url.replace(/'/g,"\\'")+'\')" >📋 Copy URL</button>'
@@ -2060,9 +2074,11 @@ Based on the VIDEO TITLE and CHANNEL NAME, provide a COMPREHENSIVE analysis:
       body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1500,
         messages:[{role:'user',content:prompt+getOutPrompt()}]})
     });
-    const data=await res.json();
-    return data.content?.[0]?.text||'';
-  }catch(e){return '';}
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data?.error?.message||('Server error '+res.status));
+    if(!data.content?.[0]?.text) throw new Error('AI ne khaali jawab bheja');
+    return data.content[0].text;
+  }catch(e){ throw e; }
 }
 
 // ===== CLAUDE API =====
@@ -2098,8 +2114,8 @@ async function claudeImage(file){
         if(el) el.innerHTML=`<div class="ai-box"><div class="ai-badge">🤖 AI ANALYSIS</div><div class="ai-text">${escHtml(text)}</div><div style="margin-top:10px;display:flex;gap:7px"><button class="btn btn-secondary btn-sm" onclick="copyText(this.closest('.ai-box').querySelector('.ai-text').innerText)">📋 Copy</button></div></div>`;
         resolve(text);
       }catch(err){
-        const fallback='⚠️ AI analysis temporarily unavailable. File metadata extracted successfully above. Please try again in a moment.';
-        if(el) el.innerHTML=`<div class="ai-box"><div class="ai-badge">🤖 AI ANALYSIS</div><div class="ai-text" style="color:var(--yellow)">${fallback}</div></div>`;
+        const fallback='⚠️ AI analysis abhi available nahi hai. Reason: '+escHtml(err.message||'Unknown error')+'. File metadata upar extract ho chuki hai. Apni khud ki Anthropic API key daal ke bhi try kar sakte ho.';
+        if(el) el.innerHTML=`<div class="ai-box" style="border-color:var(--red)"><div class="ai-badge">⚠️ AI ANALYSIS FAILED</div><div class="ai-text" style="color:var(--yellow)">${fallback}</div></div>`;
         resolve('');
       }
     };
@@ -2129,29 +2145,29 @@ async function claudeText(prompt,elId){
     }
     return text;
   }catch(e){
-    const msg='⚠️ AI analysis temporarily unavailable. Metadata extracted successfully. Please retry in a moment.';
-    if(elId){const el=document.getElementById(elId);if(el)el.innerHTML=`<div class="ai-box"><div class="ai-badge">🤖 AI ANALYSIS</div><div class="ai-text" style="color:var(--yellow)">${msg}</div></div>`;}
+    const msg='⚠️ AI analysis abhi available nahi hai. Reason: '+escHtml(e.message||'Unknown error')+'. Metadata upar extract ho chuki hai — apni khud ki Anthropic API key daal ke bhi try kar sakte ho.';
+    if(elId){const el=document.getElementById(elId);if(el)el.innerHTML=`<div class="ai-box" style="border-color:var(--red)"><div class="ai-badge">⚠️ AI ANALYSIS FAILED</div><div class="ai-text" style="color:var(--yellow)">${msg}</div></div>`;}
     return '';
   }
 }
 
 async function claudeURLAnalyze(url,domain,type){
-  try{
-    const prompt='Analyze this '+type+' URL comprehensively:\n'+url+'\nDomain: '+domain+'\n\nProvide:\n1. 🌐 Website/Page ka description aur purpose\n2. 🎯 Target audience\n3. 📋 Probable content topics on this page\n4. 🔐 Security assessment (HTTPS, domain reputation)\n5. 💡 Best use cases for this link\n6. 📱 How to best share this URL\n7. ⚠️ Any concerns or red flags';
-    const _sk3=S.apiKey||localStorage.getItem('kspider_apikey')||'';
-    const _ip3=!_sk3||!_sk3.startsWith('sk-ant');
-    const _ep3=_ip3?'https://ks-api-proxy.kspiderai.workers.dev/v1/messages':'https://api.anthropic.com/v1/messages';
-    const _hd3={'Content-Type':'application/json','anthropic-version':'2023-06-01'};
-    if(_ip3){_hd3['x-ks-tool']='file-analyzer';}else{_hd3['x-api-key']=_sk3;_hd3['anthropic-dangerous-direct-browser-access']='true';}
-    const res=await fetch(_ep3,{
-      method:'POST',
-      headers:_hd3,
-      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
-        messages:[{role:'user',content:prompt+getOutPrompt()}]})
-    });
-    const data=await res.json();
-    return data.content?.[0]?.text||'';
-  }catch(e){return '';}
+  const prompt='Analyze this '+type+' URL comprehensively:\n'+url+'\nDomain: '+domain+'\n\nProvide:\n1. 🌐 Website/Page ka description aur purpose\n2. 🎯 Target audience\n3. 📋 Probable content topics on this page\n4. 🔐 Security assessment (HTTPS, domain reputation)\n5. 💡 Best use cases for this link\n6. 📱 How to best share this URL\n7. ⚠️ Any concerns or red flags';
+  const _sk3=S.apiKey||localStorage.getItem('kspider_apikey')||'';
+  const _ip3=!_sk3||!_sk3.startsWith('sk-ant');
+  const _ep3=_ip3?'https://ks-api-proxy.kspiderai.workers.dev/v1/messages':'https://api.anthropic.com/v1/messages';
+  const _hd3={'Content-Type':'application/json','anthropic-version':'2023-06-01'};
+  if(_ip3){_hd3['x-ks-tool']='file-analyzer';}else{_hd3['x-api-key']=_sk3;_hd3['anthropic-dangerous-direct-browser-access']='true';}
+  const res=await fetch(_ep3,{
+    method:'POST',
+    headers:_hd3,
+    body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,
+      messages:[{role:'user',content:prompt+getOutPrompt()}]})
+  });
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok) throw new Error(data?.error?.message||('Server error '+res.status));
+  if(!data.content?.[0]?.text) throw new Error('AI ne khaali jawab bheja');
+  return data.content[0].text;
 }
 
 async function aiRW(instruction){
