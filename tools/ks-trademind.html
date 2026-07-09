@@ -4141,6 +4141,27 @@ var _liveNewsData   = null;   // [{title, publisher, time, link, live}]
 var _liveNewsIsLive = false;
 var _liveFiiDiiToday = null;  // { live:true/false, fiiNet, diiNet } — real fetch only, never fabricated
 
+/* ═══════════════════════════════════════════════════════════════
+   🔴 AI-FETCH-INSTRUCTION HELPER
+   ─────────────────────────────────────────────────────────────
+   This tool runs 100% client-side with no backend server, so NSE's
+   session-cookie-gated APIs (Nifty/Sensex real-time, FII/DII, MF
+   flow) can genuinely be blocked by the browser sometimes. Rather
+   than ever showing an estimated/fabricated number, OR silently
+   omitting the data point (which broke video scripts pasted into
+   NotebookLM/Gemini/ChatGPT), we output a clearly-marked instruction
+   telling the downstream AI tool to fetch that exact real figure
+   itself using ITS OWN live web-search/browsing capability before
+   finalizing the script/video. This guarantees the final output a
+   creator uses always has a REAL number — either fetched by this
+   tool directly, or fetched by the AI tool that reads this script. */
+function _aiFetchInstruction(label, sourceHint) {
+  return '🔴 [AI INSTRUCTION — कृपया इंटरनेट से आज की असली LIVE "' + label + '" वैल्यू खुद fetch करें ' +
+    '(reliable source: ' + (sourceHint || 'NSE India / BSE India / Google Finance / Moneycontrol') + ') ' +
+    'और इसे यहाँ इस्तेमाल करें। यह data इस टूल से fetch नहीं हो पाया — कृपया कोई अनुमानित/पुराना आंकड़ा इस्तेमाल न करें, ' +
+    'सिर्फ अभी की genuinely real value use करें।]';
+}
+
 function fetchLiveIndices(callback) {
   var out = { nifty: null, sensex: null, vix: null };
   var pending = 3;
@@ -7584,6 +7605,17 @@ function _buildReportText() {
   push('निवेश सलाह नहीं है। कोई भी पैसा लगाने से पहले अपने रजिस्टर्ड फाइनेंशियल एडवाइजर से बात ज़रूर करें।');
   blank(); blank();
 
+  var _needsAiFetchNote = !(_liveIndexData && _liveIndexData.nifty && _liveIndexData.nifty.close) ||
+                           !(_liveIndexData && _liveIndexData.sensex && _liveIndexData.sensex.close) ||
+                           !(_liveFiiDiiToday && _liveFiiDiiToday.live);
+  if(_needsAiFetchNote) {
+    push('🤖 AI/NotebookLM/Gemini/ChatGPT के लिए नोट: इस स्क्रिप्ट में कहीं भी "🔴 [AI INSTRUCTION ...]" ब्लॉक');
+    push('दिखे, तो कृपया वीडियो/कंटेंट फाइनल करने से पहले वहां बताई गई असली LIVE वैल्यू खुद इंटरनेट से fetch');
+    push('करके भरें, और [ब्रैकेट वाला टेक्स्ट] कभी भी literally न पढ़ें/न दिखाएं। बाकी पूरा डेटा (स्टॉक्स,');
+    push('सिग्नल्स, एनालिसिस) इस टूल से genuine live-scan किया हुआ है — उसे as-it-is इस्तेमाल करें।');
+    blank(); blank();
+  }
+
   /* ════════════ SECTION 1: MARKET OVERVIEW ════════════ */
   push('▶️ चलिए शुरू करते हैं — पहले समझ लेते हैं आज मार्केट में हुआ क्या');
   blank();
@@ -7637,60 +7669,72 @@ function _buildReportText() {
   blank(); blank();
 
   /* ════════════ SECTION 1B: LIVE NIFTY/SENSEX + WHY IT MOVED ════════════
-     STRICT RULE: only ever print a line/point when it is backed by
-     genuinely live-fetched data. If a data point is unavailable, it is
-     skipped completely — no placeholder, no "unavailable" note, no
-     estimated number. */
+     Show real live data when this tool fetched it successfully. When it
+     couldn't (NSE/browser blocks), instead of omitting or faking a
+     number, we emit a clear AI-INSTRUCTION so a downstream AI tool
+     (NotebookLM, Gemini, ChatGPT etc.) fetches the real figure itself
+     when turning this script into a video — the final output always
+     ends up with a genuinely real number, never a fake one. */
   var liveIdx = _liveIndexData || { nifty:null, sensex:null };
   var hasLiveIdx = !!(liveIdx.nifty && liveIdx.nifty.close) || !!(liveIdx.sensex && liveIdx.sensex.close);
   var hasLiveFiiDii = !!(_liveFiiDiiToday && _liveFiiDiiToday.live);
   var hasLiveNews = !!(_liveNewsData && _liveNewsData.length);
 
-  if(hasLiveIdx || hasLiveFiiDii || hasLiveNews) {
-    push('───────────────────────────────────────────────────────────');
-    push('📈 अब देखते हैं आज NIFTY और SENSEX असल में कहाँ हैं — लाइव नंबर्स के साथ');
-    push('───────────────────────────────────────────────────────────');
-    blank();
+  push('───────────────────────────────────────────────────────────');
+  push('📈 अब देखते हैं आज NIFTY और SENSEX असल में कहाँ हैं — लाइव नंबर्स के साथ');
+  push('───────────────────────────────────────────────────────────');
+  blank();
 
-    if(liveIdx.nifty && liveIdx.nifty.close) {
-      push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' pts   |   बदलाव: ' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%   ' + (liveIdx.nifty.change>=0?'🟢 ऊपर':'🔴 नीचे') + '   [✅ LIVE]');
-    }
-    if(liveIdx.sensex && liveIdx.sensex.close) {
-      push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' pts   |   बदलाव: ' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%   ' + (liveIdx.sensex.change>=0?'🟢 ऊपर':'🔴 नीचे') + '   [✅ LIVE]');
-    }
-    if(liveIdx.vix && liveIdx.vix.close) {
-      var vixMood = liveIdx.vix.close >= 20 ? '⚠️ हाई (डर/अनिश्चितता ज़्यादा)' : liveIdx.vix.close <= 13 ? '😌 लो (कॉम्प्लेसेंसी/स्थिरता)' : '⚪ नॉर्मल रेंज';
-      push('   • India VIX (Fear Index): ' + liveIdx.vix.close.toFixed(2) + ' (' + (liveIdx.vix.change>=0?'+':'') + liveIdx.vix.change.toFixed(2) + '%)   ' + vixMood + '   [✅ LIVE]');
-    }
-    if(hasLiveIdx) blank();
-
-    var _niftyUp = (liveIdx.nifty && liveIdx.nifty.close) ? (liveIdx.nifty.change >= 0) : null;
-    var angleNum = 1;
-    if(_niftyUp !== null) {
-      push('तो आज इंडेक्स ' + (_niftyUp?'ऊपर':'नीचे') + ' है। चलिए समझते हैं क्यों —');
-      blank();
-      push(angleNum + '️⃣ टेक्निकल एंगल: आज हमारे स्कैनर पर BUY:SELL:TRAP रेशियो रहा ' + buyCountEarly + ':' + sellCountEarly + ':' + trapCountEarly + ' — ' +
-        (buyCountEarly>sellCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ इंडेक्स की तेज़ी को सपोर्ट कर रही है।' : sellCountEarly>buyCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ भी कमज़ोर रही, जो इंडेक्स की गिरावट से मेल खाती है।' : 'यानी ब्रेड्थ आज मिला-जुला रहा।'));
-      angleNum++;
-    }
-    if(hasLiveFiiDii) {
-      var todayInstNet2 = _liveFiiDiiToday.fiiNet + _liveFiiDiiToday.diiNet;
-      push(angleNum + '️⃣ इंस्टीट्यूशनल एंगल: FII+DII का नेट फ्लो आज ' + (todayInstNet2>=0?'पॉज़िटिव':'निगेटिव') + ' रहा (' + (todayInstNet2>=0?'+':'') + _fmtCr(todayInstNet2) + ' करोड़) [✅ LIVE — NSE] — ' +
-        (_niftyUp!==null ? ((todayInstNet2>=0)===_niftyUp ? 'जो इंडेक्स की आज की चाल से मेल खाता है।' : 'ध्यान दें, शॉर्ट टर्म में institutional flow और index move हमेशा एक जैसे नहीं होते।') : ''));
-      angleNum++;
-    }
-    if(hasLiveNews) {
-      push(angleNum + '️⃣ न्यूज़/ग्लोबल एंगल: नीचे दी गई आज की असली हेडलाइंस देखिए:');
-      blank();
-      _liveNewsData.slice(0,6).forEach(function(n, i) {
-        push((i+1) + '. ' + n.title + ' — ' + n.publisher);
-      });
-      blank();
-      push('📌 नोट: ऊपर की headlines रियल-टाइम सोर्स (Yahoo Finance / Google News) से आज ही ली गई हैं। news और index');
-      push('move के बीच कारण-प्रभाव संबंध हमेशा 100% सिद्ध नहीं होता, इसलिए इन्हें "संभावित फैक्टर" मानें, अंतिम सच नहीं।');
-    }
-    blank(); blank();
+  if(liveIdx.nifty && liveIdx.nifty.close) {
+    push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' pts   |   बदलाव: ' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%   ' + (liveIdx.nifty.change>=0?'🟢 ऊपर':'🔴 नीचे') + '   [✅ LIVE]');
+  } else {
+    push('   • NIFTY 50: ' + _aiFetchInstruction('NIFTY 50 आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'NSE India / Google Finance'));
   }
+  if(liveIdx.sensex && liveIdx.sensex.close) {
+    push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' pts   |   बदलाव: ' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%   ' + (liveIdx.sensex.change>=0?'🟢 ऊपर':'🔴 नीचे') + '   [✅ LIVE]');
+  } else {
+    push('   • SENSEX: ' + _aiFetchInstruction('SENSEX आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'BSE India / Google Finance'));
+  }
+  if(liveIdx.vix && liveIdx.vix.close) {
+    var vixMood = liveIdx.vix.close >= 20 ? '⚠️ हाई (डर/अनिश्चितता ज़्यादा)' : liveIdx.vix.close <= 13 ? '😌 लो (कॉम्प्लेसेंसी/स्थिरता)' : '⚪ नॉर्मल रेंज';
+    push('   • India VIX (Fear Index): ' + liveIdx.vix.close.toFixed(2) + ' (' + (liveIdx.vix.change>=0?'+':'') + liveIdx.vix.change.toFixed(2) + '%)   ' + vixMood + '   [✅ LIVE]');
+  }
+  blank();
+
+  var _niftyUp = (liveIdx.nifty && liveIdx.nifty.close) ? (liveIdx.nifty.change >= 0) : null;
+  var angleNum = 1;
+  if(_niftyUp !== null) {
+    push('तो आज इंडेक्स ' + (_niftyUp?'ऊपर':'नीचे') + ' है। चलिए समझते हैं क्यों —');
+  } else {
+    push('इंडेक्स की आज की दिशा जानने के लिए ऊपर की AI INSTRUCTION के मुताबिक असली NIFTY वैल्यू फेच करें, फिर आगे बढ़ें। चलिए 3 एंगल से समझते हैं —');
+  }
+  blank();
+  push(angleNum + '️⃣ टेक्निकल एंगल: आज हमारे स्कैनर पर BUY:SELL:TRAP रेशियो रहा ' + buyCountEarly + ':' + sellCountEarly + ':' + trapCountEarly + ' — ' +
+    (buyCountEarly>sellCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ इंडेक्स की तेज़ी को सपोर्ट कर रही है।' : sellCountEarly>buyCountEarly ? 'यानी ब्रॉड मार्केट ब्रेड्थ भी कमज़ोर रही, जो इंडेक्स की गिरावट से मेल खाती है।' : 'यानी ब्रेड्थ आज मिला-जुला रहा।'));
+  angleNum++;
+
+  if(hasLiveFiiDii) {
+    var todayInstNet2 = _liveFiiDiiToday.fiiNet + _liveFiiDiiToday.diiNet;
+    push(angleNum + '️⃣ इंस्टीट्यूशनल एंगल: FII+DII का नेट फ्लो आज ' + (todayInstNet2>=0?'पॉज़िटिव':'निगेटिव') + ' रहा (' + (todayInstNet2>=0?'+':'') + _fmtCr(todayInstNet2) + ' करोड़) [✅ LIVE — ' + (_liveFiiDiiToday.source||'NSE') + '] — ' +
+      (_niftyUp!==null ? ((todayInstNet2>=0)===_niftyUp ? 'जो इंडेक्स की आज की चाल से मेल खाता है।' : 'ध्यान दें, शॉर्ट टर्म में institutional flow और index move हमेशा एक जैसे नहीं होते।') : ''));
+  } else {
+    push(angleNum + '️⃣ इंस्टीट्यूशनल एंगल: ' + _aiFetchInstruction('आज का FII और DII नेट फ्लो (₹ करोड़ में)', 'NSE India FII-DII Report / Moneycontrol'));
+  }
+  angleNum++;
+
+  if(hasLiveNews) {
+    push(angleNum + '️⃣ न्यूज़/ग्लोबल एंगल: नीचे दी गई आज की असली हेडलाइंस देखिए:');
+    blank();
+    _liveNewsData.slice(0,6).forEach(function(n, i) {
+      push((i+1) + '. ' + n.title + ' — ' + n.publisher);
+    });
+    blank();
+    push('📌 नोट: ऊपर की headlines रियल-टाइम सोर्स (Yahoo Finance / Google News) से आज ही ली गई हैं। news और index');
+    push('move के बीच कारण-प्रभाव संबंध हमेशा 100% सिद्ध नहीं होता, इसलिए इन्हें "संभावित फैक्टर" मानें, अंतिम सच नहीं।');
+  } else {
+    push(angleNum + '️⃣ न्यूज़/ग्लोबल एंगल: ' + _aiFetchInstruction('आज की टॉप 3-5 भारतीय शेयर बाज़ार से जुड़ी असली खबरें', 'Moneycontrol / Economic Times / Google News'));
+  }
+  blank(); blank();
 
   /* ════════════ SECTION 1C: SECTOR ROTATION (real, live sector indices) ════════════
      Professional market analysis staple — shows which sectors are
@@ -8111,19 +8155,22 @@ function _buildWmReportText(mode, fiiDii, mfNews, mfLive) {
   push('रिपोर्ट तारीख़: ' + dateEn + '   |   अवधि: ' + rangeLabel);
   push('═══════════════════════════════════════════════════════════');
   blank(); blank();
+  push('🤖 AI/NotebookLM/Gemini/ChatGPT नोट: कहीं भी "🔴 [AI INSTRUCTION ...]" दिखे तो वीडियो/कंटेंट बनाने से पहले');
+  push('असली LIVE वैल्यू खुद fetch करके भरें, ब्रैकेट टेक्स्ट literally न दिखाएं। बाकी सारा डेटा (स्टॉक्स, सिग्नल्स)');
+  push('इस टूल से genuine live-scan किया हुआ है — as-it-is इस्तेमाल करें।');
+  blank(); blank();
 
-  /* ── SECTION 1: LIVE INDEX SNAPSHOT (only if we actually have live data) ── */
+  /* ── SECTION 1: LIVE INDEX SNAPSHOT — real when available, else AI-fetch-instruction ── */
   var liveIdx = _liveIndexData || {nifty:null, sensex:null};
-  var hasIdx = !!(liveIdx.nifty && liveIdx.nifty.close) || !!(liveIdx.sensex && liveIdx.sensex.close);
-  if(hasIdx) {
-    push('───────────────────────────────────────────────────────────');
-    push('📈 SECTION 1 — आज का लाइव इंडेक्स स्नैपशॉट');
-    push('───────────────────────────────────────────────────────────');
-    blank();
-    if(liveIdx.nifty && liveIdx.nifty.close)  push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' pts (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) ' + (liveIdx.nifty.change>=0?'🟢':'🔴') + ' [✅ LIVE]');
-    if(liveIdx.sensex && liveIdx.sensex.close) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' pts (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) ' + (liveIdx.sensex.change>=0?'🟢':'🔴') + ' [✅ LIVE]');
-    blank(); blank();
-  }
+  push('───────────────────────────────────────────────────────────');
+  push('📈 SECTION 1 — आज का लाइव इंडेक्स स्नैपशॉट');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  if(liveIdx.nifty && liveIdx.nifty.close) push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' pts (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) ' + (liveIdx.nifty.change>=0?'🟢':'🔴') + ' [✅ LIVE]');
+  else push('   • NIFTY 50: ' + _aiFetchInstruction('NIFTY 50 आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'NSE India / Google Finance'));
+  if(liveIdx.sensex && liveIdx.sensex.close) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' pts (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) ' + (liveIdx.sensex.change>=0?'🟢':'🔴') + ' [✅ LIVE]');
+  else push('   • SENSEX: ' + _aiFetchInstruction('SENSEX आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'BSE India / Google Finance'));
+  blank(); blank();
 
   /* ── SECTION 2: MARKET BREADTH OVER PERIOD (real, computed from live scan) ── */
   push('───────────────────────────────────────────────────────────');
@@ -8148,36 +8195,41 @@ function _buildWmReportText(mode, fiiDii, mfNews, mfLive) {
   });
   blank(); blank();
 
-  /* ── SECTION 3: FII/DII INSTITUTIONAL FLOW — only rendered when genuinely live ── */
+  /* ── SECTION 3: FII/DII INSTITUTIONAL FLOW — real when available, else AI-fetch-instruction ── */
+  push('───────────────────────────────────────────────────────────');
+  push('🏦 SECTION 3 — FII / DII संस्थागत निवेश (' + rangeLabel + ')');
+  push('───────────────────────────────────────────────────────────');
+  blank();
   if(fiiDii && fiiDii.live) {
-    push('───────────────────────────────────────────────────────────');
-    push('🏦 SECTION 3 — FII / DII संस्थागत निवेश (' + rangeLabel + ') [✅ LIVE — ' + (fiiDii.source||'NSE') + ']');
-    push('───────────────────────────────────────────────────────────');
-    blank();
     if(fiiDii.fiiBuy !== null && fiiDii.fiiBuy !== undefined) {
       push('   • FII कुल खरीदी: ₹' + _fmtCr(fiiDii.fiiBuy) + ' करोड़   |   FII कुल बिक्री: ₹' + _fmtCr(fiiDii.fiiSell) + ' करोड़');
     }
-    push('   • FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़ ' + (fiiDii.fiiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)'));
+    push('   • FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़ ' + (fiiDii.fiiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)') + ' [✅ LIVE — ' + (fiiDii.source||'NSE') + ']');
     if(fiiDii.diiBuy !== null && fiiDii.diiBuy !== undefined) {
       push('   • DII कुल खरीदी: ₹' + _fmtCr(fiiDii.diiBuy) + ' करोड़   |   DII कुल बिक्री: ₹' + _fmtCr(fiiDii.diiSell) + ' करोड़');
     }
-    push('   • DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़ ' + (fiiDii.diiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)'));
+    push('   • DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़ ' + (fiiDii.diiNet>=0?'🟢 (नेट खरीदार)':'🔴 (नेट विक्रेता)') + ' [✅ LIVE — ' + (fiiDii.source||'NSE') + ']');
     blank();
     var combinedNet = fiiDii.fiiNet + fiiDii.diiNet;
     push('   📌 कुल मिलाकर institutional flow ' + (combinedNet>=0?'पॉज़िटिव':'निगेटिव') + ' रहा — यह ' + (isWeekly?'हफ्ते':'महीने') + ' भर के market sentiment को समझने में मदद करता है।');
-    blank(); blank();
+  } else {
+    push('   • FII नेट फ्लो: ' + _aiFetchInstruction(rangeLabel + ' का FII नेट फ्लो (₹ करोड़ में)', 'NSE India FII-DII Report / Moneycontrol'));
+    push('   • DII नेट फ्लो: ' + _aiFetchInstruction(rangeLabel + ' का DII नेट फ्लो (₹ करोड़ में)', 'NSE India FII-DII Report / Moneycontrol'));
   }
+  blank(); blank();
 
-  /* ── SECTION 4: MUTUAL FUND ACTIVITY — only rendered when genuinely live ── */
+  /* ── SECTION 4: MUTUAL FUND ACTIVITY — real when available, else AI-fetch-instruction ── */
+  push('───────────────────────────────────────────────────────────');
+  push('💰 SECTION 4 — Mutual Fund गतिविधि');
+  push('───────────────────────────────────────────────────────────');
+  blank();
   if(mfLive && mfNews && mfNews.length) {
-    push('───────────────────────────────────────────────────────────');
-    push('💰 SECTION 4 — Mutual Fund गतिविधि [✅ LIVE]');
-    push('───────────────────────────────────────────────────────────');
-    blank();
-    push('   🔴 आज की असली Mutual Fund/SIP संबंधित headlines:');
+    push('   🔴 आज की असली Mutual Fund/SIP संबंधित headlines: [✅ LIVE]');
     mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
-    blank(); blank();
+  } else {
+    push('   ' + _aiFetchInstruction('Mutual Fund/SIP का हालिया net inflow/outflow डेटा और मुख्य खबरें', 'AMFI India / Moneycontrol / Economic Times'));
   }
+  blank(); blank();
 
   /* ── SECTION 5: NEWS/GLOBAL CONTEXT — only rendered when genuinely live ── */
   var liveNewsList2 = _liveNewsData || [];
@@ -8377,18 +8429,21 @@ function _buildHistReportText(period, fiiDii) {
   push('रिपोर्ट तारीख़: ' + dateEn + ' | कुल स्कैन किए गए स्टॉक्स: ' + sd.length);
   push('═══════════════════════════════════════════════════════════');
   blank(); blank();
+  push('🤖 AI/NotebookLM/Gemini/ChatGPT नोट: कहीं भी "🔴 [AI INSTRUCTION ...]" दिखे तो वीडियो/कंटेंट बनाने से पहले');
+  push('असली LIVE वैल्यू खुद fetch करके भरें, ब्रैकेट टेक्स्ट literally न दिखाएं। बाकी सारा डेटा इस टूल से');
+  push('genuine live-scan किया हुआ है — as-it-is इस्तेमाल करें।');
+  blank(); blank();
 
   var liveIdx = _liveIndexData || {nifty:null, sensex:null};
-  var hasIdx2 = !!(liveIdx.nifty && liveIdx.nifty.close) || !!(liveIdx.sensex && liveIdx.sensex.close);
-  if(hasIdx2) {
-    push('───────────────────────────────────────────────────────────');
-    push('📊 SECTION 1 — करेंट लाइव इंडेक्स स्नैपशॉट');
-    push('───────────────────────────────────────────────────────────');
-    blank();
-    if(liveIdx.nifty && liveIdx.nifty.close)  push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
-    if(liveIdx.sensex && liveIdx.sensex.close) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
-    blank(); blank();
-  }
+  push('───────────────────────────────────────────────────────────');
+  push('📊 SECTION 1 — करेंट लाइव इंडेक्स स्नैपशॉट');
+  push('───────────────────────────────────────────────────────────');
+  blank();
+  if(liveIdx.nifty && liveIdx.nifty.close) push('   • NIFTY 50: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
+  else push('   • NIFTY 50: ' + _aiFetchInstruction('NIFTY 50 आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'NSE India / Google Finance'));
+  if(liveIdx.sensex && liveIdx.sensex.close) push('   • SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
+  else push('   • SENSEX: ' + _aiFetchInstruction('SENSEX आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'BSE India / Google Finance'));
+  blank(); blank();
 
   var sorted = sd.slice().sort(function(a,b){ return (parseFloat(b.chg)||0) - (parseFloat(a.chg)||0); });
   var gainers = sorted.slice(0, 15);
@@ -8433,15 +8488,17 @@ function _buildHistReportText(period, fiiDii) {
   });
   blank(); blank();
 
+  push('───────────────────────────────────────────────────────────');
+  push('🏦 SECTION 5 — FII/DII फ्लो (' + rangeLabel + ' के sample window पर आधारित)');
+  push('───────────────────────────────────────────────────────────');
+  blank();
   if(fiiDii && fiiDii.live) {
-    push('───────────────────────────────────────────────────────────');
-    push('🏦 SECTION 5 — FII/DII फ्लो (' + rangeLabel + ' के sample window पर आधारित) [✅ LIVE — NSE]');
-    push('───────────────────────────────────────────────────────────');
-    blank();
-    push('   FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़');
-    push('   DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़');
-    blank(); blank();
+    push('   FII नेट: ' + (fiiDii.fiiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.fiiNet) + ' करोड़ [✅ LIVE — ' + (fiiDii.source||'NSE') + ']');
+    push('   DII नेट: ' + (fiiDii.diiNet>=0?'+':'') + '₹' + _fmtCr(fiiDii.diiNet) + ' करोड़ [✅ LIVE — ' + (fiiDii.source||'NSE') + ']');
+  } else {
+    push('   ' + _aiFetchInstruction(rangeLabel + ' का FII/DII नेट फ्लो (₹ करोड़ में)', 'NSE India FII-DII Report / Moneycontrol'));
   }
+  blank(); blank();
 
   var nl = _liveNewsData || [];
   if(nl.length) {
@@ -8622,8 +8679,15 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
     push(title + ' — ' + dateEn);
     push('═══════════════════════════════════════════════════════════');
     blank();
-    if(liveIdx.nifty && liveIdx.nifty.close)  push('📈 NIFTY: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
+    if(liveIdx.nifty && liveIdx.nifty.close) push('📈 NIFTY: ' + liveIdx.nifty.close.toFixed(2) + ' (' + (liveIdx.nifty.change>=0?'+':'') + liveIdx.nifty.change.toFixed(2) + '%) [✅ LIVE]');
+    else push('📈 NIFTY: ' + _aiFetchInstruction('NIFTY 50 आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'NSE India / Google Finance'));
     if(liveIdx.sensex && liveIdx.sensex.close) push('📈 SENSEX: ' + liveIdx.sensex.close.toFixed(2) + ' (' + (liveIdx.sensex.change>=0?'+':'') + liveIdx.sensex.change.toFixed(2) + '%) [✅ LIVE]');
+    else push('📈 SENSEX: ' + _aiFetchInstruction('SENSEX आज की क्लोज़िंग/करेंट वैल्यू और % बदलाव', 'BSE India / Google Finance'));
+    blank();
+    if(!(liveIdx.nifty && liveIdx.nifty.close) || !(liveIdx.sensex && liveIdx.sensex.close)) {
+      push('🤖 AI नोट: "[AI INSTRUCTION ...]" ब्लॉक दिखे तो वीडियो बनाने से पहले असली LIVE वैल्यू खुद fetch करें,');
+      push('ब्रैकेट टेक्स्ट literally न दिखाएं। बाकी सारा डेटा इस टूल से genuine live-scan किया हुआ है।');
+    }
     blank(); blank();
   }
 
@@ -8657,12 +8721,15 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
   }
 
   function fiiDiiBlock(dt) {
-    if(!dt || !dt.live) return; /* never show illustrative FII/DII numbers */
     push('───────────────────────────────────────────────────────────');
-    push('🏦 FII / DII फ्लो (पिछले 7 कारोबारी दिन) [✅ LIVE — NSE]');
+    push('🏦 FII / DII फ्लो (पिछले 7 कारोबारी दिन)');
     push('───────────────────────────────────────────────────────────');
     blank();
-    push('   FII नेट: ' + (dt.fiiNet>=0?'+':'') + '₹' + _fmtCr(dt.fiiNet) + ' करोड़  |  DII नेट: ' + (dt.diiNet>=0?'+':'') + '₹' + _fmtCr(dt.diiNet) + ' करोड़');
+    if(dt && dt.live) {
+      push('   FII नेट: ' + (dt.fiiNet>=0?'+':'') + '₹' + _fmtCr(dt.fiiNet) + ' करोड़  |  DII नेट: ' + (dt.diiNet>=0?'+':'') + '₹' + _fmtCr(dt.diiNet) + ' करोड़ [✅ LIVE — ' + (dt.source||'NSE') + ']');
+    } else {
+      push('   ' + _aiFetchInstruction('पिछले 7 कारोबारी दिन का FII/DII नेट फ्लो (₹ करोड़ में)', 'NSE India FII-DII Report / Moneycontrol'));
+    }
     blank(); blank();
   }
 
@@ -8718,6 +8785,9 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
     if(mfLive && mfNews && mfNews.length) {
       push('🔴 आज की असली Mutual Fund/SIP headlines: [✅ LIVE]'); blank();
       mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
+      blank(); blank();
+    } else {
+      push('   ' + _aiFetchInstruction('Mutual Fund/SIP का हालिया net inflow/outflow डेटा और मुख्य खबरें', 'AMFI India / Moneycontrol / Economic Times'));
       blank(); blank();
     }
     newsBlock(); disclaimer();
@@ -8810,8 +8880,13 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
 
     if(mfNews && mfNews.length) {
       push('───────────────────────────────────────────────────────────');
-      push('💰 MUTUAL FUND न्यूज़'); push('───────────────────────────────────────────────────────────'); blank();
+      push('💰 MUTUAL FUND न्यूज़ [✅ LIVE]'); push('───────────────────────────────────────────────────────────'); blank();
       mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
+      blank(); blank();
+    } else {
+      push('───────────────────────────────────────────────────────────');
+      push('💰 MUTUAL FUND'); push('───────────────────────────────────────────────────────────'); blank();
+      push('   ' + _aiFetchInstruction('Mutual Fund/SIP का हालिया net inflow/outflow डेटा और मुख्य खबरें', 'AMFI India / Moneycontrol / Economic Times'));
       blank(); blank();
     }
 
@@ -9057,11 +9132,19 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, pools)
   };
   var platformList = platformSel === 'all' ? ['youtube','instagram-post','instagram-story','facebook'] : [platformSel];
 
-  /* Real live index snippet — pulled from Section 1B's live fetch, if available */
+  /* Real live index snippet — pulled from Section 1B's live fetch, if available.
+     When NOT available, embed a clear bracketed AI-instruction placeholder
+     directly in the hook text so NotebookLM/Gemini/ChatGPT (or a human editor)
+     fetches the real live NIFTY figure themselves before finalizing the video —
+     never a fake/stale number baked into the image text overlay. */
   var liveTag = '';
+  var liveTagIsReal = false;
   if(_liveIndexData && _liveIndexData.nifty && _liveIndexData.nifty.close) {
     var n = _liveIndexData.nifty;
     liveTag = 'NIFTY ' + n.close.toFixed(0) + ' (' + (n.change>=0?'+':'') + n.change.toFixed(2) + '%)';
+    liveTagIsReal = true;
+  } else {
+    liveTag = '[NIFTY की आज की असली LIVE वैल्यू — AI: कृपया NSE India/Google Finance से अभी fetch करके यहाँ भरें]';
   }
 
   var moodLocal = langText.mood[marketMoodEn] || marketMoodEn;
@@ -9121,7 +9204,8 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, pools)
         'Aspect ratio: ' + plat.ratio + ' — ' + plat.textNote + '.',
         'Visual style: ' + styleDesc + '.',
         human ? ('Include ' + humanDesc + ', with a ' + emoDesc + '.') : 'No human figures — pure graphic/data-driven composition.',
-        'Bold hook-title text overlay reading exactly: "' + hookTitle + '" — this is the eye-catching headline, make it the dominant text element.',
+        'Bold hook-title text overlay reading exactly: "' + hookTitle + '" — this is the eye-catching headline, make it the dominant text element.' +
+          (liveTagIsReal ? '' : ' NOTE: any text inside [square brackets] is an instruction for YOU (the AI reading this prompt) — before generating, fetch that real live data yourself from the named source and replace the bracketed instruction with the actual current figure; never render the brackets/instruction text literally.'),
         'A small badge graphic referencing "' + langText.trap + ': ' + cardTrap + '" in one corner (generic ticker-style label, not any real company logo).',
         'A small contrasting badge graphic referencing "' + langText.buy + ': ' + cardBuy + '" in the opposite corner.',
         cardSell ? ('A third small badge referencing "SELL Alert: ' + cardSell + '" along the bottom edge (generic ticker-style label).') : '',
