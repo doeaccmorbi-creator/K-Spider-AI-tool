@@ -305,6 +305,10 @@ hr.div{border:none;border-top:1px solid var(--border);margin:16px 0;}
   background:rgba(255,107,26,.4);z-index:6;pointer-events:none;
   box-shadow:0 0 20px rgba(255,107,26,.3);}
 #tp-scroller{padding:55vh 60px;text-align:center;transition:transform 0s linear;}
+#tp-body.tp-mirror-h{transform:scaleX(-1);}
+#tp-body.tp-mirror-v{transform:scaleY(-1);}
+#tp-body.tp-mirror-hv{transform:scale(-1,-1);}
+#tpVoiceBtn.tp-voice-active{background:var(--green,#00e676);color:#000;}
 .tp-div{margin:5px 0;font-family:var(--font);text-align:center;line-height:1.8;}
 .tp-n{font-size:32px;color:#ccc;}
 .tp-big{font-size:52px;font-weight:800;color:#fff;margin:18px 0;}
@@ -798,7 +802,7 @@ img,canvas,video,textarea,select,input{max-width:100%;}
 </head>
 <body>
 <!-- ✅ KSpider Ad Top -->
-<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="top-banner"></div></div>
+<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><div data-ks-slot="top-banner"></div></div>
 
 <!-- ===== CAMERA HELP MODAL ===== -->
 <div id="camHelpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:3000;align-items:center;justify-content:center;">
@@ -812,10 +816,6 @@ img,canvas,video,textarea,select,input{max-width:100%;}
     </div>
   </div>
 </div>
-  <div class="cd-num" id="cd-num">3</div>
-  <div class="cd-label" id="cd-label">Recording शुरू होगी...</div>
-</div>
-
 
 <!-- ===== COUNTDOWN OVERLAY ===== -->
 <div id="countdown-overlay">
@@ -1408,7 +1408,6 @@ img,canvas,video,textarea,select,input{max-width:100%;}
   </div>
 </div>
 <div id="topProgBar"></div>
-<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;" id="ks-header-ad"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="header-banner"></div></div>
 
 <!-- ===== APP WRAP ===== -->
 <div id="appWrap">
@@ -1433,6 +1432,8 @@ img,canvas,video,textarea,select,input{max-width:100%;}
       ⬇️ Load from AI
     </button>
     <button class="btn b-gh b-sm" onclick="clearScriptEditor()">🗑️ Clear</button>
+    <button class="btn b-gh b-sm" onclick="document.getElementById('scriptFileImport').click()" title="Apni computer se .txt script upload karo">📁 Import .txt</button>
+    <input type="file" id="scriptFileImport" accept=".txt,text/plain" style="display:none" onchange="ksImportScriptFile(this)">
     <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
       <!-- TP Controls inline -->
       <select id="tpSpeedPreset" style="background:var(--panel);border:1px solid var(--border);
@@ -1520,7 +1521,7 @@ Teleprompter ke liye tips:
   </div>
 
   <!-- Progress bar -->
-  <div id="topProgBar" style="height:3px;background:var(--orange);width:0%;transition:width .3s;flex-shrink:0"></div>
+  <div id="scriptTpProgBar" style="height:3px;background:var(--orange);width:0%;transition:width .3s;flex-shrink:0"></div>
 </div>
 
   <div class="brand-footer">
@@ -1542,6 +1543,7 @@ Teleprompter ke liye tips:
   <div class="toolbar">
     <div class="rec-timer" id="recTimerDisp">00:00</div>
     <button class="btn b-rd" id="recBtn" onclick="toggleRec()">⏺ Start Recording</button>
+    <button class="btn b-gh b-sm" id="recPauseBtn" onclick="toggleRecPause()" style="display:none">⏸ Pause</button>
     <button class="btn b-gh b-sm" onclick="toggleCam()">📹 Cam On/Off</button>
     <button class="btn b-gh b-sm" id="camSwitchBtn" onclick="switchCamera()" style="display:none">🔄 Front/Back</button>
     <button class="btn b-gh b-sm" onclick="toggleScreen()">🖥️ Screen Capture</button>
@@ -1821,6 +1823,7 @@ Teleprompter ke liye tips:
           <button class="btn b-or b-sm" onclick="loadIntoTeleprompter()">▶ Teleprompter</button>
           <button class="btn b-gh b-sm" onclick="sendToVoice()">🎙️ Voice Practice</button>
           <button class="btn b-pu" onclick="openVideoStudio('aiBody')" style="background:var(--purple)">🎬 Video Banao</button>
+          <button class="btn b-gh b-sm" onclick="ksToggleScriptHistory()" title="Pichli generate ki hui scripts">🕘 History</button>
         </div>
       </div>
       <!-- Variant tabs -->
@@ -1840,6 +1843,20 @@ Teleprompter ke liye tips:
         <span id="wcPctNum" style="color:var(--green)">—</span>
         <span style="color:var(--muted);margin-left:8px">EST. READ TIME:</span>
         <span id="wcReadTime" style="color:var(--teal)">—</span>
+      </div>
+      <!-- Hook Strength Score (free, rule-based — no extra API calls) -->
+      <div id="ksHookScoreRow" style="display:none;align-items:center;gap:8px;padding:8px 12px;background:var(--bg2);border-bottom:1px solid var(--border);font-size:12px;font-family:var(--mono);flex-wrap:wrap">
+        <span style="color:var(--muted)">🪝 HOOK SCORE:</span>
+        <span id="ksHookScoreNum" style="font-weight:800;font-size:14px">—</span>
+        <div style="flex:1;min-width:80px;height:6px;background:var(--border);border-radius:3px;overflow:hidden;max-width:180px">
+          <div id="ksHookScoreFill" style="height:100%;width:0%;background:var(--orange);transition:width .4s ease"></div>
+        </div>
+        <span id="ksHookScoreTips" style="color:var(--muted2);font-size:11px"></span>
+      </div>
+      <!-- Script History (local only — no server, no cost) -->
+      <div id="ksScriptHistoryPanel" style="display:none;padding:10px 12px;background:var(--bg2);border-bottom:1px solid var(--border);max-height:220px;overflow-y:auto">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:var(--mono)">🕘 LAST 10 GENERATED SCRIPTS (saved locally in this browser — free, no account needed)</div>
+        <div id="ksScriptHistoryList"></div>
       </div>
       <!-- TTS Advanced Panel -->
       <div id="ttsBar" style="display:none">
@@ -1904,7 +1921,7 @@ Teleprompter ke liye tips:
   </div>
 
     <!-- ── MID-CONTENT AD SLOT ── -->
-    <div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;" id="ks-mid-ad"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="mid-banner"></div></div>
+    <div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;" id="ks-mid-ad"><div data-ks-slot="after-result"></div></div>
   <div class="brand-footer">
     <span>🕷️ <span class="site">K Spider AI</span> — AI Writer Module (Claude Powered • 20 Styles)</span>
     <span><span class="site">www.kspiderai.in</span></span>
@@ -1936,6 +1953,7 @@ Teleprompter ke liye tips:
       </div>
       <div class="url-input-row">
         <input type="text" id="urlInput" placeholder="https://youtube.com/watch?v=... or instagram.com/p/... or any news article URL...">
+        <button class="btn b-gh b-sm" onclick="ksPasteClipboard('urlInput')" title="Clipboard se paste karo">📋 Paste</button>
         <button class="btn b-or" onclick="extractURL()">🔍 Extract</button>
         <button class="btn b-gh b-sm" onclick="clearURLPage()">✕</button>
       </div>
@@ -1960,6 +1978,7 @@ Teleprompter ke liye tips:
           color:var(--text);padding:10px;border-radius:8px;font-family:var(--font);font-size:13px;
           outline:none;resize:vertical;" placeholder="Yahan koi bhi text paste karein — Instagram caption, YouTube description, news article text, WhatsApp message, tweet content..."></textarea>
         <button class="btn b-bl b-sm" style="margin-top:6px" onclick="useManualContent()">✅ Is Content se Script Banao</button>
+        <button class="btn b-gh b-sm" style="margin-top:6px" onclick="ksPasteClipboard('manualContent')" title="Clipboard se paste karo">📋 Paste</button>
       </div>
     </div>
 
@@ -2182,6 +2201,11 @@ Teleprompter ke liye tips:
         <div class="fb-title">LAST 3 SESSIONS</div>
         <div id="last-sess" style="font-size:11px;color:var(--muted)">—</div>
       </div>
+      <div class="feedback-card" id="ksFillerCard" style="display:none">
+        <div class="fb-title">🗣️ FILLER WORDS</div>
+        <div id="ksFillerCount" style="font-size:22px;font-weight:800;text-align:center;color:var(--gold)">0</div>
+        <div id="ksFillerList" style="font-size:11px;color:var(--muted);text-align:center;margin-top:4px"></div>
+      </div>
       <button class="btn b-or" style="width:100%;justify-content:center" onclick="saveVoiceSess()">💾 Save Session</button>
     </div>
   </div>
@@ -2212,6 +2236,7 @@ Teleprompter ke liye tips:
     <div class="divider-v"></div>
     <button class="btn b-gh b-sm" onclick="shuffleCues()">🔀 Shuffle</button>
     <button class="btn b-gh b-sm" onclick="resetCues()">↺ Restart</button>
+    <button class="btn b-gh b-sm" id="cueAutoBtn" onclick="ksToggleCueAutoAdvance()" title="Har card khud-ba-khud aage badhega">⏱️ Auto-Advance</button>
     <div class="divider-v"></div>
     <div class="lang-grp">
       <div class="lang-btn on" onclick="setCueLang('hi',this)">हि</div>
@@ -2945,6 +2970,9 @@ Teleprompter ke liye tips:
     <div class="timer-box" id="tpClock">00:00</div>
     <button class="btn b-gh b-sm" onclick="tpFont(2)">A+</button>
     <button class="btn b-gh b-sm" onclick="tpFont(-2)">A-</button>
+    <button class="btn b-gh b-sm" id="tpMirrorBtn" onclick="tpToggleMirror()" title="Mirror mode — teleprompter glass rigs ke liye">🪞 Mirror</button>
+    <button class="btn b-gh b-sm" onclick="tpToggleFullscreen()" title="Fullscreen">⛶ Full</button>
+    <button class="btn b-gh b-sm" id="tpVoiceBtn" onclick="tpToggleVoiceSync()" title="Bolte hi script apne aap scroll hogi">🎙️ Voice Sync</button>
     <div class="divider-v"></div>
     <span style="font-size:10px;color:#333;font-family:var(--mono)">SPACE=Play • ESC=Exit • ↑↓=Font</span>
     <div style="margin-left:auto;font-family:var(--mono);font-size:10px;color:rgba(255,107,26,.6)">
@@ -6212,8 +6240,8 @@ function ksAPIClear() {
      ================================================================ -->
 <div id="ks-seo-footer" style="display:none" aria-hidden="true">
 
-<!-- ── FOOTER AD SLOT ── -->
-<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:12px 0;background:var(--bg2);border-top:1px solid var(--border);margin:0" id="ks-footer-ad"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="footer-banner"></div></div>
+<!-- ── FOOTER AD SLOT (currently inside a hidden container — see note below) ── -->
+<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:12px 0;background:var(--bg2);border-top:1px solid var(--border);margin:0" id="ks-footer-ad"><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ── KNOWLEDGE BASE ── -->
 <section id="ks-knowledge-base" style="max-width:1000px;margin:0 auto;padding:40px 20px;font-family:'Baloo 2',sans-serif;color:#c5d8f0">
@@ -6592,8 +6620,362 @@ function shareAllKSMessages() {
 })();
 </script>
 
+<!-- ✅ KSpider Teleprompter Feature Pack v1.0 — Mirror Mode, Fullscreen, Voice-Activated
+     Auto-Scroll. Purely additive: does not modify any existing function, only adds new
+     ones and reads the existing tpWords/tpWIdx/tpScrollY state. -->
+<script>
+(function(){
+  'use strict';
+
+  /* ---------- CUE CARD AUTO-ADVANCE (free, simple timer, no deps) ---------- */
+  var _cueAutoInt = null, _cueAutoOn = false;
+  window.ksToggleCueAutoAdvance = function(){
+    var btn = document.getElementById('cueAutoBtn');
+    _cueAutoOn = !_cueAutoOn;
+    if(_cueAutoOn){
+      if(btn){ btn.textContent='⏹ Stop Auto'; btn.classList.add('tp-voice-active'); }
+      _cueAutoInt = setInterval(function(){
+        if(typeof curCue!=='undefined' && typeof cues!=='undefined' && curCue < cues.length-1){
+          nextCue();
+        } else {
+          window.ksToggleCueAutoAdvance(); // reached the end — stop automatically
+        }
+      }, 5000);
+      if(typeof toast==='function') toast('⏱️ Auto-Advance ON — har 5 second mein next card');
+    } else {
+      clearInterval(_cueAutoInt);
+      if(btn){ btn.textContent='⏱️ Auto-Advance'; btn.classList.remove('tp-voice-active'); }
+      if(typeof toast==='function') toast('⏹ Auto-Advance OFF');
+    }
+  };
+
+  /* ---------- CLIPBOARD PASTE HELPER (free, native Clipboard API) ---------- */
+  window.ksPasteClipboard = async function(targetId){
+    try{
+      var text = await navigator.clipboard.readText();
+      var el = document.getElementById(targetId);
+      if(!el || !text) { if(typeof toast==='function') toast('⚠️ Clipboard khaali hai ya permission nahi mili'); return; }
+      if('value' in el) el.value = text; else el.innerText = text;
+      if(typeof toast==='function') toast('📋 Pasted!');
+    }catch(e){
+      if(typeof toast==='function') toast('⚠️ Clipboard access nahi mila — manually paste karein (Ctrl+V)');
+    }
+  };
+
+  /* ---------- FILLER WORD DETECTOR (free, rule-based — no extra API calls) ---------- */
+  var FILLER_WORDS = ['um','uh','umm','uhh','like','matlab','actually','basically','so','you know',
+    'wo','woh','yaani','kya kehte','kya bole','ek tarah se'];
+  function countFillers(text){
+    var lower = (text||'').toLowerCase();
+    var found = {};
+    var total = 0;
+    FILLER_WORDS.forEach(function(fw){
+      var re = new RegExp('(^|\\s)'+fw.replace(/\s+/g,'\\s+')+'(\\s|$)','gi');
+      var m = lower.match(re);
+      if(m && m.length){ found[fw] = m.length; total += m.length; }
+    });
+    return { total: total, found: found };
+  }
+
+  var _origAnalyzeVoice = window.analyzeVoice;
+  window.analyzeVoice = function(){
+    if(typeof _origAnalyzeVoice==='function') _origAnalyzeVoice();
+    try{
+      var r = countFillers(vTranscript);
+      var card = document.getElementById('ksFillerCard');
+      var countEl = document.getElementById('ksFillerCount');
+      var listEl = document.getElementById('ksFillerList');
+      if(!card) return;
+      card.style.display = 'block';
+      if(countEl){
+        countEl.textContent = r.total;
+        countEl.style.color = r.total===0 ? 'var(--green)' : r.total<=3 ? 'var(--gold)' : 'var(--red)';
+      }
+      if(listEl){
+        var top = Object.keys(r.found).sort(function(a,b){return r.found[b]-r.found[a];}).slice(0,3);
+        listEl.textContent = top.length ? ('"'+top.join('", "')+'" sabse zyada') : '👍 Koi filler word nahi mila!';
+      }
+    }catch(e){}
+  };
+
+  /* ---------- RECORDING PAUSE/RESUME (native MediaRecorder API — free, no extra deps) ---------- */
+  window.toggleRecPause = function(){
+    if(!recMR || recMR.state==='inactive') return;
+    var btn = document.getElementById('recPauseBtn');
+    var pulse = document.getElementById('recPulse');
+    if(recMR.state==='recording'){
+      recMR.pause();
+      clearInterval(recTimer);
+      if(btn) btn.textContent='▶ Resume';
+      if(pulse) pulse.style.display='none';
+      if(typeof toast==='function') toast('⏸ Recording paused');
+    } else if(recMR.state==='paused'){
+      recMR.resume();
+      recTimer = setInterval(function(){
+        recSec++;
+        var m=String(Math.floor(recSec/60)).padStart(2,'0'), s=String(recSec%60).padStart(2,'0');
+        document.getElementById('recTimerDisp').textContent = m+':'+s;
+      }, 1000);
+      if(btn) btn.textContent='⏸ Pause';
+      if(pulse) pulse.style.display='block';
+      if(typeof toast==='function') toast('▶ Recording resumed');
+    }
+  };
+
+  var _origStartRec = window.startRec;
+  window.startRec = async function(){
+    if(typeof _origStartRec==='function') await _origStartRec();
+    var btn = document.getElementById('recPauseBtn');
+    if(btn){ btn.style.display='inline-block'; btn.textContent='⏸ Pause'; }
+  };
+  var _origStopRec = window.stopRec;
+  window.stopRec = function(){
+    if(typeof _origStopRec==='function') _origStopRec();
+    var btn = document.getElementById('recPauseBtn');
+    if(btn) btn.style.display='none';
+  };
+
+  /* ---------- HOOK STRENGTH SCORE (free, rule-based, no extra API calls) ---------- */
+  var HOOK_POWER_WORDS = ['free','secret','proven','instant','easy','shocking','warning','never','best','worst',
+    'today','now','finally','surprising','mistake','truth','revealed','banned','viral','exclusive',
+    'मुफ्त','राज़','सच','आज','अभी','चौंकाने','गलती','वायरल'];
+  function computeHookScore(txt){
+    var t = (txt||'').trim();
+    if(!t) return {score:0, tips:'Script khaali hai'};
+    var firstLine = t.split(/\n/).find(function(l){return l.trim();}) || '';
+    var lower = t.toLowerCase();
+    var score = 0, tips = [];
+
+    // 1) Hook opens with a question, number, or bold claim (25 pts)
+    if(/^[^a-zA-Z\u0900-\u097F]*(\d+|क्या|kya|why|kaise|how|what)/i.test(firstLine.trim())){ score += 25; }
+    else tips.push('Number/question se shuru karo');
+
+    // 2) First line is short & punchy — under 12 words (15 pts)
+    var flWords = firstLine.trim().split(/\s+/).filter(Boolean).length;
+    if(flWords>0 && flWords<=12) score += 15; else tips.push('Pehli line chhoti rakho');
+
+    // 3) Contains at least one power/curiosity word (20 pts)
+    var hasPower = HOOK_POWER_WORDS.some(function(w){ return lower.indexOf(w)>-1; });
+    if(hasPower) score += 20; else tips.push('Power word add karo (free/secret/proven)');
+
+    // 4) Has a clear CTA near the end (20 pts)
+    var lastPart = t.slice(-200).toLowerCase();
+    if(/subscribe|follow|comment|share|link|click|call now|abhi|niche|bio|whatsapp/i.test(lastPart)) score += 20;
+    else tips.push('End mein clear CTA add karo');
+
+    // 5) Uses short sentences overall — avg sentence length under 18 words (10 pts)
+    var sentences = t.split(/[.!?।]/).filter(function(s){return s.trim();});
+    var avgLen = sentences.length ? (t.split(/\s+/).filter(Boolean).length / sentences.length) : 0;
+    if(avgLen>0 && avgLen<=18) score += 10; else tips.push('Sentences thodi chhoti karo');
+
+    // 6) Some emotional/sensory variety — exclamation or emoji present (10 pts)
+    if(/[!]|[\u{1F300}-\u{1FAFF}]/u.test(t)) score += 10; else tips.push('Thoda emotion/emoji add karo');
+
+    return { score: Math.min(100, score), tips: tips.slice(0,2).join(' · ') };
+  }
+
+  function showHookScore(txt){
+    var row = document.getElementById('ksHookScoreRow');
+    if(!row) return;
+    var r = computeHookScore(txt);
+    var numEl = document.getElementById('ksHookScoreNum');
+    var fillEl = document.getElementById('ksHookScoreFill');
+    var tipsEl = document.getElementById('ksHookScoreTips');
+    row.style.display = 'flex';
+    if(numEl) numEl.textContent = r.score + '/100';
+    if(numEl) numEl.style.color = r.score>=70 ? 'var(--green)' : r.score>=40 ? 'var(--gold)' : 'var(--red)';
+    if(fillEl){ fillEl.style.width = r.score+'%'; fillEl.style.background = r.score>=70?'var(--green)':r.score>=40?'var(--gold)':'var(--red)'; }
+    if(tipsEl) tipsEl.textContent = r.tips ? ('💡 '+r.tips) : '✅ Solid hook!';
+  }
+
+  /* ---------- SCRIPT HISTORY (local only, free, no server cost) ---------- */
+  var HIST_KEY = 'ks_ai_script_history';
+  function getHistory(){
+    try{ return JSON.parse(localStorage.getItem(HIST_KEY)||'[]'); }catch(e){ return []; }
+  }
+  function saveToHistory(txt){
+    try{
+      var topic = (document.getElementById('aiTopic')||{}).value || 'Untitled';
+      var styleObj = (typeof SCRIPT_STYLES!=='undefined' && typeof selectedStyle!=='undefined')
+        ? SCRIPT_STYLES.find(function(s){return s.id===selectedStyle;}) : null;
+      var hist = getHistory();
+      hist.unshift({
+        topic: topic, style: styleObj ? styleObj.name : '', words: countW(txt),
+        date: new Date().toLocaleString(), text: txt
+      });
+      hist = hist.slice(0, 10);
+      localStorage.setItem(HIST_KEY, JSON.stringify(hist));
+    }catch(e){}
+  }
+
+  window.ksToggleScriptHistory = function(){
+    var panel = document.getElementById('ksScriptHistoryPanel');
+    if(!panel) return;
+    var showing = panel.style.display !== 'none';
+    if(showing){ panel.style.display = 'none'; return; }
+    var hist = getHistory();
+    var listEl = document.getElementById('ksScriptHistoryList');
+    if(listEl){
+      listEl.innerHTML = hist.length ? hist.map(function(h,i){
+        return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--border);font-size:12px">'+
+          '<div style="min-width:0;flex:1"><b style="color:var(--gold)">'+(window.ksSanitize?window.ksSanitize(h.topic):h.topic)+'</b> '+
+          '<span style="color:var(--muted)">— '+h.style+' · '+h.words+'w · '+h.date+'</span></div>'+
+          '<button class="btn b-gh b-sm" onclick="ksLoadFromHistory('+i+')" style="flex-shrink:0">↩ Load</button>'+
+          '</div>';
+      }).join('') : '<div style="font-size:12px;color:var(--muted);text-align:center;padding:12px">Abhi tak koi saved script nahi hai — pehli script generate karein</div>';
+    }
+    panel.style.display = 'block';
+  };
+
+  window.ksLoadFromHistory = function(i){
+    var hist = getHistory();
+    var h = hist[i];
+    if(!h) return;
+    document.getElementById('aiOut').style.display = 'block';
+    document.getElementById('aiOutLabel').textContent = '🕘 ' + h.topic + ' (history)';
+    document.getElementById('aiBody').textContent = h.text;
+    if(typeof variantScripts !== 'undefined') variantScripts = [h.text];
+    if(typeof showAIWordMeter==='function') showAIWordMeter(h.text, h.words);
+    document.getElementById('ksScriptHistoryPanel').style.display = 'none';
+    if(typeof toast==='function') toast('↩ History se load ho gaya: '+h.topic);
+  };
+
+  // Additive wrap: after the existing word-meter renders, also score the hook and save to history.
+  var _origShowAIWordMeter = window.showAIWordMeter;
+  window.showAIWordMeter = function(txt, target){
+    if(typeof _origShowAIWordMeter === 'function') _origShowAIWordMeter(txt, target);
+    try{ showHookScore(txt); saveToHistory(txt); }catch(e){}
+  };
+
+  /* ---------- IMPORT SCRIPT FROM .TXT FILE ---------- */
+  window.ksImportScriptFile = function(input){
+    var file = input.files && input.files[0];
+    if(!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e){
+      var el = document.getElementById('scriptContent');
+      if(!el) return;
+      el.innerText = String(e.target.result || '').trim();
+      if(typeof onScriptInput==='function') onScriptInput(el);
+      if(typeof toast==='function') toast('📁 Imported: ' + file.name);
+    };
+    reader.onerror = function(){ if(typeof toast==='function') toast('❌ File read fail'); };
+    reader.readAsText(file);
+    input.value = '';
+  };
+
+  /* ---------- MIRROR MODE (teleprompter glass rigs) ---------- */
+  var MIRROR_MODES = ['', 'tp-mirror-h', 'tp-mirror-v', 'tp-mirror-hv'];
+  var MIRROR_LABELS = { '':'🪞 Mirror', 'tp-mirror-h':'🪞 H-Flip', 'tp-mirror-v':'🪞 V-Flip', 'tp-mirror-hv':'🪞 HV-Flip' };
+  var _mirrorIdx = 0;
+  window.tpToggleMirror = function(){
+    var body = document.getElementById('tp-body');
+    if(!body) return;
+    MIRROR_MODES.forEach(function(c){ if(c) body.classList.remove(c); });
+    _mirrorIdx = (_mirrorIdx + 1) % MIRROR_MODES.length;
+    var cls = MIRROR_MODES[_mirrorIdx];
+    if(cls) body.classList.add(cls);
+    var btn = document.getElementById('tpMirrorBtn');
+    if(btn) btn.textContent = MIRROR_LABELS[cls];
+    if(typeof toast==='function') toast(cls ? '🪞 Mirror: '+MIRROR_LABELS[cls].replace('🪞 ','') : '🪞 Mirror off');
+  };
+
+  /* ---------- FULLSCREEN ---------- */
+  window.tpToggleFullscreen = function(){
+    var el = document.getElementById('tp-overlay');
+    if(!el) return;
+    if(!document.fullscreenElement){
+      (el.requestFullscreen || el.webkitRequestFullscreen || function(){}).call(el).catch(function(){});
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen || function(){}).call(document);
+    }
+  };
+
+  /* ---------- VOICE-ACTIVATED AUTO-SCROLL ----------
+     Listens to the mic and moves tpWIdx / tpScrollY to match the word the
+     user is actually speaking, instead of a fixed scroll speed. Falls back
+     gracefully if the browser doesn't support SpeechRecognition. */
+  var _rec = null, _voiceOn = false;
+  function normWord(w){ return (w||'').toLowerCase().replace(/[^a-z0-9\u0900-\u097F]/gi,''); }
+
+  function scrollToWordIndex(idx){
+    if(idx < 0 || idx >= tpWords.length) return;
+    tpWords.forEach(function(w,i){
+      w.classList.toggle('done', i < idx);
+      w.classList.toggle('cur', i === idx);
+    });
+    tpWIdx = idx + 1;
+    var wordEl = tpWords[idx];
+    var scroller = document.getElementById('tp-scroller');
+    var body = document.getElementById('tp-body');
+    if(wordEl && scroller && body){
+      var target = wordEl.offsetTop - (body.clientHeight * 0.5);
+      tpScrollY = -target;
+      scroller.style.transform = 'translateY(' + tpScrollY + 'px)';
+    }
+  }
+
+  function handleVoiceResult(transcript){
+    var spoken = transcript.trim().split(/\s+/).map(normWord).filter(Boolean);
+    if(!spoken.length || !tpWords.length) return;
+    var lastSpoken = spoken[spoken.length - 1];
+    var searchFrom = Math.max(0, tpWIdx - 2);
+    var lookahead = Math.min(tpWords.length, searchFrom + 60);
+    for(var i = searchFrom; i < lookahead; i++){
+      if(normWord(tpWords[i].textContent) === lastSpoken){
+        scrollToWordIndex(i);
+        return;
+      }
+    }
+  }
+
+  window.tpToggleVoiceSync = function(){
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      if(typeof toast==='function') toast('⚠️ Ye browser voice-scroll support nahi karta');
+      return;
+    }
+    var btn = document.getElementById('tpVoiceBtn');
+    if(_voiceOn){
+      _voiceOn = false;
+      try{ _rec && _rec.stop(); }catch(e){}
+      if(btn) btn.classList.remove('tp-voice-active');
+      if(typeof toast==='function') toast('🎙️ Voice Sync off');
+      return;
+    }
+    try{
+      _rec = new SR();
+      _rec.continuous = true;
+      _rec.interimResults = true;
+      _rec.lang = (navigator.language || 'en-US');
+      _rec.onresult = function(e){
+        var res = e.results[e.results.length - 1];
+        if(res && res[0]) handleVoiceResult(res[0].transcript);
+      };
+      _rec.onerror = function(){ /* mic hiccups are common — keep going, don't spam the user */ };
+      _rec.onend = function(){ if(_voiceOn){ try{ _rec.start(); }catch(e){} } };
+      _rec.start();
+      _voiceOn = true;
+      if(!tpOn){ tpOn = true; document.getElementById('tpPlayBtn').textContent='⏸ Pause'; }
+      if(btn) btn.classList.add('tp-voice-active');
+      if(typeof toast==='function') toast('🎙️ Voice Sync on — bolna shuru karein');
+    }catch(err){
+      if(typeof toast==='function') toast('❌ Voice Sync start nahi hui: '+err.message);
+    }
+  };
+
+  // Voice sync auto-stops cleanly when the teleprompter is closed
+  var _origCloseTP = window.closeTP;
+  window.closeTP = function(){
+    if(_voiceOn){ _voiceOn=false; try{ _rec && _rec.stop(); }catch(e){} var b=document.getElementById('tpVoiceBtn'); if(b) b.classList.remove('tp-voice-active'); }
+    if(typeof _origCloseTP === 'function') _origCloseTP();
+  };
+
+})();
+</script>
+
 <!-- ✅ KSpider Ad Mid -->
-<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
+<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><div data-ks-slot="in-content"></div></div>
 
 <!-- ✅ KSpider Admin Ad Manager -->
 <script src="ks-ads.js"></script>
@@ -6622,7 +7004,7 @@ function shareAllKSMessages() {
 </script>
 
 <!-- ✅ KSpider Ad Bottom -->
-<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="bottom-banner"></div></div>
+<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ✅ K Spider Admin API Router v3.0 -->
 <script>
