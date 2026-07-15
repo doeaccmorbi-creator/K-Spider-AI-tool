@@ -4085,6 +4085,51 @@ function _scrapeMoneycontrolFiiDii(callback) {
   );
 }
 
+/* 5th real source attempt — Groww's public FII/DII data page. Different
+   provider/infrastructure again, so it succeeds in some cases where NSE
+   and Moneycontrol both fail. Same strict validation: only accepted if
+   exactly two sane numbers are confidently found. */
+function _scrapeGrowwFiiDii(callback) {
+  _corsFetchText('https://groww.in/fii-dii-data?_=' + Date.now(),
+    function(html){
+      try {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var text = (doc.body && (doc.body.innerText || doc.body.textContent)) || '';
+        var fiiMatch = text.match(/FII\/FPI[^0-9\-]{0,60}(-?[\d,]+\.\d{1,2})/i) || text.match(/\bFII\b[^0-9\-]{0,60}(-?[\d,]+\.\d{1,2})/i);
+        var diiMatch = text.match(/\bDII\b[^0-9\-]{0,60}(-?[\d,]+\.\d{1,2})/i);
+        if(!fiiMatch || !diiMatch) { callback(null); return; }
+        var fiiVal = parseFloat(fiiMatch[1].replace(/,/g,''));
+        var diiVal = parseFloat(diiMatch[1].replace(/,/g,''));
+        if(isNaN(fiiVal) || isNaN(diiVal) || Math.abs(fiiVal) > 100000 || Math.abs(diiVal) > 100000) { callback(null); return; }
+        callback({ fiiNet: fiiVal, diiNet: diiVal, source: 'Groww' });
+      } catch(e) { callback(null); }
+    },
+    function(){ callback(null); }
+  );
+}
+
+/* Best-effort scrape of AMFI's public mutual-fund industry data page —
+   a genuine real source for a Mutual Fund headline figure (e.g. net
+   equity inflow), tried before falling back to news-only/AI-instruction.
+   Same strict validation discipline: reject anything that doesn't
+   confidently parse to a sane number. */
+function _scrapeAmfiMfFlow(callback) {
+  _corsFetchText('https://www.amfiindia.com/indian-mutual-fund-industry-net-aum?_=' + Date.now(),
+    function(html){
+      try {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var text = (doc.body && (doc.body.innerText || doc.body.textContent)) || '';
+        var aumMatch = text.match(/(?:Total\s+AUM|Net\s+AUM)[^0-9\-]{0,60}(-?[\d,]+\.?\d{0,2})/i);
+        if(!aumMatch) { callback(null); return; }
+        var aumVal = parseFloat(aumMatch[1].replace(/,/g,''));
+        if(isNaN(aumVal) || aumVal <= 0 || aumVal > 10000000) { callback(null); return; }
+        callback({ totalAum: aumVal, source: 'AMFI' });
+      } catch(e) { callback(null); }
+    },
+    function(){ callback(null); }
+  );
+}
+
 function _fetchStooqPrice(sym, onSuccess, onFail) {
   /* Convert TradingView symbol to Stooq format */
   var s = sym.toUpperCase();
@@ -4111,7 +4156,7 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
   var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + stooqSym + '?interval=1d&range=5d&_=' + Date.now();
   _corsFetchJSON(url, function(data){
     var res = data && data.chart && data.chart.result && data.chart.result[0];
-    if(!res){ onFail(); return; }
+    if(!res){ _fetchStooqCsvFallback(s, onSuccess, onFail); return; }
     var meta  = res.meta;
     var close = meta.regularMarketPrice;
     var prev  = meta.chartPreviousClose || meta.previousClose;
@@ -4119,8 +4164,31 @@ function _fetchStooqPrice(sym, onSuccess, onFail) {
     var vol   = meta.regularMarketVolume;
     var hi52  = meta.fiftyTwoWeekHigh;
     var lo52  = meta.fiftyTwoWeekLow;
-    if(close === undefined || close === null) { onFail(); return; }
+    if(close === undefined || close === null) { _fetchStooqCsvFallback(s, onSuccess, onFail); return; }
     onSuccess({ close:close, change:chg, volume:vol, hi52:hi52, lo52:lo52, marketTime:meta.regularMarketTime, raw:meta });
+  }, function(){ _fetchStooqCsvFallback(s, onSuccess, onFail); });
+}
+
+/* Genuine additional real-data attempt: Stooq's free CSV quote endpoint
+   (no key, no session needed) — tried only when Yahoo (with its own
+   3-proxy cascade) has completely failed. Different provider, different
+   infrastructure, so it succeeds in some cases where Yahoo doesn't. */
+var STOOQ_INDEX_MAP = { 'NSE:NIFTY':'^nsei', 'BSE:SENSEX':'^bsesn', 'NSE:INDIAVIX':'^indiavix' };
+function _fetchStooqCsvFallback(s, onSuccess, onFail) {
+  var stq = STOOQ_INDEX_MAP[s];
+  if(!stq) { onFail(); return; }
+  var url = 'https://stooq.com/q/l/?s=' + encodeURIComponent(stq) + '&f=sd2t2ohlcv&h&e=csv&_=' + Date.now();
+  _corsFetchText(url, function(text){
+    try {
+      var lines = (text||'').trim().split('\n');
+      if(lines.length < 2) { onFail(); return; }
+      var cols = lines[1].split(',');
+      var open  = parseFloat(cols[3]);
+      var close = parseFloat(cols[6]);
+      if(isNaN(close) || close <= 0) { onFail(); return; }
+      var chg = (open && !isNaN(open)) ? ((close-open)/open*100) : 0;
+      onSuccess({ close:close, change:chg, volume: parseFloat(cols[7])||0, source:'Stooq' });
+    } catch(e) { onFail(); }
   }, onFail);
 }
 
@@ -6488,16 +6556,19 @@ function _renderFiiDii(data, exchange, period) {
 function _renderFiiDiiSimulated(exchange, period) {
   /* NSE's own API needs a browser session cookie that a stateless CORS
      proxy can't establish, so it's blocked almost universally. Before
-     giving up, try one more genuinely real source: Moneycontrol's public
-     FII/DII page (no login/session needed) — strictly validated, only
-     accepted if we can confidently parse two real numbers. */
+     giving up, try more genuinely real sources: Moneycontrol, then
+     Groww — strictly validated, only accepted if we can confidently
+     parse two real numbers. */
   var tbody = document.getElementById('fiidii-tbody');
   if(!tbody) return;
 
   if(period === 'today') {
     _scrapeMoneycontrolFiiDii(function(mc){
       if(mc) { _renderFiiDiiSingleDayReal(mc, exchange); return; }
-      _renderFiiDiiHonestEmpty();
+      _scrapeGrowwFiiDii(function(gw){
+        if(gw) { _renderFiiDiiSingleDayReal(gw, exchange); return; }
+        _renderFiiDiiHonestEmpty();
+      });
     });
   } else {
     _renderFiiDiiHonestEmpty();
@@ -8077,12 +8148,19 @@ function _getFiiDiiPeriodSummary(period, callback) {
 function _fiiDiiTryMoneycontrol(period, callback) {
   if(period !== 'today') { callback({ live:false }); return; }
   _scrapeMoneycontrolFiiDii(function(mc){
-    if(!mc) { callback({ live:false }); return; }
-    callback({ fiiNet: mc.fiiNet, diiNet: mc.diiNet, fiiBuy:null, fiiSell:null, diiBuy:null, diiSell:null, live:true, days:1, source: mc.source });
+    if(mc) { callback({ fiiNet: mc.fiiNet, diiNet: mc.diiNet, fiiBuy:null, fiiSell:null, diiBuy:null, diiSell:null, live:true, days:1, source: mc.source }); return; }
+    /* Moneycontrol also failed — try Groww as a 5th genuine source before
+       finally giving up (which triggers the AI-fetch-instruction path). */
+    _scrapeGrowwFiiDii(function(gw){
+      if(!gw) { callback({ live:false }); return; }
+      callback({ fiiNet: gw.fiiNet, diiNet: gw.diiNet, fiiBuy:null, fiiSell:null, diiBuy:null, diiSell:null, live:true, days:1, source: gw.source });
+    });
   });
 }
 
+var _liveAmfiData = null; // { totalAum, source } — real fetch only, never fabricated
 function _getMutualFundNews(callback) {
+  _scrapeAmfiMfFlow(function(amfi){ _liveAmfiData = amfi; });
   _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('mutual fund SIP inflow India AMFI') + '&newsCount=8&quotesCount=0&_=' + Date.now(),
     function(data){
       var news = (data && data.news) || [];
@@ -8223,10 +8301,14 @@ function _buildWmReportText(mode, fiiDii, mfNews, mfLive) {
   push('💰 SECTION 4 — Mutual Fund गतिविधि');
   push('───────────────────────────────────────────────────────────');
   blank();
+  if(_liveAmfiData && _liveAmfiData.totalAum) {
+    push('   • Indian MF Industry Total AUM: ₹' + _fmtCr(_liveAmfiData.totalAum) + ' करोड़ [✅ LIVE — ' + _liveAmfiData.source + ']');
+    blank();
+  }
   if(mfLive && mfNews && mfNews.length) {
     push('   🔴 आज की असली Mutual Fund/SIP संबंधित headlines: [✅ LIVE]');
     mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
-  } else {
+  } else if(!(_liveAmfiData && _liveAmfiData.totalAum)) {
     push('   ' + _aiFetchInstruction('Mutual Fund/SIP का हालिया net inflow/outflow डेटा और मुख्य खबरें', 'AMFI India / Moneycontrol / Economic Times'));
   }
   blank(); blank();
@@ -8782,11 +8864,14 @@ function _buildSectionReportText(key, fiiDii, mfNews, mfLive) {
   }
   else if(key === 'mf') {
     header('💰 MUTUAL FUND REPORT');
+    if(_liveAmfiData && _liveAmfiData.totalAum) {
+      push('   • Indian MF Industry Total AUM: ₹' + _fmtCr(_liveAmfiData.totalAum) + ' करोड़ [✅ LIVE — ' + _liveAmfiData.source + ']'); blank();
+    }
     if(mfLive && mfNews && mfNews.length) {
       push('🔴 आज की असली Mutual Fund/SIP headlines: [✅ LIVE]'); blank();
       mfNews.forEach(function(n,i){ push('   ' + (i+1) + '. ' + n.title + ' — ' + n.publisher); });
       blank(); blank();
-    } else {
+    } else if(!(_liveAmfiData && _liveAmfiData.totalAum)) {
       push('   ' + _aiFetchInstruction('Mutual Fund/SIP का हालिया net inflow/outflow डेटा और मुख्य खबरें', 'AMFI India / Moneycontrol / Economic Times'));
       blank(); blank();
     }
