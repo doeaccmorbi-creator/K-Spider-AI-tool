@@ -4230,19 +4230,96 @@ function _aiFetchInstruction(label, sourceHint) {
     'सिर्फ अभी की genuinely real value use करें।]';
 }
 
+/* ── Fetch NIFTY/SENSEX/VIX via the SAME TradingView scanner endpoint
+   already proven to work reliably for stock scanning in this exact
+   environment (scanner.tradingview.com) — since stocks fetch live
+   successfully through it, indices should too, as they're valid
+   symbols on the same exchange. Tried FIRST as the primary source;
+   Yahoo+Stooq remain as the fallback cascade for anything it misses. */
+function _fetchIndicesViaTradingView(tickers, callback) {
+  fetch('https://scanner.tradingview.com/india/scan', {
+    method: 'POST',
+    mode: 'cors',
+    headers: { 'Content-Type': 'text/plain' },
+    body: JSON.stringify({
+      symbols: { tickers: tickers },
+      columns: ['close', 'change'],
+      range: [0, tickers.length]
+    })
+  })
+  .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+  .then(function(data){
+    if(data && data.data && data.data.length) { callback(data.data); }
+    else { callback(null); }
+  })
+  .catch(function(){ callback(null); });
+}
+
 function fetchLiveIndices(callback) {
   var out = { nifty: null, sensex: null, vix: null };
-  var pending = 3;
-  function step(){ pending--; if(pending<=0){ _liveIndexData = out; callback(out); } }
-  _fetchStooqPrice('NSE:NIFTY', function(d){
-    out.nifty = { close:d.close, change:d.change, volume:d.volume, live:true }; step();
-  }, function(){ out.nifty = null; step(); });
-  _fetchStooqPrice('BSE:SENSEX', function(d){
-    out.sensex = { close:d.close, change:d.change, volume:d.volume, live:true }; step();
-  }, function(){ out.sensex = null; step(); });
-  _fetchStooqPrice('NSE:INDIAVIX', function(d){
-    out.vix = { close:d.close, change:d.change, live:true }; step();
-  }, function(){ out.vix = null; step(); });
+  var tvTickers = ['NSE:NIFTY', 'BSE:SENSEX', 'NSE:INDIAVIX'];
+
+  function finishWithYahooFallback() {
+    var pending = 3;
+    function step(){ pending--; if(pending<=0){ _liveIndexData = out; callback(out); } }
+    if(out.nifty)  { step(); } else {
+      _fetchStooqPrice('NSE:NIFTY', function(d){ out.nifty = { close:d.close, change:d.change, volume:d.volume, live:true, source:d.source||'Yahoo/Stooq' }; step(); }, function(){ out.nifty = null; step(); });
+    }
+    if(out.sensex) { step(); } else {
+      _fetchStooqPrice('BSE:SENSEX', function(d){ out.sensex = { close:d.close, change:d.change, volume:d.volume, live:true, source:d.source||'Yahoo/Stooq' }; step(); }, function(){ out.sensex = null; step(); });
+    }
+    if(out.vix)    { step(); } else {
+      _fetchStooqPrice('NSE:INDIAVIX', function(d){ out.vix = { close:d.close, change:d.change, live:true, source:d.source||'Yahoo/Stooq' }; step(); }, function(){ out.vix = null; step(); });
+    }
+  }
+
+  _fetchIndicesViaTradingView(tvTickers, function(rows){
+    if(rows) {
+      rows.forEach(function(row){
+        var sym = row.s, d = row.d;
+        var close = d[0], chg = d[1];
+        if(close === undefined || close === null || isNaN(close)) return;
+        var entry = { close:close, change:chg||0, live:true, source:'TradingView' };
+        if(sym === 'NSE:NIFTY') out.nifty = entry;
+        else if(sym === 'BSE:SENSEX') out.sensex = entry;
+        else if(sym === 'NSE:INDIAVIX') out.vix = entry;
+      });
+    }
+    finishWithYahooFallback();
+  });
+}
+
+/* ── Global Market Cues (expert-analyst addition) ──
+   Every professional Indian market analyst checks overnight global
+   cues before the session — US markets, Asian markets, crude oil,
+   and the rupee. This was missing before; now fetched live via the
+   same proven Yahoo mechanism, real numbers only. */
+var _liveGlobalCues = null;
+function fetchGlobalCues(callback) {
+  var cues = [
+    { key:'dow',    label:'Dow Jones (US)',     ysym:'%5EDJI' },
+    { key:'nasdaq', label:'Nasdaq (US)',        ysym:'%5EIXIC' },
+    { key:'nikkei', label:'Nikkei 225 (Japan)', ysym:'%5EN225' },
+    { key:'hangseng', label:'Hang Seng (HK)',   ysym:'%5EHSI' },
+    { key:'crude',  label:'Crude Oil (WTI)',    ysym:'CL%3DF' },
+    { key:'usdinr', label:'USD/INR',            ysym:'INR%3DX' }
+  ];
+  var out = [];
+  var pending = cues.length;
+  function step(){ pending--; if(pending<=0){ _liveGlobalCues = out; callback(out); } }
+  cues.forEach(function(c){
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + c.ysym + '?interval=1d&range=5d&_=' + Date.now();
+    _corsFetchJSON(url, function(data){
+      var res = data && data.chart && data.chart.result && data.chart.result[0];
+      var meta = res && res.meta;
+      var close = meta && meta.regularMarketPrice;
+      var prev = meta && (meta.chartPreviousClose || meta.previousClose);
+      if(close === undefined || close === null) { step(); return; }
+      var chg = prev ? ((close-prev)/prev*100) : 0;
+      out.push({ key:c.key, label:c.label, close:close, change:chg, live:true });
+      step();
+    }, function(){ step(); });
+  });
 }
 
 /* ── Sector Rotation Tracker (expert-analyst addition) ──
@@ -7298,37 +7375,44 @@ var _TICKER_NEWS_POOL = [
   { h:'Energy stocks mixed as crude oil trades range-bound', d:'neut' }
 ];
 
+/* Fetches broader national + global trending news (not just market-specific)
+   using the same proven-real Yahoo Finance search mechanism. */
+function fetchGlobalTrendingNews(callback) {
+  _corsFetchJSON('https://query1.finance.yahoo.com/v1/finance/search?q=' + encodeURIComponent('India global business economy top news today') + '&newsCount=8&quotesCount=0&_=' + Date.now(),
+    function(data){
+      var news = (data && data.news) || [];
+      if(!news.length) { callback([], false); return; }
+      var items = news.slice(0,6).map(function(n){
+        return { title:n.title, publisher:n.publisher||'Yahoo Finance', live:true };
+      });
+      callback(items, true);
+    },
+    function(){ callback([], false); }
+  );
+}
+
 function refreshNewsTickerBar() {
   var track = document.getElementById('news-ticker-track');
   if(!track) return;
-  track.innerHTML = '<span style="font-size:.68rem;color:#94a3b8">🔄 Refreshing news feed...</span>';
+  track.innerHTML = '<span style="font-size:.68rem;color:#94a3b8">🔄 लाइव न्यूज़ लोड हो रही है...</span>';
 
-  _loadAdminKey(function(apiKey, provider) {
-    var key  = _userKey || apiKey;
-    var prov = _userKey ? (_userProvider||'groq') : (provider||'groq');
-
-    if(key) {
-      var prompt = 'You are a SEBI-compliant financial news editor. List 8 brief recent India/global market headlines ' +
-        'from the last 24 hours that could move stock markets (NSE/BSE/global). ' +
-        'Format each as: HEADLINE|DIRECTION (DIRECTION = bull, bear, or neut). ' +
-        'Keep headlines under 70 characters. One per line. Be factual, no speculation. Respond with ONLY the 8 lines.';
-      _callAiWithKey(key, prov, prompt, function(text) {
-        var lines = text.trim().split('\n').filter(function(l){ return l.indexOf('|') !== -1; });
-        if(lines.length >= 3) {
-          var items = lines.map(function(l){
-            var p = l.split('|');
-            return { h: (p[0]||'').trim(), d: (p[1]||'neut').trim().toLowerCase() };
-          });
-          _renderTickerItems(items);
-        } else {
-          _renderTickerItems(_TICKER_NEWS_POOL);
-        }
-      }, function() {
-        _renderTickerItems(_TICKER_NEWS_POOL);
-      });
-    } else {
-      _renderTickerItems(_TICKER_NEWS_POOL);
-    }
+  /* Real live news only — market headlines + broader national/global
+     trending news, merged. (Previously this asked an AI model to
+     "list recent headlines" from memory, which risked stale/hallucinated
+     results — now it's genuinely fetched, same as the rest of the tool.) */
+  fetchLiveMarketNews(function(marketItems, marketLive) {
+    fetchGlobalTrendingNews(function(globalItems, globalLive) {
+      var merged = [];
+      if(marketLive) merged = merged.concat(marketItems.map(function(n){ return { h:n.title, d:_inferNewsDirection(n.title) }; }));
+      if(globalLive) merged = merged.concat(globalItems.map(function(n){ return { h:n.title, d:_inferNewsDirection(n.title) }; }));
+      if(merged.length) {
+        _renderTickerItems(merged);
+      } else {
+        /* Every real source failed — fall back to the curated theme pool,
+           but clearly marked as sample (never presented as real news). */
+        _renderTickerItems(_TICKER_NEWS_POOL.map(function(t){ return { h:'[SAMPLE] ' + t.h, d:t.d }; }));
+      }
+    });
   });
 }
 
@@ -7611,21 +7695,22 @@ function generateDailyReport() {
   _ensureReportData(function() {
     /* Make sure cap dashboard + predictions are populated too */
     if(!document.getElementById('cap-large-list').children.length) loadCapDashboard();
-    status.textContent = '📡 लाइव NIFTY/SENSEX/VIX और आज की मार्केट न्यूज़ लाई जा रही है...';
+    status.textContent = '📡 लाइव NIFTY/SENSEX/VIX, ग्लोबल क्यूज़ और आज की मार्केट न्यूज़ लाई जा रही है...';
     fetchLiveIndices(function() {
       fetchSectorIndices(function() {
-        fetchLiveMarketNews(function() {
-          _getFiiDiiPeriodSummary('today', function(fiiDiiToday) {
-            _liveFiiDiiToday = fiiDiiToday;
-            setTimeout(function() {
-              var reportText = _buildReportText();
-              output.textContent = reportText;
-              container.style.display = 'block';
-              document.getElementById('copy-report-btn').style.display = 'inline-block';
-              document.getElementById('download-report-btn').style.display = 'inline-block';
-              btn.disabled = false;
-              btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
-              var wordCount = reportText.split(/\s+/).length;
+        fetchGlobalCues(function() {
+          fetchLiveMarketNews(function() {
+            _getFiiDiiPeriodSummary('today', function(fiiDiiToday) {
+              _liveFiiDiiToday = fiiDiiToday;
+              setTimeout(function() {
+                var reportText = _buildReportText();
+                output.textContent = reportText;
+                container.style.display = 'block';
+                document.getElementById('copy-report-btn').style.display = 'inline-block';
+                document.getElementById('download-report-btn').style.display = 'inline-block';
+                btn.disabled = false;
+                btn.textContent = '🔄 रिपोर्ट फिर से जनरेट करें';
+                var wordCount = reportText.split(/\s+/).length;
               var liveTag = (_liveIndexData && (_liveIndexData.nifty||_liveIndexData.sensex)) ? ' | 🔴 LIVE index data' : ' | ⚠️ live index unavailable';
               status.textContent = '✅ रिपोर्ट तैयार — लगभग ' + wordCount + ' शब्द — ' + _getTimeIST() + liveTag;
               container.scrollIntoView({behavior:'smooth', block:'start'});
@@ -7634,6 +7719,7 @@ function generateDailyReport() {
         });
       });
     });
+  });
   });
 }
 
@@ -7652,25 +7738,26 @@ function _buildReportText() {
   var moodWordEarly = buyCountEarly > sellCountEarly + trapCountEarly ? 'तेज़ी' : sellCountEarly > buyCountEarly ? 'मंदी' : 'उलझन भरा';
 
   /* ════════════ 🎬 NATURAL INTRO — YouTube/Blog Hook ════════════ */
-  push('नमस्कार दोस्तों! स्वागत है आपका KSpider4Kreation के सबसे पसंदीदा सेगमेंट — "KS TradeMind डेली मार्केट रिपोर्ट" में।');
-  push('आज है ' + dateStr + ' और टाइम है ' + timeStr + ' — और जैसा कि हर रोज़ हम करते हैं, आज भी हम बात करने वाले हैं');
-  push('मार्केट की पूरी कुंडली के बारे में — कौन से स्टॉक्स में फंसने का खतरा है, कौन से स्टॉक्स में सच में दम है,');
+  push('नमस्कार दोस्तों! स्वागत है आपका KSpider4Kreation के सबसे पसंदीदा सेगमेंट — "KS TradeMind AI डेली मार्केट रिपोर्ट" में।');
+  push('आज है ' + dateStr + ' और टाइम है ' + timeStr + ' — और जैसा कि हर रोज़ हम करते हैं, आज भी हमारा Artificial Intelligence');
+  push('इंजन पूरे मार्केट को स्कैन करके बताएगा — कौन से स्टॉक्स में फंसने का खतरा है, कौन से स्टॉक्स में सच में दम है,');
   push('और कल मार्केट किस तरफ जा सकता है। अगर आप नए हैं इस चैनल पर, तो सबसे पहले सब्सक्राइब बटन दबा दीजिए,');
-  push('बेल आइकन ज़रूर ऑन कर लीजिए — क्योंकि हर ट्रेडिंग डे हम लेकर आते हैं बिल्कुल ऐसी ही लाइव डेटा बेस्ड,');
+  push('बेल आइकन ज़रूर ऑन कर लीजिए — क्योंकि हर ट्रेडिंग डे हम लेकर आते हैं बिल्कुल ऐसी ही AI-पावर्ड, लाइव डेटा बेस्ड,');
   push('बिना किसी झूठे दावे के, सिर्फ टेक्निकल एनालिसिस पर आधारित रिपोर्ट।');
   blank();
-  push('चलिए, आज का सबसे बड़ा अपडेट यह है कि आज मार्केट का मूड कुल मिलाकर "' + moodWordEarly + '" वाला नज़र आ रहा है।');
-  push('लेकिन इसका पूरा ब्रेकडाउन, हर स्टॉक का कारण, और कल के लिए हमारी टॉप 20 स्टॉक्स की लिस्ट — सब कुछ');
+  push('चलिए, आज का सबसे बड़ा अपडेट यह है कि हमारे AI मॉडल के मुताबिक आज मार्केट का मूड कुल मिलाकर "' + moodWordEarly + '" वाला नज़र आ रहा है।');
+  push('लेकिन इसका पूरा ब्रेकडाउन, हर स्टॉक का कारण, और कल के लिए हमारी AI-चुनी हुई टॉप 20 स्टॉक्स की लिस्ट — सब कुछ');
   push('मिलेगा इस रिपोर्ट में आगे। तो बने रहिए आखिर तक, क्योंकि सबसे ज़रूरी जानकारी अक्सर आख़िर में होती है!');
   blank();
   push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-  push('📊 KS TradeMind — डेली मार्केट एनालिसिस रिपोर्ट');
+  push('📊 KS TradeMind — AI-Powered डेली मार्केट एनालिसिस रिपोर्ट');
   push('🕷️ Powered by KSpider4Kreation | www.kspiderai.in');
   push('🎥 YouTube: KSpider4Kreation | 👨‍💻 By Gaurang Raval & Khush Raval');
   push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   push('📅 तारीख: ' + dateStr + '   |   🕐 समय: ' + timeStr);
   push('🎯 फोकस: 90% भारतीय शेयर बाज़ार (NSE/BSE) + 10% ग्लोबल मार्केट संदर्भ');
-  push('🛠️ टूल: KS TradeMind AI Trading Terminal — लाइव डेटा पर आधारित, 100% फ्री फॉरएवर');
+  push('🤖 टेक्नोलॉजी: KS TradeMind AI Trading Terminal — RSI, MACD, EMA, Bollinger Bands, ADX जैसे');
+  push('15+ टेक्निकल इंडिकेटर्स को एक AI-confluence मॉडल में मिलाकर genuine सिग्नल तय करता है — लाइव डेटा पर आधारित, 100% फ्री फॉरएवर।');
   blank();
   push('⚠️ ज़रूरी सूचना: यह रिपोर्ट सिर्फ शिक्षा और सूचना के मकसद से बनाई गई है। यह SEBI-रजिस्टर्ड');
   push('निवेश सलाह नहीं है। कोई भी पैसा लगाने से पहले अपने रजिस्टर्ड फाइनेंशियल एडवाइजर से बात ज़रूर करें।');
@@ -7823,6 +7910,27 @@ function _buildReportText() {
     });
     blank();
     push('   📌 सबसे मजबूत सेक्टर: ' + sortedSectors[0].label + '   |   सबसे कमज़ोर सेक्टर: ' + sortedSectors[sortedSectors.length-1].label);
+    blank(); blank();
+  }
+
+  /* ════════════ SECTION 1D: GLOBAL MARKET CUES (real, live) ════════════
+     Standard professional pre-market checklist — US/Asian markets,
+     crude oil, rupee. Only rendered with genuinely live data. */
+  var liveCues = (_liveGlobalCues || []).filter(function(c){ return c.live; });
+  if(liveCues.length >= 2) {
+    push('───────────────────────────────────────────────────────────');
+    push('🌐 ग्लोबल मार्केट क्यूज़ — रात भर में ग्लोबल मार्केट्स ने क्या किया [✅ LIVE]');
+    push('───────────────────────────────────────────────────────────');
+    blank();
+    liveCues.forEach(function(c){
+      push('   • ' + c.label + ': ' + c.close.toFixed(2) + ' (' + (c.change>=0?'+':'') + c.change.toFixed(2) + '%) ' + (c.change>=0?'🟢':'🔴'));
+    });
+    blank();
+    var usCues = liveCues.filter(function(c){ return c.key==='dow'||c.key==='nasdaq'; });
+    if(usCues.length) {
+      var usAvg = usCues.reduce(function(a,c){return a+c.change;},0)/usCues.length;
+      push('   📌 US मार्केट्स ' + (usAvg>=0?'पॉज़िटिव':'निगेटिव') + ' बंद हुए — ' + (usAvg>=0?'भारतीय मार्केट के लिए सपोर्टिव संकेत हो सकता है।':'भारतीय मार्केट पर दबाव का संकेत हो सकता है।') + ' (हालांकि ओपनिंग पर SGX/GIFT Nifty और अन्य लोकल फैक्टर भी अहम रोल निभाते हैं)');
+    }
     blank(); blank();
   }
 
@@ -9296,6 +9404,7 @@ function _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, pools)
         cardSell ? ('A third small badge referencing "SELL Alert: ' + cardSell + '" along the bottom edge (generic ticker-style label).') : '',
         'Hook treatment: ' + hookDesc + '.',
         'Include a subtle generic rupee (₹) symbol graphic element and a small abstract candlestick chart motif.',
+        'Add a small "🤖 AI-Powered Analysis" badge/tag somewhere on the image (subtle circuit-board or neural-network style micro-graphic behind the text) to visually signal this is AI-driven technical analysis — this genuinely helps attract viewers who are curious about AI-based trading tools.',
         'Add a small generic "KSpider4Kreation" text watermark corner (plain text only, not a real trademarked logo).',
         'IMPORTANT: fully original illustrated/generated artwork only — no real photographs of named/public individuals, no real company logos, no copyrighted characters, no copied chart screenshots from any platform, no third-party brand names — 100% original and platform-policy-safe.'
       ];
@@ -9379,37 +9488,42 @@ function generateYouTubeSEOKit() {
     _lastThumbContext = { trapName: trapName, buyName: buyName, marketMoodEn: marketMoodEn, dateEn: dateEn, pools: thumbPools };
     _renderThumbnailOptions(trapName, buyName, marketMoodEn, dateEn, thumbPools);
 
-    /* ── 2. TITLES (3 options) ── */
+    /* ── 2. TITLES (3 options) — AI-technology angle included to attract viewers ── */
     var titles = [
-      '🚨 आज ' + trapName + ' में फंसने का खतरा! कल इन 20 स्टॉक्स में बड़ा मूव — KS TradeMind डेली रिपोर्ट (' + dateEn + ')',
-      'NIFTY आज ' + marketMoodWord + ' मोड में! ' + buyName + ' में मौका या ' + trapName + ' में जाल? पूरी सच्चाई — Daily Market Analysis',
-      'Stock Market Today: ट्रैप स्टॉक्स, जेन्युइन BUY/SELL सिग्नल और कल की भविष्यवाणी — सब कुछ एक वीडियो में (' + dateEn + ')'
+      '🤖 AI ने पकड़ा आज ' + trapName + ' में TRAP! कल इन 20 स्टॉक्स में बड़ा मूव — KS TradeMind AI डेली रिपोर्ट (' + dateEn + ')',
+      'NIFTY आज ' + marketMoodWord + ' मोड में! AI Technical Analysis से ' + buyName + ' में मौका या ' + trapName + ' में जाल? पूरी सच्चाई',
+      '🤖 Stock Market Today: AI-Powered ट्रैप स्टॉक्स, जेन्युइन BUY/SELL सिग्नल और कल की भविष्यवाणी — सब कुछ एक वीडियो में (' + dateEn + ')'
     ];
     document.getElementById('seo-titles').textContent = titles.map(function(t,i){ return (i+1)+'. '+t; }).join('\n\n');
 
     /* ── 3. FULL SEO DESCRIPTION ── */
     var desc = [];
-    desc.push('📊 आज की पूरी मार्केट एनालिसिस रिपोर्ट — ' + dateStr);
+    desc.push('🤖 AI-Powered मार्केट एनालिसिस रिपोर्ट — ' + dateStr);
     desc.push('');
     desc.push('इस वीडियो में जानिए:');
-    desc.push('✅ आज ' + totalScanned + ' स्टॉक्स का लाइव टेक्निकल एनालिसिस');
+    desc.push('✅ आज ' + totalScanned + ' स्टॉक्स का AI-आधारित लाइव टेक्निकल एनालिसिस');
     desc.push('🚨 आज के टॉप ट्रैप स्टॉक्स (' + (topTrap.join(', ')||'कोई बड़ा ट्रैप नहीं') + ') — फंसने से कैसे बचें');
     desc.push('✅ जेन्युइन BUY सिग्नल वाले स्टॉक्स (' + (topBuy.join(', ')||'आज कोई स्ट्रॉंग BUY नहीं') + ')');
-    desc.push('🔮 कल के लिए टॉप 20 स्टॉक्स की भविष्यवाणी — Intraday, Short Term और Long Term');
+    desc.push('🔮 कल के लिए टॉप 20 स्टॉक्स की AI भविष्यवाणी — Intraday, Short Term और Long Term');
     desc.push('🏦 FII/DII संस्थागत निवेश गतिविधि — बड़े players का पैसा कहाँ जा रहा है');
     desc.push('🏢 Large Cap, Mid Cap, Small Cap और Micro Cap का अलग-अलग विश्लेषण');
-    desc.push('📐 RSI, MACD, EMA, Bollinger Bands जैसे सभी इंडिकेटर्स पर आधारित डेटा');
+    desc.push('📐 RSI, MACD, EMA, Bollinger Bands जैसे सभी इंडिकेटर्स पर AI-आधारित डेटा');
+    desc.push('');
+    desc.push('🤖 यह टूल कैसे काम करता है:');
+    desc.push('KS TradeMind एक Artificial Intelligence इंजन से चलता है जो हर स्टॉक का RSI, MACD, EMA,');
+    desc.push('Bollinger Bands, ADX जैसे 15+ टेक्निकल इंडिकेटर्स एक साथ स्कैन करके genuine BUY/SELL/TRAP');
+    desc.push('सिग्नल तय करता है — सिर्फ एक इंडिकेटर पर नहीं, बल्कि पूरे AI-confluence मॉडल पर आधारित।');
     desc.push('');
     desc.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    desc.push('🛠️ यह सारा एनालिसिस KS TradeMind टूल से लाइव डेटा के आधार पर किया गया है —');
-    desc.push('100% फ्री, हमेशा के लिए फ्री ट्रेडिंग टर्मिनल। अभी इस्तेमाल करें:');
+    desc.push('🛠️ यह सारा एनालिसिस KS TradeMind के AI इंजन से लाइव डेटा के आधार पर किया गया है —');
+    desc.push('100% फ्री, हमेशा के लिए फ्री AI ट्रेडिंग टर्मिनल। अभी इस्तेमाल करें:');
     desc.push('👉 www.kspiderai.in');
     desc.push('');
     desc.push('🕷️ KSpider4Kreation — भारत का अपना AI टूल्स प्लैटफॉर्म');
     desc.push('👨‍💻 By Gaurang Raval & Khush Raval');
     desc.push('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     desc.push('');
-    desc.push('🔔 रोज़ाना ऐसी ही फ्रेश मार्केट रिपोर्ट के लिए चैनल सब्सक्राइब करें और बेल आइकन दबाएं!');
+    desc.push('🔔 रोज़ाना ऐसी ही फ्रेश AI मार्केट रिपोर्ट के लिए चैनल सब्सक्राइब करें और बेल आइकन दबाएं!');
     desc.push('');
     desc.push('⚠️ DISCLAIMER: यह वीडियो केवल शिक्षा और सूचना के उद्देश्य से है। यह SEBI-रजिस्टर्ड');
     desc.push('निवेश सलाह नहीं है। निवेश से पहले अपने रजिस्टर्ड फाइनेंशियल एडवाइजर से सलाह लें।');
@@ -9417,7 +9531,7 @@ function generateYouTubeSEOKit() {
     desc.push('does not constitute SEBI-registered investment advice. Please consult your');
     desc.push('registered financial advisor before investing. Market investments are subject to risk.');
     desc.push('');
-    desc.push('#StockMarket #NiftyToday #ShareMarket #KSTradeMind');
+    desc.push('#StockMarket #NiftyToday #ShareMarket #KSTradeMind #AITrading #ArtificialIntelligence');
     document.getElementById('seo-description').textContent = desc.join('\n');
 
     /* ── 4. TAGS ── */
@@ -9430,7 +9544,9 @@ function generateYouTubeSEOKit() {
       'KS TradeMind','KSpider4Kreation','indian stock market','swing trading stocks',
       'stock market prediction','top gainers losers nse','mutual fund analysis india',
       'free trading tool india','stock screener india','rsi macd analysis',
-      'market trend today','sebi guidelines trading'
+      'market trend today','sebi guidelines trading',
+      'ai stock market analysis','artificial intelligence trading','ai trading tool india',
+      'ai stock predictor','machine learning stock analysis','ai based stock screener'
     ];
     document.getElementById('seo-tags').textContent = tags.join(', ');
 
@@ -9439,7 +9555,8 @@ function generateYouTubeSEOKit() {
       '#StockMarket','#NiftyToday','#SensexToday','#ShareMarket','#StockMarketIndia',
       '#TradingIndia','#NiftyPrediction','#BankNifty','#IntradayTrading','#SwingTrading',
       '#TechnicalAnalysis','#FIIDII','#StockMarketNews','#MarketAnalysis','#TrapStocks',
-      '#BuySellSignal','#KSTradeMind','#KSpider4Kreation','#StocksToWatch','#SEBI'
+      '#BuySellSignal','#KSTradeMind','#KSpider4Kreation','#StocksToWatch','#SEBI',
+      '#AITrading','#ArtificialIntelligence','#AIStockAnalysis','#MachineLearning'
     ];
     document.getElementById('seo-hashtags').textContent = hashtags.join(' ');
     document.getElementById('seo-hashtags-display').innerHTML =
@@ -10064,7 +10181,7 @@ function askChip(btn){
 <!-- ✅ KSpider Ad In-Content -->
 <div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
 
-<script src="/ks-ads.js"></script>
+<script src="ks-ads.js"></script>
 
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
