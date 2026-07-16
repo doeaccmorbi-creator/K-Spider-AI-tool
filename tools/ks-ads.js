@@ -172,6 +172,9 @@
     if (scope === 'homepage')   return _ksToolId == null;
     if (scope === 'tools')      return _ksToolId != null;
     if (scope === 'specific')   return _ksToolId != null && (ad.targetTools || []).indexOf(_ksToolId) > -1;
+    // homepage_specific: this file only ever runs on TOOL pages (never the
+    // homepage), so it matches only when the current tool is in the list.
+    if (scope === 'homepage_specific') return _ksToolId != null && (ad.targetTools || []).indexOf(_ksToolId) > -1;
     return true;
   }
 
