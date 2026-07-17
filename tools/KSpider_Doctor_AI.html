@@ -17502,7 +17502,11 @@ function waBroadcastPreview() {
   const drName = localStorage.getItem('kspider_doctor_name') || 'Your Doctor';
   const footer = `📞 *${drName}* | ${clinic}\n🌐 Powered by K Spider Doctor AI — kspiderai.in\n\n⚠️ This is an automated health message. For emergencies, call 108.`;
   const box = document.getElementById('wa-broadcast-preview');
-  if (box) box.textContent = msg + footer;
+  if (box) {
+    var fullMsg = msg + '\n\n' + footer;
+    box.textContent = fullMsg;
+    window._ksBroadcastMsg = fullMsg;
+  }
 }
 
 function waSendBroadcast() {
@@ -21364,7 +21368,7 @@ window.ksOPDWhatsAppShare = function() {
   var diag=g('provisional_diagnosis')||g('primary_diagnosis')||g('final_diagnosis')||'';
   var advice=g('advice')||g('doctor_advice')||'';
   var ptPhone=g('patient_phone').replace(/\D/g,'');
-  var msg='\uD83C\uDFE5 *'+hospName+'*\nDr. '+drName+(drPhone?' | \uD83D\uDCDE '+drPhone:'')+'\n\n';
+  var msg='\uD83C\uDFE5 *'+hospName+'*\n'+(drName.toLowerCase().startsWith('dr')?'':'Dr. ')+drName+(drPhone?' | \uD83D\uDCDE '+drPhone:'')+'\n\n';
   msg+='Dear '+ptName+',\n\n';
   if(diag)   msg+='\uD83D\uDD0D Diagnosis: '+diag+'\n';
   if(advice) msg+='\u2705 Advice: '+advice+'\n';
@@ -22012,7 +22016,7 @@ window.ksShareRxWhatsApp = function() {
   var drName=doctor.name||'Your Doctor';
   var hospName=doctor.clinic||'Our Clinic';
   var drPhone=doctor.phone||'';
-  var msg='\uD83C\uDFE5 *'+hospName+'*\nDr. '+drName+(doctor.degree?' ('+doctor.degree+')':'')+'\n';
+  var msg='\uD83C\uDFE5 *'+hospName+'*\n'+(drName.toLowerCase().startsWith('dr')?'':'Dr. ')+drName+(doctor.degree?' ('+doctor.degree+')':'')+'\n';
   if(drPhone) msg+='\uD83D\uDCDE '+drPhone+'\n';
   msg+='\n\uD83D\uDCC5 Date: '+date+(refNo?' | Ref: '+refNo:'')+'\n';
   msg+='Patient: *'+ptName+'*'+(ptAge?' | Age: '+ptAge+'yr':'')+'\n';
@@ -22095,6 +22099,414 @@ document.addEventListener('DOMContentLoaded', function() {
     // Save data periodically
     setInterval(ksSaveDoctorData, 60000);
   }, 1000);
+});
+
+</script>
+
+<script>
+// ============================================================
+// K SPIDER FIX v6.1
+// Fix 1: Explain to Patient button (inject into EXISTING erx buttons)
+// Fix 2: AI Diagnosis → e-Prescription (Select & Send to Rx)
+// Fix 3: Health Tips panel → show Google Sheet data + WhatsApp with Dr info
+// ============================================================
+
+// ──────────────────────────────────────────────────────────────
+// FIX 1: EXPLAIN TO PATIENT - inject properly into erx action row
+// ──────────────────────────────────────────────────────────────
+function ksInjectExplainBtnV2() {
+  // Don't inject twice
+  if (document.getElementById('ks-explain-btn')) return;
+  // Look for the erx action buttons row more broadly
+  var erxSec = document.getElementById('adv-eprescription');
+  if (!erxSec) return;
+
+  // Try multiple selectors for the preview/print button row
+  var targetBtn =
+    erxSec.querySelector('button[onclick="erxGeneratePreview()"]') ||
+    erxSec.querySelector('button[onclick*="erxPrint"]') ||
+    erxSec.querySelector('button[onclick*="Print"]') ||
+    erxSec.querySelector('.btn-primary');
+
+  var explainBtn = document.createElement('button');
+  explainBtn.id = 'ks-explain-btn';
+  explainBtn.onclick = ksExplainToPatient;
+  explainBtn.style.cssText = 'padding:9px 16px;background:linear-gradient(135deg,#7c3aed,#5b21b6);color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.84rem;';
+  explainBtn.innerHTML = '\uD83D\uDCAC Explain to Patient';
+
+  if (targetBtn && targetBtn.parentElement) {
+    targetBtn.parentElement.insertBefore(explainBtn, targetBtn.nextSibling);
+  } else {
+    // Fallback: insert at top of erx section
+    var topCard = erxSec.querySelector('.card');
+    if (topCard) topCard.insertBefore(explainBtn, topCard.firstChild);
+    else erxSec.insertBefore(explainBtn, erxSec.firstChild);
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+// FIX 2: AI DIAGNOSIS → e-PRESCRIPTION BRIDGE
+// Add "Send to Prescription" buttons on each DDX card
+// + a master "Send All to Prescription" button
+// ──────────────────────────────────────────────────────────────
+
+// Store AI results globally so we can access them from button clicks
+window._ksAIResults = [];
+
+// Patch aiAnalyseSymptoms to store results and add Send-to-Rx buttons
+var _origAiAnalyse = window.aiAnalyseSymptoms;
+window.aiAnalyseSymptoms = function() {
+  // Call original function first
+  if (typeof _origAiAnalyse === 'function') _origAiAnalyse.apply(this, arguments);
+
+  // After a tick, inject Send-to-Rx buttons into ddx output
+  setTimeout(function() {
+    ksInjectDDXSendButtons();
+  }, 200);
+};
+
+function ksInjectDDXSendButtons() {
+  var ddxEl = document.getElementById('ai-ddx-output');
+  if (!ddxEl) return;
+
+  // Add a master "Send All to Prescription" panel
+  var existing = ddxEl.querySelector('#ks-ddx-send-panel');
+  if (existing) existing.remove();
+
+  var panel = document.createElement('div');
+  panel.id = 'ks-ddx-send-panel';
+  panel.style.cssText = 'background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #16a34a;border-radius:12px;padding:16px;margin-top:14px;';
+  panel.innerHTML = '\
+<div style="font-weight:800;font-size:0.92rem;color:#15803d;margin-bottom:10px;">\uD83D\uDCDD Send AI Results to e-Prescription</div>\
+<div style="font-size:0.8rem;color:#166534;margin-bottom:12px;">Select which diagnosis to use in prescription. You can select one or multiple.</div>\
+<div id="ks-ddx-select-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>\
+<div style="display:flex;gap:8px;flex-wrap:wrap;">\
+<button onclick="ksSendSelectedDDXToRx()" style="flex:1;padding:10px;background:#15803d;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">\uD83D\uDCC4 Send Selected to Prescription</button>\
+<button onclick="ksSendAllDDXToRx()" style="flex:1;padding:10px;background:#2563eb;color:#fff;border:none;border-radius:8px;font-weight:700;cursor:pointer;font-size:0.85rem;">\u2705 Send All to Prescription</button>\
+</div>';
+  ddxEl.appendChild(panel);
+
+  // Populate the select list from ddx cards
+  var selectList = document.getElementById('ks-ddx-select-list');
+  if (!selectList) return;
+  selectList.innerHTML = '';
+
+  var ddxCards = ddxEl.querySelectorAll('.ddx-card');
+  ddxCards.forEach(function(card, i) {
+    var nameEl = card.querySelector('.ddx-name');
+    var probEl = card.querySelector('.ddx-prob');
+    var drugsEl = card.querySelector('.ddx-drugs');
+    var reasonEl = card.querySelector('.ddx-reason');
+
+    if (!nameEl) return;
+    var diagName = nameEl.textContent.trim();
+    var prob = probEl ? probEl.textContent.trim() : '';
+    var drugs = drugsEl ? drugsEl.textContent.replace('\uD83D\uDC8A Suggested: ', '').trim() : '';
+    var reason = reasonEl ? reasonEl.textContent.trim() : '';
+
+    // Store in global
+    if (!window._ksAIResults[i]) {
+      window._ksAIResults[i] = { name: diagName, prob: prob, drugs: drugs, reason: reason };
+    }
+
+    var item = document.createElement('label');
+    item.style.cssText = 'display:flex;align-items:flex-start;gap:8px;padding:8px 10px;background:#fff;border:1px solid #bbf7d0;border-radius:7px;cursor:pointer;';
+    item.innerHTML = '\
+<input type="checkbox" data-ddx-idx="'+i+'" style="margin-top:3px;width:16px;height:16px;cursor:pointer;" '+(i===0?'checked':'')+'>\
+<div><div style="font-size:0.84rem;font-weight:700;color:#15803d;">'+diagName+'</div>\
+<div style="font-size:0.74rem;color:#64748b;">'+prob+' — '+reason.slice(0,80)+'</div>\
+</div>';
+    selectList.appendChild(item);
+  });
+}
+
+// Send selected DDX results to e-Prescription
+window.ksSendSelectedDDXToRx = function() {
+  var checkboxes = document.querySelectorAll('#ks-ddx-select-list input[type="checkbox"]:checked');
+  if (!checkboxes.length) { alert('Please select at least one diagnosis'); return; }
+  var selectedDiagnoses = [];
+  var allDrugs = [];
+  checkboxes.forEach(function(cb) {
+    var idx = parseInt(cb.getAttribute('data-ddx-idx'));
+    var r = window._ksAIResults[idx];
+    if (r) {
+      selectedDiagnoses.push(r.name);
+      if (r.drugs) allDrugs.push(r.drugs);
+    }
+  });
+  ksSendDDXToErx(selectedDiagnoses, allDrugs);
+};
+
+window.ksSendAllDDXToRx = function() {
+  var allDiagnoses = [], allDrugs = [];
+  window._ksAIResults.forEach(function(r) {
+    if (r && r.name) { allDiagnoses.push(r.name); if (r.drugs) allDrugs.push(r.drugs); }
+  });
+  ksSendDDXToErx(allDiagnoses, allDrugs);
+};
+
+window.ksSendDDXToErx = function(diagnoses, drugs) {
+  // Get patient info from AI section
+  var g = function(id){ return (document.getElementById(id)||{value:''}).value||''; };
+  var ptAge    = g('ai-pt-age');
+  var ptGender = g('ai-pt-gender');
+
+  // Get investigations from AI output
+  var invEl = document.getElementById('ai-investigations-output');
+  var investigations = invEl ? invEl.textContent.replace('Recommended Tests:', '').trim() : '';
+
+  // Switch to e-Prescription
+  if (typeof saasSwitchSection === 'function') {
+    saasSwitchSection('adv-eprescription', '\uD83D\uDCDD e-Prescription', 'Build & print prescriptions', null);
+  }
+
+  setTimeout(function() {
+    // Fill diagnosis
+    var diagEl = document.getElementById('erx-diagnosis');
+    if (diagEl) diagEl.value = diagnoses.join('; ');
+
+    // Fill age/gender if empty
+    if (ptAge) { var ae=document.getElementById('erx-pt-age'); if(ae&&!ae.value) ae.value=ptAge; }
+    if (ptGender) { var ge=document.getElementById('erx-pt-gender'); if(ge&&!ge.value) ge.value=ptGender; }
+
+    // Fill investigations
+    if (investigations) {
+      var invInput = document.getElementById('erx-investigations');
+      if (invInput && !invInput.value) invInput.value = investigations;
+    }
+
+    // Add suggested drugs as medicine rows
+    if (drugs.length && typeof erxAddMedRow === 'function') {
+      // Parse drug suggestions - take first drug from each result
+      var parsedDrugs = [];
+      drugs.forEach(function(drugStr) {
+        // Take first drug name (before comma or dash)
+        var firstDrug = drugStr.split(/[,\.]/)[0].trim();
+        if (firstDrug && firstDrug.length > 2 && firstDrug.length < 60) {
+          parsedDrugs.push(firstDrug);
+        }
+      });
+
+      // Remove duplicate drugs
+      parsedDrugs = parsedDrugs.filter(function(d, i) { return parsedDrugs.indexOf(d) === i; });
+
+      // Add each drug as a new medicine row (max 5)
+      parsedDrugs.slice(0, 5).forEach(function(drug, i) {
+        setTimeout(function() {
+          erxAddMedRow();
+          var allInputs = document.querySelectorAll('.erx-drug-name');
+          var lastInput = allInputs[allInputs.length - 1];
+          if (lastInput) {
+            lastInput.value = drug;
+            lastInput.style.background = '#d1fae5';
+            setTimeout(function() { lastInput.style.background = ''; }, 1500);
+          }
+        }, i * 100);
+      });
+    }
+
+    // Generate preview after slight delay
+    setTimeout(function() {
+      if (typeof erxGeneratePreview === 'function') erxGeneratePreview();
+      if (typeof showToast === 'function') showToast('AI diagnosis results transferred to e-Prescription!');
+    }, 600);
+
+    // Show success notification
+    var toast = document.getElementById('ks-live-toast');
+    if (toast) {
+      toast.textContent = '\u2705 AI results sent to e-Prescription';
+      toast.style.display = 'block'; toast.style.opacity = '1';
+      setTimeout(function() { toast.style.opacity='0'; setTimeout(function(){toast.style.display='none';},300); }, 3000);
+    }
+  }, 500);
+};
+
+// ──────────────────────────────────────────────────────────────
+// FIX 3: HEALTH TIPS PANEL - replace the wa-broadcast section
+// with fetched Google Sheet data + WhatsApp with full Dr info
+// ──────────────────────────────────────────────────────────────
+
+// Override waBroadcastPreview to include full doctor info
+var _origWaBroadcast = window.waBroadcastPreview;
+window.waBroadcastPreview = function() {
+  if (typeof _origWaBroadcast === 'function') _origWaBroadcast.apply(this, arguments);
+
+  // After original runs, enhance the preview with doctor info
+  setTimeout(function() {
+    var previewBox = document.getElementById('wa-broadcast-preview');
+    if (!previewBox) return;
+    var existingMsg = previewBox.textContent || '';
+    if (!existingMsg.trim()) return;
+
+    // Build enhanced footer with doctor details
+    var doctor = {};
+    try { doctor = JSON.parse(localStorage.getItem('doctor_profile') || '{}'); } catch(e) {}
+    var drName  = doctor.name  || localStorage.getItem('kspider_doctor_name') || 'Your Doctor';
+    var clinic  = doctor.clinic|| localStorage.getItem('kspider_clinic_name') || 'Our Clinic';
+    var drPhone = doctor.phone || '';
+    var drDeg   = doctor.degree || '';
+
+    // Check if footer already added
+    if (existingMsg.includes(clinic)) return;
+    var fullMsg = existingMsg.trim() + '\n\n'
+      + '\uD83C\uDFE5 *' + clinic + '*\n'
+      + (drName.toLowerCase().startsWith('dr')?'':'Dr. ') + drName + (drDeg ? ' (' + drDeg + ')' : '') + '\n'
+      + (drPhone ? '\uD83D\uDCDE ' + drPhone + '\n' : '')
+      + '\uD83C\uDF10 kspiderai.in';
+
+    previewBox.textContent = fullMsg;
+    window._ksBroadcastMsg = fullMsg;
+  }, 100);
+};
+
+// Enhanced WhatsApp send with full doctor info
+window.ksSendWABroadcast = function() {
+  var msg = window._ksBroadcastMsg || (document.getElementById('wa-broadcast-preview') || {textContent:''}).textContent;
+  if (!msg.trim()) { alert('Please select a message template first'); return; }
+  var phone = (document.getElementById('wa-phone-number') || {value:''}).value.replace(/\D/g, '');
+  window.open('https://wa.me/' + (phone ? '91' + phone : '') + '?text=' + encodeURIComponent(msg), '_blank');
+};
+
+// Patch "Send via WhatsApp" button in broadcast section
+function ksPatchBroadcastWABtn() {
+  var engSec = document.getElementById('adv-patient-engagement');
+  if (!engSec) return;
+  var waBtns = engSec.querySelectorAll('button');
+  waBtns.forEach(function(btn) {
+    if (btn.textContent.includes('Send via WhatsApp') || btn.textContent.includes('WhatsApp')) {
+      if (!btn._ksPatchedWA) {
+        btn._ksPatchedWA = true;
+        btn.onclick = ksSendWABroadcast;
+      }
+    }
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+// HEALTH TIPS PANEL: Enhance to show full list from Google Sheet
+// with doctor info in WhatsApp messages
+// ──────────────────────────────────────────────────────────────
+var _ksTipsFetchedAndRendered = false;
+
+window.ksRenderHealthTipsPanel = function(tips) {
+  var panel = document.getElementById('ks-health-tips-panel');
+  if (!panel || !tips || !tips.length) {
+    if (panel) panel.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-light);font-size:0.81rem;">No tips found in sheet. Check the Google Sheet URL.</div>';
+    return;
+  }
+  _ksTipsFetchedAndRendered = true;
+
+  var html = '<div style="margin-bottom:8px;font-size:0.78rem;color:var(--text-light);">' + tips.length + ' health tips loaded. Click any tip to preview WhatsApp message.</div>';
+  html += '<div style="display:flex;flex-direction:column;gap:5px;max-height:380px;overflow-y:auto;">';
+  tips.forEach(function(tip, i) {
+    var title   = tip.title   || tip.tip_title   || tip.heading  || tip.topic    || ('Tip ' + (i+1));
+    var content = tip.content || tip.tip_content || tip.message  || tip.tip      || tip.body || '';
+    var cat     = tip.category|| tip.type        || tip.category_|| '';
+    var lang    = tip.language|| tip.lang        || '';
+    if (!content) return;
+    html += '<div id="ks-tip-' + i + '" onclick="ksSelectHealthTip(' + i + ')" '
+          + 'style="border:1px solid var(--border);border-radius:8px;padding:9px 11px;cursor:pointer;transition:background 0.15s;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;">';
+    html += '<strong style="font-size:0.82rem;color:var(--text);">' + _safeEsc(title) + '</strong>';
+    html += '<div style="display:flex;gap:4px;">';
+    if (cat)  html += '<span style="background:#eff6ff;color:#1d4ed8;border-radius:4px;padding:1px 5px;font-size:0.66rem;">' + _safeEsc(cat) + '</span>';
+    if (lang) html += '<span style="background:#f0fdf4;color:#15803d;border-radius:4px;padding:1px 5px;font-size:0.66rem;">' + _safeEsc(lang) + '</span>';
+    html += '</div></div>';
+    html += '<div style="font-size:0.74rem;color:var(--text-light);line-height:1.4;">' + _safeEsc(content).slice(0, 120) + (content.length > 120 ? '...' : '') + '</div>';
+    html += '</div>';
+  });
+  html += '</div>';
+  panel.innerHTML = html;
+  panel._tips = tips;
+};
+
+// Override ksSelectHealthTip to include full doctor info
+window.ksSelectHealthTip = function(idx) {
+  var panel = document.getElementById('ks-health-tips-panel');
+  var tips  = (panel && panel._tips) ? panel._tips : _ksHealthTipsCache;
+  if (!tips || !tips[idx]) return;
+
+  // Highlight selection
+  document.querySelectorAll('[id^="ks-tip-"]').forEach(function(el){ el.style.background=''; });
+  var tipEl = document.getElementById('ks-tip-' + idx);
+  if (tipEl) tipEl.style.background = '#eff6ff';
+
+  var tip     = tips[idx];
+  var content = tip.content || tip.tip_content || tip.message || tip.tip || tip.body || '';
+  var title   = tip.title   || tip.tip_title   || tip.heading  || tip.topic    || 'Health Tip';
+
+  // Get doctor profile
+  var doctor = {};
+  try { doctor = JSON.parse(localStorage.getItem('doctor_profile') || '{}'); } catch(e) {}
+  var drName   = doctor.name   || localStorage.getItem('kspider_doctor_name') || 'Your Doctor';
+  var hospName = doctor.clinic || localStorage.getItem('kspider_clinic_name') || 'Our Clinic';
+  var drPhone  = doctor.phone  || '';
+  var drDeg    = doctor.degree || '';
+
+  // Build promotional WhatsApp message
+  var msg = '\uD83C\uDFE5 *' + hospName + '* | ' + (drName.toLowerCase().startsWith('dr')?'':'Dr. ') + drName
+          + (drDeg ? ' (' + drDeg + ')' : '')
+          + (drPhone ? ' | \uD83D\uDCDE ' + drPhone : '')
+          + '\n\n';
+  msg += '\uD83D\uDCA1 *Health Tip: ' + title + '*\n\n';
+  msg += content + '\n\n';
+  msg += '\u2764\uFE0F Your health is our priority! Visit us for regular check-ups, preventive care & expert medical advice.\n\n';
+  msg += '\uD83D\uDCDE For appointments, call: ' + (drPhone || 'Contact clinic') + '\n';
+  msg += '\uD83C\uDF10 _Powered by K Spider Doctor AI \u2014 kspiderai.in_';
+
+  var preview = document.getElementById('ks-health-tip-preview');
+  if (preview) {
+    preview.value = msg;
+    preview.style.height = 'auto';
+    preview.style.height = (preview.scrollHeight + 4) + 'px';
+  }
+
+  var sb = document.getElementById('ks-tip-share-btn');
+  if (sb) sb.style.display = 'block';
+
+  window._ksSelectedTipMsg = msg;
+};
+
+// ──────────────────────────────────────────────────────────────
+// INIT - Re-run injections on section switch
+// ──────────────────────────────────────────────────────────────
+function _safeEsc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+
+function ksRunAllInjectionsV61() {
+  ksInjectExplainBtnV2();
+  ksPatchBroadcastWABtn();
+  // Re-inject tips if already fetched
+  if (_ksTipsFetchedAndRendered && _ksHealthTipsCache && _ksHealthTipsCache.length) {
+    ksRenderHealthTipsPanel(_ksHealthTipsCache);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+  setTimeout(function() {
+    ksRunAllInjectionsV61();
+
+    // Patch saasSwitchSection
+    var _orig = window.saasSwitchSection;
+    if (_orig && !_orig._v61Patched) {
+      window.saasSwitchSection = function(id, title, sub, btn) {
+        var r = _orig.apply(this, arguments);
+        setTimeout(ksRunAllInjectionsV61, 250);
+        return r;
+      };
+      window.saasSwitchSection._v61Patched = true;
+    }
+
+    // Also monitor AI DDX output for changes
+    var ddxEl = document.getElementById('ai-ddx-output');
+    if (ddxEl && typeof MutationObserver !== 'undefined') {
+      new MutationObserver(function(ml) {
+        var changed = ml.some(function(m) { return m.type === 'childList'; });
+        if (changed && ddxEl.children.length > 1) {
+          setTimeout(ksInjectDDXSendButtons, 150);
+        }
+      }).observe(ddxEl, { childList: true, subtree: false });
+    }
+  }, 1200);
 });
 
 </script>
