@@ -99,7 +99,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="https://www.kspiderai.in/assets/favicon-16.png"/>
 <link rel="apple-touch-icon" sizes="180x180" href="https://www.kspiderai.in/assets/apple-touch-icon.png"/>
 <link rel="shortcut icon" href="https://www.kspiderai.in/assets/favicon.ico" type="image/x-icon"/>
-<link rel="manifest" href="https://www.kspiderai.in/manifest.json"/>
+<link rel="manifest" href="/manifest.json"/>
 
 <!-- ── ADSENSE ── -->
 
@@ -250,8 +250,8 @@ body {
 .hbtn-yt:hover { background: var(--relt); }
 .hbtn-web { border-color: #a5b4fc; color: var(--pu); background: var(--pult); }
 /* AD TOP */
-.ad-top { margin-top: 62px; background: var(--w); border-bottom: 1px solid var(--g200); display:flex; justify-content:center; align-items:center; }
-.ad-slot { display:none; width:100%; text-align:center; }
+.ks-adwrap-top { margin-top: 62px; background: var(--w); border-bottom: 1px solid var(--g200); display:flex; justify-content:center; align-items:center; }
+.ks-ad-slot { display:none; width:100%; text-align:center; }
 /* LAYOUT */
 .layout { display:flex; max-width:1340px; margin:0 auto; padding:20px 14px; gap:18px; }
 /* SIDEBAR */
@@ -262,7 +262,7 @@ body {
 .nav-item:hover { background:var(--g100); color:var(--g900); }
 .nav-item.active { background:var(--walt); color:var(--wadk); font-weight:700; }
 .ni { font-size:15px; width:18px; text-align:center; flex-shrink:0; }
-.sb-ad { background:var(--w); border:1px solid var(--g200); border-radius:16px; box-shadow:var(--sh); min-height:260px; display:flex; align-items:center; justify-content:center; padding:12px; }
+.sb-ad { background:transparent; min-height:0; display:flex; align-items:center; justify-content:center; }
 /* CONTENT */
 .content { flex:1; min-width:0; display:flex; flex-direction:column; gap:16px; }
 /* RIGHT PANEL */
@@ -479,7 +479,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
 .donate-box h3 { font-size:18px; font-weight:800; color:var(--wadk); margin-bottom:6px; }
 .donate-box p { font-size:13px; color:var(--g600); margin-bottom:16px; }
 /* AD BLOCK */
-.ad-block { display:none; }
+.ks-ad-hidden { display:none; }
 /* RCARD */
 .rcard { background:var(--w); border:1px solid var(--g200); border-radius:16px; box-shadow:var(--sh); padding:16px; }
 .rc-t { font-size:13px; font-weight:700; color:var(--g800); margin-bottom:12px; display:flex; align-items:center; gap:6px; }
@@ -606,16 +606,36 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
 .mf-bot{border-top:1px solid rgba(255,255,255,.08);padding:16px 20px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;max-width:1340px;margin:0 auto;font-size:12px;color:#475569}
 @keyframes ksPulse{0%,100%{box-shadow:0 0 10px rgba(34,197,94,.5);}50%{box-shadow:0 0 20px rgba(34,197,94,.9);}}
 
-/* ── KSpider Ads Banner Centering Fix v1.0 ── */
-.ad-top {
+/* ── KSpider Ads Banner Centering + Sizing Fix v2.0 ──
+   Matches the same dimensions used on the homepage (index.html) so every
+   ad slot across the site looks consistent — no more full-width stretch. */
+.ks-adwrap-top {
   display: flex !important;
   justify-content: center !important;
   align-items: center !important;
   padding: 8px 0 !important;
 }
+/* Banner-style positions (wide, short) */
 [data-ks-slot="top-banner"],
-.ad-slot {
+[data-ks-slot="bottom-banner"],
+.ks-ad-slot {
   max-width: 970px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+}
+/* Rectangle-style positions (in-content, after-result) — matches the
+   homepage's ks-ad-rect sizing instead of stretching full width */
+[data-ks-slot="in-content"],
+[data-ks-slot="after-result"] {
+  max-width: 336px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+}
+/* Sidebar position — matches homepage's ks-ad-sidebar sizing */
+[data-ks-slot="sidebar-left"] {
+  max-width: 300px !important;
+  width: 100% !important;
+  min-height: 250px;
   margin: 0 auto !important;
 }
 
@@ -647,7 +667,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
   </div>
 </header>
 
-<div class="ad-top"><div data-ks-slot="top-banner" style="width:100%;text-align:center;"></div></div>
+<div class="ks-adwrap-top"><div data-ks-slot="top-banner" style="width:100%;text-align:center;"></div></div>
 
 <div class="layout">
 <!-- SIDEBAR -->
@@ -667,14 +687,11 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
     <a class="nav-item" href="#affiliate"><span class="ni">💰</span> Partner Tools</a>
     <a class="nav-item" href="#legal"><span class="ni">⚖️</span> Legal</a>
   </div>
-  <div class="sb-ad"><div style="border:1.5px dashed var(--g300);border-radius:8px;width:100%;min-height:230px;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:12px;text-align:center">📢 Ad 300×250<br>(AdSense Sidebar)</div></div>
+  <div class="sb-ad"><div data-ks-slot="sidebar-left" style="width:100%;min-height:250px;display:flex;align-items:center;justify-content:center;"></div></div>
 </aside>
 
 <!-- MAIN CONTENT -->
 <main class="content">
-
-<!-- TOP BANNER AD -->
-<div data-ks-slot="top-banner" style="width:100%;display:flex;justify-content:center;align-items:center;padding:8px 0;min-height:50px;box-sizing:border-box;"></div>
 
 <!-- HERO -->
 <section id="hero">
@@ -1165,7 +1182,7 @@ textarea { resize:vertical; min-height:80px; line-height:1.55; }
     </a>
   </div>
   <div class="rcard" style="min-height:260px;display:flex;align-items:center;justify-content:center">
-    <div style="border:1.5px dashed var(--g300);border-radius:8px;width:100%;min-height:230px;display:flex;align-items:center;justify-content:center;color:var(--g400);font-size:12px;text-align:center">📢 Ad 300×250<br>AdSense</div>
+    <div data-ks-slot="sidebar-left" style="width:100%;min-height:230px;display:flex;align-items:center;justify-content:center;"></div>
   </div>
 </aside>
 </div>
@@ -2138,9 +2155,22 @@ var TOOL_PROMOS = [
   '📊 Spam Risk Indicator + Countdown Timer + QR Code — all FREE!\n🔥 K Spider WhatsApp Suite!'
 ];
 
+/* Real feature list (matches the SEO "Features" section on this page) —
+   included in the share message so recipients know exactly what they're getting. */
+var TOOL_FEATURES = [
+  '🔗 Per-Link Topic Messaging — har link ka apna unique message',
+  '🤖 AI Message Generator — 10 styles (Viral, Emotional, Promotional & more)',
+  '📱 WA Link Generator — unsaved contacts ke liye bhi wa.me links',
+  '👥 Bulk Contacts — manual, bulk paste, ya CSV import',
+  '📊 Spam Risk Indicator — bhejne se pehle message quality check',
+  '📲 QR Code Generator — instant, downloadable',
+  '⏱️ Countdown Timer — spam se bachne ke liye delay control'
+];
+
 function buildToolMsg(){
   var p = TOOL_PROMOS[Math.floor(Math.random() * TOOL_PROMOS.length)];
-  return p + '\n\n🔥 Try this powerful free AI tool:\n🌐 https://kspiderai.in\n📺 YouTube: https://www.youtube.com/@KSpider4Kreation\n\n🕷️ K Spider AI Tool\nDeveloped by Gaurang Raval & Khush Raval';
+  var feats = TOOL_FEATURES.map(function(f){ return '  ' + f; }).join('\n');
+  return p + '\n\n✨ *Kya Kya Milega:*\n' + feats + '\n\n🔥 Try this powerful free AI tool:\n🌐 https://kspiderai.in\n📺 YouTube: https://www.youtube.com/@KSpider4Kreation\n\n🕷️ K Spider AI Tool\nDeveloped by Gaurang Raval & Khush Raval';
 }
 
 function shareTool(platform){
@@ -2583,7 +2613,7 @@ document.addEventListener("DOMContentLoaded",function(){ksRefInit("wa-bulk-sende
 <!-- ✅ Firebase SDK — ks-ads.js handles loading automatically -->
 <!-- Firebase SDK moved to ks-ads.js ensureFirebase() — no manual init needed -->
 
-<script src="ks-ads.js"></script>
+<script src="/ks-ads.js"></script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
 <script>
 (function(){
