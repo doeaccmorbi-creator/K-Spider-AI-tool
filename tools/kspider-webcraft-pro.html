@@ -2499,6 +2499,12 @@ Social Media, 2000, 📱" oninput="updatePreview()" style="min-height:90px;"></t
                 </div>
               </div>
 
+              <!-- ── Easy Data Collect (No Google Sheets needed) ── -->
+              <button onclick="gsOpenEasyCollect()" class="btn-p"
+                style="width:100%;padding:10px;margin-bottom:10px;font-size:.78rem;display:flex;align-items:center;justify-content:center;gap:7px;background:linear-gradient(135deg,#059669,#047857);">
+                ⚡ Easy Collect — Direct Entry (No Sheet Setup)
+              </button>
+
               <!-- ── Database Selector Dropdown ── -->
               <div class="section-field">
                 <label>🗂️ Active Database</label>
@@ -4106,9 +4112,12 @@ www.kspiderai.in
     <div class="panel">
       <div class="panel-head">
         <div class="pi">📱</div>
-        <div><div class="pt">App Preview</div><div class="ps">Mobile view mein dekho</div></div>
+        <div>
+          <div class="pt">App Preview</div>
+          <div class="ps" style="color:#059669;font-weight:700;font-size:.62rem;">🟢 Live Preview — auto-updates</div>
+        </div>
         <div style="margin-left:auto;display:flex;gap:6px;">
-          <button class="btn-s" onclick="appPreview()">🔄 Refresh</button>
+          <button class="btn-s" onclick="appGenerate()">🔄 Refresh</button>
           <button class="btn-s g" onclick="appDownload()">⬇ Download PWA</button>
         </div>
       </div>
@@ -4403,7 +4412,27 @@ function goPage(id, btn) {
   S.page = id;
   window.scrollTo(0,0);
   if(id==='builder') { initBuilder(); }
-  if(id==='design') { /* sync biz data from builder to design */ try{ ['biz-name','biz-tagline','biz-about','biz-phone','biz-wa','biz-email','biz-city','biz-services','biz-type'].forEach(f=>{ const src=document.getElementById(f); const dst=document.getElementById('dp-'+f.replace('biz-','')); if(src&&dst&&!dst.value&&src.value) dst.value=src.value; }); }catch(e){} }
+  if(id==='design') { try{ ['biz-name','biz-tagline','biz-about','biz-phone','biz-wa','biz-email','biz-city','biz-services','biz-type'].forEach(f=>{ const src=document.getElementById(f); const dst=document.getElementById('dp-'+f.replace('biz-','')); if(src&&dst&&!dst.value&&src.value) dst.value=src.value; }); }catch(e){} }
+  // Auto-generate App Preview when user opens App Builder
+  if (id === 'appbuilder') {
+    setTimeout(function() {
+      var frame = document.getElementById('app-preview-frame');
+      if (!frame || !frame.srcdoc || frame.srcdoc.length < 200) {
+        if (typeof appGenerate === 'function') appGenerate();
+      }
+      // Attach live-preview input listeners
+      var apg = document.getElementById('pg-appbuilder');
+      if (apg) {
+        apg.querySelectorAll('input:not([type=hidden]):not([type=color]):not([type=checkbox]), textarea, select').forEach(function(el) {
+          if (!el._appLiveOn) {
+            el.addEventListener('input',  function() { window.appLivePreview && appLivePreview(); });
+            el.addEventListener('change', function() { window.appLivePreview && appLivePreview(); });
+            el._appLiveOn = true;
+          }
+        });
+      }
+    }, 300);
+  }
 }
 
 // ── THEME ──
@@ -7320,9 +7349,8 @@ async function appGenerate() {
 // APP BUILDER: Preview + Download
 // ═══════════════════════════════════════════════════════════════
 function appPreview() {
-  if(!appGeneratedHTML) { appGenerate(); return; }
-  var frame = document.getElementById('app-preview-frame');
-  if(frame) frame.srcdoc = appGeneratedHTML;
+  // Always regenerate so latest input values are reflected
+  appGenerate();
 }
 
 function appDownload() {
@@ -9676,9 +9704,19 @@ details summary { transition: background .2s; }
     // This guarantees the form permanently writes to the one true sheet.
     var formHtml = _buildIntakeFormHTML(_GS_MASTER_SCRIPT, db.name);
     var blob = new Blob([formHtml], { type: 'text/html;charset=utf-8' });
-    var url = URL.createObjectURL(blob);
-    window.open(url, '_blank');
-    if (typeof showToast === 'function') showToast('✅ Form khul gaya — Save As karke share karo!', 'success');
+    var blobUrl = URL.createObjectURL(blob);
+    window.open(blobUrl, '_blank');
+    // Also download so user can host it for sharing
+    var dlA = document.createElement('a');
+    dlA.href = blobUrl;
+    dlA.download = 'kspider-client-form-' + (db.name||'form').replace(/\s+/g,'-').toLowerCase() + '.html';
+    dlA.style.display = 'none';
+    document.body.appendChild(dlA);
+    dlA.click();
+    setTimeout(function() { dlA.remove(); }, 800);
+    if (typeof showToast === 'function')
+      showToast('✅ Form khul gaya + downloaded! Netlify/GitHub pe upload karke share karo.', 'success');
+    gsShowFormShareGuide(db.name);
   };
 
   function _buildIntakeFormHTML(scriptUrl, dbName) {
@@ -10221,6 +10259,219 @@ function gsQuickApplyToBuilder() {
 
   if (typeof showToast === 'function')
     showToast('⚡ Applied to builder! "Generate Website" dabao.', 'success');
+}
+
+
+// ════════════════════════════════════════════════════════════════
+// APP BUILDER — LIVE PREVIEW ENGINE
+// Auto-updates preview whenever any App Builder field changes
+// ════════════════════════════════════════════════════════════════
+var _appPreviewTimer = null;
+function appLivePreview() {
+  clearTimeout(_appPreviewTimer);
+  _appPreviewTimer = setTimeout(function() {
+    if (typeof appGenerate === 'function') appGenerate();
+  }, 900);
+}
+
+(function initAppLivePreview() {
+  function doAttach() {
+    var pg = document.getElementById('pg-appbuilder');
+    if (!pg) { setTimeout(doAttach, 800); return; }
+    pg.querySelectorAll(
+      'input:not([type=hidden]):not([type=range]):not([type=file]), textarea, select'
+    ).forEach(function(el) {
+      if (!el._appLive) {
+        el.addEventListener('input',  appLivePreview);
+        el.addEventListener('change', appLivePreview);
+        el._appLive = true;
+      }
+    });
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', doAttach);
+  else doAttach();
+})();
+
+// ════════════════════════════════════════════════════════════════
+// FORM SHARE GUIDE — explains how to get a permanent shareable URL
+// (blob: URLs are local-only and can't be shared)
+// ════════════════════════════════════════════════════════════════
+function gsShowFormShareGuide(dbName) {
+  var old = document.getElementById('gsFormShareModal');
+  if (old) old.remove();
+  var modal = document.createElement('div');
+  modal.id = 'gsFormShareModal';
+  modal.className = 'modal-bg active';
+  modal.style.zIndex = '9999';
+  modal.onclick = function(e) { if (e.target === modal) modal.remove(); };
+  modal.innerHTML =
+    '<div class="modal" style="max-width:500px;width:95vw;">'
+    + '<div class="modal-head">'
+    +   '<div class="modal-title">📤 Form Share Kaise Karein?</div>'
+    +   '<button class="modal-close" onclick="document.getElementById(\'gsFormShareModal\').remove()">✕</button>'
+    + '</div>'
+    + '<div class="modal-body" style="font-size:.78rem;">'
+    + '<div style="background:rgba(5,150,105,.08);border:1.5px solid rgba(5,150,105,.2);border-radius:10px;padding:10px 12px;margin-bottom:12px;">'
+    +   '✅ <strong>Form downloaded ho gayi!</strong> Ab ise permanent link ke liye host karo:'
+    + '</div>'
+
+    + '<div style="display:flex;flex-direction:column;gap:8px;">'
+
+    + '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">'
+    +   '<div style="font-weight:800;font-size:.75rem;color:#00c7b7;margin-bottom:5px;">⚡ Option 1: Netlify Drop — 30 Seconds!</div>'
+    +   '<ol style="font-size:.68rem;color:var(--text2);line-height:1.8;padding-left:14px;margin:0;">'
+    +     '<li>Browser mein <strong>app.netlify.com/drop</strong> kholo</li>'
+    +     '<li>Downloaded HTML file drag-drop karo</li>'
+    +     '<li>Permanent link milega: <code>https://xyz.netlify.app</code></li>'
+    +   '</ol></div>'
+
+    + '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">'
+    +   '<div style="font-weight:800;font-size:.75rem;color:#1a1a2e;margin-bottom:5px;">🔧 Option 2: GitHub Pages (Free Forever)</div>'
+    +   '<ol style="font-size:.68rem;color:var(--text2);line-height:1.8;padding-left:14px;margin:0;">'
+    +     '<li>github.com → New Repository banao (public)</li>'
+    +     '<li>HTML file upload karo — naam <strong>index.html</strong> rakhna</li>'
+    +     '<li>Settings → Pages → Branch: main → Save</li>'
+    +     '<li>Link: <code>https://username.github.io/repo-name</code></li>'
+    +   '</ol></div>'
+
+    + '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">'
+    +   '<div style="font-weight:800;font-size:.75rem;color:#25d366;margin-bottom:5px;">💬 Option 3: Direct File Share</div>'
+    +   '<div style="font-size:.68rem;color:var(--text2);line-height:1.7;">'
+    +     'HTML file seedha WhatsApp / Email se bhejo. Client phone mein kisi bhi browser se open kare → data fill kare.'
+    +   '</div></div>'
+    + '</div>'
+
+    + '<div style="margin-top:10px;padding:8px 10px;background:rgba(255,107,0,.06);border-radius:8px;border-left:3px solid var(--p);font-size:.65rem;color:var(--text2);line-height:1.6;">'
+    + '💡 <strong>Fastest:</strong> Netlify Drop — 30 seconds mein permanent link. Bilkul free!'
+    + '</div>'
+    + '</div></div>';
+  document.body.appendChild(modal);
+}
+
+// ════════════════════════════════════════════════════════════════
+// EASY DATA COLLECT — Quick floating form panel
+// No Google Sheets setup needed. Data loads directly into
+// both Web Builder AND App Builder fields instantly.
+// ════════════════════════════════════════════════════════════════
+function gsOpenEasyCollect() {
+  var old = document.getElementById('gsEasyPanel');
+  if (old) { old.remove(); return; }
+  var panel = document.createElement('div');
+  panel.id = 'gsEasyPanel';
+  panel.style.cssText = 'position:fixed;inset:0;z-index:9990;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:12px;';
+  panel.onclick = function(e) { if (e.target === panel) panel.remove(); };
+
+  function ef(id, type, lbl, ph) {
+    if (type === 'textarea')
+      return '<div><label style="font-size:.68rem;font-weight:700;display:block;margin-bottom:3px;">' + lbl + '</label><textarea id="' + id + '" rows="2" placeholder="' + ph + '" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.78rem;font-family:inherit;resize:vertical;line-height:1.5;outline:none;"></textarea></div>';
+    return '<div><label style="font-size:.68rem;font-weight:700;display:block;margin-bottom:3px;">' + lbl + '</label><input id="' + id + '" type="' + type + '" placeholder="' + ph + '" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.78rem;outline:none;"></div>';
+  }
+
+  panel.innerHTML = '<div style="background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 24px 64px rgba(0,0,0,.25);">'
+    + '<div style="background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;padding:14px 18px;border-radius:16px 16px 0 0;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">'
+    +   '<div><div style="font-weight:800;font-size:.95rem;">⚡ Quick Client Data Entry</div>'
+    +   '<div style="font-size:.62rem;opacity:.85;">Fill here → Web + App Builder mein load hoga</div></div>'
+    +   '<button onclick="document.getElementById(\'gsEasyPanel\').remove()" style="background:rgba(255,255,255,.2);border:none;color:#fff;width:28px;height:28px;border-radius:50%;cursor:pointer;font-size:.85rem;line-height:1;">✕</button>'
+    + '</div>'
+    + '<div style="overflow-y:auto;padding:14px;flex:1;">'
+    +   '<div style="display:grid;gap:8px;">'
+    +     ef('ece-name',     'text',     'Business Name *',             'Raj Digital Studio')
+    +     ef('ece-tagline',  'text',     'Tagline',                     'Aapka Digital Partner!')
+    +     ef('ece-about',    'textarea', 'About *',                     'Hamara business 2015 se...')
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    +       ef('ece-phone',  'tel',   'Phone *',    '+91 98765 43210')
+    +       ef('ece-wa',     'tel',   'WhatsApp *', '9876543210')
+    +     '</div>'
+    +     ef('ece-city',     'text',     'City / Address *',            'Surat, Gujarat')
+    +     ef('ece-services', 'textarea', 'Services * (Name, Price, Emoji — one per line)', 'Website Design,5000,🌐\nLogo Design,1500,🎨')
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    +       ef('ece-offer',  'text',  'Offer',    '20% OFF!')
+    +       ef('ece-cta',    'text',  'CTA Text', 'Get Free Quote')
+    +     '</div>'
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    +       ef('ece-email',  'email', 'Email',    'info@biz.com')
+    +       ef('ece-upi',    'text',  'UPI ID',   'biz@upi')
+    +     '</div>'
+    +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+    +       ef('ece-hours',  'text',  'Working Hours', 'Mon-Sat 9-7')
+    +       '<div><label style="font-size:.68rem;font-weight:700;display:block;margin-bottom:3px;">Language</label><select id="ece-lang" style="width:100%;padding:8px 10px;border:1.5px solid #e5e7eb;border-radius:8px;font-size:.78rem;"><option value="hinglish">Hinglish</option><option value="en">English</option><option value="hi">Hindi</option><option value="gu">Gujarati</option><option value="mr">Marathi</option><option value="ta">Tamil</option></select></div>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div style="padding:10px 14px;border-top:1px solid #f0f0f0;display:flex;gap:8px;flex-shrink:0;">'
+    +   '<button onclick="gsEasyCollectApply()" style="flex:1;padding:12px;background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;border:none;border-radius:10px;font-weight:800;cursor:pointer;font-size:.84rem;font-family:inherit;">⚡ Load into Builder</button>'
+    +   '<button onclick="gsEasyCollectClear()" style="padding:12px 14px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;font-weight:700;cursor:pointer;font-size:.78rem;font-family:inherit;">🗑 Clear</button>'
+    + '</div>'
+    + '</div>';
+  document.body.appendChild(panel);
+}
+
+function gsEasyCollectApply() {
+  var g = function(id) { return (document.getElementById(id) || {value: ''}).value.trim(); };
+  var name = g('ece-name');
+  if (!name) {
+    var nm = document.getElementById('ece-name');
+    if (nm) { nm.style.borderColor = '#dc2626'; nm.focus(); }
+    if (typeof showToast === 'function') showToast('⚠️ Business Name required!', 'error');
+    return;
+  }
+  var payload = {
+    name: name, tagline: g('ece-tagline'), about: g('ece-about'),
+    phone: g('ece-phone'), wa: g('ece-wa'), email: g('ece-email'),
+    city: g('ece-city'), upiId: g('ece-upi'), type: 'Business',
+    services: g('ece-services'), offer: g('ece-offer'), cta: g('ece-cta'),
+    hours: g('ece-hours'), lang: g('ece-lang') || 'hinglish',
+    insta: '', fb: '', yt: '', logo: '', heroImg: '', upiImg: '',
+    portfolioImgs: '', serviceIcons: '', color: '#FF6B00'
+  };
+
+  // Apply to Web Builder + App Builder
+  if (typeof gsApplyClientToBuilder === 'function') gsApplyClientToBuilder(payload);
+
+  // Sync language selector
+  var langEl = document.getElementById('wb-lang');
+  if (langEl && payload.lang) { langEl.value = payload.lang; if (typeof wbLangChanged === 'function') wbLangChanged(); }
+  var appLang = document.getElementById('app-lang');
+  if (appLang && payload.lang) appLang.value = payload.lang;
+
+  // Add to in-memory records
+  if (window.GS) {
+    if (!GS.records) GS.records = [];
+    if (!GS.headers || !GS.headers.length) {
+      GS.headers = ['Timestamp','Business Name','Tagline','About','Phone','WhatsApp',
+        'Email','City/Address','UPI ID','Business Type','Services','Offer',
+        'Working Hours','CTA Text','Instagram','Facebook','YouTube',
+        'Logo URL','Hero Image URL','UPI QR URL','Portfolio Images (URLs)',
+        'Service Icon URLs','Website Color','Language'];
+    }
+    GS.records.unshift([new Date().toLocaleString('en-IN'),
+      payload.name, payload.tagline, payload.about, payload.phone, payload.wa,
+      payload.email, payload.city, payload.upiId, payload.type, payload.services,
+      payload.offer, payload.hours, payload.cta, payload.insta, payload.fb, payload.yt,
+      payload.logo, payload.heroImg, payload.upiImg, payload.portfolioImgs,
+      payload.serviceIcons, payload.color, payload.lang]);
+    GS.currentIdx = 0;
+    var nav = document.getElementById('gs-navigator');
+    if (nav) nav.style.display = 'block';
+    var tot = document.getElementById('gs-total');
+    if (tot) tot.textContent = GS.records.length;
+    if (typeof gsRenderRecord === 'function') gsRenderRecord(0);
+  }
+
+  document.getElementById('gsEasyPanel').remove();
+
+  // Trigger both builders' previews
+  if (typeof buildPreview === 'function') buildPreview();
+  if (typeof appGenerate  === 'function') setTimeout(appGenerate, 400);
+
+  if (typeof showToast === 'function')
+    showToast('✅ Data loaded into Web + App Builder! Preview dekho.', 'success');
+}
+
+function gsEasyCollectClear() {
+  ['ece-name','ece-tagline','ece-about','ece-phone','ece-wa',
+   'ece-email','ece-city','ece-upi','ece-services','ece-offer','ece-cta','ece-hours']
+  .forEach(function(id) { var el = document.getElementById(id); if (el) el.value = ''; });
 }
 
 (function KsToolAds() {
