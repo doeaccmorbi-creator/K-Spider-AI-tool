@@ -432,19 +432,27 @@
     }
     #toast.show { opacity: 1; pointer-events: auto; }
   
-/* ── KSpider Ad No-Jump Patch v1.0 ── */
-.ad-banner,.ad-top,.ad-after-tool,.ad-bottom,.ad-content,.ad-inline,.ad-sidebar{contain:layout style;}
+/* ── KSpider Ad No-Jump Patch v2.0 ──
+   Renamed to ks-prefixed classes (avoids browser/ad-blocker heuristics that
+   target "ad-" prefixed class names) and removed `contain:layout style`
+   (this was the direct cause of Chrome/Android's native "ADVERTISEMENT"
+   label overlay — confirmed via ks-ads.js's own documented fix notes). */
+.ks-adbanner{}
 [data-ks-slot]{transition:opacity 0.32s ease;will-change:opacity;box-sizing:border-box;overflow:hidden;}
 [data-ks-slot].ks-fading{opacity:0;}
-.ad-top [data-ks-slot],.ad-after-tool [data-ks-slot],.ad-bottom [data-ks-slot]{min-height:90px;}
-.ad-content [data-ks-slot]{min-height:120px;}
-.ad-inline [data-ks-slot]{min-height:60px;}
-.ad-sidebar [data-ks-slot]{min-height:250px;}
+.ks-adtop [data-ks-slot],.ks-adaftertool [data-ks-slot],.ks-adbottom [data-ks-slot]{min-height:90px;}
+.ks-adincontent [data-ks-slot]{min-height:120px;}
+.ks-adinline [data-ks-slot]{min-height:60px;}
+.ks-adsidebarslot [data-ks-slot]{min-height:250px;}
+/* Sizing to match the homepage — banners wide+centered, in-content narrower */
+[data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
+[data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
+[data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
 </style>
 </head>
 <body>
 <!-- ✅ KSpider Ad Top Banner -->
-<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="top-banner"></div></div>
+<div class="ks-adbanner ks-adtop" style="width:100%;text-align:center;padding:6px 0;"><div data-ks-slot="top-banner"></div></div>
 
 <!-- ═══════════ BACKGROUND EFFECTS ═══════════ -->
 <div class="grid-bg"></div>
@@ -10179,9 +10187,9 @@ function askChip(btn){
 </script>
 
 <!-- ✅ KSpider Ad In-Content -->
-<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
+<div class="ks-adbanner ks-adincontent" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><div data-ks-slot="in-content"></div></div>
 
-<script src="ks-ads.js"></script>
+<script src="/ks-ads.js"></script>
 
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
@@ -10208,7 +10216,7 @@ function askChip(btn){
 </script>
 
 <!-- ✅ KSpider Ad Bottom Banner -->
-<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="bottom-banner"></div></div>
+<div class="ks-adbanner ks-adbottom" style="width:100%;text-align:center;padding:8px 0;"><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ✅ K Spider Admin API Router v3.0 — Groq→Gemini→Claude -->
 <script>
