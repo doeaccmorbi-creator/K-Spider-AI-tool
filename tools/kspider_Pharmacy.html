@@ -844,14 +844,22 @@ body { background:var(--BG); color:var(--T1); }
 [data-theme="dark"] .affiliate-box{background:rgba(212,90,0,.06);border-color:rgba(212,90,0,.2);}
 
 
-/* ── KSpider Ad No-Jump Patch v1.0 ── */
-.ad-banner,.ad-top,.ad-after-tool,.ad-bottom,.ad-content,.ad-inline,.ad-sidebar{contain:layout style;}
+/* ── KSpider Ad No-Jump Patch v2.0 ──
+   Renamed to ks-prefixed classes (avoids browser/ad-blocker heuristics that
+   target "ad-" prefixed class names) and removed `contain:layout style`
+   (this was the direct cause of Chrome/Android's native "ADVERTISEMENT"
+   label overlay — confirmed via ks-ads.js's own documented fix notes). */
+.ks-adbanner{}
 [data-ks-slot]{transition:opacity 0.32s ease;will-change:opacity;box-sizing:border-box;overflow:hidden;}
 [data-ks-slot].ks-fading{opacity:0;}
-.ad-top [data-ks-slot],.ad-after-tool [data-ks-slot],.ad-bottom [data-ks-slot]{min-height:90px;}
-.ad-content [data-ks-slot]{min-height:120px;}
-.ad-inline [data-ks-slot]{min-height:60px;}
-.ad-sidebar [data-ks-slot]{min-height:250px;}
+.ks-adtop [data-ks-slot],.ks-adaftertool [data-ks-slot],.ks-adbottom [data-ks-slot]{min-height:90px;}
+.ks-adincontent [data-ks-slot]{min-height:120px;}
+.ks-adinline [data-ks-slot]{min-height:60px;}
+.ks-adsidebarslot [data-ks-slot]{min-height:250px;}
+/* Sizing to match the homepage — banners wide+centered, in-content narrower */
+[data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
+[data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
+[data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
 </style>
 <link rel="manifest" href="data:application/json;charset=utf-8,{
   &quot;name&quot;: &quot;K Spider AI Pharmacy Pro&quot;,
@@ -1018,7 +1026,7 @@ body { background:var(--BG); color:var(--T1); }
 </head>
 <body>
 <!-- ✅ KSpider Ad Top -->
-<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="top-banner"></div></div>
+<div class="ks-adbanner ks-adtop" style="width:100%;text-align:center;padding:6px 0;"><div data-ks-slot="top-banner"></div></div>
 
 <button class="theme-btn" id="themeBtn" onclick="toggleTheme()" title="Toggle Dark/Light Mode">🌙</button>
 <!-- SIDEBAR -->
@@ -1108,10 +1116,8 @@ body { background:var(--BG); color:var(--T1); }
 
 
   <!-- Header Ad Banner -->
-  <div class="header-ad">
-    <div style="font-size:11px;font-weight:700;margin-bottom:3px">📢 Advertisement Zone</div>
-    <div style="font-size:8.5px">Place your Google AdSense banner here · 728×90 Leaderboard</div>
-    <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="XXXX" data-ad-format="auto" data-full-width-responsive="true"></ins> -->
+  <div class="ks-adbanner ks-adbelowtitle" style="width:100%;text-align:center;padding:6px 0;max-width:728px;margin:0 auto;">
+    <div data-ks-slot="below-title"></div>
   </div>
 
   <!-- Daily Boosters -->
@@ -5219,11 +5225,9 @@ Use the generators below to auto-fill this box, then share to any platform!" row
     <div id="socTracker" class="soc-tracker-grid"></div>
   </div>
 
-  <!-- ADENSE SLOT -->
-  <div class="ad-slot" style="margin-top:14px">
-    <div class="ad-ico">💰</div>
-    <div style="font-weight:700;font-size:10px;margin-bottom:3px">Advertisement</div>
-    <div style="font-size:8px">AdSense publisher zone — kspiderai.in</div>
+  <!-- KSpider Managed Ad Slot -->
+  <div class="ks-adbanner ks-adafterresult" style="margin-top:14px;max-width:336px;width:100%;margin-left:auto;margin-right:auto;">
+    <div data-ks-slot="after-result"></div>
   </div>
 
   <div class="bbar">Powered by <a href="https://www.kspiderai.in" target="_blank">K Spider AI Tool</a> · 
@@ -5854,14 +5858,10 @@ function initNewFeatures(){
 }
 </style>
 
-<!-- ══ MID-CONTENT AD PLACEHOLDER ══ -->
+<!-- ══ KSpider Managed Ad Slot (Mid-Content) ══ -->
 <div style="margin-left:var(--SB);padding:0 20px 4px;">
-  <div style="background:linear-gradient(135deg,rgba(0,135,90,.05),rgba(0,102,204,.04));border:1px dashed rgba(0,135,90,.2);border-radius:10px;padding:12px 16px;text-align:center;font-size:9px;color:var(--T4);margin-bottom:14px;position:relative;min-height:90px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;">
-    <div style="position:absolute;top:4px;right:8px;font-size:7px;opacity:.5;font-family:var(--M)">AD</div>
-    <div style="font-size:12px;margin-bottom:3px">📢</div>
-    <div style="font-weight:700;font-size:10px">[Mid-Content Ad] — 728×90 Leaderboard</div>
-    <div style="font-size:8px">Replace with Google AdSense ins tag · ca-pub-XXXX</div>
-    <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXX" data-ad-slot="XXXX" data-ad-format="auto" data-full-width-responsive="true"></ins> -->
+  <div class="ks-adbanner ks-adincontent" style="max-width:728px;width:100%;margin:0 auto 14px;">
+    <div data-ks-slot="in-content"></div>
   </div>
 </div>
 
@@ -6082,13 +6082,9 @@ function initNewFeatures(){
         <a href="https://chat.whatsapp.com/FKIc3m3SsgOLD8F5oKcmih" target="_blank">👥 WhatsApp Group</a>
       </div>
     </div>
-    <!-- AdSense Footer Sidebar -->
-    <div style="background:rgba(255,255,255,.03);border:1px dashed rgba(0,255,178,.1);border-radius:10px;padding:10px;text-align:center;font-size:9px;color:rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;min-height:80px;flex-direction:column;gap:4px;">
-      <ins class="adsbygoogle"
-           style="display:inline-block;width:300px;height:250px"
-           data-ad-client="ca-pub-XXXX"
-           data-ad-slot="9999999999"></ins>
-      <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+    <!-- KSpider Managed Ad Slot (Sidebar) -->
+    <div class="ks-adbanner ks-adsidebarslot" style="max-width:300px;width:100%;margin:0 auto;min-height:250px;display:flex;align-items:center;justify-content:center;">
+      <div data-ks-slot="sidebar-left"></div>
     </div>
   </div>
   <!-- Footer Bottom -->
@@ -6315,10 +6311,10 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
 
 
 <!-- ✅ KSpider Ad Mid -->
-<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
+<div class="ks-adbanner ks-adincontent" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><div data-ks-slot="in-content"></div></div>
 
 <!-- ✅ KSpider Admin Ad Manager -->
-<script src="ks-ads.js"></script>
+<script src="/ks-ads.js"></script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
 (function(){
@@ -6344,7 +6340,7 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
 </script>
 
 <!-- ✅ KSpider Ad Bottom -->
-<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="bottom-banner"></div></div>
+<div class="ks-adbanner ks-adbottom" style="width:100%;text-align:center;padding:8px 0;"><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ✅ K Spider Admin API Router v3.0 -->
 <script>
