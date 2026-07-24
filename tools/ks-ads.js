@@ -1,6 +1,17 @@
 /*!
- * K SPIDER AI — ks-ads.js  v12.0
+ * K SPIDER AI — ks-ads.js  v12.1
  * www.kspiderai.in | By Gaurang Raval & Khush Raval | 2026
+ *
+ * UPDATES v12.1:
+ *  ✅ CRITICAL: Renamed .ks-ad-wrap / .ks-ad-inner / .ks-ad-leaderboard /
+ *     .ks-lb-970 → .ksp-slotwrap / .ksp-slotinner / .ksp-slotwide /
+ *     .ksp-wide970. These class names still contained "ad" as a
+ *     recognizable token (ks-AD-wrap), which some ad-blocker filter
+ *     lists match on even when it's not a prefix — that's what was
+ *     still causing a stray "Advertisement" label/box to appear even
+ *     after v11.3's contain:layout fix and v11.4's AdSense-hiding fix.
+ *     Renamed to strings with zero "ad" substring anywhere, closing
+ *     this off completely.
  *
  * UPDATES v12.0:
  *  ✅ NEW: Per-tool ad targeting. Admin can now pick "Everywhere" /
@@ -12,8 +23,8 @@
  *     targetScope field) keep showing exactly as before ("Everywhere").
  *
  * UPDATES v11.4:
- *  ✅ .ks-ad-inner: inline-block → block + margin:0 auto (true center, no left overflow)
- *  ✅ .ks-ad-wrap: display:flex + justify-content:center added (perfect centering)
+ *  ✅ .ksp-slotinner: inline-block → block + margin:0 auto (true center, no left overflow)
+ *  ✅ .ksp-slotwrap: display:flex + justify-content:center added (perfect centering)
  *  ✅ AdSense ins.adsbygoogle hidden (prevents AdSense ADVERTISEMENT label conflict)
  *
  * UPDATES v11.3:
@@ -97,42 +108,42 @@
     'html{overflow-x:hidden}',
       /* Wrapper — NOTE: NO contain property — contain:style triggers Chrome/Android
          to inject a native "ADVERTISEMENT" label on ad containers */
-      '.ks-ad-wrap{width:100%;text-align:center;max-width:100vw;overflow:hidden;box-sizing:border-box;position:relative;display:flex;justify-content:center;align-items:center}',
+      '.ksp-slotwrap{width:100%;text-align:center;max-width:100vw;overflow:hidden;box-sizing:border-box;position:relative;display:flex;justify-content:center;align-items:center}',
       /* Inner fades between banners — no pop/jump. block+margin:auto = true centering */
-      '.ks-ad-inner{display:block;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;',
+      '.ksp-slotinner{display:block;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;',
         'border-radius:8px;transition:opacity .32s ease;will-change:opacity;margin:0 auto}',
-      '.ks-ad-inner.ks-fading{opacity:0}',
+      '.ksp-slotinner.ks-fading{opacity:0}',
       /* ── v11.1: force every element inside an ad to respect container width ── */
-      '.ks-ad-inner *{max-width:100%;box-sizing:border-box}',
-      '.ks-ad-inner img,.ks-ad-inner video,.ks-ad-inner iframe{max-width:100%;height:auto;display:block}',
+      '.ksp-slotinner *{max-width:100%;box-sizing:border-box}',
+      '.ksp-slotinner img,.ksp-slotinner video,.ksp-slotinner iframe{max-width:100%;height:auto;display:block}',
       /* Slot-specific min-heights */
-      '[data-ks-slot="top-banner"] .ks-ad-inner,',
-      '[data-slot="top-banner"] .ks-ad-inner{min-height:90px}',
-      '[data-ks-slot="bottom-banner"] .ks-ad-inner,',
-      '[data-slot="bottom-banner"] .ks-ad-inner{min-height:90px}',
-      '[data-ks-slot="in-content"] .ks-ad-inner,',
-      '[data-slot="in-content"] .ks-ad-inner{min-height:120px}',
-      '[data-ks-slot="after-result"] .ks-ad-inner,',
-      '[data-slot="after-result"] .ks-ad-inner{min-height:120px}',
-      '[data-ks-slot="sidebar-left"] .ks-ad-inner,',
-      '[data-ks-slot="sidebar-right"] .ks-ad-inner,',
-      '[data-slot="sidebar-left"] .ks-ad-inner,',
-      '[data-slot="sidebar-right"] .ks-ad-inner{min-height:250px;width:300px;max-width:100%}',
+      '[data-ks-slot="top-banner"] .ksp-slotinner,',
+      '[data-slot="top-banner"] .ksp-slotinner{min-height:90px}',
+      '[data-ks-slot="bottom-banner"] .ksp-slotinner,',
+      '[data-slot="bottom-banner"] .ksp-slotinner{min-height:90px}',
+      '[data-ks-slot="in-content"] .ksp-slotinner,',
+      '[data-slot="in-content"] .ksp-slotinner{min-height:120px}',
+      '[data-ks-slot="after-result"] .ksp-slotinner,',
+      '[data-slot="after-result"] .ksp-slotinner{min-height:120px}',
+      '[data-ks-slot="sidebar-left"] .ksp-slotinner,',
+      '[data-ks-slot="sidebar-right"] .ksp-slotinner,',
+      '[data-slot="sidebar-left"] .ksp-slotinner,',
+      '[data-slot="sidebar-right"] .ksp-slotinner{min-height:250px;width:300px;max-width:100%}',
       /* ── v11.1 LEADERBOARD (728x90 / 970x90) RESPONSIVE FIX ──
          Desktop: full 728/970px width, centered.
          Tablet (≤900px): scales to viewport width.
          Mobile (≤480px): drops to 320x50/100 safe size automatically. */
-      '.ks-ad-leaderboard{width:100%;max-width:728px;margin:0 auto;overflow:hidden}',
-      '.ks-ad-leaderboard.ks-lb-970{max-width:970px}',
+      '.ksp-slotwide{width:100%;max-width:728px;margin:0 auto;overflow:hidden}',
+      '.ksp-slotwide.ksp-wide970{max-width:970px}',
       '@media(max-width:900px){',
-        '.ks-ad-leaderboard,.ks-ad-leaderboard.ks-lb-970{max-width:100%}',
+        '.ksp-slotwide,.ksp-slotwide.ksp-wide970{max-width:100%}',
       '}',
       '@media(max-width:480px){',
-        '[data-ks-slot="top-banner"] .ks-ad-inner,',
-        '[data-slot="top-banner"] .ks-ad-inner,',
-        '[data-ks-slot="bottom-banner"] .ks-ad-inner,',
-        '[data-slot="bottom-banner"] .ks-ad-inner{min-height:50px}',
-        '.ks-ad-leaderboard{max-height:100px}',
+        '[data-ks-slot="top-banner"] .ksp-slotinner,',
+        '[data-slot="top-banner"] .ksp-slotinner,',
+        '[data-ks-slot="bottom-banner"] .ksp-slotinner,',
+        '[data-slot="bottom-banner"] .ksp-slotinner{min-height:50px}',
+        '.ksp-slotwide{max-height:100px}',
       '}'
     ].join('');
     (document.head || document.documentElement).appendChild(s);
@@ -253,14 +264,14 @@
   global.ksAdTrackClick = global.kspiderAdClick;
 
   /* ════════════════════════════════════════════════════════
-     INNER ELEMENT — get or create .ks-ad-inner
+     INNER ELEMENT — get or create .ksp-slotinner
   ════════════════════════════════════════════════════════ */
   function getInner(container) {
-    var inner = container.querySelector('.ks-ad-inner');
+    var inner = container.querySelector('.ksp-slotinner');
     if (!inner) {
       container.innerHTML = '';
       inner = document.createElement('div');
-      inner.className = 'ks-ad-inner';
+      inner.className = 'ksp-slotinner';
       container.appendChild(inner);
     }
     return inner;
@@ -494,9 +505,9 @@
   function tagLeaderboardSize(container, ad) {
     var w = parseInt(ad.width || (ad.size && String(ad.size).split('x')[0]) || 0, 10);
     if (w >= 970) {
-      container.classList.add('ks-ad-leaderboard', 'ks-lb-970');
+      container.classList.add('ksp-slotwide', 'ksp-wide970');
     } else if (w >= 600) {
-      container.classList.add('ks-ad-leaderboard');
+      container.classList.add('ksp-slotwide');
     }
   }
 
@@ -617,11 +628,11 @@
 
   /* Public API */
   global.KsAds = {
-    version:   '12.0',
+    version:   '12.1',
     reload:    initAllSlots,
     trackClick:global.kspiderAdClick
   };
 
-  console.log('[ks-ads.js] v12.0 ready (per-tool targeting + ADVERTISEMENT-free) | kspiderai.in | tool: ' + (_ksToolId || 'homepage/none'));
+  console.log('[ks-ads.js] v12.1 ready (per-tool targeting + ADVERTISEMENT-free) | kspiderai.in | tool: ' + (_ksToolId || 'homepage/none'));
 
 })(window);
