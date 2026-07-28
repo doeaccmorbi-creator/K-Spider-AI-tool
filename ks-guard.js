@@ -253,7 +253,7 @@
     // IMAGE AD
     // ══════════════════════════════
     if (ad.type === 'image' && ad.imgUrl) {
-      inner = '<img src="' + safe(ad.imgUrl) + '" alt="' + safe(ad.imgAlt || 'Advertisement') + '" ' +
+      inner = '<img src="' + safe(ad.imgUrl) + '" alt="' + safe(ad.imgAlt || ' ') + '" ' +
         'style="' + sizeStyle + 'height:auto;max-height:100%;display:block;margin:0 auto;border-radius:8px;object-fit:cover" ' +
         'loading="lazy" onerror="this.closest(\'[data-ks-slot]\').style.display=\'none\'">';
 
@@ -405,7 +405,7 @@
     // ══════════════════════════════
     } else if (ad.type === 'html') {
       el.innerHTML =
-        '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
+        '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em"> </div>' +
         '<div style="width:100%">' + (ad.htmlCode || '') + '</div>';
       trackImpression(ad._id);
       return;
@@ -422,7 +422,7 @@
       : '<div style="' + sizeStyle + '">' + inner + '</div>';
 
     el.innerHTML =
-      '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em">ADVERTISEMENT</div>' +
+      '<div style="font-size:10px;color:#aaa;margin-bottom:4px;text-align:center;letter-spacing:.05em"> </div>' +
       wrap;
 
     trackImpression(ad._id);
