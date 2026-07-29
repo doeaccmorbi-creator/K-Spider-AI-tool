@@ -3666,15 +3666,22 @@ function listenNotifications(){
   if(!window._fb||!_user) return;
   if(_notifUnsub){_notifUnsub();_notifUnsub=null;}
   try{
+    // NOTE: no orderBy() here — see openChat()/loadConversations() for why
+    // (avoids a Firestore composite-index requirement that, if missing,
+    // silently breaks this listener). Sorted client-side below instead.
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'notifications'),
       window._fb.where('toUid','==',_user.uid),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
     _notifUnsub=window._fb.onSnapshot(q,function(snap){
       _notifCache=[];
       snap.forEach(function(d){_notifCache.push({id:d.id,...d.data()});});
+      _notifCache.sort(function(a,b){
+        var ta=a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0;
+        var tb=b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0;
+        return tb-ta;
+      });
       var unread=_notifCache.filter(function(n){return !n.read;}).length;
       var badge=document.getElementById('nBadge');
       if(badge){badge.textContent=unread>99?'99+':unread;badge.style.display=unread>0?'flex':'none';}
@@ -5608,11 +5615,12 @@ async function loadMyApplications(){
       return;
     }
     // Get notifications (applications) for this recruiter
+    // NOTE: no orderBy() — avoids needing a 3-field composite index (toUid +
+    // type + createdAt). Sorted client-side below instead.
     const notifsQ=window._fb.query(
       window._fb.collection(window._fb.db,'notifications'),
       window._fb.where('toUid','==',_user.uid),
       window._fb.where('type','==','new_application'),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
     const notifsSnap=await window._fb.getDocs(notifsQ);
@@ -5622,7 +5630,14 @@ async function loadMyApplications(){
     }
     box.innerHTML='';
     let unread=0;
-    notifsSnap.forEach(d=>{
+    const notifDocs=[];
+    notifsSnap.forEach(d=>{ notifDocs.push(d); });
+    notifDocs.sort((a,b)=>{
+      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
+      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
+      return tb-ta;
+    });
+    notifDocs.forEach(d=>{
       const n=d.data();
       if(!n.read) unread++;
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,n,false));
@@ -5739,10 +5754,10 @@ async function loadMySubmittedApps(){
   }
   box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div><div style="font-size:12px;">Loading…</div></div>';
   try{
+    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'applications'),
       window._fb.where('applicantId','==',_user.uid),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(20)
     );
     const snap=await window._fb.getDocs(q);
@@ -5753,7 +5768,14 @@ async function loadMySubmittedApps(){
     box.innerHTML='';
     const badge=$('myAppCountBadge');
     if(badge){badge.textContent=snap.size;badge.style.display='inline';}
-    snap.forEach(d=>{
+    const appDocs=[];
+    snap.forEach(d=>{ appDocs.push(d); });
+    appDocs.sort((a,b)=>{
+      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
+      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
+      return tb-ta;
+    });
+    appDocs.forEach(d=>{
       const a=d.data();
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,{
         jobTitle:a.jobTitle,company:a.company,
@@ -5784,16 +5806,27 @@ async function loadConversations(){
   if(!box||!window._fb||!_user) return;
   if(_convUnsub){_convUnsub();_convUnsub=null;}
   try{
+    // NOTE: intentionally NOT using orderBy() here — combining it with the
+    // array-contains where() requires a Firestore composite index. If that
+    // index was never created in the Firebase console, onSnapshot() fails
+    // silently (no error callback) and the UI is stuck on the loading
+    // spinner forever. Sorting client-side avoids needing that index at all.
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'conversations'),
       window._fb.where('participants','array-contains',_user.uid),
-      window._fb.orderBy('lastMessageAt','desc'),
       window._fb.limit(30)
     );
     _convUnsub=window._fb.onSnapshot(q,function(snap){
       if(snap.empty){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">No conversations yet</div>';return;}
       box.innerHTML='';
-      snap.forEach(function(d){
+      var docs=[];
+      snap.forEach(function(d){ docs.push(d); });
+      docs.sort(function(a,b){
+        var ta=a.data().lastMessageAt&&a.data().lastMessageAt.toMillis?a.data().lastMessageAt.toMillis():0;
+        var tb=b.data().lastMessageAt&&b.data().lastMessageAt.toMillis?b.data().lastMessageAt.toMillis():0;
+        return tb-ta;
+      });
+      docs.forEach(function(d){
         var c=d.data();
         var otherUid=c.participants.find(function(u){return u!==_user.uid;})||'';
         var otherName=c.participantNames?c.participantNames[otherUid]||'User':'User';
@@ -5808,6 +5841,9 @@ async function loadConversations(){
           '<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+validateInput(c.lastMessage||'')+'</div>';
         box.appendChild(item);
       });
+    },function(err){
+      console.error('[KSpider Connect] loadConversations onSnapshot error:',err);
+      box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">⚠️ Could not load conversations. '+(err&&err.message?err.message:'')+'</div>';
     });
   }catch(e){console.warn('loadConversations:',e);}
 }
@@ -5831,16 +5867,28 @@ function openChat(uid,name,convId){
   if(!window._fb||!_user){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">Configure Firebase to enable chat.</div>';return;}
   // Build conversation ID (sorted UIDs)
   var cid=convId||[_user.uid,uid].sort().join('_');
+  // NOTE: intentionally NOT using orderBy() here — combining it with the
+  // where() on conversationId requires a Firestore composite index. If that
+  // index was never created in the Firebase console, onSnapshot() fails
+  // silently (no error callback) and the chat is stuck on the loading
+  // spinner forever, even though sendMessage() itself works fine. Sorting
+  // client-side avoids needing that index at all.
   var q=window._fb.query(
     window._fb.collection(window._fb.db,'messages'),
     window._fb.where('conversationId','==',cid),
-    window._fb.orderBy('createdAt','asc'),
     window._fb.limit(50)
   );
   _msgUnsub=window._fb.onSnapshot(q,function(snap){
     box.innerHTML='';
     if(snap.empty){box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">Say hello! 👋</div>';return;}
-    snap.forEach(function(d){
+    var docs=[];
+    snap.forEach(function(d){ docs.push(d); });
+    docs.sort(function(a,b){
+      var ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
+      var tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
+      return ta-tb;
+    });
+    docs.forEach(function(d){
       var m=d.data();
       var isMine=m.senderId===_user.uid;
       var tm=m.createdAt&&m.createdAt.toDate?timeAgo(m.createdAt.toDate()):'';
@@ -5851,6 +5899,9 @@ function openChat(uid,name,convId){
       box.appendChild(bubble);
     });
     box.scrollTop=box.scrollHeight;
+  },function(err){
+    console.error('[KSpider Connect] openChat onSnapshot error:',err);
+    box.innerHTML='<div style="text-align:center;padding:16px;font-size:11px;color:var(--t3);">⚠️ Could not load messages. '+(err&&err.message?err.message:'')+'</div>';
   });
   // Store convId
   $('msgInput').dataset.convId=cid;
@@ -6068,11 +6119,11 @@ async function loadOnlineUsers(){
   strip.innerHTML='<div style="font-size:11px;color:var(--t3);">Loading…</div>';
   try{
     // Get users with lastSeen within last 2 minutes
+    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     var cutoff=new Date(Date.now()-PRESENCE_TIMEOUT_MS);
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'presence'),
       window._fb.where('online','==',true),
-      window._fb.orderBy('lastSeen','desc'),
       window._fb.limit(50)
     );
     var snap=await window._fb.getDocs(q);
@@ -6084,6 +6135,11 @@ async function loadOnlineUsers(){
       if(ls>cutoff&&d.id!==(_user&&_user.uid)){
         online.push({id:d.id,...data});
       }
+    });
+    online.sort(function(a,b){
+      var ta=a.lastSeen&&a.lastSeen.toMillis?a.lastSeen.toMillis():0;
+      var tb=b.lastSeen&&b.lastSeen.toMillis?b.lastSeen.toMillis():0;
+      return tb-ta;
     });
     if(label) label.textContent='Online Now · '+online.length+' user'+(online.length===1?'':'s');
     if(!online.length){
@@ -6367,11 +6423,11 @@ async function loadAdminPresence(){
   var box=document.getElementById('adminPanelContent');
   if(!window._fb){box.innerHTML='<div style="color:var(--red);padding:16px;">Firebase not configured.</div>';return;}
   try{
+    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     var cutoff=new Date(Date.now()-PRESENCE_TIMEOUT_MS);
     var snap=await window._fb.getDocs(window._fb.query(
       window._fb.collection(window._fb.db,'presence'),
       window._fb.where('online','==',true),
-      window._fb.orderBy('lastSeen','desc'),
       window._fb.limit(100)
     ));
     var online=[];
@@ -6379,6 +6435,11 @@ async function loadAdminPresence(){
       var data=d.data();
       var ls=data.lastSeen&&data.lastSeen.toDate?data.lastSeen.toDate():new Date(0);
       if(ls>cutoff) online.push({id:d.id,...data});
+    });
+    online.sort(function(a,b){
+      var ta=a.lastSeen&&a.lastSeen.toMillis?a.lastSeen.toMillis():0;
+      var tb=b.lastSeen&&b.lastSeen.toMillis?b.lastSeen.toMillis():0;
+      return tb-ta;
     });
     if(!online.length){
       box.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);">No users online right now.</div>';
@@ -7199,17 +7260,24 @@ function addDriveToMyDrives(drive){
 async function loadMyDrives(){
   if(!window._fb||!_user)return;
   try{
+    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'campus_drives'),
       window._fb.where('recruiterId','==',_user.uid),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(10)
     );
     const snap=await window._fb.getDocs(q);
     if(snap.empty)return;
     const box=$('myDrivesBox');box.innerHTML='';
-    snap.forEach(d=>addDriveToMyDrives({...d.data(),id:d.id}));
-  }catch{}
+    const driveDocs=[];
+    snap.forEach(d=>{ driveDocs.push(d); });
+    driveDocs.sort((a,b)=>{
+      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
+      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
+      return tb-ta;
+    });
+    driveDocs.forEach(d=>addDriveToMyDrives({...d.data(),id:d.id}));
+  }catch(e){console.warn('loadMyDrives:',e);}
 }
 
 async function submitDriveReg(){
@@ -7374,10 +7442,10 @@ function updateWalletUI(){
 async function loadReferrals(){
   if(!window._fb||!_user){showDemoReferrals();return;}
   try{
+    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'referrals'),
       window._fb.where('referrerId','==',_user.uid),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(20)
     );
     const snap=await window._fb.getDocs(q);
@@ -7385,7 +7453,14 @@ async function loadReferrals(){
     if(snap.empty){box.innerHTML=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;"><div style="font-size:28px;margin-bottom:6px;">👥</div>No referrals yet. Share your link!</div>`;return;}
     box.innerHTML='';
     let total=0,earned=0,pending=0;
-    snap.forEach(d=>{
+    const refDocs=[];
+    snap.forEach(d=>{ refDocs.push(d); });
+    refDocs.sort((a,b)=>{
+      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
+      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
+      return tb-ta;
+    });
+    refDocs.forEach(d=>{
       const r=d.data();
       total++;
       if(r.status==='converted'){earned+=r.reward||0;}
@@ -7394,7 +7469,7 @@ async function loadReferrals(){
     });
     _ref.totalRefs=total;_ref.totalEarned=earned;_ref.pending=pending;
     updateWalletUI();
-  }catch{showDemoReferrals();}
+  }catch(e){console.warn('loadReferrals:',e);showDemoReferrals();}
 }
 
 function showDemoReferrals(){
