@@ -1,6 +1,18 @@
 /*!
- * K SPIDER AI — ks-ads.js  v12.1
+ * K SPIDER AI — ks-ads.js  v12.2
  * www.kspiderai.in | By Gaurang Raval & Khush Raval | 2026
+ *
+ * UPDATES v12.2:
+ *  ✅ CRITICAL — CACHE-BUSTING: every tool file's <script src="/ks-ads.js">
+ *     tag now has a version query string (?v=12.2). Without this, browsers
+ *     (and GitHub Pages' CDN) cache this file aggressively — a normal
+ *     refresh (F5) or fresh tab kept loading the OLD cached copy, so every
+ *     previous fix (Advertisement label removal, per-tool targeting) never
+ *     actually reached most visitors, even though the deployed file was
+ *     correct. Only a hard refresh (Ctrl+Shift+R), which bypasses cache,
+ *     ever showed the real, current behavior. Each future update to this
+ *     file MUST bump this version number AND the ?v= in every tool file's
+ *     script tag, or this exact problem returns.
  *
  * UPDATES v12.1:
  *  ✅ CRITICAL: Renamed .ks-ad-wrap / .ks-ad-inner / .ks-ad-leaderboard /
@@ -8,7 +20,7 @@
  *     .ksp-wide970. These class names still contained "ad" as a
  *     recognizable token (ks-AD-wrap), which some ad-blocker filter
  *     lists match on even when it's not a prefix — that's what was
- *     still causing a stray " " label/box to appear even
+ *     still causing a stray "Advertisement" label/box to appear even
  *     after v11.3's contain:layout fix and v11.4's AdSense-hiding fix.
  *     Renamed to strings with zero "ad" substring anywhere, closing
  *     this off completely.
@@ -25,13 +37,13 @@
  * UPDATES v11.4:
  *  ✅ .ksp-slotinner: inline-block → block + margin:0 auto (true center, no left overflow)
  *  ✅ .ksp-slotwrap: display:flex + justify-content:center added (perfect centering)
- *  ✅ AdSense ins.adsbygoogle hidden (prevents AdSense   label conflict)
+ *  ✅ AdSense ins.adsbygoogle hidden (prevents AdSense ADVERTISEMENT label conflict)
  *
  * UPDATES v11.3:
- *  ✅ CRITICAL: Removed CSS contain:layout style — Chrome/Android native   label fix
+ *  ✅ CRITICAL: Removed CSS contain:layout style — Chrome/Android native ADVERTISEMENT label fix
  *
  * UPDATES v11.2:
- *  ✅ Image alt="" fix — prevents " " alt text on broken images
+ *  ✅ Image alt="" fix — prevents "Advertisement" alt text on broken images
  *  ✅ Image onerror — broken image slot auto-hides
  *
  * UPDATES v11.1:
@@ -95,9 +107,9 @@
     s.id  = 'ks-ads-css';
     s.textContent = [
     /* ── v11.2 ADSENSE PLACEHOLDER FIX ──
-       Google AdSense reserves space with " " label above ins tags.
+       Google AdSense reserves space with "ADVERTISEMENT" label above ins tags.
        Since KSpider uses its own ks-ads system, hide AdSense placeholders to
-       prevent the " " text appearing next to KSpider ad banners. */
+       prevent the "ADVERTISEMENT" text appearing next to KSpider ad banners. */
     'ins.adsbygoogle{display:none!important}',
     /* Also hide the AdSense label/ribbon that appears beside ad containers */
     '.adsbygoogle-noablate,.google-auto-placed,#google_ads_frame1,',
@@ -107,7 +119,7 @@
     /* ── v11.1 OVERFLOW FIX: html/body never scroll horizontally because of ads ── */
     'html{overflow-x:hidden}',
       /* Wrapper — NOTE: NO contain property — contain:style triggers Chrome/Android
-         to inject a native " " label on ad containers */
+         to inject a native "ADVERTISEMENT" label on ad containers */
       '.ksp-slotwrap{width:100%;text-align:center;max-width:100vw;overflow:hidden;box-sizing:border-box;position:relative;display:flex;justify-content:center;align-items:center}',
       /* Inner fades between banners — no pop/jump. block+margin:auto = true centering */
       '.ksp-slotinner{display:block;width:100%;max-width:100%;box-sizing:border-box;overflow:hidden;',
@@ -296,7 +308,7 @@
     /* ── IMAGE ── */
     if (ad.type === 'image') {
       if (!ad.imgUrl) { inner.style.display = 'none'; return; }
-      /* alt="" intentional — prevents " " text showing if image fails to load.
+      /* alt="" intentional — prevents "Advertisement" text showing if image fails to load.
          onerror hides the broken slot cleanly instead of showing alt text. */
       var imgTag = '<img src="' + esc(ad.imgUrl) + '" alt="" ' +
         'style="width:100%;height:auto;display:block;border-radius:8px;object-fit:cover" loading="lazy" ' +
@@ -601,7 +613,7 @@
     );
     slots.forEach(function(el, i) {
       /* NOTE: No contain property — contain:style causes Chrome/Android to show
-         a native " " label over the ad slot */
+         a native "ADVERTISEMENT" label over the ad slot */
       el.style.width       = '100%';
       el.style.maxWidth    = '100%';
       el.style.overflow    = 'hidden';
@@ -628,11 +640,11 @@
 
   /* Public API */
   global.KsAds = {
-    version:   '12.1',
+    version:   '12.2',
     reload:    initAllSlots,
     trackClick:global.kspiderAdClick
   };
 
-  console.log('[ks-ads.js] v12.1 ready (per-tool targeting +  -free) | kspiderai.in | tool: ' + (_ksToolId || 'homepage/none'));
+  console.log('[ks-ads.js] v12.2 ready (per-tool targeting + ADVERTISEMENT-free) | kspiderai.in | tool: ' + (_ksToolId || 'homepage/none'));
 
 })(window);
