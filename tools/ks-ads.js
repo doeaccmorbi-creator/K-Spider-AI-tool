@@ -648,3 +648,4 @@
   console.log('[ks-ads.js] v12.2 ready (per-tool targeting + ADVERTISEMENT-free) | kspiderai.in | tool: ' + (_ksToolId || 'homepage/none'));
 
 })(window);
+ 
