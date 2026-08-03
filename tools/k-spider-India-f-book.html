@@ -2492,16 +2492,13 @@ ul { list-style: none; }
 }
 
 /* ── KSpider Ad No-Jump Patch v1.0 ── */
-.ks-adbanner{}
+.ad-banner,.ad-top,.ad-after-tool,.ad-bottom,.ad-content,.ad-inline,.ad-sidebar{contain:layout style;}
 [data-ks-slot]{transition:opacity 0.32s ease;will-change:opacity;box-sizing:border-box;overflow:hidden;}
 [data-ks-slot].ks-fading{opacity:0;}
-.ks-adtop [data-ks-slot],.ks-adaftertool [data-ks-slot],.ks-adbottom [data-ks-slot]{min-height:90px;}
-.ks-adincontent [data-ks-slot]{min-height:120px;}
-.ks-adinline [data-ks-slot]{min-height:60px;}
-.ks-adsidebarslot [data-ks-slot]{min-height:250px;}
-[data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
-[data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
-[data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+.ad-top [data-ks-slot],.ad-after-tool [data-ks-slot],.ad-bottom [data-ks-slot]{min-height:90px;}
+.ad-content [data-ks-slot]{min-height:120px;}
+.ad-inline [data-ks-slot]{min-height:60px;}
+.ad-sidebar [data-ks-slot]{min-height:250px;}
 
 /* ═══════════════════════════════════════════════
    ENTERPRISE COMPONENTS CSS
@@ -2558,7 +2555,7 @@ ul { list-style: none; }
 </head>
 <body>
 <!-- ✅ KSpider Ad Top Banner -->
-<div class="ks-adbanner ks-adtop" style="width:100%;text-align:center;padding:6px 0;"><div data-ks-slot="top-banner"></div></div>
+<div class="ad-banner ad-top" style="width:100%;text-align:center;padding:6px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="top-banner"></div></div>
 
 <!-- ═══════════════════════════════════════════════
      FIREBASE LOGIN / REGISTER MODAL
@@ -2856,7 +2853,7 @@ ul { list-style: none; }
 
   <div id="search-bar" class="relative">
     <i class="fas fa-search search-icon"></i>
-    <input type="text" id="search-input" placeholder="Search people, posts, hashtags..." autocomplete="off" oninput="handleSearch(this.value)" onfocus="showSearchResults()" onblur="setTimeout(hideSearchResults, 200)">
+    <input type="text" id="search-input" placeholder="Search people, posts, hashtags..." autocomplete="off" oninput="handleSearch(this.value)" onfocus="openGlobalSearch()" onblur="setTimeout(hideSearchResults, 200)">
     <div id="search-results" class="hidden"></div>
   </div>
 
@@ -2976,6 +2973,24 @@ ul { list-style: none; }
     </div>
 
     <div class="sidebar-divider"></div>
+    <div class="nav-section-label">📺 DISCOVER</div>
+    <div class="nav-item" id="nav-watch" onclick="navigateTo('watch')">
+      <span class="nav-icon"><i class="fas fa-play-circle"></i></span> Watch Videos
+    </div>
+    <div class="nav-item" id="nav-jobs" onclick="navigateTo('jobs')">
+      <span class="nav-icon"><i class="fas fa-briefcase"></i></span> Jobs Portal
+    </div>
+    <div class="nav-item" id="nav-albums" onclick="navigateTo('albums')">
+      <span class="nav-icon"><i class="fas fa-images"></i></span> Photo Albums
+    </div>
+    <div class="nav-item" id="nav-fundraiser" onclick="navigateTo('fundraiser')">
+      <span class="nav-icon"><i class="fas fa-hand-holding-heart"></i></span> Fundraising
+    </div>
+    <div class="nav-item" id="nav-dating" onclick="navigateTo('dating')">
+      <span class="nav-icon"><i class="fas fa-heart"></i></span> K Spider Dating
+    </div>
+
+    <div class="sidebar-divider"></div>
     <div class="sidebar-footer-brand">
       Powered by K Spider AI Tool<br>
       <a href="https://www.kspiderai.in" target="_blank">www.kspiderai.in</a><br>
@@ -3015,6 +3030,8 @@ ul { list-style: none; }
             <div class="post-opt-btn" onclick="toggleEmojiPicker()"><i class="fas fa-smile" style="color:#f59e0b"></i><span>Emoji</span></div>
             <div class="post-opt-btn" onclick="showFeelingModal()"><i class="fas fa-heart" style="color:#ef4444"></i><span>Feeling</span></div>
             <div class="post-opt-btn" onclick="addHashtag()"><i class="fas fa-hashtag" style="color:#00d4ff"></i><span>Hashtag</span></div>
+            <div class="post-opt-btn" onclick="openPollModal()"><i class="fas fa-poll" style="color:#7c3aed"></i><span>Poll</span></div>
+            <div class="post-opt-btn" onclick="addCheckin()"><i class="fas fa-map-marker-alt" style="color:#1877F2"></i><span>Check In</span></div>
             <div class="post-opt-btn" onclick="addLocation()"><i class="fas fa-map-marker-alt" style="color:#7c3aed"></i><span>Location</span></div>
           </div>
 
@@ -3093,9 +3110,23 @@ ul { list-style: none; }
 
         <div id="posts-container"></div>
 
-        <!-- Mid-Feed KSpider Managed Ad -->
-        <div class="ks-adbanner ks-adincontent" style="max-width:336px;margin:0 auto;">
-          <div data-ks-slot="in-content"></div>
+        <!-- Mid-Feed AdSense Unit (AdSense compliant placement) -->
+        <div class="feed-ad-unit" id="feed-adsense-mid">
+          <div class="feed-ad-label">
+            <span><i class="fas fa-info-circle"></i> Advertisement</span>
+            <a href="#" onclick="openLegalModal('adsense')" style="color:var(--primary); font-size:0.6rem;">AdChoices ▸</a>
+          </div>
+          <div class="feed-ad-content">
+            <!-- ADSENSE CODE SLOT (728x90 or responsive) -->
+            <!--
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
+            <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            -->
+            <i class="fas fa-ad" style="font-size:1.8rem; opacity:0.3;"></i>
+            <div style="font-weight:600;">Google AdSense – 728×90 Leaderboard</div>
+            <div style="font-size:0.65rem;">Replace with your AdSense code. Publisher ID: ca-pub-XXXXXXXXXX</div>
+          </div>
         </div>
 
         <!-- Load More -->
@@ -3806,9 +3837,21 @@ ul { list-style: none; }
           <div id="earning-methods-grid"></div>
         </div>
 
-        <!-- KSpider Managed Ad Slot -->
-        <div class="ks-adbanner ks-adaftertool" style="max-width:336px;margin:0 auto;">
-          <div data-ks-slot="after-result"></div>
+        <!-- AdSense Ad Slot Placeholder -->
+        <div class="ad-section" style="border-radius:var(--radius);">
+          <div class="ad-label">Advertisement – Powered by K Spider AI</div>
+          <div class="adsense-placeholder">
+            <!-- Replace with actual AdSense code below when approved -->
+            <!--
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
+            <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+            <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            -->
+            <i class="fas fa-ad"></i>
+            <div><strong>Google AdSense Ad Unit</strong></div>
+            <div style="font-size:0.72rem;">Replace this placeholder with your AdSense code snippet.<br>Publisher ID: ca-pub-XXXXXXXXXX | Slot: XXXXXXXXXX</div>
+            <a href="https://www.google.com/adsense" target="_blank" style="margin-top:8px; padding:6px 16px; background:var(--primary); color:#fff; border-radius:99px; font-size:0.72rem; cursor:pointer; display:inline-block;">Apply for AdSense →</a>
+          </div>
         </div>
       </div>
     </div>
@@ -4276,9 +4319,19 @@ ul { list-style: none; }
       <div id="suggested-users"></div>
     </div>
 
-    <!-- KSpider Managed Ad Slot (Sidebar) -->
-    <div class="ks-adbanner ks-adsidebarslot" style="max-width:300px;margin:0 auto;">
-      <div data-ks-slot="sidebar-left"></div>
+    <!-- Ad Unit (AdSense Compliant) -->
+    <div class="ad-section">
+      <div class="ad-label" style="display:flex;justify-content:space-between;align-items:center;"><span><i class="fas fa-info-circle" style="margin-right:4px;"></i>Sponsored</span><a href="#" onclick="openLegalModal('adsense')" style="color:var(--primary); font-size:0.58rem;">AdChoices ▸</a></div>
+      <div class="adsense-placeholder">
+        <!--
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX" crossorigin="anonymous"></script>
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXX" data-ad-slot="XXXXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+        -->
+        <i class="fas fa-ad"></i>
+        <div style="font-size:0.68rem;">AdSense Unit – 300×250<br>Medium Rectangle</div>
+        <div style="font-size:0.58rem; margin-top:4px; color:var(--border-light);">Replace with publisher code</div>
+      </div>
     </div>
 
     <!-- Quick Engagement Score in Sidebar -->
@@ -4460,11 +4513,10 @@ ul { list-style: none; }
   <div style="font-size:0.64rem; color:var(--text-muted); margin-top:4px; max-width:700px; margin-left:auto; margin-right:auto; line-height:1.7;">
     ⚠️ <strong>Disclaimer:</strong> Earnings and income information is provided for educational purposes only. We are not financial or legal advisors. Results vary. Affiliate links may be present — we may earn commissions at no extra cost to you. All AdSense ad placements follow Google's Program Policies. No user data is stored on any server — all data is stored exclusively in your browser's localStorage. 
   </div>
-  <!-- Footer KSpider Managed Ad -->
-  <div style="margin-top:12px;">
-    <div class="ks-adbanner ks-adbottom" style="max-width:970px;margin:0 auto;">
-      <div data-ks-slot="bottom-banner"></div>
-    </div>
+  <!-- Footer AdSense Slot -->
+  <div style="margin-top:12px; padding:10px; background:var(--bg-secondary); border-top:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.62rem; color:var(--text-muted); font-family:var(--font-code);">
+    <!-- AdSense Footer Banner Slot: Replace with ca-pub-XXXXXXXXXX | Slot: XXXXXXXXXX | Format: 728x90 -->
+    Advertisement Slot – 728×90 | Replace with your AdSense code
   </div>
 </footer>
 
@@ -4914,6 +4966,11 @@ function navigateTo(page) {
   if(page === 'businesses') { loadBusinessDirectory(); }
   if(page === 'hyperlocal') loadHyperlocalPage();
   if(page === 'legal-hub') showLegalDoc('privacy');
+  if(page === 'watch') { if(typeof loadWatchVideos==='function') loadWatchVideos(); }
+  if(page === 'jobs') { if(typeof loadJobs==='function') loadJobs(); }
+  if(page === 'albums') { if(typeof loadAlbums==='function') loadAlbums(); }
+  if(page === 'fundraiser') { if(typeof loadFundraisers==='function') loadFundraisers(); }
+  if(page === 'dating') { if(typeof loadDatingPage==='function') loadDatingPage(); }
 }
 
 /* ============================================================
@@ -8476,11 +8533,9 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════
-     KSpider Managed Ad: BOTTOM BANNER
+     AD PLACEHOLDER: BOTTOM BANNER
 ═══════════════════════════════════════════════════════════ -->
-<div class="ks-adbanner ks-adbottom" style="max-width:970px;margin:0 auto;padding:10px 0;">
-  <div data-ks-slot="bottom-banner"></div>
-</div>
+<div style="background:#f0f2fa;border-top:1.5px dashed #cdd2ec;display:flex;align-items:center;justify-content:center;min-height:70px;color:#8892b0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;padding:14px;position:relative;z-index:10">Advertisement — Bottom Banner</div>
 
 <!-- ═══════════════════════════════════════════════════════════
      SEO CONTENT SECTION
@@ -8488,10 +8543,8 @@ document.addEventListener('DOMContentLoaded',()=>{
 <section id="seo-content" style="background:#f8f9fd;padding:52px 24px;border-top:1px solid #e4e7f4;position:relative;z-index:10">
   <div style="max-width:900px;margin:0 auto">
 
-    <!-- KSpider Managed Ad: Inside Content -->
-    <div class="ks-adbanner ks-adincontent" style="max-width:336px;margin:0 auto 36px;">
-      <div data-ks-slot="in-content"></div>
-    </div>
+    <!-- Ad: Inside Content -->
+    <div style="background:#f0f2fa;border:1.5px dashed #cdd2ec;border-radius:12px;display:flex;align-items:center;justify-content:center;height:90px;color:#8892b0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:36px">Advertisement</div>
 
     <h1 style="font-size:clamp(1.4rem,3vw,2rem);font-weight:800;color:#1a1d2e;margin-bottom:10px;letter-spacing:-.02em">🕷️ K Spider Social AI — India's Free Social Platform</h1>
     <p style="font-size:13.5px;color:#4a5078;line-height:1.8;margin-bottom:28px"><strong>K Spider Social AI</strong> is India's free AI-powered social media platform developed by <strong>Gaurang Raval & Khush Raval</strong>. Create and share posts, view stories, connect with your community, and earn online — all 100% free and browser-based. No data is ever uploaded to any server. Visit <a href="https://kspiderai.in" style="color:#2563eb;font-weight:700">kspiderai.in</a> for 400+ more free AI tools.</p>
@@ -8516,10 +8569,8 @@ document.addEventListener('DOMContentLoaded',()=>{
       </div>
     </div>
 
-    <!-- KSpider Managed Ad: After Tool Result -->
-    <div class="ks-adbanner ks-adaftertool" style="max-width:336px;margin:0 auto 30px;">
-      <div data-ks-slot="after-result"></div>
-    </div>
+    <!-- Ad: After Tool Result -->
+    <div style="background:#f0f2fa;border:1.5px dashed #cdd2ec;border-radius:12px;display:flex;align-items:center;justify-content:center;height:90px;color:#8892b0;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;margin-bottom:30px">Advertisement</div>
 
     <h2 style="font-size:1.3rem;font-weight:800;color:#1a1d2e;margin-bottom:16px">❓ Frequently Asked Questions</h2>
     <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:30px">
@@ -8744,9 +8795,9 @@ function ksDirect(){
 
 
 <!-- ✅ KSpider Ad In-Content -->
-<div class="ks-adbanner ks-adincontent" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><div data-ks-slot="in-content"></div></div>
+<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
 
-<script src="/ks-ads.js"></script>
+<script src="ks-ads.js"></script>
 
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
@@ -8773,7 +8824,7 @@ function ksDirect(){
 </script>
 
 <!-- ✅ KSpider Ad Bottom Banner -->
-<div class="ks-adbanner ks-adbottom" style="width:100%;text-align:center;padding:8px 0;"><div data-ks-slot="bottom-banner"></div></div>
+<div class="ad-banner ad-bottom" style="width:100%;text-align:center;padding:8px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="bottom-banner"></div></div>
 
 <!-- ✅ K Spider Admin API Router v3.0 — Groq→Gemini→Claude -->
 <script>
@@ -9807,6 +9858,1076 @@ disclaimer: `<div class="legal-section"><h3>Disclaimer & Limitation of Liability
 };
 
 /* esc() already defined earlier in marketplace engine — reused here */
+
+</script>
+
+
+    <!-- ══ WATCH PAGE ══ -->
+    <div id="page-watch" class="page hidden">
+      <div style="max-width:900px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="page-section-title" style="margin:0"><i class="fas fa-play-circle"></i> Watch</div>
+            <div style="display:flex;gap:8px">
+              <select id="watch-cat" onchange="loadWatchVideos()" style="padding:7px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.8rem;outline:none">
+                <option value="">All Videos</option>
+                <option>News</option><option>Entertainment</option><option>Education</option>
+                <option>Tech</option><option>Sports</option><option>Comedy</option>
+                <option>Music</option><option>Food</option><option>Travel</option><option>Business</option>
+              </select>
+              <button onclick="openAddVideoModal()" class="post-submit-btn"><i class="fas fa-video"></i> Add Video</button>
+            </div>
+          </div>
+          <div id="watch-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px">
+            <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Loading...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ JOBS PAGE ══ -->
+    <div id="page-jobs" class="page hidden">
+      <div style="max-width:900px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="page-section-title" style="margin:0"><i class="fas fa-briefcase"></i> Jobs Portal</div>
+            <button onclick="openPostJobModal()" class="post-submit-btn"><i class="fas fa-plus"></i> Post a Job</button>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+            <input type="text" id="job-search" oninput="loadJobs()" placeholder="Search jobs, skills, companies..." style="flex:1;min-width:180px;padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem;outline:none">
+            <select id="job-type-filter" onchange="loadJobs()" style="padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.82rem;outline:none">
+              <option value="">All Types</option><option>Full-time</option><option>Part-time</option>
+              <option>Freelance</option><option>Internship</option><option>Remote</option><option>Contract</option>
+            </select>
+          </div>
+          <div id="jobs-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PHOTO ALBUMS PAGE ══ -->
+    <div id="page-albums" class="page hidden">
+      <div style="max-width:900px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="page-section-title" style="margin:0"><i class="fas fa-images"></i> Photo Albums</div>
+            <button onclick="openCreateAlbumModal()" class="post-submit-btn"><i class="fas fa-plus"></i> Create Album</button>
+          </div>
+          <div id="albums-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ FUNDRAISING PAGE ══ -->
+    <div id="page-fundraiser" class="page hidden">
+      <div style="max-width:860px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="page-section-title" style="margin:0"><i class="fas fa-hand-holding-heart"></i> Fundraising</div>
+            <button onclick="openCreateFundraiserModal()" class="post-submit-btn"><i class="fas fa-plus"></i> Start Fundraiser</button>
+          </div>
+          <div id="fundraisers-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ DATING PAGE ══ -->
+    <div id="page-dating" class="page hidden">
+      <div style="max-width:480px;margin:0 auto;padding:20px 16px">
+        <div class="page-section">
+          <div class="page-section-title"><i class="fas fa-heart" style="color:#ef4444"></i> K Spider Dating</div>
+          <div id="dating-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ POLL MODAL ══ -->
+    <div id="poll-modal" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:420px;width:100%;padding:22px">
+        <div style="font-weight:800;font-size:1rem;color:var(--text-primary);margin-bottom:14px"><i class="fas fa-poll"></i> Create a Poll</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="poll-question" placeholder="Poll question *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="text" id="poll-opt1" placeholder="Option 1 *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="text" id="poll-opt2" placeholder="Option 2 *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="text" id="poll-opt3" placeholder="Option 3 (optional)" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="text" id="poll-opt4" placeholder="Option 4 (optional)" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div><label style="font-size:.76rem;color:var(--text-muted);display:block;margin-bottom:3px">Duration</label>
+              <select id="poll-duration" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem">
+                <option value="1">1 Day</option><option value="3">3 Days</option>
+                <option value="7" selected>7 Days</option><option value="14">14 Days</option>
+              </select></div>
+            <div><label style="font-size:.76rem;color:var(--text-muted);display:block;margin-bottom:3px">Vote Type</label>
+              <select id="poll-multi" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem">
+                <option value="false">Single Choice</option><option value="true">Multiple Choice</option>
+              </select></div>
+          </div>
+          <button onclick="submitPoll()" style="background:#1877F2;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">Create Poll</button>
+          <button onclick="document.getElementById('poll-modal').classList.add('hidden')" style="background:none;border:none;color:var(--text-muted);cursor:pointer;padding:6px">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ 6-TYPE REACTIONS POPUP ══ -->
+    <div id="reactions-popup" class="hidden" style="position:fixed;z-index:99999;background:var(--bg-secondary);border:1px solid var(--border);border-radius:40px;padding:6px 10px;box-shadow:0 8px 30px rgba(0,0,0,.2);display:flex;gap:4px;align-items:center">
+      <span onclick="setReaction('like','👍')" title="Like" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:50%;transition:transform .15s;display:inline-block" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'">👍</span>
+      <span onclick="setReaction('love','❤️')" title="Love" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:50%;transition:transform .15s;display:inline-block" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'">❤️</span>
+      <span onclick="setReaction('haha','😂')" title="Haha" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:50%;transition:transform .15s;display:inline-block" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'">😂</span>
+      <span onclick="setReaction('wow','😮')" title="Wow" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:50%;transition:transform .15s;display:inline-block" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'">😮</span>
+      <span onclick="setReaction('sad','😢')" title="Sad" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:50%;transition:transform .15s;display:inline-block" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'">😢</span>
+      <span onclick="setReaction('angry','😡')" title="Angry" style="font-size:1.6rem;cursor:pointer;padding:4px;border-radius:50%;transition:transform .15s;display:inline-block" onmouseover="this.style.transform='scale(1.4)'" onmouseout="this.style.transform='scale(1)'">😡</span>
+    </div>
+
+    <!-- ══ BIRTHDAY BANNER ══ -->
+    <div id="birthday-banner" class="hidden" style="position:fixed;top:70px;right:16px;z-index:9996;background:linear-gradient(135deg,#1877F2,#0d5dbf);color:#fff;border-radius:14px;padding:14px 18px 14px 16px;max-width:280px;box-shadow:0 8px 30px rgba(24,119,242,.4)">
+      <button onclick="document.getElementById('birthday-banner').classList.add('hidden')" style="position:absolute;top:8px;right:10px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:50%;width:22px;height:22px;cursor:pointer;font-size:.75rem;line-height:1">×</button>
+      <div style="font-size:1.3rem;margin-bottom:4px">🎂</div>
+      <div id="birthday-banner-text" style="font-size:.82rem;font-weight:700;line-height:1.5"></div>
+    </div>
+
+    <!-- ══ FRIEND REQUESTS MODAL ══ -->
+    <div id="friend-requests-modal" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:440px;width:100%;max-height:88vh;overflow-y:auto;padding:22px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <div style="font-weight:800;font-size:1rem;color:var(--text-primary)"><i class="fas fa-user-friends"></i> Friend Requests</div>
+          <button onclick="document.getElementById('friend-requests-modal').classList.add('hidden')" style="background:none;border:none;color:var(--text-muted);font-size:1.3rem;cursor:pointer">×</button>
+        </div>
+        <div id="friend-requests-list"></div>
+      </div>
+    </div>
+
+    <!-- ══ GLOBAL SEARCH MODAL ══ -->
+    <div id="global-search-modal" class="hidden" style="position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.7);display:flex;align-items:flex-start;justify-content:center;padding:60px 16px 16px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:580px;width:100%;max-height:80vh;overflow-y:auto">
+        <div style="padding:16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center;position:sticky;top:0;background:var(--bg-secondary);z-index:1">
+          <i class="fas fa-search" style="color:var(--text-muted)"></i>
+          <input type="text" id="global-search-input" oninput="globalSearch(this.value)" placeholder="Search people, posts, jobs, products, groups..." style="flex:1;border:none;outline:none;background:none;color:var(--text-primary);font-size:.92rem">
+          <button onclick="closeGlobalSearch()" style="background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer">×</button>
+        </div>
+        <div id="global-search-results" style="padding:12px"></div>
+      </div>
+    </div>
+
+    <!-- ══ ADD VIDEO MODAL ══ -->
+    <div id="add-video-modal" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:440px;width:100%;padding:22px">
+        <div style="font-weight:800;font-size:1rem;color:var(--text-primary);margin-bottom:14px"><i class="fas fa-video"></i> Share a Video</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="vid-title" placeholder="Video Title *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="url" id="vid-url" placeholder="YouTube / Vimeo URL *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <textarea id="vid-desc" placeholder="Description..." rows="2" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem;resize:vertical"></textarea>
+          <select id="vid-cat" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+            <option>Entertainment</option><option>News</option><option>Education</option>
+            <option>Tech</option><option>Sports</option><option>Comedy</option><option>Music</option>
+          </select>
+          <button onclick="submitAddVideo()" style="background:#1877F2;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">Share Video</button>
+          <button onclick="document.getElementById('add-video-modal').classList.add('hidden')" style="background:none;border:none;color:var(--text-muted);cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ POST JOB MODAL ══ -->
+    <div id="post-job-modal" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:480px;width:100%;max-height:92vh;overflow-y:auto;padding:22px">
+        <div style="font-weight:800;font-size:1rem;color:var(--text-primary);margin-bottom:14px"><i class="fas fa-briefcase"></i> Post a Job</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="job-title" placeholder="Job Title *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="text" id="job-company" placeholder="Company Name *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <select id="job-type" style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.85rem">
+              <option>Full-time</option><option>Part-time</option><option>Freelance</option>
+              <option>Internship</option><option>Remote</option><option>Contract</option>
+            </select>
+            <input type="text" id="job-location" placeholder="Location / Remote" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input type="text" id="job-salary" placeholder="Salary (e.g. ₹5-8 LPA)" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+            <input type="text" id="job-exp" placeholder="Experience" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          </div>
+          <textarea id="job-desc" placeholder="Job Description *" rows="4" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem;resize:vertical"></textarea>
+          <input type="text" id="job-skills" placeholder="Skills (comma separated)" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="text" id="job-contact" placeholder="Contact Email / WhatsApp *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <button onclick="submitPostJob()" style="background:#1877F2;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">Post Job</button>
+          <button onclick="document.getElementById('post-job-modal').classList.add('hidden')" style="background:none;border:none;color:var(--text-muted);cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CREATE ALBUM MODAL ══ -->
+    <div id="create-album-modal" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:420px;width:100%;padding:22px">
+        <div style="font-weight:800;font-size:1rem;color:var(--text-primary);margin-bottom:14px"><i class="fas fa-images"></i> Create Album</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="alb-name" placeholder="Album Name *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <textarea id="alb-desc" placeholder="Description (optional)" rows="2" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem;resize:vertical"></textarea>
+          <select id="alb-privacy" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+            <option value="public">🌍 Public</option><option value="friends">👥 Friends Only</option><option value="private">🔒 Only Me</option>
+          </select>
+          <label style="display:flex;align-items:center;gap:8px;padding:10px;border:2px dashed var(--border);border-radius:8px;cursor:pointer;color:var(--text-muted);font-size:.85rem">
+            <i class="fas fa-camera"></i> Add Photos (up to 20, ≤100KB each)
+            <input type="file" id="alb-photos" accept="image/*" multiple onchange="previewAlbumPhotos(event)" style="display:none">
+          </label>
+          <div id="alb-preview-grid" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          <button onclick="submitCreateAlbum()" style="background:#1877F2;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer">Create Album</button>
+          <button onclick="document.getElementById('create-album-modal').classList.add('hidden')" style="background:none;border:none;color:var(--text-muted);cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ CREATE FUNDRAISER MODAL ══ -->
+    <div id="create-fundraiser-modal" class="hidden" style="position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.65);display:flex;align-items:center;justify-content:center;padding:14px">
+      <div style="background:var(--bg-secondary);border-radius:16px;max-width:460px;width:100%;max-height:92vh;overflow-y:auto;padding:22px">
+        <div style="font-weight:800;font-size:1rem;color:var(--text-primary);margin-bottom:14px"><i class="fas fa-hand-holding-heart"></i> Start a Fundraiser</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <input type="text" id="fr-title" placeholder="Fundraiser Title *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <textarea id="fr-story" placeholder="Tell your story *" rows="4" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem;resize:vertical"></textarea>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <input type="number" id="fr-goal" placeholder="Goal (₹) *" min="100" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+            <select id="fr-category" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+              <option>Medical</option><option>Education</option><option>Community</option>
+              <option>Animal Welfare</option><option>Disaster Relief</option><option>Business</option><option>Other</option>
+            </select>
+          </div>
+          <input type="text" id="fr-upi" placeholder="Your UPI ID for donations *" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <input type="date" id="fr-deadline" style="padding:10px 14px;border:1px solid var(--border);border-radius:8px;background:var(--bg-input);color:var(--text-primary);font-size:.88rem">
+          <button onclick="submitCreateFundraiser()" style="background:#ef4444;color:#fff;border:none;padding:12px;border-radius:8px;font-weight:700;cursor:pointer"><i class="fas fa-heart"></i> Start Fundraiser</button>
+          <button onclick="document.getElementById('create-fundraiser-modal').classList.add('hidden')" style="background:none;border:none;color:var(--text-muted);cursor:pointer">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+<!-- ═══ FACEBOOK FEATURES v2.0 ═══ -->
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   K SPIDER INDIA — FACEBOOK FEATURES MODULE v2.0
+   Reactions · Polls · Friend Requests · Watch · Jobs · Albums
+   Fundraising · Dating · Birthday · Global Search · Check-in
+   Developed by Gaurang Raval & Khush Raval — kspiderai.in
+═══════════════════════════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   1. 6-TYPE REACTIONS SYSTEM
+══════════════════════════════════════════ */
+let _reactionPostId = null;
+let _reactionTimer = null;
+const REACTION_LABELS = {like:'👍 Like',love:'❤️ Love',haha:'😂 Haha',wow:'😮 Wow',sad:'😢 Sad',angry:'😡 Angry'};
+
+function showReactionsPopup(btn, postId){
+  _reactionPostId = postId;
+  const popup = document.getElementById('reactions-popup');
+  if(!popup) return;
+  const rect = btn.getBoundingClientRect();
+  popup.style.left  = Math.min(rect.left, window.innerWidth-260)+'px';
+  popup.style.top   = (rect.top - 60 + window.scrollY)+'px';
+  popup.classList.remove('hidden');
+  clearTimeout(_reactionTimer);
+  document.addEventListener('click', hideReactionsPopup, {once:true});
+}
+
+function hideReactionsPopup(){ document.getElementById('reactions-popup')?.classList.add('hidden'); }
+
+async function setReaction(type, emoji){
+  hideReactionsPopup();
+  if(!_reactionPostId) return;
+  if(!STATE.currentUser){ showToast('Please login to react','error'); return; }
+  const postId = _reactionPostId;
+  const post   = STATE.posts.find(p=>p.id===postId);
+  if(!post) return;
+
+  const myUid = window._currentUser?.uid;
+  const prev  = STATE.reactions?.[postId];
+
+  // Update reaction counts on post
+  const updates = {};
+  if(prev && prev !== type){
+    updates[`reactionCounts.${prev}`] = window._fb.increment(-1);
+  }
+  if(type !== prev){
+    updates[`reactionCounts.${type}`] = window._fb.increment(1);
+    if(!prev) updates.likes = window._fb.increment(1);
+    STATE.reactions = STATE.reactions||{};
+    STATE.reactions[postId] = type;
+  } else {
+    // Toggle off
+    updates[`reactionCounts.${type}`] = window._fb.increment(-1);
+    updates.likes = window._fb.increment(-1);
+    delete STATE.reactions[postId];
+  }
+
+  // Update like btn UI
+  const btn = document.getElementById('like-btn-'+postId);
+  if(btn){
+    const reacted = STATE.reactions?.[postId];
+    btn.innerHTML = reacted ? `${REACTION_LABELS[reacted].split(' ')[0]} <span>${REACTION_LABELS[reacted].split(' ')[1]}</span>` : '<i class="fas fa-thumbs-up"></i> <span>Like</span>';
+    btn.style.color = reacted ? '#1877F2' : '';
+  }
+
+  if(window._FB_READY && postId && !postId.startsWith('post_') && !postId.startsWith('temp_')){
+    try{
+      await window._fb.updateDoc(window._fb.doc(window._fb.db,'posts',postId), updates);
+      // Store user's reaction
+      if(myUid) await window._fb.setDoc(window._fb.doc(window._fb.db,'posts',postId,'reactions',myUid),
+        STATE.reactions[postId] ? {type:STATE.reactions[postId], updatedAt:window._fb.serverTimestamp()} : {type:null});
+    }catch(e){ console.warn('setReaction:',e.message); }
+  }
+  saveState();
+  showToast(REACTION_LABELS[type]||'Reacted!','success');
+}
+
+/* ══════════════════════════════════════════
+   2. FRIEND REQUESTS SYSTEM
+══════════════════════════════════════════ */
+async function sendFriendRequest(targetUid, targetName, targetAvatar){
+  if(!STATE.currentUser){ showToast('Please login','error'); return; }
+  if(!window._FB_READY || !window._currentUser) return;
+  const myId = window._currentUser.uid;
+  if(myId === targetUid) return;
+  try{
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'friendRequests',myId+'_'+targetUid),{
+      from: myId, fromName: STATE.currentUser.name, fromAvatar: STATE.currentUser.avatar,
+      to: targetUid, toName: targetName, toAvatar: targetAvatar,
+      status:'pending', createdAt: window._fb.serverTimestamp(), _clientTs: Date.now()
+    });
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{
+      toUserId: targetUid, fromUserId: myId,
+      fromName: STATE.currentUser.name, fromAvatar: STATE.currentUser.avatar,
+      type:'friend_request', message: STATE.currentUser.name+' sent you a friend request',
+      read:false, createdAt: window._fb.serverTimestamp()
+    });
+    showToast('Friend request sent! 👋','success');
+  }catch(e){ showToast('Could not send request','error'); }
+}
+
+async function openFriendRequestsModal(){
+  if(!STATE.currentUser){ showToast('Please login','error'); return; }
+  const list = document.getElementById('friend-requests-list');
+  list.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-muted)">⏳ Loading...</div>';
+  document.getElementById('friend-requests-modal').classList.remove('hidden');
+  if(!window._FB_READY || !window._currentUser) return;
+  try{
+    const snap = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'friendRequests'),
+      window._fb.where('to','==',window._currentUser.uid),
+      window._fb.where('status','==','pending'), window._fb.limit(30)
+    ));
+    let reqs=[]; snap.forEach(d=>reqs.push({id:d.id,...d.data()}));
+    if(!reqs.length){ list.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">No pending friend requests</div>'; return; }
+    list.innerHTML = reqs.map(r=>`
+      <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)">
+        <img src="${r.fromAvatar||'https://api.dicebear.com/7.x/avataaars/svg?seed=fr'}" style="width:48px;height:48px;border-radius:50%;object-fit:cover;flex-shrink:0">
+        <div style="flex:1">
+          <div style="font-weight:700;font-size:.9rem;color:var(--text-primary)">${esc(r.fromName||'User')}</div>
+          <div style="font-size:.75rem;color:var(--text-muted)">Sent you a friend request</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button onclick="respondFriendRequest('${r.id}','${r.from}',true)" style="padding:7px 14px;border-radius:8px;border:none;background:#1877F2;color:#fff;font-size:.78rem;font-weight:700;cursor:pointer">Accept</button>
+          <button onclick="respondFriendRequest('${r.id}','${r.from}',false)" style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-muted);font-size:.78rem;cursor:pointer">Decline</button>
+        </div>
+      </div>`).join('');
+  }catch(e){ list.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Could not load requests</div>'; }
+}
+
+async function respondFriendRequest(reqId, fromUid, accept){
+  if(!window._FB_READY || !window._currentUser) return;
+  const myId = window._currentUser.uid;
+  try{
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'friendRequests',reqId),
+      {status: accept?'accepted':'declined', updatedAt:window._fb.serverTimestamp()});
+    if(accept){
+      // Mutual follow
+      await window._fb.setDoc(window._fb.doc(window._fb.db,'users',myId,'following',fromUid),{followedAt:window._fb.serverTimestamp()});
+      await window._fb.setDoc(window._fb.doc(window._fb.db,'users',fromUid,'following',myId),{followedAt:window._fb.serverTimestamp()});
+      STATE.following.add(fromUid);
+      saveState();
+      await window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{
+        toUserId:fromUid, fromUserId:myId,
+        fromName:STATE.currentUser.name, fromAvatar:STATE.currentUser.avatar,
+        type:'friend_accepted', message:STATE.currentUser.name+' accepted your friend request! 🎉',
+        read:false, createdAt:window._fb.serverTimestamp()
+      });
+      showToast('Friend request accepted! 🎉','success');
+    } else { showToast('Request declined','info'); }
+    openFriendRequestsModal();
+  }catch(e){ showToast('Could not respond to request','error'); }
+}
+
+/* ══════════════════════════════════════════
+   3. POLLS SYSTEM
+══════════════════════════════════════════ */
+function openPollModal(){ document.getElementById('poll-modal').classList.remove('hidden'); }
+
+async function submitPoll(){
+  const question = document.getElementById('poll-question')?.value?.trim();
+  const opt1     = document.getElementById('poll-opt1')?.value?.trim();
+  const opt2     = document.getElementById('poll-opt2')?.value?.trim();
+  const opt3     = document.getElementById('poll-opt3')?.value?.trim();
+  const opt4     = document.getElementById('poll-opt4')?.value?.trim();
+  const duration = parseInt(document.getElementById('poll-duration')?.value)||7;
+  const multi    = document.getElementById('poll-multi')?.value === 'true';
+
+  if(!question||!opt1||!opt2){ showToast('Please enter question and at least 2 options','error'); return; }
+  if(!STATE.currentUser || !window._FB_READY || !window._currentUser){ showToast('Please login','error'); return; }
+
+  const options = [opt1,opt2,opt3,opt4].filter(o=>o).map(text=>({text, votes:0, voters:[]}));
+  const expiresAt = Date.now() + duration*24*60*60*1000;
+
+  try{
+    const docRef = await window._fb.addDoc(window._fb.collection(window._fb.db,'polls'),{
+      question, options, multi, expiresAt, _clientTs:Date.now(),
+      createdBy:window._currentUser.uid, creatorName:STATE.currentUser.name,
+      creatorAvatar:STATE.currentUser.avatar, totalVotes:0,
+      createdAt:window._fb.serverTimestamp()
+    });
+    // Create a post linking to this poll
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'posts'),{
+      authorId:window._currentUser.uid, authorName:STATE.currentUser.name,
+      authorAvatar:STATE.currentUser.avatar,
+      text:`📊 Poll: ${question}`, pollId:docRef.id,
+      visibility:'public', likes:0, comments:[], shares:0, views:0,
+      timestamp:window._fb.serverTimestamp(), _clientTs:Date.now()
+    });
+    document.getElementById('poll-modal').classList.add('hidden');
+    ['poll-question','poll-opt1','poll-opt2','poll-opt3','poll-opt4'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    showToast('Poll created! 📊','success');
+  }catch(e){ showToast('Could not create poll: '+e.message,'error'); }
+}
+
+async function votePoll(pollId, optionIndex){
+  if(!STATE.currentUser || !window._FB_READY || !window._currentUser){ showToast('Please login to vote','error'); return; }
+  const myId = window._currentUser.uid;
+  try{
+    const snap = await window._fb.getDoc(window._fb.doc(window._fb.db,'polls',pollId));
+    if(!snap.exists()) return;
+    const poll = snap.data();
+    if(poll.expiresAt < Date.now()){ showToast('This poll has ended','error'); return; }
+    // Check already voted
+    if((poll.options[optionIndex]?.voters||[]).includes(myId)){ showToast('Already voted!','info'); return; }
+    const options = poll.options.map((o,i)=>i===optionIndex?{...o,votes:(o.votes||0)+1,voters:[...(o.voters||[]),myId]}:o);
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'polls',pollId),{options, totalVotes:window._fb.increment(1)});
+    showToast('Vote recorded! 🗳️','success');
+    // Re-render the poll card if visible
+    const pollEl = document.querySelector(`[data-poll-id="${pollId}"]`);
+    if(pollEl){ const p={...poll,options}; pollEl.innerHTML = renderPollHTML(p, pollId, myId); }
+  }catch(e){ showToast('Could not vote: '+e.message,'error'); }
+}
+
+function renderPollHTML(poll, pollId, myId){
+  const total = poll.totalVotes||poll.options.reduce((s,o)=>s+(o.votes||0),0)||1;
+  const expired = poll.expiresAt < Date.now();
+  const voted = poll.options.some(o=>(o.voters||[]).includes(myId||''));
+  return `<div style="background:var(--bg-input);border-radius:12px;padding:14px;margin:10px 0">
+    <div style="font-weight:800;font-size:.9rem;color:var(--text-primary);margin-bottom:10px">📊 ${esc(poll.question)}</div>
+    ${poll.options.map((opt,i)=>{
+      const pct = Math.round(((opt.votes||0)/total)*100);
+      const myVote = (opt.voters||[]).includes(myId||'');
+      return voted||expired
+        ? `<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;font-size:.82rem;color:var(--text-secondary);margin-bottom:3px"><span>${myVote?'✅ ':''} ${esc(opt.text)}</span><span>${pct}%</span></div>
+           <div style="height:6px;border-radius:99px;background:var(--border);overflow:hidden"><div style="height:100%;background:${myVote?'#1877F2':'var(--primary)'};width:${pct}%;transition:width .5s"></div></div></div>`
+        : `<button onclick="votePoll('${pollId}',${i})" style="width:100%;text-align:left;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;background:none;color:var(--text-primary);font-size:.84rem;cursor:pointer;margin-bottom:6px;font-weight:700;transition:all .15s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">${esc(opt.text)}</button>`;
+    }).join('')}
+    <div style="font-size:.72rem;color:var(--text-muted);margin-top:8px">${total} votes · ${expired?'Poll ended':'Ends '+new Date(poll.expiresAt).toLocaleDateString()}</div>
+  </div>`;
+}
+
+/* ══════════════════════════════════════════
+   4. WATCH / VIDEO HUB
+══════════════════════════════════════════ */
+async function loadWatchVideos(){
+  const grid = document.getElementById('watch-grid'); if(!grid) return;
+  const cat  = document.getElementById('watch-cat')?.value||'';
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i></div>';
+  if(!window._FB_READY){ setTimeout(loadWatchVideos,1200); return; }
+  try{
+    let q = window._fb.query(window._fb.collection(window._fb.db,'videos'), window._fb.limit(24));
+    if(cat) q = window._fb.query(window._fb.collection(window._fb.db,'videos'), window._fb.where('category','==',cat), window._fb.limit(24));
+    const snap = await window._fb.getDocs(q);
+    let vids=[]; snap.forEach(d=>vids.push({id:d.id,...d.data()}));
+    vids.sort((a,b)=>(b._clientTs||0)-(a._clientTs||0));
+    if(!vids.length){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:50px;color:var(--text-muted)"><i class="fas fa-video" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:12px"></i>No videos yet. Be first to share!</div>'; return; }
+    grid.innerHTML = vids.map(v=>{
+      const ytId = (v.url||'').match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+      const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : '';
+      return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s" onclick="playVideo('${v.id}','${v.url||''}')" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+        <div style="position:relative;padding-top:56.25%;background:#000;overflow:hidden">
+          ${thumb?`<img src="${thumb}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover">`:'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:3rem;color:rgba(255,255,255,.3)">▶</div>'}
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center"><div style="width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem">▶</div></div>
+          <span style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,.7);color:#fff;font-size:.66rem;padding:2px 6px;border-radius:3px">${esc(v.category||'Video')}</span>
+        </div>
+        <div style="padding:10px">
+          <div style="font-weight:700;font-size:.84rem;color:var(--text-primary);line-height:1.3;margin-bottom:3px;overflow:hidden;height:2.2em">${esc(v.title||'Video')}</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">${esc(v.posterName||'K Spider User')} · ${(v.views||0).toLocaleString('en-IN')} views</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted)">Could not load videos</div>'; }
+}
+
+function playVideo(videoId, url){
+  const existing = document.getElementById('video-player-modal'); if(existing) existing.remove();
+  const ytId = url.match(/(?:v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/)?.[1];
+  const modal = document.createElement('div');
+  modal.id = 'video-player-modal';
+  modal.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.9);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML = `<div style="max-width:780px;width:100%">
+    <button onclick="document.getElementById('video-player-modal').remove()" style="display:block;margin-left:auto;margin-bottom:10px;background:rgba(255,255,255,.2);border:none;color:#fff;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:.85rem">✕ Close</button>
+    <div style="position:relative;padding-top:56.25%;border-radius:12px;overflow:hidden;background:#000">
+      ${ytId
+        ? `<iframe style="position:absolute;inset:0;width:100%;height:100%" src="https://www.youtube.com/embed/${ytId}?autoplay=1" frameborder="0" allow="autoplay;encrypted-media" allowfullscreen></iframe>`
+        : `<video src="${url}" controls autoplay style="position:absolute;inset:0;width:100%;height:100%"></video>`}
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+  // Increment views
+  if(window._FB_READY && videoId && !videoId.startsWith('temp')){
+    window._fb.updateDoc(window._fb.doc(window._fb.db,'videos',videoId),{views:window._fb.increment(1)}).catch(()=>{});
+  }
+}
+
+function openAddVideoModal(){ document.getElementById('add-video-modal').classList.remove('hidden'); }
+
+async function submitAddVideo(){
+  const title = document.getElementById('vid-title')?.value?.trim();
+  const url   = document.getElementById('vid-url')?.value?.trim();
+  const desc  = document.getElementById('vid-desc')?.value?.trim();
+  const cat   = document.getElementById('vid-cat')?.value||'Entertainment';
+  if(!title||!url){ showToast('Please enter title and video URL','error'); return; }
+  if(!window._FB_READY||!window._currentUser){ showToast('Please login','error'); return; }
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'videos'),{
+      title, url, description:desc||'', category:cat,
+      posterId:window._currentUser.uid, posterName:STATE.currentUser.name,
+      posterAvatar:STATE.currentUser.avatar, views:0, likes:0,
+      createdAt:window._fb.serverTimestamp(), _clientTs:Date.now()
+    });
+    document.getElementById('add-video-modal').classList.add('hidden');
+    showToast('Video shared! 🎬','success');
+    loadWatchVideos();
+  }catch(e){ showToast('Could not add video: '+e.message,'error'); }
+}
+
+/* ══════════════════════════════════════════
+   5. JOBS PORTAL
+══════════════════════════════════════════ */
+async function loadJobs(){
+  const list = document.getElementById('jobs-list'); if(!list) return;
+  const q    = (document.getElementById('job-search')?.value||'').toLowerCase();
+  const type = document.getElementById('job-type-filter')?.value||'';
+  const loc  = document.getElementById('job-loc-filter')?.value||'';
+  list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i></div>';
+  if(!window._FB_READY){ setTimeout(loadJobs,1200); return; }
+  try{
+    const snap = await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'jobs'),window._fb.limit(60)));
+    let jobs=[]; snap.forEach(d=>jobs.push({id:d.id,...d.data()}));
+    jobs.sort((a,b)=>(b._clientTs||0)-(a._clientTs||0));
+    if(q)    jobs=jobs.filter(j=>(j.title||'').toLowerCase().includes(q)||(j.company||'').toLowerCase().includes(q)||(j.skills||'').toLowerCase().includes(q));
+    if(type) jobs=jobs.filter(j=>j.type===type);
+    if(loc)  jobs=jobs.filter(j=>(j.location||'').toLowerCase().includes(loc.toLowerCase()));
+    if(!jobs.length){ list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-briefcase" style="font-size:2rem;opacity:.2;display:block;margin-bottom:10px"></i>No jobs found. Try different filters.</div>'; return; }
+    list.innerHTML = jobs.map(j=>{
+      const date = j._clientTs ? new Date(j._clientTs).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : '';
+      return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:12px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--primary)'" onmouseout="this.style.borderColor='var(--border)'">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:800;font-size:.95rem;color:var(--text-primary)">${esc(j.title||'Job')}</div>
+            <div style="font-size:.82rem;color:var(--primary);font-weight:700;margin-top:2px">${esc(j.company||'Company')}</div>
+          </div>
+          <span style="font-size:.7rem;padding:4px 10px;border-radius:99px;font-weight:700;background:var(--bg-input);color:var(--text-muted);flex-shrink:0">${esc(j.type||'Job')}</span>
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:10px;font-size:.78rem;color:var(--text-secondary);margin-bottom:10px">
+          <span><i class="fas fa-map-marker-alt" style="color:var(--primary)"></i> ${esc(j.location||'—')}</span>
+          <span><i class="fas fa-rupee-sign" style="color:var(--primary)"></i> ${esc(j.salary||'Not disclosed')}</span>
+          <span><i class="fas fa-clock" style="color:var(--primary)"></i> ${esc(j.experience||'Any')}</span>
+          <span><i class="fas fa-calendar" style="color:var(--primary)"></i> ${date}</span>
+        </div>
+        <div style="font-size:.82rem;color:var(--text-secondary);line-height:1.6;margin-bottom:10px">${esc((j.description||'').slice(0,180))}${j.description?.length>180?'...':''}</div>
+        ${j.skills ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${j.skills.split(',').map(s=>`<span style="padding:3px 10px;border-radius:99px;background:var(--bg-input);font-size:.7rem;color:var(--text-muted);font-weight:700">${esc(s.trim())}</span>`).join('')}</div>` : ''}
+        <div style="display:flex;gap:8px">
+          ${j.contact ? `<button onclick="applyJob('${j.id}','${esc(j.contact)}','${esc(j.title)}')" style="flex:1;padding:9px;border-radius:8px;border:none;background:#1877F2;color:#fff;font-weight:700;cursor:pointer;font-size:.82rem"><i class="fas fa-paper-plane"></i> Apply Now</button>` : ''}
+          ${j.createdBy===window._currentUser?.uid ? `<button onclick="deleteJob('${j.id}')" style="padding:9px 14px;border-radius:8px;border:1px solid #ef4444;background:none;color:#ef4444;cursor:pointer;font-size:.82rem">Delete</button>` : ''}
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ list.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load jobs</div>'; }
+}
+
+function openPostJobModal(){ document.getElementById('post-job-modal').classList.remove('hidden'); }
+
+async function submitPostJob(){
+  const title    = document.getElementById('job-title')?.value?.trim();
+  const company  = document.getElementById('job-company')?.value?.trim();
+  const type     = document.getElementById('job-type')?.value;
+  const location = document.getElementById('job-location')?.value?.trim();
+  const salary   = document.getElementById('job-salary')?.value?.trim();
+  const exp      = document.getElementById('job-exp')?.value?.trim();
+  const desc     = document.getElementById('job-desc')?.value?.trim();
+  const skills   = document.getElementById('job-skills')?.value?.trim();
+  const contact  = document.getElementById('job-contact')?.value?.trim();
+  if(!title||!company||!desc||!contact){ showToast('Please fill required fields','error'); return; }
+  if(!window._FB_READY||!window._currentUser){ showToast('Please login','error'); return; }
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'jobs'),{
+      title, company, type, location:location||'Remote', salary:salary||'',
+      experience:exp||'', description:desc, skills:skills||'', contact,
+      createdBy:window._currentUser.uid, posterName:STATE.currentUser.name,
+      status:'active', applications:0,
+      createdAt:window._fb.serverTimestamp(), _clientTs:Date.now()
+    });
+    document.getElementById('post-job-modal').classList.add('hidden');
+    showToast('Job posted! 💼','success');
+    loadJobs();
+  }catch(e){ showToast('Could not post job: '+e.message,'error'); }
+}
+
+function applyJob(jobId, contact, title){
+  const waNum = contact.replace(/[^0-9]/g,'');
+  const msg   = `Hi! I found your job posting for "${title}" on K Spider India. I would like to apply. Please let me know the next steps.`;
+  if(/^\d{10,12}$/.test(waNum)){
+    window.open(`https://wa.me/${waNum.length===10?'91'+waNum:waNum}?text=${encodeURIComponent(msg)}`,'_blank');
+  } else {
+    window.open(`mailto:${contact}?subject=Job Application: ${title}&body=${encodeURIComponent(msg)}`,'_blank');
+  }
+  if(window._FB_READY) window._fb.updateDoc(window._fb.doc(window._fb.db,'jobs',jobId),{applications:window._fb.increment(1)}).catch(()=>{});
+}
+
+async function deleteJob(jobId){
+  if(!confirm('Delete this job posting?')) return;
+  try{
+    await window._fb.deleteDoc(window._fb.doc(window._fb.db,'jobs',jobId));
+    showToast('Job deleted','success'); loadJobs();
+  }catch(e){ showToast('Could not delete','error'); }
+}
+
+/* ══════════════════════════════════════════
+   6. PHOTO ALBUMS
+══════════════════════════════════════════ */
+window._albumPhotos = [];
+
+async function loadAlbums(){
+  const grid = document.getElementById('albums-grid'); if(!grid) return;
+  grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i></div>';
+  if(!window._FB_READY||!window._currentUser){ grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Login to see albums</div>'; return; }
+  try{
+    const snap = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'albums'),
+      window._fb.where('createdBy','==',window._currentUser.uid), window._fb.limit(50)
+    ));
+    let albums=[]; snap.forEach(d=>albums.push({id:d.id,...d.data()}));
+    albums.sort((a,b)=>(b._clientTs||0)-(a._clientTs||0));
+    if(!albums.length){ grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-images" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:10px"></i>No albums yet. Create your first album!</div>'; return; }
+    grid.innerHTML = albums.map(a=>`
+      <div onclick="openAlbum('${a.id}')" style="background:var(--bg-card);border:1px solid var(--border);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='none'">
+        <div style="height:140px;background:var(--bg-input);overflow:hidden;position:relative">
+          ${a.coverPhoto?`<img src="${a.coverPhoto}" style="width:100%;height:100%;object-fit:cover" loading="lazy">`:'<div style="height:100%;display:flex;align-items:center;justify-content:center;font-size:3rem;opacity:.3">📷</div>'}
+          <div style="position:absolute;bottom:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;font-size:.7rem;padding:2px 8px;border-radius:99px">${(a.photos||[]).length} photos</div>
+        </div>
+        <div style="padding:10px">
+          <div style="font-weight:800;font-size:.88rem;color:var(--text-primary)">${esc(a.name||'Album')}</div>
+          <div style="font-size:.72rem;color:var(--text-muted)">${esc(a.description||'')}</div>
+        </div>
+      </div>`).join('');
+  }catch(e){ grid.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load albums</div>'; }
+}
+
+function openCreateAlbumModal(){
+  window._albumPhotos=[];
+  document.getElementById('alb-name').value=''; document.getElementById('alb-desc').value='';
+  document.getElementById('alb-preview-grid').innerHTML='';
+  document.getElementById('create-album-modal').classList.remove('hidden');
+}
+
+async function previewAlbumPhotos(event){
+  const files = Array.from(event.target.files).slice(0,20);
+  window._albumPhotos=[];
+  const grid = document.getElementById('alb-preview-grid');
+  grid.innerHTML='<span style="font-size:.78rem;color:var(--text-muted)">⏳ Processing...</span>';
+  for(const file of files){
+    const url = await new Promise(res=>{const r=new FileReader();r.onload=e=>res(e.target.result);r.readAsDataURL(file);});
+    let compressed=url;
+    if(typeof compressImageTo100KB==='function') try{compressed=await compressImageTo100KB(url,90);}catch(e){}
+    window._albumPhotos.push(compressed);
+  }
+  grid.innerHTML=window._albumPhotos.map((img,i)=>`<img src="${img}" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:2px solid ${i===0?'var(--primary)':'var(--border)'}">`).join('');
+  showToast(`${window._albumPhotos.length} photos ready!`,'success');
+}
+
+async function submitCreateAlbum(){
+  const name    = document.getElementById('alb-name')?.value?.trim();
+  const desc    = document.getElementById('alb-desc')?.value?.trim();
+  const privacy = document.getElementById('alb-privacy')?.value||'public';
+  if(!name){ showToast('Please enter album name','error'); return; }
+  if(!window._FB_READY||!window._currentUser){ showToast('Please login','error'); return; }
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'albums'),{
+      name, description:desc||'', privacy,
+      photos:window._albumPhotos, coverPhoto:window._albumPhotos[0]||null,
+      createdBy:window._currentUser.uid, creatorName:STATE.currentUser.name,
+      createdAt:window._fb.serverTimestamp(), _clientTs:Date.now()
+    });
+    document.getElementById('create-album-modal').classList.add('hidden');
+    showToast('Album created! 📷','success');
+    loadAlbums();
+  }catch(e){ showToast('Could not create album: '+e.message,'error'); }
+}
+
+async function openAlbum(albumId){
+  const snap = await window._fb.getDoc(window._fb.doc(window._fb.db,'albums',albumId));
+  if(!snap.exists()) return;
+  const a = snap.data();
+  const modal = document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;padding:16px';
+  modal.innerHTML=`<div style="background:var(--bg-secondary);border-radius:16px;max-width:700px;width:100%;max-height:90vh;overflow-y:auto;padding:22px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-weight:800;font-size:1rem;color:var(--text-primary)">${esc(a.name)}</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;color:var(--text-muted);font-size:1.4rem;cursor:pointer">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:6px">
+      ${(a.photos||[]).map(img=>`<img src="${img}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;cursor:pointer" onclick="viewFullPhoto('${img}')" loading="lazy">`).join('')}
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{ if(e.target===modal) modal.remove(); });
+  document.body.appendChild(modal);
+}
+
+function viewFullPhoto(src){
+  const m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;cursor:pointer';
+  m.innerHTML=`<img src="${src}" style="max-width:95vw;max-height:95vh;object-fit:contain;border-radius:8px">`;
+  m.onclick=()=>m.remove();
+  document.body.appendChild(m);
+}
+
+/* ══════════════════════════════════════════
+   7. FUNDRAISING
+══════════════════════════════════════════ */
+async function loadFundraisers(){
+  const list = document.getElementById('fundraisers-list'); if(!list) return;
+  list.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i></div>';
+  if(!window._FB_READY){ setTimeout(loadFundraisers,1200); return; }
+  try{
+    const snap = await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'fundraisers'),window._fb.limit(30)));
+    let frs=[]; snap.forEach(d=>frs.push({id:d.id,...d.data()}));
+    frs.sort((a,b)=>(b._clientTs||0)-(a._clientTs||0));
+    if(!frs.length){ list.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)"><i class="fas fa-hand-holding-heart" style="font-size:2.5rem;opacity:.2;display:block;margin-bottom:10px"></i>No fundraisers yet. Start one!</div>'; return; }
+    list.innerHTML=frs.map(f=>{
+      const raised = f.raised||0; const goal = f.goal||1;
+      const pct = Math.min(100, Math.round((raised/goal)*100));
+      return `<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div style="width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ef4444,#dc2626);display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0">❤️</div>
+          <div><div style="font-weight:800;font-size:.95rem;color:var(--text-primary)">${esc(f.title||'Fundraiser')}</div>
+          <div style="font-size:.75rem;color:var(--text-muted)">by ${esc(f.creatorName||'User')} · ${esc(f.category||'')}</div></div>
+        </div>
+        <div style="font-size:.83rem;color:var(--text-secondary);line-height:1.6;margin-bottom:12px">${esc((f.story||'').slice(0,200))}${(f.story||'').length>200?'...':''}</div>
+        <div style="background:var(--border);border-radius:99px;height:8px;margin-bottom:8px;overflow:hidden">
+          <div style="height:100%;background:linear-gradient(135deg,#ef4444,#dc2626);width:${pct}%;transition:width 1s"></div>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.8rem;margin-bottom:12px">
+          <span style="font-weight:800;color:#ef4444">₹${raised.toLocaleString('en-IN')} raised</span>
+          <span style="color:var(--text-muted)">${pct}% of ₹${goal.toLocaleString('en-IN')}</span>
+        </div>
+        ${f.upi?`<div style="display:flex;gap:8px">
+          <button onclick="donateFundraiser('${f.id}','${f.upi}','${esc(f.title)}')" style="flex:1;padding:10px;border-radius:8px;border:none;background:#ef4444;color:#fff;font-weight:700;cursor:pointer;font-size:.85rem"><i class="fas fa-heart"></i> Donate Now</button>
+          <button onclick="sharePost('${f.id}')" style="padding:10px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text-muted);cursor:pointer"><i class="fas fa-share"></i></button>
+        </div>`:''}
+      </div>`;
+    }).join('');
+  }catch(e){ list.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load fundraisers</div>'; }
+}
+
+function openCreateFundraiserModal(){ document.getElementById('create-fundraiser-modal').classList.remove('hidden'); }
+
+async function submitCreateFundraiser(){
+  const title    = document.getElementById('fr-title')?.value?.trim();
+  const story    = document.getElementById('fr-story')?.value?.trim();
+  const goal     = parseFloat(document.getElementById('fr-goal')?.value)||0;
+  const cat      = document.getElementById('fr-category')?.value||'Other';
+  const upi      = document.getElementById('fr-upi')?.value?.trim();
+  const deadline = document.getElementById('fr-deadline')?.value;
+  if(!title||!story||goal<100||!upi){ showToast('Please fill all required fields (min ₹100 goal)','error'); return; }
+  if(!window._FB_READY||!window._currentUser){ showToast('Please login','error'); return; }
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'fundraisers'),{
+      title, story, goal, category:cat, upi, deadline:deadline||null,
+      raised:0, donorCount:0,
+      createdBy:window._currentUser.uid, creatorName:STATE.currentUser.name,
+      creatorAvatar:STATE.currentUser.avatar,
+      createdAt:window._fb.serverTimestamp(), _clientTs:Date.now()
+    });
+    document.getElementById('create-fundraiser-modal').classList.add('hidden');
+    showToast('Fundraiser started! ❤️','success');
+    loadFundraisers();
+  }catch(e){ showToast('Could not create fundraiser: '+e.message,'error'); }
+}
+
+function donateFundraiser(frId, upi, title){
+  const amount = prompt(`How much do you want to donate for "${title}"? (₹)`, '100');
+  if(!amount || isNaN(amount) || parseFloat(amount)<1){ return; }
+  const upiUrl = `upi://pay?pa=${upi}&pn=Fundraiser&am=${parseFloat(amount)}&cu=INR&tn=${encodeURIComponent('Donation: '+title)}`;
+  window.open(upiUrl,'_blank');
+  // Record donation
+  if(window._FB_READY){
+    window._fb.updateDoc(window._fb.doc(window._fb.db,'fundraisers',frId),{
+      raised:window._fb.increment(parseFloat(amount)), donorCount:window._fb.increment(1)
+    }).then(()=>{ showToast(`Thank you for donating ₹${amount}! ❤️`,'success'); loadFundraisers(); }).catch(()=>{});
+  }
+}
+
+/* ══════════════════════════════════════════
+   8. BIRTHDAY REMINDERS
+══════════════════════════════════════════ */
+async function checkBirthdays(){
+  if(!window._FB_READY) return;
+  try{
+    const snap = await window._fb.getDocs(window._fb.query(
+      window._fb.collection(window._fb.db,'users'), window._fb.limit(100)
+    ));
+    const today = new Date();
+    const todayMD = `${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    let bdays=[];
+    snap.forEach(d=>{
+      const u=d.data();
+      if(!u.dob) return;
+      const dobMD = u.dob.slice(5,10); // MM-DD from YYYY-MM-DD
+      if(dobMD === todayMD && d.id !== window._currentUser?.uid){
+        bdays.push(u.name||'A friend');
+      }
+    });
+    if(bdays.length){
+      const banner=document.getElementById('birthday-banner');
+      const text=document.getElementById('birthday-banner-text');
+      if(banner&&text){
+        const names = bdays.slice(0,3).join(', ') + (bdays.length>3 ? ' and '+(bdays.length-3)+' others' : '');
+        text.textContent = `Today is ${names}'s birthday! 🎂`;
+        banner.classList.remove('hidden');
+        setTimeout(()=>banner.classList.add('hidden'),15000);
+      }
+    }
+  }catch(e){}
+}
+
+/* ══════════════════════════════════════════
+   9. GLOBAL SEARCH
+══════════════════════════════════════════ */
+function openGlobalSearch(){
+  document.getElementById('global-search-modal').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('global-search-input')?.focus(),100);
+}
+function closeGlobalSearch(){
+  document.getElementById('global-search-modal').classList.add('hidden');
+  document.getElementById('global-search-input').value='';
+  document.getElementById('global-search-results').innerHTML='';
+}
+
+async function globalSearch(query){
+  if(!query||query.length<2){
+    document.getElementById('global-search-results').innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)">Type at least 2 characters to search...</div>';
+    return;
+  }
+  const results=document.getElementById('global-search-results');
+  results.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i> Searching...</div>';
+  const q=query.toLowerCase();
+  const out=[];
+  // Search in-memory STATE.posts
+  const posts=(STATE.posts||[]).filter(p=>(p.text||'').toLowerCase().includes(q)||(p.authorName||'').toLowerCase().includes(q)).slice(0,4);
+  if(posts.length){ out.push(`<div style="font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;padding:8px 0 4px">📝 Posts</div>`);
+    posts.forEach(p=>out.push(`<div onclick="closeGlobalSearch();document.getElementById('post-${p.id}')?.scrollIntoView({behavior:'smooth'})" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background='none'">
+      <img src="${p.authorAvatar||''}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">
+      <div><div style="font-size:.82rem;font-weight:700;color:var(--text-primary)">${esc((p.text||'').slice(0,60))}</div>
+      <div style="font-size:.72rem;color:var(--text-muted)">by ${esc(p.authorName||'')}</div></div></div>`));
+  }
+  // Search products
+  const prods=(window._mktProducts||[]).filter(p=>(p.title||'').toLowerCase().includes(q)||(p.company||'').toLowerCase().includes(q)).slice(0,3);
+  if(prods.length){ out.push(`<div style="font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;padding:8px 0 4px">🛒 Products</div>`);
+    prods.forEach(p=>out.push(`<div onclick="closeGlobalSearch();navigateTo('marketplace');setTimeout(()=>showProductDetail('${p.id}'),500)" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer" onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background='none'">
+      ${p.image?`<img src="${p.image}" style="width:36px;height:36px;border-radius:6px;object-fit:cover;flex-shrink:0">`:'<div style="width:36px;height:36px;border-radius:6px;background:var(--bg-input);display:flex;align-items:center;justify-content:center;flex-shrink:0">📦</div>'}
+      <div><div style="font-size:.82rem;font-weight:700;color:var(--text-primary)">${esc(p.title)}</div><div style="font-size:.72rem;color:var(--primary);font-weight:700">₹${(p.price||0).toLocaleString('en-IN')}</div></div></div>`));
+  }
+  // Search Firebase users
+  if(window._FB_READY){
+    try{
+      const uSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.limit(100)));
+      let users=[]; uSnap.forEach(d=>{ const u=d.data(); if((u.name||'').toLowerCase().includes(q)) users.push({id:d.id,...u}); });
+      users=users.slice(0,4);
+      if(users.length){ out.push(`<div style="font-size:.75rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;padding:8px 0 4px">👤 People</div>`);
+        users.forEach(u=>out.push(`<div onclick="closeGlobalSearch();viewUserProfile('${u.id}')" style="display:flex;align-items:center;gap:10px;padding:10px;border-radius:8px;cursor:pointer" onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background='none'">
+          <img src="${u.avatar||'https://api.dicebear.com/7.x/avataaars/svg?seed='+u.id}" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0">
+          <div><div style="font-size:.84rem;font-weight:700;color:var(--text-primary)">${esc(u.name||'User')}</div><div style="font-size:.72rem;color:var(--text-muted)">${esc(u.profession||u.city||'')}</div></div></div>`));
+      }
+    }catch(e){}
+  }
+  results.innerHTML=out.length?out.join(''):
+    `<div style="text-align:center;padding:30px;color:var(--text-muted)"><i class="fas fa-search" style="font-size:2rem;opacity:.2;display:block;margin-bottom:10px"></i>No results for "${esc(query)}"</div>`;
+}
+
+/* ══════════════════════════════════════════
+   10. DATING (K Spider Match)
+══════════════════════════════════════════ */
+function loadDatingPage(){
+  const el=document.getElementById('dating-content'); if(!el) return;
+  if(!STATE.currentUser){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Please login to use dating features</div>'; return; }
+  el.innerHTML=`<div style="text-align:center;padding:30px">
+    <div style="font-size:3rem;margin-bottom:14px">💝</div>
+    <div style="font-weight:800;font-size:1.1rem;color:var(--text-primary);margin-bottom:8px">K Spider Dating</div>
+    <div style="font-size:.84rem;color:var(--text-muted);margin-bottom:20px;line-height:1.7">Find your perfect match among K Spider users. Create your dating profile and start connecting!</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button onclick="createDatingProfile()" style="padding:13px;border-radius:10px;border:none;background:linear-gradient(135deg,#ef4444,#ec4899);color:#fff;font-weight:700;cursor:pointer;font-size:.95rem"><i class="fas fa-heart"></i> Create Dating Profile</button>
+      <button onclick="browseDatingProfiles()" style="padding:13px;border-radius:10px;border:1.5px solid #ef4444;background:none;color:#ef4444;font-weight:700;cursor:pointer;font-size:.95rem"><i class="fas fa-search-heart"></i> Browse Profiles</button>
+    </div>
+    <div style="margin-top:20px;padding:12px;background:#FEF2F2;border-radius:10px;font-size:.76rem;color:#991b1b"><i class="fas fa-shield-alt"></i> This feature is 18+ only. By proceeding, you confirm you are 18 years or older. K Spider India follows a strict safety-first policy.</div>
+  </div>`;
+}
+
+async function createDatingProfile(){
+  if(!window._FB_READY||!window._currentUser){ showToast('Please login','error'); return; }
+  const age = prompt('Your age (must be 18+):');
+  if(!age||parseInt(age)<18){ showToast('Must be 18+ to use dating','error'); return; }
+  const about = prompt('Write something about yourself (for your dating profile):');
+  const lookingFor = prompt('What are you looking for? (e.g. Friendship, Relationship, Marriage):') || 'Friendship';
+  try{
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'dating',window._currentUser.uid),{
+      userId:window._currentUser.uid, name:STATE.currentUser.name,
+      avatar:STATE.currentUser.avatar, age:parseInt(age), about:about||'',
+      lookingFor, city:STATE.currentUser.city||'', gender:STATE.currentUser.gender||'',
+      createdAt:window._fb.serverTimestamp(), _clientTs:Date.now(), active:true
+    });
+    showToast('Dating profile created! 💝','success');
+    browseDatingProfiles();
+  }catch(e){ showToast('Could not create profile: '+e.message,'error'); }
+}
+
+async function browseDatingProfiles(){
+  const el=document.getElementById('dating-content'); if(!el) return;
+  el.innerHTML='<div style="text-align:center;padding:20px;color:var(--text-muted)"><i class="fas fa-spinner fa-spin"></i></div>';
+  if(!window._FB_READY){ return; }
+  try{
+    const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'dating'),window._fb.where('active','==',true),window._fb.limit(20)));
+    let profiles=[]; snap.forEach(d=>{ if(d.id!==window._currentUser?.uid) profiles.push({id:d.id,...d.data()}); });
+    if(!profiles.length){ el.innerHTML='<div style="text-align:center;padding:40px;color:var(--text-muted)">No profiles yet. Be first to create one!</div>'; return; }
+    el.innerHTML=`<div style="display:flex;flex-direction:column;gap:12px">
+      <button onclick="loadDatingPage()" style="text-align:left;background:none;border:none;color:var(--primary);font-weight:700;cursor:pointer;padding:4px 0"><i class="fas fa-arrow-left"></i> Back</button>
+      ${profiles.map(p=>`<div style="background:var(--bg-card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;gap:14px;align-items:center">
+        <img src="${p.avatar||'https://api.dicebear.com/7.x/avataaars/svg?seed=dating'}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #ef4444;flex-shrink:0">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:.95rem;color:var(--text-primary)">${esc(p.name||'User')}, ${p.age||'?'}</div>
+          <div style="font-size:.76rem;color:var(--text-muted);margin:2px 0">${esc(p.city||'')} · Looking for: ${esc(p.lookingFor||'')}</div>
+          <div style="font-size:.8rem;color:var(--text-secondary);line-height:1.5">${esc((p.about||'').slice(0,80))}</div>
+        </div>
+        <button onclick="startRealChat('${p.userId}','${esc(p.name||'User')}','${p.avatar||''}')" style="padding:8px 14px;border-radius:8px;border:none;background:linear-gradient(135deg,#ef4444,#ec4899);color:#fff;font-weight:700;cursor:pointer;font-size:.8rem;flex-shrink:0"><i class="fas fa-paper-plane"></i> Message</button>
+      </div>`).join('')}
+    </div>`;
+  }catch(e){ el.innerHTML='<div style="text-align:center;padding:30px;color:var(--text-muted)">Could not load profiles</div>'; }
+}
+
+/* ══════════════════════════════════════════
+   11. POST CHECK-IN / LOCATION TAG
+══════════════════════════════════════════ */
+function addCheckin(){
+  if(!navigator.geolocation){ showToast('Location not supported','error'); return; }
+  showToast('Detecting location...','info');
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const {latitude,longitude}=pos.coords;
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+      const data=await r.json();
+      const loc=data?.address?.city||data?.address?.town||data?.address?.village||data?.display_name?.split(',')[0]||'Current Location';
+      STATE.activeTags=STATE.activeTags||{};
+      STATE.activeTags.location=loc;
+      if(typeof updateActiveTags==='function') updateActiveTags();
+      showToast(`📍 Checked in at ${loc}`,'success');
+    }catch(e){ showToast('Could not detect location','error'); }
+  },()=>showToast('Location permission denied','error'));
+}
+
+/* ══════════════════════════════════════════
+   12. HASHTAG TRENDING (improve existing)
+══════════════════════════════════════════ */
+function extractHashtags(text){ return (text||'').match(/#\w+/g)||[]; }
+
+async function loadTrendingHashtags(){
+  if(!window._FB_READY) return;
+  try{
+    const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'posts'),window._fb.limit(100)));
+    const tagCount={};
+    snap.forEach(d=>{ extractHashtags(d.data().text||'').forEach(t=>{ tagCount[t]=(tagCount[t]||0)+1; }); });
+    const sorted=Object.entries(tagCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    const el=document.getElementById('trending-hashtags');
+    if(el) el.innerHTML=sorted.map(([tag,count])=>`<div onclick="searchByHashtag('${tag}')" style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-radius:8px;cursor:pointer;transition:background .15s" onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background='none'">
+      <span style="font-size:.84rem;font-weight:700;color:var(--primary)">${esc(tag)}</span>
+      <span style="font-size:.72rem;color:var(--text-muted)">${count} post${count>1?'s':''}</span>
+    </div>`).join('');
+  }catch(e){}
+}
+
+function searchByHashtag(tag){
+  STATE.posts.filter(p=>(p.text||'').includes(tag)).forEach(p=>document.getElementById('post-'+p.id)?.scrollIntoView({behavior:'smooth'}));
+  showToast(`Showing posts with ${tag}`,'success');
+  navigateTo('feed');
+}
+
+/* ══════════════════════════════════════════
+   13. MENTION / TAG USERS IN POSTS
+══════════════════════════════════════════ */
+function setupMentionAutocomplete(){
+  const input=document.getElementById('post-text-input'); if(!input) return;
+  input.addEventListener('input',()=>{
+    const val=input.value; const lastAt=val.lastIndexOf('@');
+    if(lastAt<0){ hideMentionSuggestions(); return; }
+    const query=val.slice(lastAt+1).split(' ')[0].toLowerCase();
+    if(!query){ hideMentionSuggestions(); return; }
+    const matches=(STATE.posts||[]).map(p=>({name:p.authorName,id:p.authorId}))
+      .filter((u,i,a)=>a.findIndex(x=>x.id===u.id)===i)
+      .filter(u=>(u.name||'').toLowerCase().includes(query)).slice(0,5);
+    showMentionSuggestions(matches, lastAt);
+  });
+}
+
+function showMentionSuggestions(users, atPos){
+  let box=document.getElementById('mention-suggestions');
+  if(!box){ box=document.createElement('div'); box.id='mention-suggestions';
+    box.style.cssText='position:absolute;z-index:9999;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,.2);min-width:200px;overflow:hidden';
+    document.getElementById('post-text-input')?.parentNode?.appendChild(box); }
+  if(!users.length){ hideMentionSuggestions(); return; }
+  box.style.display='block';
+  box.innerHTML=users.map(u=>`<div onclick="insertMention('${esc(u.name)}',${atPos})" style="display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer;font-size:.84rem;color:var(--text-primary)" onmouseover="this.style.background='var(--bg-input)'" onmouseout="this.style.background='none'"><i class="fas fa-user-circle"></i> ${esc(u.name)}</div>`).join('');
+}
+
+function hideMentionSuggestions(){ const box=document.getElementById('mention-suggestions'); if(box) box.style.display='none'; }
+
+function insertMention(name, atPos){
+  const input=document.getElementById('post-text-input'); if(!input) return;
+  const val=input.value; const after=val.slice(atPos).indexOf(' ');
+  input.value=val.slice(0,atPos)+'@'+name+(after>=0?val.slice(atPos+after):' ');
+  hideMentionSuggestions(); input.focus();
+}
+
+/* ══════════════════════════════════════════
+   14. NAVIGATETO WIRING FOR NEW PAGES
+══════════════════════════════════════════ */
+// Patch navigateTo to handle new pages
+const _origNavTo = window.navigateTo || navigateTo;
+window.navigateTo = function(page){
+  _origNavTo(page);
+  if(page==='watch')      loadWatchVideos();
+  if(page==='jobs')       loadJobs();
+  if(page==='albums')     loadAlbums();
+  if(page==='fundraiser') loadFundraisers();
+  if(page==='dating')     loadDatingPage();
+};
+
+/* ══════════════════════════════════════════
+   15. INIT: Wire all features on load
+══════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function(){
+  setupMentionAutocomplete();
+  setTimeout(checkBirthdays, 3000);
+  setTimeout(loadTrendingHashtags, 4000);
+  // Wire search button if exists
+  const searchBtn = document.querySelector('.search-input, [placeholder*="Search"]');
+  if(searchBtn) searchBtn.addEventListener('focus', openGlobalSearch);
+  // Wire keyboard shortcut Ctrl+K for search
+  document.addEventListener('keydown', e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='k'){ e.preventDefault(); openGlobalSearch(); } });
+});
 
 </script>
 </body>
