@@ -2058,6 +2058,9 @@ body.saas-mode > *:not(#saas-shell):not(#ks-sidebar-overlay):not(script):not(sty
 body.saas-mode > [id$="-modal"],
 body.saas-mode > [id*="-overlay"]:not(#ks-sidebar-overlay),
 body.saas-mode > #ks-drug-alert-panel,
+body.saas-mode > #ks-explain-modal,
+body.saas-mode > #ks-live-toast,
+body.saas-mode > #ks-doctor-auth-modal,
 body.saas-mode > #pwa-banner {
   display: block !important;
 }
@@ -2303,7 +2306,7 @@ function toggleDarkMode() {
         <div class="sidebar-brand-sub">Clinic Platform</div>
       </div>
     </a>
-
+    <div id="ks-sidebar-auth-wrap" style="padding:8px 12px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:4px;"><button onclick="ksShowDoctorAuthModal()" id="ks-sidebar-login-btn" style="width:100%;padding:8px 12px;background:rgba(255,255,255,0.1);color:#fff;border:1px solid rgba(255,255,255,0.2);border-radius:8px;font-size:0.8rem;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:8px;"><span>&#x1F512;</span><span id="ks-sidebar-auth-label">Login / Register</span></button></div>
     <div class="sidebar-nav">
 
       <!-- MAIN -->
@@ -2314,21 +2317,11 @@ function toggleDarkMode() {
         <span class="sidebar-label">Dashboard</span>
       </button>
 
-      <button class="sidebar-nav-item" data-section="create-rx" onclick="saasSwitchSection('create-rx','&#x1F4DD; OPD / Create Rx','Patient visit & prescription',this)">
-        <span class="nav-icon">&#x1F3E5;</span>
-        <span class="sidebar-label">OPD</span>
-      </button>
+      
 
-      <button class="sidebar-nav-item" data-section="saas-appointments" onclick="saasSwitchSection('saas-appointments','&#x1F4C5; Appointments','Manage patient appointments',this)">
-        <span class="nav-icon">&#x1F4C5;</span>
-        <span class="sidebar-label">Appointments</span>
-        <span class="sidebar-badge count" id="appt-count-badge">0</span>
-      </button>
+      
 
-      <button class="sidebar-nav-item" data-section="create-rx" onclick="saasSwitchSection('create-rx','&#x1F4CB; Prescription','Build & print prescriptions',this)">
-        <span class="nav-icon">&#x1F4CB;</span>
-        <span class="sidebar-label">Prescription</span>
-      </button>
+      
 
       <!-- CLINICAL TOOLS -->
       <div class="sidebar-section-title">Clinical Tools</div>
@@ -2378,20 +2371,14 @@ function toggleDarkMode() {
         <span class="sidebar-label">Billing</span>
       </button>
 
-      <button class="sidebar-nav-item" data-section="saas-lab-mgmt" onclick="saasSwitchSection('saas-lab-mgmt','&#x1F9EA; Lab Management','Track lab orders & results',this)">
-        <span class="nav-icon">&#x1F9EA;</span>
-        <span class="sidebar-label">Lab</span>
-      </button>
+      
 
       <button class="sidebar-nav-item" data-section="saas-analytics" onclick="saasSwitchSection('saas-analytics','&#x1F4CA; Analytics','Practice insights & reports',this)">
         <span class="nav-icon">&#x1F4CA;</span>
         <span class="sidebar-label">Analytics</span>
       </button>
 
-      <button class="sidebar-nav-item" data-section="history" onclick="saasSwitchSection('history','&#x1F4C1; Patient History','Past prescriptions & visits',this)">
-        <span class="nav-icon">&#x1F4C1;</span>
-        <span class="sidebar-label">History</span>
-      </button>
+      
 
       <!-- SETTINGS -->
       <div class="sidebar-section-title">Settings</div>
@@ -2401,20 +2388,11 @@ function toggleDarkMode() {
         <span class="sidebar-label">Profile</span>
       </button>
 
-      <button class="sidebar-nav-item" data-section="rx-templates" onclick="saasSwitchSection('rx-templates','&#x1F4CB; Rx Templates','Saved prescription templates',this)">
-        <span class="nav-icon">&#x1F4CB;</span>
-        <span class="sidebar-label">Templates</span>
-      </button>
+      
 
-      <button class="sidebar-nav-item" data-section="earn" onclick="saasSwitchSection('earn','&#x1F3E5; Clinic Hub','Resources & monetization',this)">
-        <span class="nav-icon">&#x1F3E5;</span>
-        <span class="sidebar-label">Clinic Hub</span>
-      </button>
+      
 
-      <button class="sidebar-nav-item" data-section="followup" onclick="saasSwitchSection('followup','&#x1F504; Follow-Up','Manage patient follow-ups',this)">
-        <span class="nav-icon">&#x1F504;</span>
-        <span class="sidebar-label">Follow-Up</span>
-      </button>
+      
 
       <!-- ADVANCED FEATURES (NEW) -->
       <div class="sidebar-section-title">Advanced</div>
@@ -21568,10 +21546,15 @@ window.ksSaveDoctorData = function() {
 };
 
 // Logout
-window.ksLogoutDoctor = function() {
-  if (!confirm('Logout from K Spider Doctor AI?')) return;
+window.ksLogoutDoctor = function(skipConfirm) {
+  if (!skipConfirm && !confirm('Logout from K Spider Doctor AI?')) return;
   ksSaveDoctorData();
+  localStorage.removeItem('ks_current_doctor');
   localStorage.removeItem(KS_CURRENT_DOCTOR);
+  var sbl=document.getElementById('ks-sidebar-auth-label');if(sbl)sbl.textContent='Login / Register';
+  var sbBtn=document.getElementById('ks-sidebar-login-btn');if(sbBtn){sbBtn.style.background='rgba(255,255,255,0.1)';sbBtn.style.borderColor='rgba(255,255,255,0.2)';}
+  var ab=document.getElementById('ks-multi-doc-banner');if(ab){ab.style.background='linear-gradient(135deg,#0b2545,#1e3a8a)';var lb=document.getElementById('ks-auth-main-btn')||ab.querySelector('button');if(lb){lb.textContent='\u{1F512} Login / Register';lb.setAttribute('onclick','ksShowDoctorAuthModal()');}}
+  var tn=document.getElementById('ks-dr-name-topbar');if(tn)tn.textContent='';
   ksShowDoctorAuthModal();
 };
 
@@ -21655,7 +21638,7 @@ window.ksShowDoctorAuthModal = function() {
 </div>\
 <p style="text-align:center;margin-top:16px;font-size:0.75rem;color:#94a3b8;">Your data stays private on this device. Each doctor has their own secure space.</p>';
     modal.appendChild(box);
-    document.body.appendChild(modal);
+    var sh=document.getElementById('saas-shell')||document.body; sh.appendChild(modal);
   }
   modal.style.display = 'flex';
 };
@@ -21843,94 +21826,7 @@ window.apptBook = function() {
 };
 
 // ── EXPLAIN TO PATIENT (Hindi) ──────────────────────────────────────────
-window.ksExplainToPatient = async function() {
-  var g = function(id){ return (document.getElementById(id)||{value:''}).value||''; };
-  var ptName    = g('erx-pt-name') || 'Patient';
-  var diagnosis = g('erx-diagnosis') || g('primary_diagnosis') || '';
-  var medicines = [];
-  document.querySelectorAll('.erx-drug-name').forEach(function(el){ if(el.value) medicines.push(el.value); });
-  var investigations = g('erx-investigations') || '';
-  var instructions = g('erx-instructions') || '';
-  var followup = g('erx-followup-adv') || '';
 
-  if (!diagnosis && !medicines.length) {
-    alert('Please add diagnosis and medicines first, then click Explain to Patient.');
-    return;
-  }
-
-  // Show loading modal
-  ksShowExplainModal('loading');
-
-  var prompt = 'You are a doctor explaining to a patient in simple Hindi (Hinglish okay).\n\n'
-    + 'Patient name: ' + ptName + '\n'
-    + 'Diagnosis: ' + diagnosis + '\n'
-    + 'Medicines prescribed: ' + medicines.join(', ') + '\n'
-    + 'Investigations/Lab tests: ' + investigations + '\n'
-    + 'Instructions: ' + instructions + '\n'
-    + 'Follow-up: ' + followup + '\n\n'
-    + 'Write a warm, simple explanation IN HINDI that a non-medical person can understand:\n'
-    + '1. Aapko kya bimari hai (simple language mein)\n'
-    + '2. Har medicine kyun di gayi hai aur kaise leni hai\n'
-    + '3. Koi lab test kyun karvana hai\n'
-    + '4. Kya karna hai aur kya nahi karna hai\n'
-    + '5. Follow-up kab aana hai\n\n'
-    + 'Keep it warm, reassuring and easy to understand. Use emojis appropriately.';
-
-  try {
-    var response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 1000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-    var data = await response.json();
-    var explanation = data.content && data.content[0] ? data.content[0].text : 'Could not generate explanation.';
-    ksShowExplainModal('result', explanation, ptName);
-  } catch(e) {
-    ksShowExplainModal('error', 'Network error: ' + e.message);
-  }
-};
-
-window.ksShowExplainModal = function(state, content, ptName) {
-  var modal = document.getElementById('ks-explain-modal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'ks-explain-modal';
-    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center;padding:16px;';
-    document.body.appendChild(modal);
-  }
-  if (state === 'loading') {
-    modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:32px;max-width:480px;width:100%;text-align:center;"><div style="font-size:2rem;">\u23F3</div><div style="font-size:1rem;font-weight:700;color:var(--primary);margin-top:12px;">Generating patient explanation in Hindi...</div></div>';
-    modal.style.display = 'flex';
-    return;
-  }
-  if (state === 'error') {
-    modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:24px;max-width:480px;width:100%;"><div style="color:#dc2626;font-size:0.9rem;">\u274C ' + content + '</div><button onclick="document.getElementById(\'ks-explain-modal\').style.display=\'none\'" style="margin-top:12px;padding:8px 16px;border:none;border-radius:7px;cursor:pointer;background:var(--light-bg);">Close</button></div>';
-    modal.style.display = 'flex';
-    return;
-  }
-  // Result
-  var doctor = {}; try { doctor = JSON.parse(localStorage.getItem('doctor_profile')||'{}'); } catch(e) {}
-  var drName = doctor.name || localStorage.getItem('kspider_doctor_name') || 'Your Doctor';
-  var hospName = doctor.clinic || 'Our Clinic';
-  var waMsg = content + '\n\n\uD83C\uDFE5 ' + hospName + ' | Dr. ' + drName + '\n\uD83C\uDF10 kspiderai.in';
-  var ptPhone = (document.getElementById('erx-pt-phone')||document.getElementById('patient_phone')||{value:''}).value.replace(/\D/g,'');
-
-  modal.innerHTML = '<div style="background:#fff;border-radius:14px;padding:24px;max-width:600px;width:100%;max-height:88vh;overflow-y:auto;">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">'
-    + '<h3 style="margin:0;color:var(--primary);font-size:1rem;">\uD83D\uDCC4 Patient Explanation (Hindi)</h3>'
-    + '<button onclick="document.getElementById(\'ks-explain-modal\').style.display=\'none\'" style="background:none;border:none;font-size:1.3rem;cursor:pointer;">\u2715</button></div>'
-    + '<div style="background:#f8fafc;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.7;white-space:pre-wrap;margin-bottom:14px;">' + content + '</div>'
-    + '<div style="display:flex;gap:8px;flex-wrap:wrap;">'
-    + '<button onclick="ksPrintExplanation()" style="flex:1;padding:9px;background:#2563eb;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.84rem;font-weight:700;">\uD83D\uDDA8\uFE0F Print</button>'
-    + '<button onclick="window.open(\'https://wa.me/\'+(\''+ptPhone+'\'.replace(/\\D/g,\'\')?\'91\'+\''+ptPhone+'\'.replace(/\\D/g,\'\'):\'\')+\'?text=\'+encodeURIComponent(\''+waMsg.replace(/'/g,"\'").slice(0,500)+'\'),\'_blank\')" style="flex:1;padding:9px;background:linear-gradient(135deg,#128C7E,#25D366);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.84rem;font-weight:700;">\uD83D\uDCAC WhatsApp to Patient</button>'
-    + '</div></div>';
-  modal.style.display = 'flex';
-  window._ksExplainContent = content;
-};
 
 window.ksPrintExplanation = function() {
   var content = window._ksExplainContent || '';
@@ -22063,12 +21959,6 @@ document.addEventListener('DOMContentLoaded', function() {
     var currentDoc = ksGetCurrentDoctor();
     if (currentDoc) {
       ksApplyDoctorProfile(currentDoc);
-    } else {
-      // Check if any doctors are registered; if none, show Firebase login as before
-      // If doctors exist, show KS auth modal
-      var docs = ksGetDoctors();
-      if (docs.length > 0) ksShowDoctorAuthModal();
-      // If no doctors, tool works in single-doctor mode (Firebase auth handles it)
     }
 
     ksInjectDoctorTopbar();
@@ -22508,6 +22398,152 @@ document.addEventListener('DOMContentLoaded', function() {
     }
   }, 1200);
 });
+
+</script>
+
+<script>
+// ── FIX: ksExplainToPatient with local fallback ──────────────────────
+window.ksExplainToPatient = function() {
+  var g=function(id){return (document.getElementById(id)||{value:''}).value||'';};
+  var ptName=g('erx-pt-name')||'Patient';
+  var diagnosis=g('erx-diagnosis')||g('primary_diagnosis')||'';
+  var medicines=[];
+  document.querySelectorAll('.erx-drug-name').forEach(function(el){if(el.value.trim())medicines.push(el.value.trim());});
+  var investigations=g('erx-investigations')||'';
+  var instructions=g('erx-instructions')||'';
+  var followup=g('erx-followup-adv')||g('erx-followup')||'';
+
+  if(!diagnosis && !medicines.length){
+    alert('Pehle Diagnosis aur/ya Medicines fill karein, phir "Explain to Patient" click karein.');
+    return;
+  }
+
+  function buildLocal(){
+    var dr={};try{dr=JSON.parse(localStorage.getItem('doctor_profile')||'{}');}catch(e){}
+    var drName=dr.name||localStorage.getItem('kspider_doctor_name')||'Aapke Doctor';
+    var lines=[];
+    lines.push('\uD83D\uDC4B Namaskar '+ptName+' ji!');
+    lines.push((drName.toLowerCase().startsWith('dr')?'':'Dr. ')+drName+' ne aapki jaanch ki. Aapke ilaj ki poori jaankari:\n');
+    if(diagnosis){lines.push('\uD83D\uDD0D AAPKI BIMARI:');lines.push('"'+diagnosis+'"');lines.push('Yeh ek ilaj ho sakne wali condition hai. Ghabrayein mat.\n');}
+    if(medicines.length){lines.push('\uD83D\uDC8A AAPKI DAWAIYAN:');medicines.forEach(function(m,i){lines.push((i+1)+'. '+m);});lines.push('Dawai doctor ke bataye time par lein. Beech mein band na karein.\n');}
+    if(investigations){lines.push('\uD83E\uDDEA LAB TESTS:');lines.push(investigations);lines.push('Yeh tests aapki sehat ki poori jaankari denge.\n');}
+    if(instructions){lines.push('\u2705 ZAROORI HIDAYATEIN:');lines.push(instructions+'\n');}
+    if(followup){lines.push('\uD83D\uDD04 FOLLOW-UP:');lines.push(followup+'\n');}
+    lines.push('\uD83D\uDCA1 YAAD RAKHEIN:');
+    lines.push('\u2022 Pani khub piyein (2-3 litre roz)');
+    lines.push('\u2022 Dawai khud se band na karein');
+    lines.push('\u2022 Koi bhi takleef ho to clinic aayein ya call karein');
+    lines.push('\n\u2764\uFE0F Jaldi theek ho jayein!');
+    return lines.join('\n');
+  }
+
+  // Show local explanation immediately
+  ksShowExplainModal('loading', null, ptName);
+  var localExp=buildLocal();
+  setTimeout(function(){ ksShowExplainModal('result', localExp, ptName); }, 100);
+
+  // Try AI in background - upgrade if successful
+  var prompt='Explain to patient in simple Hindi. Patient: '+ptName+'\n'
+    +(diagnosis?'Diagnosis: '+diagnosis+'\n':'')
+    +(medicines.length?'Medicines: '+medicines.join(', ')+'\n':'')
+    +(investigations?'Tests: '+investigations+'\n':'')
+    +(instructions?'Instructions: '+instructions+'\n':'')
+    +(followup?'Follow-up: '+followup+'\n':'')
+    +'Write short warm Hindi explanation (under 250 words). Emojis ok.';
+
+  fetch('https://api.anthropic.com/v1/messages',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:800,messages:[{role:'user',content:prompt}]})
+  }).then(function(r){return r.json();})
+    .then(function(data){
+      var ai=(data.content&&data.content[0])?data.content[0].text:'';
+      if(ai&&ai.length>50){
+        var m=document.getElementById('ks-explain-modal');
+        if(m){var cd=m.querySelector('div[style*="pre-wrap"]');if(cd){cd.textContent=ai;window._ksExplainContent=ai;}}
+      }
+    })
+    .catch(function(e){console.warn('[KSpider] AI explain:',e.message);});
+};
+
+// ── FIX: ksShowExplainModal - inject into saas-shell ─────────────────
+window.ksShowExplainModal = function(state, content, ptName) {
+  var modal = document.getElementById('ks-explain-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'ks-explain-modal';
+    modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:99999;align-items:center;justify-content:center;padding:16px;';
+    var shellEl = document.getElementById('saas-shell') || document.body;
+    shellEl.appendChild(modal);
+  }
+
+  if (state === 'loading') {
+    modal.innerHTML = '';
+    var lb=document.createElement('div');
+    lb.style.cssText='background:#fff;border-radius:14px;padding:32px;max-width:480px;width:100%;text-align:center;';
+    lb.innerHTML='<div style="font-size:2rem;">\u23F3</div><div style="font-size:1rem;font-weight:700;color:#2563eb;margin-top:12px;">Generating Hindi explanation...</div><div style="font-size:0.82rem;color:#64748b;margin-top:6px;">Local template ready as backup</div>';
+    modal.appendChild(lb);
+    modal.style.display='flex';
+    return;
+  }
+
+  if (state === 'error') {
+    modal.innerHTML='<div style="background:#fff;border-radius:14px;padding:24px;max-width:480px;width:100%;"><div style="color:#dc2626;">\u274C '+(content||'Error')+'</div><button onclick="document.getElementById(\'ks-explain-modal\').style.display=\'none\'" style="margin-top:12px;padding:8px 16px;border:none;border-radius:7px;cursor:pointer;background:#f1f5f9;">Close</button></div>';
+    modal.style.display='flex';
+    return;
+  }
+
+  // Result - build with DOM (no innerHTML string concatenation)
+  modal.innerHTML='';
+  var box=document.createElement('div');
+  box.style.cssText='background:#fff;border-radius:14px;padding:24px;max-width:620px;width:100%;max-height:88vh;overflow-y:auto;';
+
+  var hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;';
+  var title=document.createElement('h3');
+  title.style.cssText='margin:0;color:#2563eb;font-size:1rem;';
+  title.textContent='\uD83D\uDCC4 Patient Explanation (Hindi)';
+  var closeX=document.createElement('button');
+  closeX.style.cssText='background:none;border:none;font-size:1.3rem;cursor:pointer;color:#64748b;';
+  closeX.textContent='\u2715';
+  closeX.onclick=function(){modal.style.display='none';};
+  hdr.appendChild(title); hdr.appendChild(closeX);
+  box.appendChild(hdr);
+
+  var cd=document.createElement('div');
+  cd.style.cssText='background:#f8fafc;border-radius:8px;padding:14px;font-size:0.85rem;line-height:1.8;white-space:pre-wrap;margin-bottom:14px;border:1px solid #e2e8f0;max-height:52vh;overflow-y:auto;';
+  cd.textContent=content||'';
+  box.appendChild(cd);
+
+  var btnRow=document.createElement('div');
+  btnRow.style.cssText='display:flex;gap:8px;flex-wrap:wrap;';
+
+  var printBtn=document.createElement('button');
+  printBtn.style.cssText='flex:1;padding:9px;background:#2563eb;color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.84rem;font-weight:700;';
+  printBtn.innerHTML='\uD83D\uDDA8\uFE0F Print';
+  printBtn.onclick=function(){
+    var w=window.open('','_blank');
+    w.document.write('<html><body style="font-family:sans-serif;padding:24px;"><h2>Patient Explanation</h2><pre style="white-space:pre-wrap;font-size:14px;line-height:1.7;">'+(content||'')+'</pre></body></html>');
+    w.print();
+  };
+
+  var dr={};try{dr=JSON.parse(localStorage.getItem('doctor_profile')||'{}');}catch(e){}
+  var drName=dr.name||localStorage.getItem('kspider_doctor_name')||'Your Doctor';
+  var hospName=dr.clinic||localStorage.getItem('kspider_clinic_name')||'Our Clinic';
+  var ptPhone=(document.getElementById('erx-pt-phone')||document.getElementById('patient_phone')||{value:''}).value.replace(/\D/g,'');
+  var waMsg=(content||'')+'\n\n\uD83C\uDFE5 '+hospName+' | Dr. '+drName+'\n\uD83C\uDF10 kspiderai.in';
+
+  var waBtn=document.createElement('button');
+  waBtn.style.cssText='flex:1;padding:9px;background:linear-gradient(135deg,#128C7E,#25D366);color:#fff;border:none;border-radius:7px;cursor:pointer;font-size:0.84rem;font-weight:700;';
+  waBtn.innerHTML='\uD83D\uDCAC WhatsApp to Patient';
+  waBtn.onclick=(function(msg,phone){return function(){window.open('https://wa.me/'+(phone?'91'+phone:'')+' ?text='+encodeURIComponent(msg),'_blank');}})(waMsg,ptPhone);
+
+  btnRow.appendChild(printBtn); btnRow.appendChild(waBtn);
+  box.appendChild(btnRow);
+  modal.appendChild(box);
+  modal.onclick=function(e){if(e.target===modal)modal.style.display='none';};
+  modal.style.display='flex';
+  window._ksExplainContent=content;
+};
 
 </script>
 </body>
