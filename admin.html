@@ -291,6 +291,10 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
       <a class="ni" id="n-apikeys" onclick="show('apikeys',this)" href="#">
         <span class="ic">🔑</span> API Keys
       </a>
+      <a class="ni" id="n-brahmin-vivaah" onclick="show('brahmin-vivaah',this)" href="#">
+        <span class="ic">💍</span> Brahmin Vivaah
+        <span class="nbadge red" id="bv-badge" style="display:none">0</span>
+      </a>
     </div>
     <div class="s-foot">
       <a class="ni" href="index.html" target="_blank"><span class="ic">🌐</span> View Website</a>
@@ -2434,6 +2438,55 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
         <p>No agent registrations yet</p>
       </div>
     </div><!-- /panel-rto-agents -->
+
+    <!-- ── BRAHMIN VIVAAH MANAGER ── -->
+    <div class="panel" id="panel-brahmin-vivaah">
+      <div style="padding:16px 20px 12px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-size:1rem;font-weight:700;color:var(--t1)">💍 Brahmin Vivaah — Matrimony Tool Manager</div>
+          <div style="font-size:.78rem;color:var(--t3);margin-top:3px">Manage published biodatas, reports, blocks &amp; success story approvals for this tool only</div>
+        </div>
+        <button class="btn btn-g btn-sm" onclick="loadBrahminVivaah(bvTab)">🔄 Refresh</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:16px">
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#2563eb" id="bv-stat-total">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Total Biodatas</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#16a34a" id="bv-stat-public">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Published (Public)</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#f59e0b" id="bv-stat-reports">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Pending Reports</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#ec4899" id="bv-stat-stories">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Stories Awaiting Approval</div>
+        </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:#7c3aed" id="bv-stat-interests">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Interests Sent</div>
+        </div>
+      </div>
+      <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:#2563eb;color:#fff" id="bv-tab-profiles" onclick="loadBrahminVivaah('profiles')">👤 Profiles</button>
+        <button class="btn btn-sm btn-gh" id="bv-tab-reports" onclick="loadBrahminVivaah('reports')">🚩 Reports</button>
+        <button class="btn btn-sm btn-gh" id="bv-tab-stories" onclick="loadBrahminVivaah('stories')">💕 Success Stories</button>
+        <input type="text" id="bv-search" placeholder="🔍 Search by name/email/city..."
+               style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);font-size:.8rem;flex:1;min-width:200px"
+               oninput="bvFilterProfiles()">
+      </div>
+      <div style="overflow-x:auto;padding:0 16px 16px" id="bv-table-wrap">
+        <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+          <thead id="bv-table-head"></thead>
+          <tbody id="bv-table-body">
+            <tr><td style="text-align:center;padding:32px;color:var(--t3)">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div><!-- /panel-brahmin-vivaah -->
     <!-- ══════════════════════════════════════════════════════
          API KEYS MANAGER PANEL
     ══════════════════════════════════════════════════════ -->
@@ -3842,7 +3895,7 @@ function show(name, el) {
   if (panel) panel.classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){ n.classList.remove('on'); });
   if (el) el.classList.add('on');
-  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements',ads:'📢 Ads Manager','adv-requests':'📬 Advertiser Requests','rto-agents':'🚗 RTO Agents',apikeys:'🔑 API Keys Manager','wa-referrals':'🔗 WA Promo Links Approval'};
+  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements',ads:'📢 Ads Manager','adv-requests':'📬 Advertiser Requests','rto-agents':'🚗 RTO Agents',apikeys:'🔑 API Keys Manager','wa-referrals':'🔗 WA Promo Links Approval','brahmin-vivaah':'💍 Brahmin Vivaah Manager'};
   document.getElementById('page-title').textContent = titles[name]||name;
   if (name==='users')       loadUsers();
   if (name==='access')      loadAccess();
@@ -3860,6 +3913,7 @@ function show(name, el) {
   if (name==='apikeys')      { loadApiKeys(); }
   if (name==='wa-referrals') { loadWaReferrals('pending'); }
   if (name==='rto-agents')  { loadAgentRequests(); autoMarkExpired(); }
+  if (name==='brahmin-vivaah') { loadBrahminVivaah('profiles'); }
   closeMobMenu(); // Close sidebar on mobile after nav click
 }
 
@@ -3870,6 +3924,7 @@ function initAll() {
   loadAccess();
   loadTools();
   checkExpiringAlert();
+  checkBrahminVivaahAlerts();
 }
 
 // ── REAL-TIME LISTENERS ──
@@ -8673,6 +8728,158 @@ function updateAgentStats(data) {
   var rejected = data.filter(function(a){ return a.status === 'rejected'; }).length;
 
   function setEl(id, val) { var el = document.getElementById(id); if(el) el.textContent = val; }
+
+// ═══════════════════════════════════════════════
+// BRAHMIN VIVAAH MANAGER — admin control for the matrimony tool only.
+// Reads brahminBiodata / brahmin_reports / successStories / interests
+// from the same kspideraimain Firestore project (var db, already init'd above).
+// ═══════════════════════════════════════════════
+var bvTab = 'profiles';
+var bvProfiles = [], bvReports = [], bvStories = [];
+
+function checkBrahminVivaahAlerts() {
+  if (!db) return;
+  db.collection('brahmin_reports').where('status','==','pending').get().then(function(snap){
+    var n = snap.size;
+    db.collection('successStories').where('approved','==', false).get().then(function(snap2){
+      var total = n + snap2.size;
+      var badge = document.getElementById('bv-badge');
+      if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'inline-block' : 'none'; }
+    }).catch(function(){});
+  }).catch(function(e){ console.warn('[Brahmin Vivaah] alert check failed:', e.message); });
+}
+
+function loadBrahminVivaah(tab) {
+  bvTab = tab || 'profiles';
+  ['profiles','reports','stories'].forEach(function(t){
+    var b = document.getElementById('bv-tab-'+t);
+    if (b) { b.className = 'btn btn-sm ' + (t===bvTab ? '' : 'btn-gh'); if (t===bvTab) b.style.cssText='background:#2563eb;color:#fff'; else b.style.cssText=''; }
+  });
+  var body = document.getElementById('bv-table-body');
+  body.innerHTML = '<tr><td style="text-align:center;padding:32px;color:var(--t3)">Loading…</td></tr>';
+  if (!db) { body.innerHTML = '<tr><td style="text-align:center;padding:32px;color:var(--red)">Firestore not connected.</td></tr>'; return; }
+
+  // Always refresh stats regardless of active tab
+  db.collection('brahminBiodata').get().then(function(snap){
+    bvProfiles = []; snap.forEach(function(d){ bvProfiles.push(Object.assign({_id:d.id}, d.data())); });
+    var pub = bvProfiles.filter(function(p){ return p.visibility==='public'; }).length;
+    document.getElementById('bv-stat-total').textContent = bvProfiles.length;
+    document.getElementById('bv-stat-public').textContent = pub;
+    if (bvTab === 'profiles') bvRenderProfiles(bvProfiles);
+  }).catch(function(e){ console.error(e); if (bvTab==='profiles') body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
+
+  db.collection('interests').get().then(function(snap){ document.getElementById('bv-stat-interests').textContent = snap.size; }).catch(function(){});
+
+  if (bvTab === 'reports') {
+    db.collection('brahmin_reports').orderBy('createdAt','desc').limit(200).get().then(function(snap){
+      bvReports = []; snap.forEach(function(d){ bvReports.push(Object.assign({_id:d.id}, d.data())); });
+      document.getElementById('bv-stat-reports').textContent = bvReports.filter(function(r){ return r.status==='pending'; }).length;
+      bvRenderReports(bvReports);
+    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
+  }
+  if (bvTab === 'stories') {
+    db.collection('successStories').orderBy('createdAt','desc').limit(200).get().then(function(snap){
+      bvStories = []; snap.forEach(function(d){ bvStories.push(Object.assign({_id:d.id}, d.data())); });
+      document.getElementById('bv-stat-stories').textContent = bvStories.filter(function(s){ return !s.approved; }).length;
+      bvRenderStories(bvStories);
+    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
+  }
+  checkBrahminVivaahAlerts();
+}
+
+function bvEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+function bvRenderProfiles(list) {
+  document.getElementById('bv-table-head').innerHTML =
+    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Photo</th><th style="text-align:left;padding:8px">Name</th><th style="text-align:left;padding:8px">Sub-Caste</th><th style="text-align:left;padding:8px">City</th><th style="text-align:left;padding:8px">Email</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Updated</th><th style="text-align:left;padding:8px">Actions</th></tr>';
+  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--t3)">No biodatas yet.</td></tr>'; return; }
+  document.getElementById('bv-table-body').innerHTML = list.map(function(p){
+    var sub = p.f_subcaste==='other' ? p.f_subcaste_other : p.f_subcaste;
+    var updated = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleDateString() : '—';
+    return '<tr style="border-bottom:1px solid var(--br)">' +
+      '<td style="padding:8px"><img src="'+bvEsc(p.photo||'')+'" style="width:36px;height:44px;object-fit:cover;border-radius:4px;background:var(--bg2)" onerror="this.style.visibility=\'hidden\'"></td>' +
+      '<td style="padding:8px;font-weight:600">'+bvEsc(p.f_name||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(sub||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(p.f_city||'—')+'</td>' +
+      '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+bvEsc(p.email||'—')+'</td>' +
+      '<td style="padding:8px"><span style="padding:2px 8px;border-radius:8px;font-size:.7rem;font-weight:700;background:'+(p.visibility==='public'?'rgba(22,163,74,.15);color:#16a34a':'rgba(148,163,184,.15);color:var(--t3)')+'">'+(p.visibility==='public'?'Public':'Private')+'</span></td>' +
+      '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+updated+'</td>' +
+      '<td style="padding:8px;white-space:nowrap">' +
+        '<button class="btn btn-sm btn-gh" onclick="bvToggleVisibility(\''+p._id+'\',\''+(p.visibility==='public'?'private':'public')+'\')">'+(p.visibility==='public'?'🔒 Unpublish':'✅ Publish')+'</button> ' +
+        '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvDeleteProfile(\''+p._id+'\')">🗑 Delete</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function bvRenderReports(list) {
+  document.getElementById('bv-table-head').innerHTML =
+    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Reported Profile</th><th style="text-align:left;padding:8px">Reported By</th><th style="text-align:left;padding:8px">Reason</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Actions</th></tr>';
+  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--t3)">No reports.</td></tr>'; return; }
+  document.getElementById('bv-table-body').innerHTML = list.map(function(r){
+    return '<tr style="border-bottom:1px solid var(--br)">' +
+      '<td style="padding:8px"><a onclick="bvViewProfileId(\''+r.reportedUid+'\')" style="cursor:pointer;color:#2563eb;text-decoration:underline">'+bvEsc(r.reportedUid)+'</a></td>' +
+      '<td style="padding:8px;font-size:.75rem">'+bvEsc(r.reporterEmail||r.reporterUid)+'</td>' +
+      '<td style="padding:8px;max-width:260px">'+bvEsc(r.reason||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(r.status||'pending')+'</td>' +
+      '<td style="padding:8px;white-space:nowrap">' +
+        (r.status==='pending' ?
+          '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvDeleteProfile(\''+r.reportedUid+'\');bvResolveReport(\''+r._id+'\',\'action_taken\')">🗑 Remove Profile</button> ' +
+          '<button class="btn btn-sm btn-gh" onclick="bvResolveReport(\''+r._id+'\',\'dismissed\')">✔ Dismiss</button>'
+          : '<span style="color:var(--t3);font-size:.75rem">Resolved: '+bvEsc(r.status)+'</span>') +
+      '</td></tr>';
+  }).join('');
+}
+
+function bvRenderStories(list) {
+  document.getElementById('bv-table-head').innerHTML =
+    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Names</th><th style="text-align:left;padding:8px">Story</th><th style="text-align:left;padding:8px">Submitted By</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Actions</th></tr>';
+  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="5" style="text-align:center;padding:28px;color:var(--t3)">No success stories submitted yet.</td></tr>'; return; }
+  document.getElementById('bv-table-body').innerHTML = list.map(function(s){
+    return '<tr style="border-bottom:1px solid var(--br)">' +
+      '<td style="padding:8px;font-weight:600">'+bvEsc(s.names||'—')+'</td>' +
+      '<td style="padding:8px;max-width:320px">'+bvEsc(s.story||'—')+'</td>' +
+      '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+bvEsc(s.submittedEmail||s.submittedBy||'—')+'</td>' +
+      '<td style="padding:8px">'+(s.approved ? '<span style="color:#16a34a;font-weight:700">✅ Live</span>' : '<span style="color:#f59e0b;font-weight:700">⏳ Pending</span>')+'</td>' +
+      '<td style="padding:8px;white-space:nowrap">' +
+        (!s.approved ? '<button class="btn btn-sm btn-g" onclick="bvApproveStory(\''+s._id+'\')">✅ Approve</button> ' : '') +
+        '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvDeleteStory(\''+s._id+'\')">🗑 Delete</button>' +
+      '</td></tr>';
+  }).join('');
+}
+
+function bvFilterProfiles() {
+  var q = (document.getElementById('bv-search').value || '').toLowerCase().trim();
+  if (bvTab !== 'profiles') return;
+  if (!q) { bvRenderProfiles(bvProfiles); return; }
+  bvRenderProfiles(bvProfiles.filter(function(p){
+    return (p.f_name||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q) || (p.f_city||'').toLowerCase().includes(q);
+  }));
+}
+
+function bvToggleVisibility(id, newVis) {
+  if (!db) return;
+  db.collection('brahminBiodata').doc(id).update({ visibility: newVis }).then(function(){ loadBrahminVivaah('profiles'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvDeleteProfile(id) {
+  if (!confirm('Delete this biodata permanently? This cannot be undone.')) return;
+  db.collection('brahminBiodata').doc(id).delete().then(function(){ loadBrahminVivaah(bvTab); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvResolveReport(id, status) {
+  db.collection('brahmin_reports').doc(id).update({ status: status, resolvedAt: firebase.firestore.FieldValue.serverTimestamp() })
+    .then(function(){ loadBrahminVivaah('reports'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvApproveStory(id) {
+  db.collection('successStories').doc(id).update({ approved: true }).then(function(){ loadBrahminVivaah('stories'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvDeleteStory(id) {
+  if (!confirm('Delete this success story?')) return;
+  db.collection('successStories').doc(id).delete().then(function(){ loadBrahminVivaah('stories'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvViewProfileId(id) {
+  loadBrahminVivaah('profiles');
+  setTimeout(function(){ document.getElementById('bv-search').value = id; }, 400);
+}
+
   setEl('agent-stat-total', total);
   setEl('agent-stat-pending', pending);
   setEl('agent-stat-approved', approved);
