@@ -11,6 +11,10 @@
 <meta name="author" content="Gaurang Raval & Khush Raval – KSpider AI">
 <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
 <meta name="theme-color" content="#0A84FF">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="KSpider">
 <link rel="canonical" href="https://kspiderai.in/connect">
 <meta property="og:title" content="KSpider Connect 2026 — India's #1 Free AI Social + Job Platform | Earn ₹5,000/Placement | kspiderai.in">
 <meta property="og:description" content="India's #1 AI-powered Social + Job Placement platform. Get hired, refer candidates, earn ₹500–₹5,000 per placement. Free to join!">
@@ -46,6 +50,9 @@
   gtag('js', new Date());
   gtag('config', 'G-PLBHWMHEC1');
 </script>
+
+<!-- ── GOOGLE ADSENSE ── -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>
 
 <!-- ── SECURITY GUARDS ── -->
 <script src="/tool-guard.js"></script>
@@ -287,6 +294,7 @@ img{max-width:100%;display:block;}
 .featured-badge{background:linear-gradient(135deg,var(--gold),#F97316);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:99px;display:inline-flex;align-items:center;gap:3px;}
 @keyframes fu{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
 @keyframes slideDown{from{opacity:1;transform:translateX(-50%) translateY(0)}to{opacity:0;transform:translateX(-50%) translateY(20px)}}
 @keyframes slideDown{from{opacity:1;transform:translateX(-50%) translateY(0)}to{opacity:0;transform:translateX(-50%) translateY(20px)}}
 .ph{display:flex;align-items:flex-start;gap:8px;padding:12px 14px 8px;}
@@ -347,8 +355,8 @@ img{max-width:100%;display:block;}
 .cs{width:28px;height:28px;border-radius:50%;background:var(--primary);border:none;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
 
 /* AdSense */
-.ks-adbox-unused{background:var(--surface);border:1.5px dashed var(--b2);border-radius:var(--r);padding:10px;text-align:center;margin-bottom:12px;color:var(--t3);font-size:10px;}
-.ks-adslot-unused{height:80px;background:var(--bg);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:5px;}
+.adbox{background:var(--surface);border:1.5px dashed var(--b2);border-radius:var(--r);padding:10px;text-align:center;margin-bottom:12px;color:var(--t3);font-size:10px;}
+.adslot{height:80px;background:var(--bg);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:11px;margin-top:5px;}
 
 /* ═══════════════════════════════════════
    SPONSORED JOB BOOST SECTION (Feature #1)
@@ -814,15 +822,13 @@ img{max-width:100%;display:block;}
 }
 
 /* ── KSpider Ad No-Jump Patch v1.0 ── */
-.ks-adbanner{}
+.ad-banner,.ad-top,.ad-after-tool,.ad-bottom,.ad-content,.ad-inline,.ad-sidebar{contain:layout style;}
 [data-ks-slot]{transition:opacity 0.32s ease;will-change:opacity;box-sizing:border-box;overflow:hidden;}
 [data-ks-slot].ks-fading{opacity:0;}
-.ks-adtop [data-ks-slot],.ks-adaftertool [data-ks-slot],.ks-adbottom [data-ks-slot]{min-height:90px;}
-.ks-adincontent [data-ks-slot]{min-height:120px;}
-.ks-adinline [data-ks-slot]{min-height:60px;}
-.ks-adsidebarslot [data-ks-slot]{min-height:250px;}
-[data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
-[data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+.ad-top [data-ks-slot],.ad-after-tool [data-ks-slot],.ad-bottom [data-ks-slot]{min-height:90px;}
+.ad-content [data-ks-slot]{min-height:120px;}
+.ad-inline [data-ks-slot]{min-height:60px;}
+.ad-sidebar [data-ks-slot]{min-height:250px;}
 </style>
 </head>
 <body>
@@ -899,6 +905,7 @@ img{max-width:100%;display:block;}
       <div class="ib" onclick="toggleNotif()" style="position:relative;">🔔<span class="ibb" id="nBadge" style="display:none;">0</span></div>
       <!-- v16: Admin panel button — only shown for admin email -->
       <div class="ib" id="adminBtn" onclick="showAdminPanel()" style="display:none;font-size:13px;" title="Admin Panel">🛡️</div>
+      <div class="ib" id="pwaInstallBtn" onclick="triggerPWAInstall()" style="display:none;font-size:13px;" title="Install App">📲</div>
       <div class="ib" onclick="showModal('postJobModal')">➕</div>
       <img id="hav" src="https://i.pravatar.cc/150?img=12" class="hav" onclick="toggleDrop()">
     </div>
@@ -967,8 +974,10 @@ img{max-width:100%;display:block;}
     <!-- MAIN -->
     <main class="main">
       <!-- ── IN-CONTENT AD BANNER (top of feed) ── -->
-      <div class="ks-adbanner ks-adincontent" style="max-width:336px;margin:0 auto 12px;">
-        <div data-ks-slot="in-content"></div>
+      <div style="text-align:center;background:var(--surface);border:1px solid var(--border);border-radius:var(--rs);padding:4px;margin-bottom:12px;font-size:9px;color:var(--t3);letter-spacing:1px;">
+        ADVERTISEMENT
+        <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" data-ad-slot="TOP-CONTENT-SLOT" data-ad-format="auto" data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
       </div>
       <div class="main-inner">
 
@@ -1030,9 +1039,10 @@ img{max-width:100%;display:block;}
           <div id="feedBox">
             <div style="text-align:center;padding:24px;color:var(--t3);"><div class="spinner2"></div>Loading feed…</div>
           </div>
-          <!-- KSpider Managed Ad -->
-          <div class="ks-adbanner ks-adaftertool" style="max-width:728px;margin:0 auto;">
-            <div data-ks-slot="after-result"></div>
+          <!-- AdSense -->
+          <div class="adbox"><div style="letter-spacing:1px;text-transform:uppercase;margin-bottom:4px">Advertisement</div>
+            <!-- <ins class="adsbygoogle" style="display:block" data-ad-client="ca-pub-XXXXXXXX" data-ad-slot="XXXXXXXX" data-ad-format="auto" data-full-width-responsive="true"></ins> -->
+            <div class="adslot">📢 Google AdSense — Leaderboard 728×90</div>
           </div>
         </div>
 
@@ -1471,6 +1481,62 @@ img{max-width:100%;display:block;}
             <div class="wgt" style="cursor:pointer;display:flex;align-items:center;gap:12px;" onclick="openAItool('salary')">
               <span style="font-size:24px;flex-shrink:0;">💰</span><div><div style="font-weight:700;font-size:13px;">Salary Negotiation Coach <span class="min" style="font-size:9px;">UNIQUE</span></div><div style="font-size:12px;color:var(--t3);margin-top:2px;">AI helps you negotiate best salary offer</div></div>
             </div>
+
+            <!-- v17 NEW TOOLS -->
+            <div style="font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.5px;padding:4px 0;margin-top:4px;">⚡ v17 — NEW AI TOOLS</div>
+
+            <div class="wgt">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:22px;">📊</span>
+                <div><div style="font-weight:700;font-size:13px;">ATS Resume Score <span class="min" style="font-size:9px;">FREE AI</span></div>
+                <div style="font-size:11px;color:var(--t3);">Check resume strength + missing keywords</div></div>
+              </div>
+              <textarea id="resumeScoreInput" class="fc" rows="4" placeholder="Paste your resume text here…"></textarea>
+              <textarea id="jdScoreInput" class="fc" rows="2" placeholder="Optional: Paste Job Description to check ATS match…" style="margin-top:6px;"></textarea>
+              <button onclick="checkResumeScore()" class="bprim" style="margin-top:8px;">🔍 Check ATS Score</button>
+              <div id="resumeScoreResult" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="wgt">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:22px;">💰</span>
+                <div><div style="font-weight:700;font-size:13px;">Salary Predictor 2025 <span class="min" style="font-size:9px;">INDIA</span></div>
+                <div style="font-size:11px;color:var(--t3);">Know your market worth — AI-powered</div></div>
+              </div>
+              <div class="fr2">
+                <div class="fg"><label class="fl">Job Role *</label><input type="text" class="fc" id="salRoleInput" placeholder="e.g. React Developer"></div>
+                <div class="fg"><label class="fl">Experience</label><input type="text" class="fc" id="salExpInput" placeholder="e.g. 2 years"></div>
+              </div>
+              <div class="fr2">
+                <div class="fg"><label class="fl">City</label><input type="text" class="fc" id="salCityInput" placeholder="e.g. Ahmedabad"></div>
+                <div class="fg"><label class="fl">Key Skills</label><input type="text" class="fc" id="salSkillsInput" placeholder="React, Node.js"></div>
+              </div>
+              <button onclick="predictSalary()" class="bprim" style="margin-top:4px;">💰 Predict My Salary</button>
+              <div id="salaryPredictResult" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="wgt">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:22px;">🏆</span>
+                <div><div style="font-weight:700;font-size:13px;">AI Applicant Ranking <span class="min" style="font-size:9px;">RECRUITER</span></div>
+                <div style="font-size:11px;color:var(--t3);">AI ranks applicants by best fit score</div></div>
+              </div>
+              <div class="fg"><label class="fl">Job ID (from Firestore)</label><input type="text" class="fc" id="rankJobIdInput" placeholder="Paste Job Document ID"></div>
+              <div style="font-size:10px;color:var(--t3);margin:-4px 0 8px;">Admin Panel → Jobs → copy the doc ID</div>
+              <button onclick="aiRankApplicants()" class="bprim">🤖 Rank Applicants with AI</button>
+              <div id="applicantRankResult" style="margin-top:10px;"></div>
+            </div>
+
+            <div class="wgt">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:22px;">🔔</span>
+                <div><div style="font-weight:700;font-size:13px;">Smart Job Alert</div>
+                <div style="font-size:11px;color:var(--t3);">Get notified instantly when matching jobs are posted</div></div>
+              </div>
+              <div class="fr2">
+                <div class="fg"><label class="fl">Keyword / Skill *</label><input type="text" class="fc" id="alertKeywordInput" placeholder="e.g. React, HR, Sales"></div>
+                <div class="fg"><label class="fl">Location</label><input type="text" class="fc" id="alertLocationInput" placeholder="e.g. Ahmedabad"></div>
+              </div>
+              <div class="fg"><label class="fl">Min Salary (optional)</label><input type="text" class="fc" id="alertSalaryInput" placeholder="e.g. 5 LPA"></div>
+              <button onclick="saveJobAlert()" class="bprim">🔔 Save My Job Alert</button>
+            </div>
+
           </div>
           <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--t3);">400+ more AI tools at <a href="https://kspiderai.in" target="_blank" style="color:var(--primary);font-weight:600;">kspiderai.in</a></div>
         </div>
@@ -2765,6 +2831,41 @@ img{max-width:100%;display:block;}
               <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to see your applications</div>
             </div>
           </div>
+
+          <!-- v17: APPLICATION TRACKER -->
+          <div class="ppc" style="padding:14px;" id="appTrackerSection">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:13px;">📊 Application Tracker <span style="font-size:10px;font-weight:400;color:var(--t3);">Kanban</span></div>
+              <button onclick="loadAppTracker()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+            </div>
+            <div id="appTrackerBox"><div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to see your application stages</div></div>
+          </div>
+
+          <!-- v17: LEADERBOARD -->
+          <div class="ppc" style="padding:14px;" id="leaderboardSection">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:13px;">🏆 Community Leaderboard</div>
+              <button onclick="loadLeaderboard()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+            </div>
+            <div id="leaderboardBox"><div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to see top recruiters &amp; seekers</div></div>
+          </div>
+
+          <!-- v17: VERIFIED BADGE -->
+          <div class="ppc" style="padding:14px;" id="verifiedBadgeSection">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <span style="font-size:18px;">✅</span>
+              <div><div style="font-weight:700;font-size:13px;">Get Verified Company Badge</div>
+              <div style="font-size:11px;color:var(--t3);">Submit GST / Registration — Admin verifies in 24-48hrs</div></div>
+            </div>
+            <div class="fg"><label class="fl">Company Name *</label><input type="text" class="fc" id="verifyCompanyInput" placeholder="Your registered company name"></div>
+            <div class="fr2">
+              <div class="fg"><label class="fl">GST Number</label><input type="text" class="fc" id="verifyGSTInput" placeholder="24AAAA0000A1Z5" maxlength="15"></div>
+              <div class="fg"><label class="fl">Reg. Number</label><input type="text" class="fc" id="verifyRegInput" placeholder="CIN / MSME / Shop Act"></div>
+            </div>
+            <div style="background:var(--gl);border-radius:var(--rs);padding:8px;font-size:11px;color:var(--green);margin-bottom:8px;">🛡️ Info kept confidential.</div>
+            <button onclick="requestVerifiedBadge()" class="bprim">✅ Submit for Verification</button>
+          </div>
+
           <div class="ppc" style="padding:14px;" id="resumeSection">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div style="font-weight:700;font-size:13px;">📄 My Resume</div>
@@ -2922,7 +3023,7 @@ Frontend Intern | TechNova | June–Aug 2023
         <div class="tri"><div class="trc">Gujarat</div><div class="trt">#AhmedabadJobs</div><div class="trn">8.3K posts</div></div>
         <div class="tri"><div class="trc">Platform</div><div class="trt">#KSpiderAI</div><div class="trn">4.1K posts</div></div>
       </div>
-      <div class="ks-adbanner ks-adsidebarslot" style="max-width:300px;margin:0 auto;"><div data-ks-slot="sidebar-left"></div></div>
+      <div class="adbox"><div style="letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;font-size:9px;">Advertisement</div><div class="adslot" style="height:200px;">📢 AdSense 300×250</div></div>
       <div class="wgt" style="background:linear-gradient(135deg,#FFF8E6,#FFF);border:2px solid var(--gold);cursor:pointer;" onclick="showPage('referral',null)">
         <div style="display:flex;align-items:center;gap:10px;">
           <span style="font-size:28px;">💰</span>
@@ -3666,22 +3767,15 @@ function listenNotifications(){
   if(!window._fb||!_user) return;
   if(_notifUnsub){_notifUnsub();_notifUnsub=null;}
   try{
-    // NOTE: no orderBy() here — see openChat()/loadConversations() for why
-    // (avoids a Firestore composite-index requirement that, if missing,
-    // silently breaks this listener). Sorted client-side below instead.
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'notifications'),
       window._fb.where('toUid','==',_user.uid),
+      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
     _notifUnsub=window._fb.onSnapshot(q,function(snap){
       _notifCache=[];
       snap.forEach(function(d){_notifCache.push({id:d.id,...d.data()});});
-      _notifCache.sort(function(a,b){
-        var ta=a.createdAt&&a.createdAt.toMillis?a.createdAt.toMillis():0;
-        var tb=b.createdAt&&b.createdAt.toMillis?b.createdAt.toMillis():0;
-        return tb-ta;
-      });
       var unread=_notifCache.filter(function(n){return !n.read;}).length;
       var badge=document.getElementById('nBadge');
       if(badge){badge.textContent=unread>99?'99+':unread;badge.style.display=unread>0?'flex':'none';}
@@ -3843,6 +3937,7 @@ window.initApp=async function(user){
   // v16: presence + admin
   initPresence();
   loadAdminAnnouncement();
+  listenJobAlerts();
   var adminBtn=document.getElementById('adminBtn');
   if(adminBtn) adminBtn.style.display=isAdminUser()?'flex':'none';
 };
@@ -3855,6 +3950,9 @@ async function handleDeepLink(){
     const params=new URLSearchParams(window.location.search);
     const jobId=params.get('job');
     const postId=params.get('post');
+    const action=params.get('action');
+    if(action==='postjob'){showModal('postJobModal');return;}
+    if(action==='jobs'){showPage('jobs',null);return;}
     if(!jobId&&!postId) return;
 
     if(jobId){
@@ -3954,11 +4052,21 @@ function updateUI(){
 // ══════════════════════════════════════
 function inFeedAd(){
   const wrap=document.createElement('div');
-  wrap.className='ks-adbanner ks-adincontent';
-  wrap.style.cssText='margin:12px 0;text-align:center;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:6px;overflow:hidden;max-width:336px;margin-left:auto;margin-right:auto;';
-  const slot=document.createElement('div');
-  slot.setAttribute('data-ks-slot','in-content');
-  wrap.appendChild(slot);
+  wrap.style.cssText='margin:12px 0;text-align:center;background:var(--surface);border-radius:var(--r);border:1px solid var(--border);padding:6px;overflow:hidden;';
+  const lbl=document.createElement('div');
+  lbl.style.cssText='font-size:10px;color:var(--t3);margin-bottom:4px;text-align:left;padding:0 8px;';
+  lbl.textContent='Sponsored';
+  const ins=document.createElement('ins');
+  ins.className='adsbygoogle';
+  ins.style.display='block';
+  ins.setAttribute('data-ad-client','ca-pub-XXXXXXXXXXXXXXXX');
+  ins.setAttribute('data-ad-slot','IN-FEED-SLOT-ID');
+  ins.setAttribute('data-ad-format','fluid');
+  ins.setAttribute('data-ad-layout-key','-fb+5w+4e-db+86');
+  ins.setAttribute('data-full-width-responsive','true');
+  wrap.appendChild(lbl);
+  wrap.appendChild(ins);
+  (window.adsbygoogle=window.adsbygoogle||[]).push({});
   return wrap;
 }
 
@@ -4193,7 +4301,7 @@ function demoPosts(){
     </div>
   </div>
 
-  <div class="ks-adbanner ks-adbottom" style="max-width:970px;margin:0 auto;"><div data-ks-slot="bottom-banner"></div></div>
+  <div class="adbox"><div style="text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;">Advertisement</div><div class="adslot">📢 Google AdSense — Auto Ad</div></div>
 
   <div class="pc">
     <div class="ph">
@@ -4775,9 +4883,24 @@ function previewJob(){
   box.innerHTML=html;
 }
 
-// (Removed duplicate dynamic ks-ads.js loader — the file already includes
-//  ks-ads.js directly via a single <script src="/ks-ads.js"> tag, so this
-//  second, redundant loading path was unnecessary and could cause double-load races.)
+// ══════════════════════════════════════
+// KS ADS LOADER (from ks-ads.js system)
+// ══════════════════════════════════════
+function loadKsAds(){
+  if(document.querySelector('script[src*="ks-ads.js"]')) return;
+  var s=document.createElement('script');
+  s.src='../ks-ads.js';
+  s.onerror=function(){
+    // Fallback: try same-dir
+    var s2=document.createElement('script');
+    s2.src='ks-ads.js';
+    document.body.appendChild(s2);
+  };
+  document.body.appendChild(s);
+}
+// Load after DOM ready
+if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',loadKsAds);
+else loadKsAds();
 
 // ══════════════════════════════════════
 // MYMEMORY TRANSLATION MODULE
@@ -5615,12 +5738,11 @@ async function loadMyApplications(){
       return;
     }
     // Get notifications (applications) for this recruiter
-    // NOTE: no orderBy() — avoids needing a 3-field composite index (toUid +
-    // type + createdAt). Sorted client-side below instead.
     const notifsQ=window._fb.query(
       window._fb.collection(window._fb.db,'notifications'),
       window._fb.where('toUid','==',_user.uid),
       window._fb.where('type','==','new_application'),
+      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
     const notifsSnap=await window._fb.getDocs(notifsQ);
@@ -5630,14 +5752,7 @@ async function loadMyApplications(){
     }
     box.innerHTML='';
     let unread=0;
-    const notifDocs=[];
-    notifsSnap.forEach(d=>{ notifDocs.push(d); });
-    notifDocs.sort((a,b)=>{
-      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
-      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
-      return tb-ta;
-    });
-    notifDocs.forEach(d=>{
+    notifsSnap.forEach(d=>{
       const n=d.data();
       if(!n.read) unread++;
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,n,false));
@@ -5754,10 +5869,10 @@ async function loadMySubmittedApps(){
   }
   box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div><div style="font-size:12px;">Loading…</div></div>';
   try{
-    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'applications'),
       window._fb.where('applicantId','==',_user.uid),
+      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(20)
     );
     const snap=await window._fb.getDocs(q);
@@ -5768,14 +5883,7 @@ async function loadMySubmittedApps(){
     box.innerHTML='';
     const badge=$('myAppCountBadge');
     if(badge){badge.textContent=snap.size;badge.style.display='inline';}
-    const appDocs=[];
-    snap.forEach(d=>{ appDocs.push(d); });
-    appDocs.sort((a,b)=>{
-      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
-      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
-      return tb-ta;
-    });
-    appDocs.forEach(d=>{
+    snap.forEach(d=>{
       const a=d.data();
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,{
         jobTitle:a.jobTitle,company:a.company,
@@ -5806,27 +5914,16 @@ async function loadConversations(){
   if(!box||!window._fb||!_user) return;
   if(_convUnsub){_convUnsub();_convUnsub=null;}
   try{
-    // NOTE: intentionally NOT using orderBy() here — combining it with the
-    // array-contains where() requires a Firestore composite index. If that
-    // index was never created in the Firebase console, onSnapshot() fails
-    // silently (no error callback) and the UI is stuck on the loading
-    // spinner forever. Sorting client-side avoids needing that index at all.
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'conversations'),
       window._fb.where('participants','array-contains',_user.uid),
+      window._fb.orderBy('lastMessageAt','desc'),
       window._fb.limit(30)
     );
     _convUnsub=window._fb.onSnapshot(q,function(snap){
       if(snap.empty){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">No conversations yet</div>';return;}
       box.innerHTML='';
-      var docs=[];
-      snap.forEach(function(d){ docs.push(d); });
-      docs.sort(function(a,b){
-        var ta=a.data().lastMessageAt&&a.data().lastMessageAt.toMillis?a.data().lastMessageAt.toMillis():0;
-        var tb=b.data().lastMessageAt&&b.data().lastMessageAt.toMillis?b.data().lastMessageAt.toMillis():0;
-        return tb-ta;
-      });
-      docs.forEach(function(d){
+      snap.forEach(function(d){
         var c=d.data();
         var otherUid=c.participants.find(function(u){return u!==_user.uid;})||'';
         var otherName=c.participantNames?c.participantNames[otherUid]||'User':'User';
@@ -5841,9 +5938,6 @@ async function loadConversations(){
           '<div style="font-size:11px;color:var(--t3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+validateInput(c.lastMessage||'')+'</div>';
         box.appendChild(item);
       });
-    },function(err){
-      console.error('[KSpider Connect] loadConversations onSnapshot error:',err);
-      box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">⚠️ Could not load conversations. '+(err&&err.message?err.message:'')+'</div>';
     });
   }catch(e){console.warn('loadConversations:',e);}
 }
@@ -5867,28 +5961,16 @@ function openChat(uid,name,convId){
   if(!window._fb||!_user){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">Configure Firebase to enable chat.</div>';return;}
   // Build conversation ID (sorted UIDs)
   var cid=convId||[_user.uid,uid].sort().join('_');
-  // NOTE: intentionally NOT using orderBy() here — combining it with the
-  // where() on conversationId requires a Firestore composite index. If that
-  // index was never created in the Firebase console, onSnapshot() fails
-  // silently (no error callback) and the chat is stuck on the loading
-  // spinner forever, even though sendMessage() itself works fine. Sorting
-  // client-side avoids needing that index at all.
   var q=window._fb.query(
     window._fb.collection(window._fb.db,'messages'),
     window._fb.where('conversationId','==',cid),
+    window._fb.orderBy('createdAt','asc'),
     window._fb.limit(50)
   );
   _msgUnsub=window._fb.onSnapshot(q,function(snap){
     box.innerHTML='';
     if(snap.empty){box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">Say hello! 👋</div>';return;}
-    var docs=[];
-    snap.forEach(function(d){ docs.push(d); });
-    docs.sort(function(a,b){
-      var ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
-      var tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
-      return ta-tb;
-    });
-    docs.forEach(function(d){
+    snap.forEach(function(d){
       var m=d.data();
       var isMine=m.senderId===_user.uid;
       var tm=m.createdAt&&m.createdAt.toDate?timeAgo(m.createdAt.toDate()):'';
@@ -5899,9 +5981,6 @@ function openChat(uid,name,convId){
       box.appendChild(bubble);
     });
     box.scrollTop=box.scrollHeight;
-  },function(err){
-    console.error('[KSpider Connect] openChat onSnapshot error:',err);
-    box.innerHTML='<div style="text-align:center;padding:16px;font-size:11px;color:var(--t3);">⚠️ Could not load messages. '+(err&&err.message?err.message:'')+'</div>';
   });
   // Store convId
   $('msgInput').dataset.convId=cid;
@@ -6119,11 +6198,11 @@ async function loadOnlineUsers(){
   strip.innerHTML='<div style="font-size:11px;color:var(--t3);">Loading…</div>';
   try{
     // Get users with lastSeen within last 2 minutes
-    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     var cutoff=new Date(Date.now()-PRESENCE_TIMEOUT_MS);
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'presence'),
       window._fb.where('online','==',true),
+      window._fb.orderBy('lastSeen','desc'),
       window._fb.limit(50)
     );
     var snap=await window._fb.getDocs(q);
@@ -6135,11 +6214,6 @@ async function loadOnlineUsers(){
       if(ls>cutoff&&d.id!==(_user&&_user.uid)){
         online.push({id:d.id,...data});
       }
-    });
-    online.sort(function(a,b){
-      var ta=a.lastSeen&&a.lastSeen.toMillis?a.lastSeen.toMillis():0;
-      var tb=b.lastSeen&&b.lastSeen.toMillis?b.lastSeen.toMillis():0;
-      return tb-ta;
     });
     if(label) label.textContent='Online Now · '+online.length+' user'+(online.length===1?'':'s');
     if(!online.length){
@@ -6423,11 +6497,11 @@ async function loadAdminPresence(){
   var box=document.getElementById('adminPanelContent');
   if(!window._fb){box.innerHTML='<div style="color:var(--red);padding:16px;">Firebase not configured.</div>';return;}
   try{
-    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     var cutoff=new Date(Date.now()-PRESENCE_TIMEOUT_MS);
     var snap=await window._fb.getDocs(window._fb.query(
       window._fb.collection(window._fb.db,'presence'),
       window._fb.where('online','==',true),
+      window._fb.orderBy('lastSeen','desc'),
       window._fb.limit(100)
     ));
     var online=[];
@@ -6435,11 +6509,6 @@ async function loadAdminPresence(){
       var data=d.data();
       var ls=data.lastSeen&&data.lastSeen.toDate?data.lastSeen.toDate():new Date(0);
       if(ls>cutoff) online.push({id:d.id,...data});
-    });
-    online.sort(function(a,b){
-      var ta=a.lastSeen&&a.lastSeen.toMillis?a.lastSeen.toMillis():0;
-      var tb=b.lastSeen&&b.lastSeen.toMillis?b.lastSeen.toMillis():0;
-      return tb-ta;
     });
     if(!online.length){
       box.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);">No users online right now.</div>';
@@ -6540,6 +6609,258 @@ async function loadAdminAnnouncement(){
       if(banner&&textEl){textEl.textContent=snap.data().text;banner.style.display='block';}
     }
   }catch(e){}
+}
+
+
+// ══════════════════════════════════════
+// v17 — PWA INSTALL PROMPT
+// ══════════════════════════════════════
+var _pwaPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();_pwaPrompt=e;
+  var btn=document.getElementById('pwaInstallBtn');
+  if(btn)btn.style.display='flex';
+});
+window.addEventListener('appinstalled',function(){
+  _pwaPrompt=null;
+  var btn=document.getElementById('pwaInstallBtn');
+  if(btn)btn.style.display='none';
+  showToast('KSpider Connect installed as App!');
+});
+function triggerPWAInstall(){
+  if(!_pwaPrompt){showToast('Tap browser menu then Add to Home Screen to install');return;}
+  _pwaPrompt.prompt();
+  _pwaPrompt.userChoice.then(function(r){
+    if(r.outcome==='accepted')showToast('Installing KSpider Connect...');
+    _pwaPrompt=null;
+    var btn=document.getElementById('pwaInstallBtn');
+    if(btn)btn.style.display='none';
+  });
+}
+
+// ══════════════════════════════════════
+// v17 — APPLICATION TRACKER (Kanban)
+// ══════════════════════════════════════
+async function loadAppTracker(){
+  var box=document.getElementById('appTrackerBox');
+  if(!box)return;
+  if(!window._fb||!_user){box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Login to track applications.</div>';return;}
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div></div>';
+  try{
+    var q=window._fb.query(window._fb.collection(window._fb.db,'applications'),window._fb.where('applicantId','==',_user.uid),window._fb.orderBy('createdAt','desc'),window._fb.limit(50));
+    var snap=await window._fb.getDocs(q);
+    if(snap.empty){box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">No applications yet. Browse jobs and click Easy Apply!</div>';return;}
+    var stages=['Applied','Seen','Shortlisted','Interview','Offered','Hired','Rejected'];
+    var stageColors={Applied:'#0A84FF',Seen:'#7C3AED',Shortlisted:'#F59E0B',Interview:'#8B5CF6',Offered:'#10B981',Hired:'#059669',Rejected:'#EF4444'};
+    var grouped={};
+    stages.forEach(function(s){grouped[s]=[];});
+    snap.forEach(function(d){var a=d.data();var st=a.status||'Applied';if(!grouped[st])grouped[st]=[];grouped[st].push({id:d.id,...a});});
+    var html='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;">';
+    stages.forEach(function(stage){
+      var color=stageColors[stage]||'#64748B';
+      var cards=grouped[stage]||[];
+      html+='<div style="min-width:150px;flex-shrink:0;">';
+      html+='<div style="font-size:10px;font-weight:800;color:'+color+';padding:5px 8px;background:'+color+'15;border-radius:6px 6px 0 0;border:1.5px solid '+color+'30;border-bottom:none;display:flex;align-items:center;justify-content:space-between;">';
+      html+='<span>'+stage+'</span><span style="background:'+color+';color:#fff;border-radius:99px;padding:1px 5px;font-size:9px;">'+cards.length+'</span></div>';
+      html+='<div style="border:1.5px solid '+color+'30;border-top:none;border-radius:0 0 6px 6px;padding:5px;background:var(--s2);min-height:60px;">';
+      cards.forEach(function(a){
+        var tm=a.appliedAt?timeAgo(new Date(a.appliedAt)):'';
+        html+='<div style="background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px;margin-bottom:4px;">';
+        html+='<div style="font-size:10px;font-weight:700;color:var(--text);">'+validateInput(a.jobTitle||'')+'</div>';
+        html+='<div style="font-size:9px;color:var(--t2);">'+validateInput(a.company||'')+'</div>';
+        html+='<div style="font-size:9px;color:var(--t3);margin-top:2px;">'+tm+'</div></div>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+    box.innerHTML=html;
+  }catch(e){box.innerHTML='<div style="padding:10px;color:var(--red);font-size:11px;">'+validateInput(e.message)+'</div>';}
+}
+
+// ══════════════════════════════════════
+// v17 — AI RESUME SCORE + ATS CHECKER
+// ══════════════════════════════════════
+function clearResumeResult(){var r=document.getElementById('resumeScoreResult');if(r)r.innerHTML='';}
+async function checkResumeScore(){
+  var resumeText=$('resumeScoreInput')&&$('resumeScoreInput').value.trim();
+  var jobDesc=$('jdScoreInput')&&$('jdScoreInput').value.trim();
+  var rb=document.getElementById('resumeScoreResult');
+  if(!resumeText)return showToast('Paste your resume text first!');
+  if(!rb)return;
+  rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Analyzing with AI...</div>';
+  var prompt='ATS expert analysis for India job market. RESUME: '+resumeText.slice(0,2000)+(jobDesc?' JOB DESC: '+jobDesc.slice(0,500):'')+' Provide: 1.ATS Score X/100  2.Strengths(3 bullets)  3.Missing Keywords(5-8)  4.Improvement Tips(3)  5.Verdict(1 line). Be specific to India 2025.';
+  try{
+    var result=await ksAI(prompt,'You are an expert ATS resume analyst for India job market 2025.');
+    var score=70,m=result.match(/(\d{1,3})\/100/);
+    if(m)score=Math.min(100,Math.max(0,parseInt(m[1])));
+    var color=score>=80?'#10B981':score>=60?'#F59E0B':'#EF4444';
+    var label=score>=80?'Excellent — Job Ready!':score>=60?'Good — Needs Improvements':'Needs Major Work';
+    rb.innerHTML='<div style="display:flex;align-items:center;gap:12px;padding:12px;background:'+color+'15;border:1.5px solid '+color+'30;border-radius:var(--r);margin-bottom:10px;">'
+      +'<div style="width:56px;height:56px;border-radius:50%;border:4px solid '+color+';display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+      +'<span style="font-size:15px;font-weight:900;color:'+color+';">'+score+'</span></div>'
+      +'<div><div style="font-size:13px;font-weight:800;color:var(--text);">ATS Score: '+score+'/100</div>'
+      +'<div style="font-size:11px;color:'+color+';">'+label+'</div></div></div>'
+      +'<div style="font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.7;margin-bottom:10px;">'+validateInput(result)+'</div>'
+      +'<button onclick="clearResumeResult()" style="padding:7px 14px;background:var(--s2);color:var(--t2);border:1px solid var(--border);border-radius:var(--rs);font-size:11px;cursor:pointer;font-family:inherit;">Check Again</button>';
+  }catch(e){rb.innerHTML='<div style="color:var(--red);font-size:11px;">AI unavailable. '+validateInput(e.message)+'</div>';}
+}
+
+// ══════════════════════════════════════
+// v17 — SALARY PREDICTOR
+// ══════════════════════════════════════
+async function predictSalary(){
+  var role=$('salRoleInput')&&$('salRoleInput').value.trim();
+  var exp=$('salExpInput')&&$('salExpInput').value.trim();
+  var city=$('salCityInput')&&$('salCityInput').value.trim();
+  var skills=$('salSkillsInput')&&$('salSkillsInput').value.trim();
+  var rb=document.getElementById('salaryPredictResult');
+  if(!role)return showToast('Enter job role first!');
+  if(!rb)return;
+  rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Predicting salary...</div>';
+  var prompt='India salary expert 2025. Role:'+role+' Experience:'+(exp||'Fresher')+' City:'+(city||'India')+' Skills:'+(skills||'general')+'. Provide: 1.Expected Range in LPA  2.Level breakdown(Fresher/Junior/Mid/Senior)  3.Top 3 cities for this role  4.Skills that increase salary 20-30%  5.Market trend 2025. Use Indian Rupees LPA.';
+  try{
+    var result=await ksAI(prompt,'You are an India salary analyst with 2025 market data.');
+    rb.innerHTML='<div style="background:linear-gradient(135deg,#0A84FF15,#7C3AED10);border:1.5px solid var(--primary);border-radius:var(--r);padding:12px;margin-bottom:10px;">'
+      +'<div style="font-size:13px;font-weight:800;color:var(--primary);">'+validateInput(role)+' — Salary Report 2025</div>'
+      +'<div style="font-size:10px;color:var(--t3);">'+validateInput(city||'India')+' · '+validateInput(exp||'All levels')+'</div></div>'
+      +'<div style="font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.7;">'+validateInput(result)+'</div>';
+  }catch(e){rb.innerHTML='<div style="color:var(--red);font-size:11px;">AI unavailable. '+validateInput(e.message)+'</div>';}
+}
+
+// ══════════════════════════════════════
+// v17 — AI APPLICANT RANKING
+// ══════════════════════════════════════
+async function aiRankApplicants(){
+  var jobId=$('rankJobIdInput')&&$('rankJobIdInput').value.trim();
+  var rb=document.getElementById('applicantRankResult');
+  if(!jobId)return showToast('Enter Job ID first!');
+  if(!window._fb||!_user)return showToast('Login required!');
+  if(!rb)return;
+  rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Ranking applicants with AI...</div>';
+  try{
+    var jobSnap=await window._fb.getDoc(window._fb.doc(window._fb.db,'jobs',jobId));
+    if(!jobSnap.exists()){rb.innerHTML='<div style="color:var(--red);">Job not found.</div>';return;}
+    var job=jobSnap.data();
+    var nq=window._fb.query(window._fb.collection(window._fb.db,'notifications'),window._fb.where('toUid','==',_user.uid),window._fb.where('type','==','new_application'),window._fb.limit(30));
+    var nSnap=await window._fb.getDocs(nq);
+    var apps=[];
+    nSnap.forEach(function(d){apps.push(d.data());});
+    if(!apps.length){rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);">No applications received yet.</div>';return;}
+    var appsText=apps.map(function(a,i){return (i+1)+'. '+( a.applicantName||'?')+' | Skills:'+(a.skills||'?')+' | Exp:'+(a.experience||'?')+' | Notice:'+(a.noticePeriod||'?');}).join('; ');
+    var prompt='Rank '+apps.length+' candidates for job: '+job.title+' at '+job.company+'. Required: '+job.skills+' Exp:'+job.experience+'. Candidates: '+appsText+'. For each: Rank# Name MatchScore/10 Reason(1line) Action(Shortlist/Interview/Skip). Be direct.';
+    var result=await ksAI(prompt,'You are a professional India recruiter with 10+ years experience.');
+    rb.innerHTML='<div style="background:var(--pl);border:1.5px solid var(--primary);border-radius:var(--r);padding:10px;margin-bottom:10px;">'
+      +'<div style="font-size:12px;font-weight:800;color:var(--primary);">AI Ranking — '+validateInput(job.title)+'</div>'
+      +'<div style="font-size:10px;color:var(--t3);">'+apps.length+' candidates analyzed</div></div>'
+      +'<div style="font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.7;">'+validateInput(result)+'</div>';
+  }catch(e){rb.innerHTML='<div style="color:var(--red);font-size:11px;">'+validateInput(e.message)+'</div>';}
+}
+
+// ══════════════════════════════════════
+// v17 — LEADERBOARD
+// ══════════════════════════════════════
+async function loadLeaderboard(){
+  var box=document.getElementById('leaderboardBox');
+  if(!box||!window._fb)return;
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div></div>';
+  try{
+    var recSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','recruiter'),window._fb.orderBy('jobs','desc'),window._fb.limit(5)));
+    var seekSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','jobseeker'),window._fb.orderBy('posts','desc'),window._fb.limit(5)));
+    var medals=['#1','#2','#3','#4','#5'];
+    function makeBoard(snap,label,metric){
+      var html='<div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px;">'+label+'</div>';
+      var i=0;
+      snap.forEach(function(d){
+        var u=d.data();
+        var photo=u.photoURL||('https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'U')+'&background=0A84FF&color=fff&size=32');
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border-radius:var(--rs);margin-bottom:5px;border:1.5px solid var(--border);">'
+          +'<span style="font-size:12px;font-weight:800;color:var(--primary);width:20px;">'+medals[i]+'</span>'
+          +'<img src="'+photo+'" style="width:26px;height:26px;border-radius:50%;object-fit:cover;" onerror="this.src=this.src.replace(u.name,\'U\')">'
+          +'<div style="flex:1;min-width:0;">'
+          +'<div style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+validateInput(u.name||'User')+'</div>'
+          +'<div style="font-size:9px;color:var(--t3);">'+validateInput(u.headline||u.role||'')+'</div></div>'
+          +'<div style="font-size:11px;font-weight:800;color:var(--primary);">'+(u[metric]||0)+'<span style="font-size:9px;color:var(--t3);font-weight:400;"> '+metric+'</span></div>'
+          +'</div>';
+        i++;
+      });
+      if(!i)html+='<div style="font-size:11px;color:var(--t3);padding:8px;">No entries yet.</div>';
+      return html;
+    }
+    box.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">'
+      +'<div>'+makeBoard(recSnap,'Top Recruiters','jobs')+'</div>'
+      +'<div>'+makeBoard(seekSnap,'Top Active Members','posts')+'</div>'
+      +'</div>';
+  }catch(e){box.innerHTML='<div style="font-size:11px;color:var(--t3);text-align:center;padding:12px;">Could not load leaderboard.</div>';}
+}
+
+// ══════════════════════════════════════
+// v17 — VERIFIED COMPANY BADGE
+// ══════════════════════════════════════
+async function requestVerifiedBadge(){
+  var company=$('verifyCompanyInput')&&$('verifyCompanyInput').value.trim();
+  var gst=$('verifyGSTInput')&&$('verifyGSTInput').value.trim();
+  var reg=$('verifyRegInput')&&$('verifyRegInput').value.trim();
+  if(!company)return showToast('Enter company name!');
+  if(!gst&&!reg)return showToast('Enter GST or Registration number!');
+  if(!window._fb||!_user)return showToast('Login required!');
+  try{
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'verification_requests',_user.uid),{
+      userId:_user.uid,userName:(_up&&_up.name)||'',userEmail:_user.email||'',
+      company:validateInput(company),gstNumber:validateInput(gst||''),regNumber:validateInput(reg||''),
+      status:'pending',createdAt:window._fb.serverTimestamp()
+    },{merge:true});
+    showToast('Verification submitted! Admin reviews in 24-48 hrs.');
+    ['verifyCompanyInput','verifyGSTInput','verifyRegInput'].forEach(function(id){var el=$(id);if(el)el.value='';});
+  }catch(e){showToast('Error: '+e.message);}
+}
+
+// ══════════════════════════════════════
+// v17 — SMART JOB ALERTS
+// ══════════════════════════════════════
+var _jobAlertUnsub=null;
+async function saveJobAlert(){
+  var keyword=$('alertKeywordInput')&&$('alertKeywordInput').value.trim();
+  var location=$('alertLocationInput')&&$('alertLocationInput').value.trim();
+  var salary=$('alertSalaryInput')&&$('alertSalaryInput').value.trim();
+  if(!keyword)return showToast('Enter job keyword or skill!');
+  if(!window._fb||!_user)return showToast('Login to save alerts!');
+  try{
+    await window._fb.setDoc(window._fb.doc(window._fb.db,'job_alerts',_user.uid),{
+      userId:_user.uid,keyword:validateInput(keyword),location:validateInput(location||''),
+      minSalary:validateInput(salary||''),active:true,
+      createdAt:window._fb.serverTimestamp(),updatedAt:window._fb.serverTimestamp()
+    },{merge:true});
+    showToast('Job Alert saved! You will be notified of matching jobs.');
+    listenJobAlerts();
+  }catch(e){showToast('Error: '+e.message);}
+}
+function listenJobAlerts(){
+  if(!window._fb||!_user)return;
+  if(_jobAlertUnsub){_jobAlertUnsub();_jobAlertUnsub=null;}
+  window._fb.getDoc(window._fb.doc(window._fb.db,'job_alerts',_user.uid)).then(function(snap){
+    if(!snap.exists()||!snap.data().active)return;
+    var alert=snap.data();
+    var kw=(alert.keyword||'').toLowerCase();
+    var alertLoc=(alert.location||'').toLowerCase();
+    var q=window._fb.query(window._fb.collection(window._fb.db,'jobs'),window._fb.orderBy('createdAtMs','desc'),window._fb.limit(20));
+    _jobAlertUnsub=window._fb.onSnapshot(q,function(jSnap){
+      jSnap.docChanges().forEach(function(change){
+        if(change.type!=='added')return;
+        var j=change.doc.data();
+        var age=j.createdAtMs?Date.now()-j.createdAtMs:99999;
+        if(age>30000)return;
+        var title=(j.title||'').toLowerCase();
+        var skills=(j.skills||'').toLowerCase();
+        var loc=(j.location||'').toLowerCase();
+        var matchKw=kw&&(title.includes(kw)||skills.includes(kw));
+        var matchLoc=!alertLoc||loc.includes(alertLoc);
+        if(matchKw&&matchLoc){
+          showToast('Job Alert: '+validateInput(j.title)+' at '+validateInput(j.company));
+          updateNotifBell(true);
+        }
+      });
+    });
+  }).catch(function(){});
 }
 
 async function loadAnalytics(){
@@ -6720,7 +7041,7 @@ document.addEventListener('DOMContentLoaded',function(){
   var origSP=window.showPage;
   window.showPage=function(pg,btn){
     origSP(pg,btn);
-    if(pg==='profile'){setTimeout(function(){loadMyApplications();loadMySubmittedApps();},200);}
+    if(pg==='profile'){setTimeout(function(){loadMyApplications();loadMySubmittedApps();loadAppTracker();loadLeaderboard();},200);}
     if(pg==='messages'){setTimeout(loadConversations,200);}
     if(pg==='network'){setTimeout(function(){searchNetwork();loadOnlineUsers();},200);}
     if(pg==='analytics'){setTimeout(loadAnalytics,200);}
@@ -7260,24 +7581,17 @@ function addDriveToMyDrives(drive){
 async function loadMyDrives(){
   if(!window._fb||!_user)return;
   try{
-    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'campus_drives'),
       window._fb.where('recruiterId','==',_user.uid),
+      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(10)
     );
     const snap=await window._fb.getDocs(q);
     if(snap.empty)return;
     const box=$('myDrivesBox');box.innerHTML='';
-    const driveDocs=[];
-    snap.forEach(d=>{ driveDocs.push(d); });
-    driveDocs.sort((a,b)=>{
-      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
-      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
-      return tb-ta;
-    });
-    driveDocs.forEach(d=>addDriveToMyDrives({...d.data(),id:d.id}));
-  }catch(e){console.warn('loadMyDrives:',e);}
+    snap.forEach(d=>addDriveToMyDrives({...d.data(),id:d.id}));
+  }catch{}
 }
 
 async function submitDriveReg(){
@@ -7442,10 +7756,10 @@ function updateWalletUI(){
 async function loadReferrals(){
   if(!window._fb||!_user){showDemoReferrals();return;}
   try{
-    // NOTE: no orderBy() — avoids composite-index requirement, sorted below.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'referrals'),
       window._fb.where('referrerId','==',_user.uid),
+      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(20)
     );
     const snap=await window._fb.getDocs(q);
@@ -7453,14 +7767,7 @@ async function loadReferrals(){
     if(snap.empty){box.innerHTML=`<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;"><div style="font-size:28px;margin-bottom:6px;">👥</div>No referrals yet. Share your link!</div>`;return;}
     box.innerHTML='';
     let total=0,earned=0,pending=0;
-    const refDocs=[];
-    snap.forEach(d=>{ refDocs.push(d); });
-    refDocs.sort((a,b)=>{
-      const ta=a.data().createdAt&&a.data().createdAt.toMillis?a.data().createdAt.toMillis():0;
-      const tb=b.data().createdAt&&b.data().createdAt.toMillis?b.data().createdAt.toMillis():0;
-      return tb-ta;
-    });
-    refDocs.forEach(d=>{
+    snap.forEach(d=>{
       const r=d.data();
       total++;
       if(r.status==='converted'){earned+=r.reward||0;}
@@ -7469,7 +7776,7 @@ async function loadReferrals(){
     });
     _ref.totalRefs=total;_ref.totalEarned=earned;_ref.pending=pending;
     updateWalletUI();
-  }catch(e){console.warn('loadReferrals:',e);showDemoReferrals();}
+  }catch{showDemoReferrals();}
 }
 
 function showDemoReferrals(){
@@ -8535,11 +8842,11 @@ window.appendBranding=appendBranding;
 </script>
 
 <!-- ── KSpider Ad System ── -->
-<script src="/ks-ads.js"></script>
+<script src="../ks-ads.js" onerror="var s=document.createElement('script');s.src='ks-ads.js';document.body.appendChild(s);"></script>
 
 
 <!-- ✅ KSpider Ad In-Content -->
-<div class="ks-adbanner ks-adincontent" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;max-width:336px;margin-left:auto;margin-right:auto;"><div data-ks-slot="in-content"></div></div>
+<div class="ad-banner ad-content" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><span style="font-size:0.58rem;color:#aaa;text-transform:uppercase;letter-spacing:.1em;display:block;margin-bottom:3px;">Advertisement</span><div data-ks-slot="in-content"></div></div>
 
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
