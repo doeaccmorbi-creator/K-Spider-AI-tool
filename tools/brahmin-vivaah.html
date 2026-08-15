@@ -54,7 +54,22 @@
     if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
     window.BV_DB = firebase.firestore();
     window.BV_READY = true;
-    document.dispatchEvent(new CustomEvent('bv-firebase-ready'));
+    // Anonymous auth — gives every visitor (including OTP-only accounts with
+    // no Firebase Auth session) a REAL request.auth.uid that Firestore rules
+    // can verify server-side. This is what makes contact-info protection
+    // actually enforceable, instead of relying on the client to behave.
+    // 100% free (Firebase Anonymous Auth has no usage cost), no backend.
+    firebase.auth().onAuthStateChanged(function(u){
+      if (u) {
+        window.BV_AUTH_UID = u.uid;
+        document.dispatchEvent(new CustomEvent('bv-firebase-ready'));
+      } else {
+        firebase.auth().signInAnonymously().catch(function(e){
+          console.error('[Brahmin Vivaah] anonymous auth failed:', e.message);
+          document.dispatchEvent(new CustomEvent('bv-firebase-ready')); // proceed degraded (read-only browsing)
+        });
+      }
+    });
   }
   function loadScript(src, onOk, onFail){
     var s = document.createElement('script'); var done = false;
@@ -65,9 +80,9 @@
     document.head.appendChild(s);
   }
   var CDN_SETS = [
-    ['https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js','https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js'],
-    ['https://unpkg.com/firebase@11.6.0/firebase-app-compat.js','https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js'],
-    ['https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js','https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js']
+    ['https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-app-compat.min.js','https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-firestore-compat.min.js','https://cdn.jsdelivr.net/npm/firebase@11.6.0/firebase-auth-compat.min.js'],
+    ['https://unpkg.com/firebase@11.6.0/firebase-app-compat.js','https://unpkg.com/firebase@11.6.0/firebase-firestore-compat.js','https://unpkg.com/firebase@11.6.0/firebase-auth-compat.js'],
+    ['https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-app-compat.min.js','https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-firestore-compat.min.js','https://cdnjs.cloudflare.com/ajax/libs/firebase/10.14.1/firebase-auth-compat.min.js']
   ];
   var idx = 0;
   function loadSet(set, i, onDone, onFail){ if(i>=set.length){onDone();return;} loadScript(set[i], function(){loadSet(set,i+1,onDone,onFail);}, onFail); }
@@ -274,25 +289,65 @@
   @media (max-width:880px){ .browse-wrap{grid-template-columns:1fr;} }
   .filter-panel{background:var(--ivory);border:1px solid rgba(107,30,35,.12);border-radius:var(--radius);padding:18px;position:sticky;top:80px;}
   .filter-panel h3{margin:0 0 14px;font-size:16px;color:var(--maroon-dark);font-family:inherit;}
-  .card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;}
+  .card-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
   @media (max-width:920px){ .card-grid{grid-template-columns:repeat(2,1fr);} }
   @media (max-width:600px){ .card-grid{grid-template-columns:1fr;} }
+
+  /* ---------- Premium match card ---------- */
   .match-card{
-    background:var(--ivory);border:1px solid rgba(107,30,35,.12);border-radius:var(--radius);overflow:hidden;
-    box-shadow:0 4px 14px rgba(75,20,24,.08);transition:transform .18s ease, box-shadow .18s ease;cursor:pointer;position:relative;
+    background:var(--ivory);border-radius:16px;overflow:hidden;position:relative;cursor:pointer;
+    box-shadow:0 6px 20px rgba(75,20,24,.10);transition:transform .22s ease, box-shadow .22s ease;
+    border:1px solid rgba(200,155,60,.18);
   }
-  .match-card:hover{transform:translateY(-4px);box-shadow:var(--shadow);}
-  .match-photo{height:190px;background:linear-gradient(160deg,#eee,#ddd) center/cover no-repeat;position:relative;}
-  .match-photo .avatar-fallback{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:44px;color:var(--maroon);background:var(--cream);}
-  .match-badge{position:absolute;top:8px;left:8px;background:rgba(46,125,79,.92);color:#fff;font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;}
-  .heart-btn{position:absolute;top:8px;right:8px;width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,.85);
-    border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .match-card:hover{transform:translateY(-6px);box-shadow:0 16px 34px rgba(75,20,24,.22);}
+  .match-photo{
+    height:260px;background:linear-gradient(160deg,#eee,#ddd) center 18%/cover no-repeat;position:relative;overflow:hidden;
+  }
+  .match-photo::after{
+    content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(30,10,10,.15) 70%,rgba(20,6,8,.86) 100%);
+    pointer-events:none;
+  }
+  .match-photo .avatar-fallback{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:56px;
+    color:var(--gold);background:linear-gradient(160deg,var(--cream),#F0E2C8);
+  }
+  .match-badge{
+    position:absolute;top:10px;left:10px;background:rgba(31,75,63,.92);color:#fff;font-size:10px;font-weight:800;
+    padding:4px 10px;border-radius:999px;z-index:2;display:flex;align-items:center;gap:4px;backdrop-filter:blur(2px);
+  }
+  .match-new-badge{
+    position:absolute;top:10px;right:44px;background:linear-gradient(120deg,var(--gold-light),var(--gold));color:var(--maroon-dark);
+    font-size:9.5px;font-weight:900;padding:4px 9px;border-radius:999px;z-index:2;letter-spacing:.03em;
+  }
+  .heart-btn{
+    position:absolute;top:8px;right:8px;width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);
+    border:none;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2;
+    box-shadow:0 2px 8px rgba(0,0,0,.2);transition:transform .15s ease;
+  }
+  .heart-btn:hover{transform:scale(1.12);}
   .heart-btn.active{background:var(--danger);color:#fff;}
-  .match-body{padding:12px 14px;}
-  .match-body h4{margin:0 0 3px;font-size:15.5px;color:var(--maroon-dark);font-family:inherit;}
-  .match-body .meta{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .match-onphoto{
+    position:absolute;left:0;right:0;bottom:0;padding:12px 14px;z-index:1;color:#fff;
+  }
+  .match-onphoto .nm{font-family:"Yatra One",serif;font-size:18px;font-weight:400;text-shadow:0 2px 8px rgba(0,0,0,.5);line-height:1.15;}
+  .match-onphoto .sub{font-size:11.5px;opacity:.92;text-shadow:0 1px 4px rgba(0,0,0,.5);margin-top:2px;}
+  .match-quickbtn{
+    position:absolute;left:14px;right:14px;bottom:-46px;z-index:2;display:flex;gap:6px;transition:bottom .2s ease;
+  }
+  .match-card:hover .match-quickbtn{bottom:12px;}
+  .match-quickbtn button{
+    flex:1;border:none;border-radius:8px;padding:7px 6px;font-size:11px;font-weight:800;cursor:pointer;
+    background:rgba(255,255,255,.95);color:var(--maroon-dark);box-shadow:0 2px 8px rgba(0,0,0,.25);
+  }
+  .match-quickbtn button.primary{background:linear-gradient(120deg,var(--gold-light),var(--gold));}
+  .match-body{padding:10px 14px 14px;}
+  .match-body .meta{font-size:12px;color:var(--muted);margin-bottom:7px;display:flex;align-items:center;gap:5px;}
   .match-body .tags{display:flex;gap:5px;flex-wrap:wrap;}
   .match-body .tags span{font-size:10.5px;background:rgba(107,30,35,.08);color:var(--maroon-dark);padding:3px 8px;border-radius:999px;font-weight:700;}
+  .match-body .match-pct{
+    font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:999px;background:rgba(31,75,63,.1);color:var(--teal);
+  }
   .empty-state{text-align:center;padding:50px 20px;color:var(--muted);}
 
   /* ---------- Dashboard ---------- */
@@ -715,7 +770,17 @@ function bvKey(email){ return String(email||'').toLowerCase().trim().replace(/[.
 function bvMe(){
   var u = getUser();
   if(!u || !u.verified || !u.email) return null;
-  return { email: u.email, key: bvKey(u.email), name: u.name||'Member', mobile: u.mobile||'', photoURL: u.photoURL||'' };
+  return { email: u.email, key: bvKey(u.email), name: u.name||'Member', mobile: u.mobile||'', photoURL: u.photoURL||'', authUid: window.BV_AUTH_UID||null };
+}
+function bvWaitForAuthUid(timeoutMs){
+  return new Promise(function(resolve){
+    if(window.BV_AUTH_UID){ resolve(window.BV_AUTH_UID); return; }
+    var done=false;
+    var t=setTimeout(function(){ if(!done){done=true;resolve(null);} }, timeoutMs||6000);
+    document.addEventListener('bv-firebase-ready', function h(){
+      if(!done && window.BV_AUTH_UID){ done=true; clearTimeout(t); document.removeEventListener('bv-firebase-ready',h); resolve(window.BV_AUTH_UID); }
+    });
+  });
 }
 function bvRecheckLogin(){
   if(isReg()){ bbApplyAuthState(); bbShowPage('home'); toast_bv('Logged in! Welcome back.'); }
@@ -924,6 +989,7 @@ document.getElementById('bdForm').addEventListener('input', bbUpdatePreview);
 document.getElementById('bdForm').addEventListener('change', bbUpdatePreview);
 
 /* ================= DATA COLLECT / FILL ================= */
+const BV_CONTACT_FIELDS = ['f_mobile','f_whatsapp','f_email','f_address','f_reference'];
 function bbCollectData(){
   const ids = ['f_name','f_gender','f_marital','f_dob','f_tob','f_pob','f_height','f_complexion','f_diet','f_blood','f_city','f_hobbies',
     'f_subcaste','f_subcaste_other','f_gotra','f_nakshatra','f_rashi','f_manglik','f_kuldevta','f_native',
@@ -939,6 +1005,11 @@ function bbCollectData(){
   data.photo3 = photo3DataUrl;
   data.visibility = document.getElementById('f_visibility').checked ? 'public' : 'private';
   return data;
+}
+function bbSplitPublicPrivate(data){
+  const pub = {}, contact = {};
+  Object.keys(data).forEach(k=>{ if(BV_CONTACT_FIELDS.includes(k)) contact[k]=data[k]; else pub[k]=data[k]; });
+  return { pub, contact };
 }
 const BB_NONFIELD_KEYS = ['photo','photo2','photo3','template','visibility'];
 function bbFillData(data){
@@ -961,16 +1032,27 @@ function bbFillData(data){
   bbUpdateCompleteness();
 }
 
-/* ================= SAVE / LOAD DRAFT (Firestore doc ID = sanitised K Spider AI account email) ================= */
+/* ================= SAVE / LOAD DRAFT =================
+   Contact-sensitive fields (mobile/whatsapp/email/address/reference) are
+   written to a SEPARATE sub-document that is NEVER openly readable —
+   Firestore rules only allow the verified owner (real anonymous-auth uid)
+   or an authUid the owner has explicitly granted (after accepting an
+   interest) to read it. See firestore-rules-v8.4+ for the enforcement. */
 async function bbSaveDraft(){
   const data = bbCollectData();
   try{ localStorage.setItem('bb_draft', JSON.stringify(data)); }catch(e){}
   const me = bvMe();
   if(me && window.BV_DB){
+    const authUid = await bvWaitForAuthUid();
+    if(!authUid){ alert('Could not verify a secure session — please refresh and try again.'); return; }
     try{
+      const { pub, contact } = bbSplitPublicPrivate(data);
       await BV_DB.collection('brahminBiodata').doc(me.key).set({
-        ...data, updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-        email: me.email, displayName: me.name, mobile: me.mobile
+        ...pub, updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        email: me.email, displayName: me.name, ownerAuthUid: authUid
+      }, { merge:true });
+      await BV_DB.collection('brahminBiodata').doc(me.key).collection('private').doc('contact').set({
+        ...contact, ownerAuthUid: authUid, updatedAt: firebase.firestore.FieldValue.serverTimestamp()
       }, { merge:true });
       alert('Saved! ' + (data.visibility==='public' ? 'Your biodata is live in Browse Matches.' : 'Your biodata is private — publish it anytime from the Preferences step.'));
     }catch(e){ console.error(e); alert('Saved locally. Cloud save failed: ' + e.message); }
@@ -982,8 +1064,17 @@ async function bbLoadDraft(){
   const me = bvMe();
   if(me && window.BV_DB){
     try{
+      const authUid = await bvWaitForAuthUid();
       const snap = await BV_DB.collection('brahminBiodata').doc(me.key).get();
-      if(snap.exists){ bbFillData(snap.data()); return; }
+      if(snap.exists){
+        let merged = snap.data();
+        try{
+          const csnap = await BV_DB.collection('brahminBiodata').doc(me.key).collection('private').doc('contact').get();
+          if(csnap.exists) merged = { ...merged, ...csnap.data() };
+        }catch(e){ /* not yet migrated / no access — fine, form just starts blank on contact fields */ }
+        bbFillData(merged);
+        return;
+      }
     }catch(e){ console.error(e); }
   }
   try{ const raw = localStorage.getItem('bb_draft'); if(raw) bbFillData(JSON.parse(raw)); }catch(e){}
@@ -1026,6 +1117,23 @@ async function bbLoadBrowse(){
     bbRenderBrowse();
   }catch(e){ console.error(e); grid.innerHTML = '<div class="empty-state">Could not load matches: '+e.message+'</div>'; }
 }
+function bvMatchScore(me, p){
+  // Rough match % against MY OWN partner-preference fields (from the wizard form)
+  // — purely a helpful sort signal, not a claim of compatibility accuracy.
+  let score = 60, checks = 0;
+  const age = bbAge(p.f_dob);
+  if(me.f_pref_agemin || me.f_pref_agemax){
+    checks++;
+    const min = parseInt(me.f_pref_agemin)||0, max = parseInt(me.f_pref_agemax)||200;
+    if(age!==null && age>=min && age<=max) score += 10; else score -= 15;
+  }
+  if(me.f_pref_subcaste){ checks++; const subc=(p.f_subcaste==='other'?p.f_subcaste_other:p.f_subcaste)||''; if(subc.toLowerCase().includes(me.f_pref_subcaste.toLowerCase())) score += 10; }
+  if(me.f_pref_city){ checks++; if((p.f_city||'').toLowerCase().includes(me.f_pref_city.toLowerCase())) score += 8; }
+  if(me.f_pref_edu){ checks++; if((p.f_edu||'').toLowerCase().includes(me.f_pref_edu.toLowerCase())) score += 8; }
+  if(me.f_pref_diet && me.f_pref_diet!=='Any'){ checks++; if(p.f_diet===me.f_pref_diet) score += 6; }
+  if(me.f_pref_manglik && me.f_pref_manglik!=='Any'){ checks++; if(p.f_manglik===me.f_pref_manglik) score += 6; }
+  return Math.max(35, Math.min(99, score));
+}
 function bbRenderBrowse(){
   const grid = document.getElementById('browseGrid');
   const g = document.getElementById('flt_gender').value;
@@ -1036,6 +1144,7 @@ function bbRenderBrowse(){
   const edu = document.getElementById('flt_edu').value.toLowerCase().trim();
   const diet = document.getElementById('flt_diet').value;
   const manglik = document.getElementById('flt_manglik').value;
+  const myData = bbCollectData();
 
   const results = bbAllProfiles.filter(p=>{
     const age = bbAge(p.f_dob);
@@ -1048,25 +1157,52 @@ function bbRenderBrowse(){
     if(diet && p.f_diet!==diet) return false;
     if(manglik && p.f_manglik!==manglik) return false;
     return true;
-  });
+  }).map(p=>({ ...p, _match: bvMatchScore(myData, p) }))
+    .sort((a,b)=> b._match - a._match);
 
   if(!results.length){ grid.innerHTML = '<div class="empty-state">No matches found. Try widening your filters, or ask friends to publish their biodata too!</div>'; return; }
   grid.innerHTML = results.map(p=>{
     const age = bbAge(p.f_dob);
     const subc = (p.f_subcaste==='other' ? p.f_subcaste_other : p.f_subcaste)||'Brahmin';
     const photoStyle = p.photo ? `style="background-image:url(${p.photo})"` : '';
+    const updatedMs = p.updatedAt?.toMillis?.() || 0;
+    const isNew = updatedMs && (Date.now() - updatedMs) < 7*24*60*60*1000;
     return `<div class="match-card" onclick="bbOpenProfile('${p.uid}')">
-      <div class="match-photo" ${photoStyle}>${p.photo?'':'<div class=\"avatar-fallback\">🕉️</div>'}
-        <span class="match-badge">✓ Google Verified</span>
+      <div class="match-photo" ${photoStyle}>${p.photo?'':'<div class="avatar-fallback">🕉️</div>'}
+        <span class="match-badge">✓ Verified</span>
+        ${isNew ? '<span class="match-new-badge">✨ NEW</span>' : ''}
         <button class="heart-btn" onclick="event.stopPropagation();bbToggleShortlist('${p.uid}',this)">🤍</button>
+        <div class="match-onphoto">
+          <div class="nm">${p.f_name||'Member'}${age?', '+age:''}</div>
+          <div class="sub">${subc} · ${p.f_city||'—'}</div>
+        </div>
+        <div class="match-quickbtn">
+          <button onclick="event.stopPropagation();bbOpenProfile('${p.uid}')">👁 View</button>
+          <button class="primary" onclick="event.stopPropagation();bbQuickInterest('${p.uid}',this)">💌 Interest</button>
+        </div>
       </div>
       <div class="match-body">
-        <h4>${p.f_name||'Member'}${age?', '+age:''}</h4>
-        <div class="meta">${subc} · ${p.f_city||'—'}</div>
+        <div class="meta"><span class="match-pct">🎯 ${p._match}% match</span></div>
         <div class="tags"><span>${p.f_edu||'Not specified'}</span><span>${p.f_diet||''}</span></div>
       </div>
     </div>`;
   }).join('');
+}
+async function bbQuickInterest(uid, btnEl){
+  const me = bvMe();
+  if(!me){ alert('Please login first.'); return; }
+  const authUid = await bvWaitForAuthUid();
+  if(!authUid){ alert('Could not verify a secure session — please refresh and try again.'); return; }
+  const pairId = [me.key, uid].sort().join('_');
+  try{
+    const existing = await BV_DB.collection('interests').doc(pairId).get();
+    if(existing.exists){ btnEl.textContent='⏳ Sent'; btnEl.disabled=true; return; }
+    await BV_DB.collection('interests').doc(pairId).set({
+      fromUid: me.key, toUid: uid, fromEmail: me.email, fromAuthUid: authUid, status:'pending',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    btnEl.textContent = '⏳ Sent'; btnEl.disabled = true;
+  }catch(e){ alert('Could not send interest: '+e.message); }
 }
 ['flt_gender','flt_agemin','flt_agemax','flt_subcaste','flt_city','flt_edu','flt_diet','flt_manglik'].forEach(id=>{
   document.getElementById(id)?.addEventListener('input', bbRenderBrowse);
@@ -1094,11 +1230,30 @@ async function bbOpenProfile(uid){
     const pairId = [me.key, uid].sort().join('_');
     try{
       const interestSnap = await BV_DB.collection('interests').doc(pairId).get();
-      if(interestSnap.exists && interestSnap.data().status==='accepted'){
-        contactHtml = row('Mobile', p.f_mobile) + row('WhatsApp', p.f_whatsapp) + row('Email', p.f_email) + row('Address', p.f_address);
+      const interestData = interestSnap.exists ? interestSnap.data() : null;
+      document.getElementById('interestBtn').textContent = interestData ? (interestData.status==='accepted' ? '✅ Connected' : '⏳ Interest Sent') : '💌 Express Interest';
+      document.getElementById('interestBtn').disabled = !!interestData;
+
+      if(interestData && interestData.status==='accepted'){
+        // If I was the original sender and the owner has since recorded their authUid,
+        // make sure I've granted THEM access to MY contact info too (mutual reveal).
+        if(interestData.fromUid===me.key && interestData.toAuthUid){
+          bvGrantContactAccess(interestData.toAuthUid).catch(()=>{});
+        }
+        // Actual read is enforced server-side by Firestore rules — this succeeds
+        // only if I'm the owner or my authUid is on their allow-list.
+        try{
+          const csnap = await BV_DB.collection('brahminBiodata').doc(uid).collection('private').doc('contact').get();
+          if(csnap.exists){
+            const c = csnap.data();
+            contactHtml = row('Mobile', c.f_mobile) + row('WhatsApp', c.f_whatsapp) + row('Email', c.f_email) + row('Address', c.f_address);
+          } else {
+            contactHtml = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:10px 0;">⏳ Accepted — waiting for their contact details to sync.</td></tr>';
+          }
+        }catch(permErr){
+          contactHtml = '<tr><td colspan="2" style="text-align:center;color:var(--muted);padding:10px 0;">⏳ Accepted — access is finalizing, please check back shortly.</td></tr>';
+        }
       }
-      document.getElementById('interestBtn').textContent = interestSnap.exists ? (interestSnap.data().status==='accepted' ? '✅ Connected' : '⏳ Interest Sent') : '💌 Express Interest';
-      document.getElementById('interestBtn').disabled = interestSnap.exists;
     }catch(e){ console.error(e); }
 
     card.innerHTML = `
@@ -1133,6 +1288,22 @@ async function bbOpenProfile(uid){
     bbShowKundli(p);
     bbTrackProfileView(uid);
   }catch(e){ console.error(e); card.innerHTML = '<div class="empty-state">Error loading profile: '+e.message+'</div>'; }
+}
+
+/* Grant another verified visitor (by their real authUid) read access to MY
+   own contact sub-document. I can only ever write my OWN doc — enforced by
+   Firestore rules checking request.auth.uid == the doc's ownerAuthUid. */
+async function bvGrantContactAccess(granteeAuthUid){
+  const me = bvMe();
+  if(!me || !granteeAuthUid) return;
+  const authUid = await bvWaitForAuthUid();
+  if(!authUid) return;
+  try{
+    await BV_DB.collection('brahminBiodata').doc(me.key).collection('private').doc('contact').set({
+      ownerAuthUid: authUid,
+      allowedReaderAuthUids: firebase.firestore.FieldValue.arrayUnion(granteeAuthUid)
+    }, { merge:true });
+  }catch(e){ console.error('[Brahmin Vivaah] could not grant contact access:', e.message); }
 }
 
 /* ================= KUNDLI / COMPATIBILITY (simplified indicator, not full 36-point Milan) ================= */
@@ -1300,12 +1471,14 @@ async function bbExpressInterest(){
   const me = bvMe();
   if(!me){ alert('Please login first.'); return; }
   if(!bbViewingUid) return;
+  const authUid = await bvWaitForAuthUid();
+  if(!authUid){ alert('Could not verify a secure session — please refresh and try again.'); return; }
   const pairId = [me.key, bbViewingUid].sort().join('_');
   try{
     const existing = await BV_DB.collection('interests').doc(pairId).get();
     if(existing.exists){ alert('Interest already sent for this profile.'); return; }
     await BV_DB.collection('interests').doc(pairId).set({
-      fromUid: me.key, toUid: bbViewingUid, fromEmail: me.email, status:'pending',
+      fromUid: me.key, toUid: bbViewingUid, fromEmail: me.email, fromAuthUid: authUid, status:'pending',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('interestBtn').textContent = '⏳ Interest Sent';
@@ -1367,6 +1540,11 @@ async function bbLoadInterests(field, panelId, emptyMsg){
       let name = 'Member', photo = '';
       try{ const ps = await BV_DB.collection('brahminBiodata').doc(otherUid).get(); if(ps.exists){ name = ps.data().f_name||'Member'; photo = ps.data().photo||''; } }catch(e){}
       rows.push({ id:d.id, otherUid, name, photo, status:data.status });
+      // I'm the original sender and it's now accepted — make sure I've granted
+      // the owner's authUid access to MY contact info too (mutual reveal).
+      if(field==='fromUid' && data.status==='accepted' && data.toAuthUid){
+        bvGrantContactAccess(data.toAuthUid).catch(()=>{});
+      }
     }
     if(!rows.length){ panel.innerHTML = `<div class="empty-state">${emptyMsg}</div>`; return; }
     panel.innerHTML = rows.map(r=>`
@@ -1381,8 +1559,17 @@ async function bbLoadInterests(field, panelId, emptyMsg){
   }catch(e){ console.error(e); panel.innerHTML = '<div class="empty-state">Could not load: '+e.message+'</div>'; }
 }
 async function bbRespondInterest(interestId, status, btnEl){
+  const me = bvMe();
+  if(!me){ alert('Please login first.'); return; }
+  const authUid = await bvWaitForAuthUid();
+  if(!authUid){ alert('Could not verify a secure session — please refresh and try again.'); return; }
   try{
-    await BV_DB.collection('interests').doc(interestId).update({ status });
+    await BV_DB.collection('interests').doc(interestId).update({ status, toAuthUid: authUid });
+    if(status==='accepted'){
+      const idoc = await BV_DB.collection('interests').doc(interestId).get();
+      const fromAuthUid = idoc.exists ? idoc.data().fromAuthUid : null;
+      if(fromAuthUid) await bvGrantContactAccess(fromAuthUid);
+    }
     bbLoadInterests('toUid','tab-received','No interests received yet.');
   }catch(e){ alert('Failed: '+e.message); }
 }
