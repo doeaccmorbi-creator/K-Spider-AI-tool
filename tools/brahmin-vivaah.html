@@ -87,12 +87,27 @@
   var idx = 0;
   function loadSet(set, i, onDone, onFail){ if(i>=set.length){onDone();return;} loadScript(set[i], function(){loadSet(set,i+1,onDone,onFail);}, onFail); }
   function tryNextCDN(){ if(idx>=CDN_SETS.length){ console.error('[Brahmin Vivaah] Firebase failed to load from all CDNs'); return; } var set=CDN_SETS[idx++]; loadSet(set,0,initBV,tryNextCDN); }
-  if (typeof firebase !== 'undefined') { initBV(); } else { tryNextCDN(); }
+  // Guard against double-loading Firebase if some other script on the page
+  // (now or in future) also loads it — wait one tick so any script that
+  // runs earlier in the page has a chance to finish, then only load our
+  // own copy if firebase.firestore truly isn't available yet.
+  setTimeout(function(){
+    if (typeof firebase !== 'undefined' && firebase.firestore) { initBV(); }
+    else { tryNextCDN(); }
+  }, 50);
 })();
 </script>
 <!-- Site-wide tool security scripts (same as other K Spider AI tools) -->
-<script src="../tool-guard.js" defer onerror="console.warn('[Brahmin Vivaah] tool-guard.js not found — inline guard still active')"></script>
-<script src="../ks-guard.js" defer onerror="console.warn('[Brahmin Vivaah] ks-guard.js not found — inline guard still active')"></script>
+<!-- NOTE: tool-guard.js / ks-guard.js intentionally NOT included here.
+     This tool never verified what those scripts actually contain, and on
+     kspiderai.in they load their own Firebase instance — which collided
+     with this tool's own Firebase load ("Firebase is already defined in
+     the global scope" + internal SDK crash). This tool is fully
+     self-contained: it reads localStorage.ks_u directly for the login
+     check (see getUser()/isReg() below), so no external guard script is
+     needed. If you want this tool wrapped with the same guard scripts as
+     your other tools, first confirm what those files actually do (in
+     particular whether they load Firebase) before re-adding them. -->
 
 <style>
   :root{
