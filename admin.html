@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -2441,6 +2441,21 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
 
     <!-- ── BRAHMIN VIVAAH MANAGER ── -->
     <div class="panel" id="panel-brahmin-vivaah">
+      <!-- Full profile detail modal -->
+      <div id="bv-detail-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);overflow-y:auto">
+        <div style="max-width:680px;margin:30px auto;background:var(--bg2);border:1px solid var(--br2);border-radius:16px;overflow:hidden">
+          <div style="padding:16px 20px;background:var(--bg3);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--br)">
+            <div style="font-weight:700;font-size:.95rem">👤 Full Profile Details</div>
+            <button onclick="bvCloseDetail()" style="background:none;border:none;color:var(--t3);font-size:1.2rem;cursor:pointer">✕</button>
+          </div>
+          <div style="padding:20px;max-height:70vh;overflow-y:auto" id="bv-detail-body">Loading…</div>
+          <div style="padding:14px 20px;background:var(--bg3);border-top:1px solid var(--br);display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-gh" id="bv-detail-vis-btn" onclick="bvDetailToggleVisibility()">🔒 Toggle Publish</button>
+            <button class="btn btn-sm" style="background:var(--red);color:#fff" id="bv-detail-del-btn" onclick="bvDetailDelete()">🗑 Delete Profile</button>
+            <button class="btn btn-sm btn-gh" onclick="bvCloseDetail()" style="margin-left:auto">Close</button>
+          </div>
+        </div>
+      </div>
       <div style="padding:16px 20px 12px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-size:1rem;font-weight:700;color:var(--t1)">💍 Brahmin Vivaah — Matrimony Tool Manager</div>
@@ -8796,15 +8811,16 @@ function bvRenderProfiles(list) {
   document.getElementById('bv-table-body').innerHTML = list.map(function(p){
     var sub = p.f_subcaste==='other' ? p.f_subcaste_other : p.f_subcaste;
     var updated = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleDateString() : '—';
-    return '<tr style="border-bottom:1px solid var(--br)">' +
-      '<td style="padding:8px"><img src="'+bvEsc(p.photo||'')+'" style="width:36px;height:44px;object-fit:cover;border-radius:4px;background:var(--bg2)" onerror="this.style.visibility=\'hidden\'"></td>' +
+    return '<tr style="border-bottom:1px solid var(--br);cursor:pointer" onclick="bvViewProfile(\''+p._id+'\')">' +
+      '<td style="padding:8px" onclick="event.stopPropagation()"><img src="'+bvEsc(p.photo||'')+'" style="width:36px;height:44px;object-fit:cover;border-radius:4px;background:var(--bg2)" onerror="this.style.visibility=\'hidden\'"></td>' +
       '<td style="padding:8px;font-weight:600">'+bvEsc(p.f_name||'—')+'</td>' +
       '<td style="padding:8px">'+bvEsc(sub||'—')+'</td>' +
       '<td style="padding:8px">'+bvEsc(p.f_city||'—')+'</td>' +
       '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+bvEsc(p.email||'—')+'</td>' +
       '<td style="padding:8px"><span style="padding:2px 8px;border-radius:8px;font-size:.7rem;font-weight:700;background:'+(p.visibility==='public'?'rgba(22,163,74,.15);color:#16a34a':'rgba(148,163,184,.15);color:var(--t3)')+'">'+(p.visibility==='public'?'Public':'Private')+'</span></td>' +
       '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+updated+'</td>' +
-      '<td style="padding:8px;white-space:nowrap">' +
+      '<td style="padding:8px;white-space:nowrap" onclick="event.stopPropagation()">' +
+        '<button class="btn btn-sm btn-gh" onclick="bvViewProfile(\''+p._id+'\')">👁 Full Details</button> ' +
         '<button class="btn btn-sm btn-gh" onclick="bvToggleVisibility(\''+p._id+'\',\''+(p.visibility==='public'?'private':'public')+'\')">'+(p.visibility==='public'?'🔒 Unpublish':'✅ Publish')+'</button> ' +
         '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvDeleteProfile(\''+p._id+'\')">🗑 Delete</button>' +
       '</td></tr>';
@@ -8856,12 +8872,79 @@ function bvFilterProfiles() {
   }));
 }
 
+var bvDetailId = null;
+function bvViewProfile(id) {
+  bvDetailId = id;
+  var modal = document.getElementById('bv-detail-modal');
+  var body = document.getElementById('bv-detail-body');
+  modal.style.display = 'block';
+  body.innerHTML = 'Loading…';
+  if (!db) return;
+  Promise.all([
+    db.collection('brahminBiodata').doc(id).get(),
+    db.collection('brahminBiodata').doc(id).collection('private').doc('contact').get().catch(function(){ return null; }),
+    db.collection('interests').where('fromUid','==',id).get().catch(function(){ return {size:0}; }),
+    db.collection('interests').where('toUid','==',id).get().catch(function(){ return {size:0}; })
+  ]).then(function(res){
+    var snap = res[0], csnap = res[1], sentSnap = res[2], recvSnap = res[3];
+    if (!snap.exists) { body.innerHTML = '<div style="text-align:center;color:var(--t3);padding:20px">Profile not found (may have been deleted).</div>'; return; }
+    var p = snap.data();
+    var c = (csnap && csnap.exists) ? csnap.data() : {};
+    var sub = p.f_subcaste==='other' ? p.f_subcaste_other : p.f_subcaste;
+    var updated = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleString() : '—';
+
+    function sec(title, rows) {
+      var html = rows.filter(function(r){ return r[1]; }).map(function(r){
+        return '<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--br);font-size:.82rem">' +
+          '<span style="color:var(--t3)">'+r[0]+'</span><span style="font-weight:600;text-align:right;max-width:60%">'+bvEsc(r[1])+'</span></div>';
+      }).join('');
+      if (!html) return '';
+      return '<div style="margin-bottom:14px"><div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#a855f7;margin-bottom:6px">'+title+'</div>'+html+'</div>';
+    }
+
+    body.innerHTML =
+      '<div style="display:flex;gap:14px;align-items:flex-start;margin-bottom:16px">' +
+        '<img src="'+bvEsc(p.photo||'')+'" style="width:80px;height:100px;object-fit:cover;border-radius:8px;background:var(--bg3);border:2px solid #a855f7" onerror="this.style.visibility=\'hidden\'">' +
+        '<div><div style="font-size:1.1rem;font-weight:800">'+bvEsc(p.f_name||'Unnamed')+'</div>' +
+        '<div style="font-size:.78rem;color:var(--t3)">'+bvEsc(sub||'')+' · Member ID: '+bvEsc(id)+'</div>' +
+        '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
+          '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:'+(p.visibility==='public'?'rgba(22,163,74,.15);color:#16a34a':'rgba(148,163,184,.15);color:var(--t3)')+'">'+(p.visibility==='public'?'Published':'Private draft')+'</span>' +
+          '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:rgba(37,99,235,.15);color:#2563eb">📤 '+sentSnap.size+' interests sent</span>' +
+          '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:rgba(236,72,153,.15);color:#ec4899">📥 '+recvSnap.size+' interests received</span>' +
+        '</div></div>' +
+      '</div>' +
+      sec('Account', [['Account Email', p.email], ['Last Updated', updated], ['Owner Auth ID', p.ownerAuthUid||'not set (never saved securely)']]) +
+      sec('Personal', [['Gender', p.f_gender], ['Date of Birth', p.f_dob], ['Time of Birth', p.f_tob], ['Place of Birth', p.f_pob], ['Height/Weight', p.f_height], ['Complexion', p.f_complexion], ['Diet', p.f_diet], ['Blood Group', p.f_blood], ['City', p.f_city], ['Marital Status', p.f_marital], ['Hobbies', p.f_hobbies]]) +
+      sec('Religious', [['Sub-Caste', sub], ['Gotra', p.f_gotra], ['Nakshatra', p.f_nakshatra], ['Rashi', p.f_rashi], ['Manglik', p.f_manglik], ['Kul Devta/Devi', p.f_kuldevta], ['Native Place', p.f_native]]) +
+      sec('Education & Career', [['Qualification', p.f_edu], ['College', p.f_college], ['Occupation', p.f_job], ['Company', p.f_company], ['Income', p.f_income], ['Work Location', p.f_worklocation]]) +
+      sec('Family', [['Father', p.f_father], ['Father Occupation', p.f_father_occ], ['Mother', p.f_mother], ['Mother Occupation', p.f_mother_occ], ['Brothers', p.f_brothers], ['Sisters', p.f_sisters], ['Family Type', p.f_famtype], ['Family Status', p.f_famstatus]]) +
+      sec('Partner Preferences', [['Age Range', (p.f_pref_agemin||'?')+' - '+(p.f_pref_agemax||'?')], ['Sub-Caste', p.f_pref_subcaste], ['City', p.f_pref_city], ['Education', p.f_pref_edu], ['Diet', p.f_pref_diet], ['Manglik', p.f_pref_manglik]]) +
+      sec('🔒 Contact (admin-only view)', [['Mobile', c.f_mobile], ['WhatsApp', c.f_whatsapp], ['Contact Email', c.f_email], ['Address', c.f_address], ['Reference', c.f_reference]]);
+
+    var visBtn = document.getElementById('bv-detail-vis-btn');
+    visBtn.textContent = p.visibility==='public' ? '🔒 Unpublish' : '✅ Publish';
+    visBtn.dataset.newVis = p.visibility==='public' ? 'private' : 'public';
+  }).catch(function(e){ body.innerHTML = '<div style="color:var(--red);padding:20px">Error loading profile: '+e.message+'</div>'; });
+}
+function bvCloseDetail() { document.getElementById('bv-detail-modal').style.display = 'none'; bvDetailId = null; }
+function bvDetailToggleVisibility() {
+  if (!bvDetailId) return;
+  var newVis = document.getElementById('bv-detail-vis-btn').dataset.newVis || 'public';
+  bvToggleVisibility(bvDetailId, newVis);
+  bvCloseDetail();
+}
+function bvDetailDelete() {
+  if (!bvDetailId) return;
+  bvDeleteProfile(bvDetailId);
+  bvCloseDetail();
+}
 function bvToggleVisibility(id, newVis) {
   if (!db) return;
   db.collection('brahminBiodata').doc(id).update({ visibility: newVis }).then(function(){ loadBrahminVivaah('profiles'); }).catch(function(e){ alert('Failed: '+e.message); });
 }
 function bvDeleteProfile(id) {
   if (!confirm('Delete this biodata permanently? This cannot be undone.')) return;
+  db.collection('brahminBiodata').doc(id).collection('private').doc('contact').delete().catch(function(){});
   db.collection('brahminBiodata').doc(id).delete().then(function(){ loadBrahminVivaah(bvTab); }).catch(function(e){ alert('Failed: '+e.message); });
 }
 function bvResolveReport(id, status) {
