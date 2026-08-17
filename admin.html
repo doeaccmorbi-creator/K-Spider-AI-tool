@@ -292,7 +292,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
         <span class="ic">🔑</span> API Keys
       </a>
       <a class="ni" id="n-brahmin-vivaah" onclick="show('brahmin-vivaah',this)" href="#">
-        <span class="ic">💍</span> Brahmin Vivaah
+        <span class="ic">🔗</span> BrahminConnect
         <span class="nbadge red" id="bv-badge" style="display:none">0</span>
       </a>
     </div>
@@ -2111,7 +2111,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
 <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer;background:var(--bg3);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.08)"><input type="checkbox" value="biz-name-gen"> 🏢 Business Name Generator</label>
 <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer;background:var(--bg3);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.08)"><input type="checkbox" value="health-checker"> 🏥 Health Symptom Checker</label>
 <label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer;background:var(--bg3);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.08)"><input type="checkbox" value="contract-gen"> ⚖️ Legal Contract Generator</label>
-<label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer;background:var(--bg3);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.08)"><input type="checkbox" value="brahmin-vivaah"> 💍 Brahmin Vivaah</label>
+<label style="display:flex;align-items:center;gap:5px;font-size:.75rem;cursor:pointer;background:var(--bg3);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,.08)"><input type="checkbox" value="brahmin-vivaah"> 🔗 BrahminConnect</label>
               </div>
             </div>
 
@@ -2227,7 +2227,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
                 <option value="tool-biz-name-gen">🏢 Business Name Generator</option>
                 <option value="tool-health-checker">🏥 Health Symptom Checker</option>
                 <option value="tool-contract-gen">⚖️ Legal Contract Generator</option>
-                <option value="tool-brahmin-vivaah">💍 Brahmin Vivaah</option>
+                <option value="tool-brahmin-vivaah">🔗 BrahminConnect</option>
               </optgroup>
             </select>
             <select class="fi" id="ads-filter-status" style="font-size:.73rem;padding:4px 8px;height:auto;width:auto" onchange="loadAds()">
@@ -2452,15 +2452,50 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
           </div>
           <div style="padding:20px;max-height:70vh;overflow-y:auto" id="bv-detail-body">Loading…</div>
           <div style="padding:14px 20px;background:var(--bg3);border-top:1px solid var(--br);display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-gh" onclick="bvCloseDetail();bvOpenEdit(bvDetailId)">✏️ Edit</button>
             <button class="btn btn-sm btn-gh" id="bv-detail-vis-btn" onclick="bvDetailToggleVisibility()">🔒 Toggle Publish</button>
+            <button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="bvCloseDetail();bvOpenStatusModal(bvDetailId,'suspended')">⏸️ Suspend</button>
             <button class="btn btn-sm" style="background:var(--red);color:#fff" id="bv-detail-del-btn" onclick="bvDetailDelete()">🗑 Delete Profile</button>
             <button class="btn btn-sm btn-gh" onclick="bvCloseDetail()" style="margin-left:auto">Close</button>
           </div>
         </div>
       </div>
+
+      <!-- Full profile EDIT modal (admin can correct/update any field) -->
+      <div id="bv-edit-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px);overflow-y:auto">
+        <div style="max-width:680px;margin:30px auto;background:var(--bg2);border:1px solid var(--br2);border-radius:16px;overflow:hidden">
+          <div style="padding:16px 20px;background:var(--bg3);display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--br)">
+            <div style="font-weight:700;font-size:.95rem">✏️ Edit Profile</div>
+            <button onclick="bvCloseEdit()" style="background:none;border:none;color:var(--t3);font-size:1.2rem;cursor:pointer">✕</button>
+          </div>
+          <div style="padding:20px;max-height:70vh;overflow-y:auto" id="bv-edit-body">Loading…</div>
+          <div style="padding:14px 20px;background:var(--bg3);border-top:1px solid var(--br);display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-sm btn-g" onclick="bvSaveEdit()">💾 Save Changes</button>
+            <button class="btn btn-sm btn-gh" onclick="bvCloseEdit()" style="margin-left:auto">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Suspend / Ban reason modal -->
+      <div id="bv-status-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.7);backdrop-filter:blur(4px)">
+        <div style="max-width:420px;margin:80px auto;background:var(--bg2);border:1px solid var(--br2);border-radius:16px;overflow:hidden">
+          <div style="padding:16px 20px;background:var(--bg3);border-bottom:1px solid var(--br)">
+            <div style="font-weight:700;font-size:.95rem" id="bv-status-modal-title">Suspend Member</div>
+          </div>
+          <div style="padding:20px">
+            <label class="fl">Reason (admin-only note, member ko nahi dikhega)</label>
+            <textarea id="bv-status-reason" class="fi" rows="3" placeholder="e.g. Fake photo reported, duplicate profile..." style="width:100%;resize:vertical"></textarea>
+          </div>
+          <div style="padding:14px 20px;background:var(--bg3);border-top:1px solid var(--br);display:flex;gap:8px">
+            <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvConfirmStatus()" id="bv-status-confirm-btn">Confirm</button>
+            <button class="btn btn-sm btn-gh" onclick="bvCloseStatusModal()" style="margin-left:auto">Cancel</button>
+          </div>
+        </div>
+      </div>
+
       <div style="padding:16px 20px 12px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
-          <div style="font-size:1rem;font-weight:700;color:var(--t1)">💍 Brahmin Vivaah — Matrimony Tool Manager</div>
+          <div style="font-size:1rem;font-weight:700;color:var(--t1)">🔗 BrahminConnect Manager — Vivaah · Business · Jobs</div>
           <div style="font-size:.78rem;color:var(--t3);margin-top:3px">Manage published biodatas, reports, blocks &amp; success story approvals for this tool only</div>
         </div>
         <button class="btn btn-g btn-sm" onclick="loadBrahminVivaah(bvTab)">🔄 Refresh</button>
@@ -2486,14 +2521,26 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
           <div style="font-size:1.6rem;font-weight:800;color:#7c3aed" id="bv-stat-interests">0</div>
           <div style="font-size:.72rem;color:var(--t3)">Interests Sent</div>
         </div>
+        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+          <div style="font-size:1.6rem;font-weight:800;color:var(--red)" id="bv-stat-suspended">0</div>
+          <div style="font-size:.72rem;color:var(--t3)">Suspended / Banned</div>
+        </div>
       </div>
       <div style="padding:0 16px 12px;display:flex;gap:8px;flex-wrap:wrap">
         <button class="btn btn-sm" style="background:#2563eb;color:#fff" id="bv-tab-profiles" onclick="loadBrahminVivaah('profiles')">👤 Profiles</button>
         <button class="btn btn-sm btn-gh" id="bv-tab-reports" onclick="loadBrahminVivaah('reports')">🚩 Reports</button>
         <button class="btn btn-sm btn-gh" id="bv-tab-stories" onclick="loadBrahminVivaah('stories')">💕 Success Stories</button>
+        <button class="btn btn-sm btn-gh" id="bv-tab-business" onclick="loadBrahminVivaah('business')">🏢 Business <span id="bv-badge-biz" style="display:none;background:var(--red);color:#fff;border-radius:10px;padding:0 6px;font-size:.65rem;margin-left:3px">0</span></button>
+        <button class="btn btn-sm btn-gh" id="bv-tab-jobs" onclick="loadBrahminVivaah('jobs')">💼 Jobs</button>
         <input type="text" id="bv-search" placeholder="🔍 Search by name/email/city..."
                style="padding:6px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);font-size:.8rem;flex:1;min-width:200px"
                oninput="bvFilterProfiles()">
+        <select id="bv-status-filter" onchange="bvFilterProfiles()" style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);font-size:.8rem">
+          <option value="">All Status</option>
+          <option value="active">✅ Active</option>
+          <option value="suspended">⏸️ Suspended</option>
+          <option value="banned">⛔ Banned</option>
+        </select>
       </div>
       <div style="overflow-x:auto;padding:0 16px 16px" id="bv-table-wrap">
         <table style="width:100%;border-collapse:collapse;font-size:.82rem">
@@ -3719,7 +3766,7 @@ var TOOLS = [
   {id:'universal-business-marketing-pro',  name:'Universal Business Marketing Pro',icon:'🏢',cat:'marketing',status:'live', plan:'free'},
   {id:'kspider-doctor-ai-v3',   name:'K Spider Doctor AI v3',       icon:'🏥',cat:'health',   status:'live',       plan:'premium'},
   {id:'gujarat-govt-form-assistant', name:'Gujarat Govt Form Assistant',icon:'📋',cat:'education',status:'live',  plan:'free'},
-  {id:'brahmin-vivaah',         name:'Brahmin Vivaah',              icon:'💍',cat:'social',   status:'live',       plan:'free'}
+  {id:'brahmin-vivaah',         name:'BrahminConnect',              icon:'🔗',cat:'social',   status:'live',       plan:'free'}
 ];
 
 function doLogin() {
@@ -3913,7 +3960,7 @@ function show(name, el) {
   if (panel) panel.classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){ n.classList.remove('on'); });
   if (el) el.classList.add('on');
-  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements',ads:'📢 Ads Manager','adv-requests':'📬 Advertiser Requests','rto-agents':'🚗 RTO Agents',apikeys:'🔑 API Keys Manager','wa-referrals':'🔗 WA Promo Links Approval','brahmin-vivaah':'💍 Brahmin Vivaah Manager'};
+  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📝 Blog / Announcements',ads:'📢 Ads Manager','adv-requests':'📬 Advertiser Requests','rto-agents':'🚗 RTO Agents',apikeys:'🔑 API Keys Manager','wa-referrals':'🔗 WA Promo Links Approval','brahmin-vivaah':'🔗 BrahminConnect Manager'};
   document.getElementById('page-title').textContent = titles[name]||name;
   if (name==='users')       loadUsers();
   if (name==='access')      loadAccess();
@@ -8753,23 +8800,27 @@ function updateAgentStats(data) {
 // from the same kspideraimain Firestore project (var db, already init'd above).
 // ═══════════════════════════════════════════════
 var bvTab = 'profiles';
-var bvProfiles = [], bvReports = [], bvStories = [];
+var bvProfiles = [], bvReports = [], bvStories = [], bvBusinesses = [], bvJobs = [];
 
 function checkBrahminVivaahAlerts() {
   if (!db) return;
   db.collection('brahmin_reports').where('status','==','pending').get().then(function(snap){
     var n = snap.size;
     db.collection('successStories').where('approved','==', false).get().then(function(snap2){
-      var total = n + snap2.size;
-      var badge = document.getElementById('bv-badge');
-      if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'inline-block' : 'none'; }
+      db.collection('brahminBusiness').where('status','==','pending').get().then(function(snap3){
+        var total = n + snap2.size + snap3.size;
+        var badge = document.getElementById('bv-badge');
+        if (badge) { badge.textContent = total; badge.style.display = total > 0 ? 'inline-block' : 'none'; }
+        var bizBadge = document.getElementById('bv-badge-biz');
+        if (bizBadge) { bizBadge.textContent = snap3.size; bizBadge.style.display = snap3.size > 0 ? 'inline-block' : 'none'; }
+      }).catch(function(){});
     }).catch(function(){});
-  }).catch(function(e){ console.warn('[Brahmin Vivaah] alert check failed:', e.message); });
+  }).catch(function(e){ console.warn('[BrahminConnect] alert check failed:', e.message); });
 }
 
 function loadBrahminVivaah(tab) {
   bvTab = tab || 'profiles';
-  ['profiles','reports','stories'].forEach(function(t){
+  ['profiles','reports','stories','business','jobs'].forEach(function(t){
     var b = document.getElementById('bv-tab-'+t);
     if (b) { b.className = 'btn btn-sm ' + (t===bvTab ? '' : 'btn-gh'); if (t===bvTab) b.style.cssText='background:#2563eb;color:#fff'; else b.style.cssText=''; }
   });
@@ -8781,10 +8832,15 @@ function loadBrahminVivaah(tab) {
   db.collection('brahminBiodata').get().then(function(snap){
     bvProfiles = []; snap.forEach(function(d){ bvProfiles.push(Object.assign({_id:d.id}, d.data())); });
     var pub = bvProfiles.filter(function(p){ return p.visibility==='public'; }).length;
+    var susp = bvProfiles.filter(function(p){ return p.accountStatus==='suspended' || p.accountStatus==='banned'; }).length;
     document.getElementById('bv-stat-total').textContent = bvProfiles.length;
     document.getElementById('bv-stat-public').textContent = pub;
-    if (bvTab === 'profiles') bvRenderProfiles(bvProfiles);
-  }).catch(function(e){ console.error(e); if (bvTab==='profiles') body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
+    document.getElementById('bv-stat-suspended').textContent = susp;
+    if (bvTab === 'profiles') bvFilterProfiles();
+  }).catch(function(e){
+    console.error(e);
+    if (bvTab==='profiles') body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">⚠️ Error loading biodatas: '+e.message+'<br><span style="font-size:.72rem;color:var(--t3)">Agar yahan "Missing or insufficient permissions" dikhe, toh Firestore Rules mein brahminBiodata collection pe admin ke liye read/list access add karna hoga.</span></td></tr>';
+  });
 
   db.collection('interests').get().then(function(snap){ document.getElementById('bv-stat-interests').textContent = snap.size; }).catch(function(){});
 
@@ -8802,18 +8858,44 @@ function loadBrahminVivaah(tab) {
       bvRenderStories(bvStories);
     }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
   }
+  if (bvTab === 'business') {
+    db.collection('brahminBusiness').orderBy('createdAt','desc').limit(300).get().then(function(snap){
+      bvBusinesses = []; snap.forEach(function(d){ bvBusinesses.push(Object.assign({_id:d.id}, d.data())); });
+      var pendingBiz = bvBusinesses.filter(function(b){ return b.status==='pending'; }).length;
+      var badge = document.getElementById('bv-badge-biz');
+      if (badge) { badge.textContent = pendingBiz; badge.style.display = pendingBiz>0 ? 'inline-block' : 'none'; }
+      bvRenderBusiness(bvBusinesses);
+    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">⚠️ Error: '+e.message+'<br><span style="font-size:.72rem;color:var(--t3)">Firestore Rules mein brahminBusiness collection pe admin read/list access chahiye.</span></td></tr>'; });
+  }
+  if (bvTab === 'jobs') {
+    db.collection('brahminJobs').orderBy('createdAt','desc').limit(300).get().then(function(snap){
+      bvJobs = []; snap.forEach(function(d){ bvJobs.push(Object.assign({_id:d.id}, d.data())); });
+      bvRenderJobs(bvJobs);
+    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">⚠️ Error: '+e.message+'<br><span style="font-size:.72rem;color:var(--t3)">Firestore Rules mein brahminJobs collection pe admin read/list access chahiye.</span></td></tr>'; });
+  }
   checkBrahminVivaahAlerts();
 }
 
 function bvEsc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 
+function bvStatusBadge(p){
+  var s = p.accountStatus || 'active';
+  var map = {
+    active:    ['✅ Active','rgba(22,163,74,.15)','#16a34a'],
+    suspended: ['⏸️ Suspended','rgba(245,158,11,.15)','#f59e0b'],
+    banned:    ['⛔ Banned','rgba(220,38,38,.15)','#dc2626']
+  };
+  var m = map[s] || map.active;
+  return '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>';
+}
 function bvRenderProfiles(list) {
   document.getElementById('bv-table-head').innerHTML =
-    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Photo</th><th style="text-align:left;padding:8px">Name</th><th style="text-align:left;padding:8px">Sub-Caste</th><th style="text-align:left;padding:8px">City</th><th style="text-align:left;padding:8px">Email</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Updated</th><th style="text-align:left;padding:8px">Actions</th></tr>';
-  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--t3)">No biodatas yet.</td></tr>'; return; }
+    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Photo</th><th style="text-align:left;padding:8px">Name</th><th style="text-align:left;padding:8px">Sub-Caste</th><th style="text-align:left;padding:8px">City</th><th style="text-align:left;padding:8px">Email</th><th style="text-align:left;padding:8px">Visibility</th><th style="text-align:left;padding:8px">Account</th><th style="text-align:left;padding:8px">Updated</th><th style="text-align:left;padding:8px">Actions</th></tr>';
+  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--t3)">No biodatas match.</td></tr>'; return; }
   document.getElementById('bv-table-body').innerHTML = list.map(function(p){
     var sub = p.f_subcaste==='other' ? p.f_subcaste_other : p.f_subcaste;
     var updated = p.updatedAt && p.updatedAt.toDate ? p.updatedAt.toDate().toLocaleDateString() : '—';
+    var status = p.accountStatus || 'active';
     return '<tr style="border-bottom:1px solid var(--br);cursor:pointer" onclick="bvViewProfile(\''+p._id+'\')">' +
       '<td style="padding:8px" onclick="event.stopPropagation()"><img src="'+bvEsc(p.photo||'')+'" style="width:36px;height:44px;object-fit:cover;border-radius:4px;background:var(--bg2)" onerror="this.style.visibility=\'hidden\'"></td>' +
       '<td style="padding:8px;font-weight:600">'+bvEsc(p.f_name||'—')+'</td>' +
@@ -8821,10 +8903,16 @@ function bvRenderProfiles(list) {
       '<td style="padding:8px">'+bvEsc(p.f_city||'—')+'</td>' +
       '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+bvEsc(p.email||'—')+'</td>' +
       '<td style="padding:8px"><span style="padding:2px 8px;border-radius:8px;font-size:.7rem;font-weight:700;background:'+(p.visibility==='public'?'rgba(22,163,74,.15);color:#16a34a':'rgba(148,163,184,.15);color:var(--t3)')+'">'+(p.visibility==='public'?'Public':'Private')+'</span></td>' +
+      '<td style="padding:8px">'+bvStatusBadge(p)+'</td>' +
       '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+updated+'</td>' +
       '<td style="padding:8px;white-space:nowrap" onclick="event.stopPropagation()">' +
-        '<button class="btn btn-sm btn-gh" onclick="bvViewProfile(\''+p._id+'\')">👁 Full Details</button> ' +
+        '<button class="btn btn-sm btn-gh" onclick="bvViewProfile(\''+p._id+'\')">👁</button> ' +
+        '<button class="btn btn-sm btn-gh" onclick="bvOpenEdit(\''+p._id+'\')">✏️ Edit</button> ' +
         '<button class="btn btn-sm btn-gh" onclick="bvToggleVisibility(\''+p._id+'\',\''+(p.visibility==='public'?'private':'public')+'\')">'+(p.visibility==='public'?'🔒 Unpublish':'✅ Publish')+'</button> ' +
+        (status==='active'
+          ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="bvOpenStatusModal(\''+p._id+'\',\'suspended\')">⏸️ Suspend</button> '
+            +'<button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="bvOpenStatusModal(\''+p._id+'\',\'banned\')">⛔ Ban</button> '
+          : '<button class="btn btn-sm btn-g" onclick="bvOpenStatusModal(\''+p._id+'\',\'active\')">↩️ Reactivate</button> ') +
         '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvDeleteProfile(\''+p._id+'\')">🗑 Delete</button>' +
       '</td></tr>';
   }).join('');
@@ -8868,11 +8956,123 @@ function bvRenderStories(list) {
 
 function bvFilterProfiles() {
   var q = (document.getElementById('bv-search').value || '').toLowerCase().trim();
+  var statusFilterEl = document.getElementById('bv-status-filter');
+  var sf = statusFilterEl ? statusFilterEl.value : '';
   if (bvTab !== 'profiles') return;
-  if (!q) { bvRenderProfiles(bvProfiles); return; }
-  bvRenderProfiles(bvProfiles.filter(function(p){
-    return (p.f_name||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q) || (p.f_city||'').toLowerCase().includes(q);
-  }));
+  var list = bvProfiles;
+  if (q) {
+    list = list.filter(function(p){
+      return (p.f_name||'').toLowerCase().includes(q) || (p.email||'').toLowerCase().includes(q) || (p.f_city||'').toLowerCase().includes(q);
+    });
+  }
+  if (sf) {
+    list = list.filter(function(p){ return (p.accountStatus||'active') === sf; });
+  }
+  bvRenderProfiles(list);
+}
+
+// ── Suspend / Ban / Reactivate ──────────────────────────────
+var bvPendingStatusId = null, bvPendingStatusValue = null;
+function bvOpenStatusModal(id, newStatus) {
+  bvPendingStatusId = id; bvPendingStatusValue = newStatus;
+  var titles = {suspended:'⏸️ Suspend Member', banned:'⛔ Ban Member', active:'↩️ Reactivate Member'};
+  document.getElementById('bv-status-modal-title').textContent = titles[newStatus] || 'Update Status';
+  document.getElementById('bv-status-reason').value = '';
+  var btn = document.getElementById('bv-status-confirm-btn');
+  btn.style.background = newStatus === 'active' ? 'var(--neon)' : (newStatus==='banned' ? '#dc2626' : '#f59e0b');
+  btn.textContent = newStatus === 'active' ? 'Reactivate' : 'Confirm';
+  document.getElementById('bv-status-modal').style.display = 'block';
+}
+function bvCloseStatusModal() {
+  document.getElementById('bv-status-modal').style.display = 'none';
+  bvPendingStatusId = null; bvPendingStatusValue = null;
+}
+function bvConfirmStatus() {
+  if (!bvPendingStatusId) return;
+  var id = bvPendingStatusId, newStatus = bvPendingStatusValue;
+  var reason = document.getElementById('bv-status-reason').value || '';
+  var updates = {
+    accountStatus: newStatus,
+    moderationNote: reason,
+    moderatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    moderatedBy: (_user && _user.email) || 'admin'
+  };
+  // Suspending/banning also force-hides the profile from public search;
+  // reactivating restores whatever visibility it had before the action.
+  var p = bvProfiles.find(function(x){ return x._id === id; });
+  if (newStatus === 'suspended' || newStatus === 'banned') {
+    updates.prevVisibility = (p && p.visibility) || 'private';
+    updates.visibility = 'private';
+  } else if (newStatus === 'active' && p && p.prevVisibility) {
+    updates.visibility = p.prevVisibility;
+  }
+  db.collection('brahminBiodata').doc(id).update(updates)
+    .then(function(){ bvCloseStatusModal(); loadBrahminVivaah('profiles'); })
+    .catch(function(e){ alert('Failed: '+e.message); });
+}
+
+// ── Full Edit ────────────────────────────────────────────────
+var bvEditId = null;
+var BV_EDIT_FIELDS = [
+  ['Section: Personal', null],
+  ['f_name','Full Name'], ['f_gender','Gender'], ['f_dob','Date of Birth'], ['f_tob','Time of Birth'],
+  ['f_pob','Place of Birth'], ['f_height','Height/Weight'], ['f_complexion','Complexion'], ['f_diet','Diet'],
+  ['f_blood','Blood Group'], ['f_city','City'], ['f_marital','Marital Status'], ['f_hobbies','Hobbies'],
+  ['Section: Religious', null],
+  ['f_subcaste','Sub-Caste'], ['f_gotra','Gotra'], ['f_nakshatra','Nakshatra'], ['f_rashi','Rashi'],
+  ['f_manglik','Manglik'], ['f_kuldevta','Kul Devta/Devi'], ['f_native','Native Place'],
+  ['Section: Education & Career', null],
+  ['f_edu','Qualification'], ['f_college','College'], ['f_pg','Post-Graduation'], ['f_certs','Certifications'],
+  ['f_job','Occupation'], ['f_company','Company'], ['f_emptype','Employment Type'], ['f_experience','Experience (Years)'],
+  ['f_income','Income'], ['f_worklocation','Work Location'],
+  ['Section: Family', null],
+  ['f_father','Father'], ['f_father_occ','Father Occupation'], ['f_mother','Mother'], ['f_mother_occ','Mother Occupation'],
+  ['f_brothers','Brothers'], ['f_sisters','Sisters'], ['f_famtype','Family Type'], ['f_famstatus','Family Status'],
+  ['Section: 🔒 Contact (private subcollection)', null],
+  ['c_mobile','Mobile'], ['c_whatsapp','WhatsApp'], ['c_email','Contact Email'], ['c_address','Address']
+];
+function bvOpenEdit(id) {
+  bvEditId = id;
+  var modal = document.getElementById('bv-edit-modal');
+  var body = document.getElementById('bv-edit-body');
+  modal.style.display = 'block';
+  body.innerHTML = 'Loading…';
+  if (!db) return;
+  Promise.all([
+    db.collection('brahminBiodata').doc(id).get(),
+    db.collection('brahminBiodata').doc(id).collection('private').doc('contact').get().catch(function(){ return null; })
+  ]).then(function(res){
+    var snap = res[0], csnap = res[1];
+    if (!snap.exists) { body.innerHTML = '<div style="color:var(--red)">Profile not found.</div>'; return; }
+    var p = snap.data(); var c = (csnap && csnap.exists) ? csnap.data() : {};
+    var html = '';
+    BV_EDIT_FIELDS.forEach(function(f){
+      if (f[1] === null) { html += '<div style="font-size:.7rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#a855f7;margin:14px 0 6px">'+f[0].replace('Section: ','')+'</div>'; return; }
+      var key = f[0], label = f[1];
+      var val = key.indexOf('c_')===0 ? (c[key.replace('c_','f_')] || '') : (p[key] || '');
+      html += '<label class="fl" style="margin-top:4px">'+label+'</label>' +
+        '<input class="fi" data-key="'+key+'" value="'+bvEsc(val)+'" style="width:100%">';
+    });
+    body.innerHTML = html;
+  }).catch(function(e){ body.innerHTML = '<div style="color:var(--red)">Error: '+e.message+'</div>'; });
+}
+function bvCloseEdit() { document.getElementById('bv-edit-modal').style.display = 'none'; bvEditId = null; }
+function bvSaveEdit() {
+  if (!bvEditId) return;
+  var inputs = document.querySelectorAll('#bv-edit-body input[data-key]');
+  var pubUpdates = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  var contactUpdates = { updatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  inputs.forEach(function(inp){
+    var key = inp.dataset.key, val = inp.value;
+    if (key.indexOf('c_') === 0) contactUpdates[key.replace('c_','f_')] = val;
+    else pubUpdates[key] = val;
+  });
+  var id = bvEditId;
+  Promise.all([
+    db.collection('brahminBiodata').doc(id).update(pubUpdates),
+    db.collection('brahminBiodata').doc(id).collection('private').doc('contact').set(contactUpdates, {merge:true})
+  ]).then(function(){ bvCloseEdit(); loadBrahminVivaah('profiles'); })
+    .catch(function(e){ alert('Failed to save: '+e.message); });
 }
 
 var bvDetailId = null;
@@ -8912,6 +9112,7 @@ function bvViewProfile(id) {
         '<div style="font-size:.78rem;color:var(--t3)">'+bvEsc(sub||'')+' · Member ID: '+bvEsc(id)+'</div>' +
         '<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">' +
           '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:'+(p.visibility==='public'?'rgba(22,163,74,.15);color:#16a34a':'rgba(148,163,184,.15);color:var(--t3)')+'">'+(p.visibility==='public'?'Published':'Private draft')+'</span>' +
+          bvStatusBadge(p) +
           '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:rgba(37,99,235,.15);color:#2563eb">📤 '+sentSnap.size+' interests sent</span>' +
           '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:rgba(236,72,153,.15);color:#ec4899">📥 '+recvSnap.size+' interests received</span>' +
         '</div></div>' +
@@ -8960,6 +9161,91 @@ function bvApproveStory(id) {
 function bvDeleteStory(id) {
   if (!confirm('Delete this success story?')) return;
   db.collection('successStories').doc(id).delete().then(function(){ loadBrahminVivaah('stories'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+
+// ── Business Directory ──────────────────────────────────────
+function bvBizStatusBadge(b){
+  var s = b.status || 'pending';
+  var map = {
+    pending:   ['⏳ Pending','rgba(245,158,11,.15)','#f59e0b'],
+    approved:  ['✅ Live','rgba(22,163,74,.15)','#16a34a'],
+    rejected:  ['❌ Rejected','rgba(220,38,38,.15)','#dc2626'],
+    suspended: ['⏸️ Suspended','rgba(148,163,184,.15)','var(--t3)']
+  };
+  var m = map[s] || map.pending;
+  return '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>';
+}
+function bvRenderBusiness(list) {
+  document.getElementById('bv-table-head').innerHTML =
+    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Business</th><th style="text-align:left;padding:8px">Category</th><th style="text-align:left;padding:8px">City</th><th style="text-align:left;padding:8px">Owner</th><th style="text-align:left;padding:8px">Phone</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Actions</th></tr>';
+  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:var(--t3)">No business listings yet.</td></tr>'; return; }
+  document.getElementById('bv-table-body').innerHTML = list.map(function(b){
+    var cat = b.category==='Other' ? (b.categoryOther||'Other') : b.category;
+    return '<tr style="border-bottom:1px solid var(--br)">' +
+      '<td style="padding:8px;font-weight:600">'+bvEsc(b.bizName||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(cat||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(b.city||'—')+'</td>' +
+      '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+bvEsc(b.ownerName||b.ownerEmail||'—')+'</td>' +
+      '<td style="padding:8px;font-size:.75rem">'+bvEsc(b.phone||'—')+'</td>' +
+      '<td style="padding:8px">'+bvBizStatusBadge(b)+'</td>' +
+      '<td style="padding:8px;white-space:nowrap">' +
+        (b.status==='pending'
+          ? '<button class="btn btn-sm btn-g" onclick="bvBizSetStatus(\''+b._id+'\',\'approved\')">✅ Approve</button> '
+            +'<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvBizSetStatus(\''+b._id+'\',\'rejected\')">❌ Reject</button> '
+          : (b.status==='approved'
+            ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="bvBizSetStatus(\''+b._id+'\',\'suspended\')">⏸️ Suspend</button> '
+            : '<button class="btn btn-sm btn-g" onclick="bvBizSetStatus(\''+b._id+'\',\'approved\')">✅ Approve</button> ')) +
+        '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvBizDelete(\''+b._id+'\')">🗑 Delete</button>' +
+      '</td></tr>';
+  }).join('');
+}
+function bvBizSetStatus(id, status) {
+  db.collection('brahminBusiness').doc(id).update({ status: status, moderatedAt: firebase.firestore.FieldValue.serverTimestamp() })
+    .then(function(){ loadBrahminVivaah('business'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvBizDelete(id) {
+  if (!confirm('Delete this business listing permanently?')) return;
+  db.collection('brahminBusiness').doc(id).delete().then(function(){ loadBrahminVivaah('business'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+
+// ── Jobs ─────────────────────────────────────────────────────
+function bvJobStatusBadge(j){
+  var s = j.status || 'active';
+  var map = {
+    active:    ['✅ Active','rgba(22,163,74,.15)','#16a34a'],
+    closed:    ['⏹️ Closed','rgba(148,163,184,.15)','var(--t3)'],
+    suspended: ['⏸️ Suspended','rgba(245,158,11,.15)','#f59e0b']
+  };
+  var m = map[s] || map.active;
+  return '<span style="padding:2px 8px;border-radius:8px;font-size:.68rem;font-weight:700;background:'+m[1]+';color:'+m[2]+'">'+m[0]+'</span>';
+}
+function bvRenderJobs(list) {
+  document.getElementById('bv-table-head').innerHTML =
+    '<tr style="border-bottom:2px solid var(--br)"><th style="text-align:left;padding:8px">Title</th><th style="text-align:left;padding:8px">Category</th><th style="text-align:left;padding:8px">Location</th><th style="text-align:left;padding:8px">Posted By</th><th style="text-align:left;padding:8px">Status</th><th style="text-align:left;padding:8px">Actions</th></tr>';
+  if (!list.length) { document.getElementById('bv-table-body').innerHTML = '<tr><td colspan="6" style="text-align:center;padding:28px;color:var(--t3)">No job posts yet.</td></tr>'; return; }
+  document.getElementById('bv-table-body').innerHTML = list.map(function(j){
+    var cat = j.category==='Other' ? (j.categoryOther||'Other') : j.category;
+    return '<tr style="border-bottom:1px solid var(--br)">' +
+      '<td style="padding:8px;font-weight:600">'+bvEsc(j.title||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(cat||'—')+'</td>' +
+      '<td style="padding:8px">'+bvEsc(j.location||'—')+'</td>' +
+      '<td style="padding:8px;font-size:.75rem;color:var(--t3)">'+bvEsc(j.postedByName||j.postedByEmail||'—')+'</td>' +
+      '<td style="padding:8px">'+bvJobStatusBadge(j)+'</td>' +
+      '<td style="padding:8px;white-space:nowrap">' +
+        (j.status==='active'
+          ? '<button class="btn btn-sm" style="background:#f59e0b;color:#fff" onclick="bvJobSetStatus(\''+j._id+'\',\'suspended\')">⏸️ Suspend</button> '
+            +'<button class="btn btn-sm btn-gh" onclick="bvJobSetStatus(\''+j._id+'\',\'closed\')">⏹️ Close</button> '
+          : '<button class="btn btn-sm btn-g" onclick="bvJobSetStatus(\''+j._id+'\',\'active\')">✅ Reactivate</button> ') +
+        '<button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="bvJobDelete(\''+j._id+'\')">🗑 Delete</button>' +
+      '</td></tr>';
+  }).join('');
+}
+function bvJobSetStatus(id, status) {
+  db.collection('brahminJobs').doc(id).update({ status: status }).then(function(){ loadBrahminVivaah('jobs'); }).catch(function(e){ alert('Failed: '+e.message); });
+}
+function bvJobDelete(id) {
+  if (!confirm('Delete this job post permanently?')) return;
+  db.collection('brahminJobs').doc(id).delete().then(function(){ loadBrahminVivaah('jobs'); }).catch(function(e){ alert('Failed: '+e.message); });
 }
 function bvViewProfileId(id) {
   loadBrahminVivaah('profiles');
