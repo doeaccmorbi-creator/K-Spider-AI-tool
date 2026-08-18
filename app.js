@@ -1,0 +1,1311 @@
+/* =========================================================================
+   Dr. Shreyansh Academy — Platform
+   ---------------------------------------------------------------------
+   DEMO MODE vs LIVE MODE: if firebase-config.js has a real config, this
+   runs on real Firebase Auth + Firestore ("Live Mode"). Otherwise it runs
+   entirely in memory ("Demo Mode") so the product can be clicked through
+   with zero setup. Every Firebase call is guarded by window.FIREBASE_ENABLED.
+   ========================================================================= */
+
+const DATA = window.DSA_DATA;
+const SUBJECTS = ['Physics','Chemistry','Biology'];
+const SUBJECT_META = {
+  Physics:  {icon:'⚛️', color:'var(--navy-700)', bg:'var(--paper-2)'},
+  Chemistry:{icon:'🧪', color:'var(--green-600)', bg:'var(--green-100)'},
+  Biology:  {icon:'🧬', color:'var(--gold-600)', bg:'var(--gold-100)'}
+};
+
+function chaptersFor(subject){
+  return Object.keys(DATA.titles[subject] || {}).map(Number).sort((a,b)=>a-b);
+}
+function totalQCount(subject, chapter){
+  const secs = (DATA.questions[subject] && DATA.questions[subject][chapter]) || {};
+  return Object.values(secs).reduce((a,b)=>a+b.length,0);
+}
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [arr[i],arr[j]]=[arr[j],arr[i]]; }
+  return arr;
+}
+function formatWhen(w){
+  if(!w) return '—';
+  if(typeof w === 'string') return w;
+  if(w.toDate) return w.toDate().toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
+  return '—';
+}
+
+/* demo leaderboard seed so the feature is visible even with one real user */
+const DEMO_LEADERBOARD = [
+  {name:'Ishaan Verma', pct:92, subject:'Full Mock', when:'Yesterday'},
+  {name:'Priya Nair', pct:88, subject:'Chemistry · Ch.2', when:'2 days ago'},
+  {name:'Rohan Gupta', pct:85, subject:'Full Mock', when:'3 days ago'},
+  {name:'Sara Khan', pct:81, subject:'Physics · Ch.4', when:'3 days ago'},
+  {name:'Aditya Rao', pct:77, subject:'Biology · Ch.1', when:'4 days ago'},
+];
+
+/* ---------------- in-memory "backend" (swap for Firebase) -------------- */
+const DB = {
+  currentUser: null, // {role, name, email, uid, plan, bookmarks:[]}
+  results: [],
+  linkedChild: null,
+  demoChild: {name:'Aarav Patel', email:'aarav.patel@student.dsa'},
+  doubts: [],          // demo-mode doubts store
+  leaderboardCache: null,
+};
+
+let ROUTE = {view:'landing', params:{}};
+
+/* ============================== ROUTER ================================ */
+function go(view, params={}){
+  ROUTE = {view, params};
+  if(view==='leaderboard') DB.leaderboardCache = DB.leaderboardCache; // no reset, loaded lazily
+  render();
+  window.scrollTo({top:0,behavior:'instant'});
+}
+function scrollToId(id){
+  const el = document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth'});
+}
+function toast(msg, icon='✓'){
+  const host = document.getElementById('toastHost');
+  const t = document.createElement('div');
+  t.className='toast';
+  t.innerHTML = `<span>${icon}</span><span>${msg}</span>`;
+  host.appendChild(t);
+  setTimeout(()=>t.remove(), 2600);
+}
+
+/* ============================== RENDER ================================ */
+function render(){
+  const app = document.getElementById('app');
+  const actions = document.getElementById('topbarActions');
+  const publicNav = document.getElementById('publicNav');
+
+  if(DB.currentUser){
+    publicNav.classList.add('hidden');
+    actions.innerHTML = `
+      <span class="pill pill-navy" style="margin-right:4px">${DB.currentUser.role.toUpperCase()}</span>
+      ${DB.currentUser.role==='student' ? `<span class="pill ${DB.currentUser.plan==='premium'?'pill-gold':'pill-navy'}" style="margin-right:4px">${DB.currentUser.plan==='premium'?'★ PREMIUM':'FREE'}</span>` : ''}
+      <button class="btn btn-ghost btn-sm" onclick="logout()">Log out</button>`;
+  } else {
+    publicNav.classList.remove('hidden');
+    actions.innerHTML = `
+      <button class="btn btn-outline btn-sm" onclick="go('auth',{role:'student'})">Log in</button>
+      <button class="btn btn-primary btn-sm" onclick="go('auth',{role:'student',mode:'signup'})">Start free</button>`;
+  }
+
+  const routes = {
+    landing: renderLanding,
+    auth: renderAuth,
+    student: renderStudentDashboard,
+    subject: renderSubjectChapters,
+    chapter: renderChapter,
+    test: renderTest,
+    result: renderResult,
+    parent: renderParentDashboard,
+    admin: renderAdminDashboard,
+    mock: renderMock,
+    leaderboard: renderLeaderboard,
+    progress: renderProgress,
+    doubts: renderDoubts,
+    admindoubts: renderAdminDoubts,
+    bookmarks: renderBookmarks,
+    plans: renderPlans,
+  };
+  app.innerHTML = (routes[ROUTE.view] || renderLanding)();
+  afterRender();
+}
+
+function afterRender(){
+  if(ROUTE.view==='test' && ROUTE.params._justStarted){
+    ROUTE.params._justStarted = false;
+    startTimer();
+  }
+}
+
+/* ============================== SIDEBAR / NAV ============================ */
+const NAV = {
+  student: [
+    {id:'overview', ic:'🏠', label:'Dashboard', view:'student'},
+    {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
+    {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
+    {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
+    {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
+    {id:'bookmarks', ic:'⭐', label:'Bookmarks', view:'bookmarks'},
+    {id:'plans', ic:'💎', label:'Plans', view:'plans'},
+  ],
+  parent: [
+    {id:'overview', ic:'🏠', label:'Overview', view:'parent'},
+  ],
+  admin: [
+    {id:'overview', ic:'🏠', label:'Overview', view:'admin'},
+    {id:'admindoubts', ic:'💬', label:'Doubts inbox', view:'admindoubts'},
+  ],
+};
+function sidebar(activeId){
+  const u = DB.currentUser;
+  const initials = (u.name||'?').split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase();
+  const items = NAV[u.role] || [];
+  return `
+  <div class="sidebar">
+    <div class="side-user">
+      <div class="side-avatar">${initials}</div>
+      <div><b>${u.name}</b><span>${u.email}</span></div>
+    </div>
+    <div class="side-nav">
+      ${items.map(x=>`<button class="side-link ${x.id===activeId?'active':''}" onclick="go('${x.view}')"><span class="ic">${x.ic}</span>${x.label}</button>`).join('')}
+      <button class="side-link" onclick="go('landing')"><span class="ic">←</span>Back to site</button>
+      <button class="side-link" onclick="logout()"><span class="ic">⎋</span>Log out</button>
+    </div>
+  </div>`;
+}
+
+/* ============================== LANDING ================================ */
+function questionDeckCards(){
+  return SUBJECTS.map(s=>{
+    const q = DATA.questions[s][1]['DPP-1'][0];
+    const meta = SUBJECT_META[s];
+    return {subject:s, meta, q};
+  });
+}
+function totalPlatformQuestions(){ let n=0; SUBJECTS.forEach(s=>chaptersFor(s).forEach(ch=>n+=totalQCount(s,ch))); return n; }
+function totalPlatformChapters(){ let n=0; SUBJECTS.forEach(s=>n+=chaptersFor(s).length); return n; }
+
+function renderLanding(){
+  return `
+  <section class="hero">
+    <div class="hero-bg"></div>
+    <div class="container hero-grid">
+      <div>
+        <div class="hero-eyebrow"><span class="pill pill-green">● Built on real NCERT-mapped content</span></div>
+        <h1>Dream it. <em>Study it.</em><br>Crack NEET &amp; JEE.</h1>
+        <p class="lead">Chapter notes with diagrams, DPPs, full mock exams, doubt-solving and a live leaderboard — with a dedicated view for parents.</p>
+        <div class="hero-cta">
+          <button class="btn btn-gold" onclick="go('auth',{role:'student',mode:'signup'})">Start as a Student →</button>
+          <button class="btn btn-outline" onclick="go('auth',{role:'parent'})">I'm a Parent</button>
+        </div>
+        <div class="hero-stats">
+          <div class="hero-stat"><b>${totalPlatformChapters()}</b><span>Chapters live</span></div>
+          <div class="hero-stat"><b>${totalPlatformQuestions()}</b><span>Questions ready</span></div>
+          <div class="hero-stat"><b>0</b><span>Downloads allowed</span></div>
+        </div>
+      </div>
+      <div class="deck-wrap" id="deckWrap"></div>
+    </div>
+  </section>
+
+  <section class="section" id="subjects">
+    <div class="container">
+      <div class="section-head">
+        <span class="eyebrow">Class 11 · Live now</span>
+        <h2>Full chapters unlocked — not just a trial</h2>
+        <p>Every chapter has Master Notes with original diagrams, 3-level DPPs and a full Chapter Test, auto-graded with explanations.</p>
+      </div>
+      <div class="subject-grid">
+        ${SUBJECTS.map(s=>{
+          const meta = SUBJECT_META[s];
+          const chapters = chaptersFor(s);
+          const total = chapters.reduce((a,ch)=>a+totalQCount(s,ch),0);
+          return `
+          <div class="card subject-card" onclick="go('auth',{role:'student'})">
+            <div class="subject-icon" style="background:${meta.bg};color:${meta.color}">${meta.icon}</div>
+            <h3>${s}</h3>
+            <p>${chapters.length} chapters · ${DATA.titles[s][chapters[0]]} → ${DATA.titles[s][chapters[chapters.length-1]]}</p>
+            <div class="subject-meta">
+              <span class="pill pill-navy">${total} MCQs</span>
+              <span class="pill pill-green">${chapters.length} chapters unlocked</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="how" style="background:var(--paper-2)">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">The daily loop</span><h2>Same progression toppers actually use</h2></div>
+      <div class="steps">
+        <div class="card step"><div class="num">01</div><h4>Read Master Notes</h4><p>Protected on-screen reader with original diagrams.</p></div>
+        <div class="card step"><div class="num">02</div><h4>DPP-1 → DPP-3</h4><p>Basic to advanced, difficulty ramps like a real prep cycle.</p></div>
+        <div class="card step"><div class="num">03</div><h4>Chapter Test</h4><p>NEET-pattern marking (+4/−1), timed, auto-graded with explanations.</p></div>
+        <div class="card step"><div class="num">04</div><h4>Full Mock Test</h4><p>Combined Physics + Chemistry + Biology exam, exactly like exam day.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="features">
+    <div class="container">
+      <div class="section-head"><span class="eyebrow">Everything a coaching institute needs</span><h2>One platform, three roles</h2></div>
+      <div class="feat-grid">
+        <div class="card feat"><div class="ic">🎓</div><h4>Student workspace</h4><p>Chapters, DPPs, tests, full mock exams, instant results with explanations.</p></div>
+        <div class="card feat"><div class="ic">👪</div><h4>Parent view</h4><p>Read-only dashboard linked to their child's account — every attempt, score and trend.</p></div>
+        <div class="card feat"><div class="ic">🛠️</div><h4>Admin control</h4><p>Students, content library, and a doubts inbox to answer directly.</p></div>
+        <div class="card feat"><div class="ic">💬</div><h4>Doubt-solving</h4><p>Students post a doubt against any chapter; admin replies from a dedicated inbox.</p></div>
+        <div class="card feat"><div class="ic">🏆</div><h4>Leaderboard</h4><p>Top scores across the academy, so students see where they stand.</p></div>
+        <div class="card feat"><div class="ic">📈</div><h4>Weak-topic analytics</h4><p>Every wrong answer rolls up into a per-chapter weak-area report.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="brand"><img src="DSA_LOGO.png" alt="DSA"> Dr. Shreyansh Academy</div>
+      <p style="margin-top:10px">Dream · Focus · Study · Success.</p>
+      <div class="footer-cols"><span>© Dr. Shreyansh Academy</span><span>${window.FIREBASE_ENABLED ? '🟢 Live Mode' : '⚡ Demo Mode'}</span></div>
+    </div>
+  </footer>`;
+}
+
+let deckTimer=null, deckIndex=0;
+function mountDeck(){
+  const wrap = document.getElementById('deckWrap');
+  if(!wrap) return;
+  clearInterval(deckTimer);
+  const cards = questionDeckCards();
+  function paint(){
+    const cur = cards[deckIndex % cards.length];
+    wrap.innerHTML = `
+      <div class="deck-card behind"></div>
+      <div class="deck-card front" id="deckFront">
+        <div class="deck-top">
+          <span class="deck-subject" style="color:${cur.meta.color}">${cur.meta.icon} ${cur.subject} · Ch.1 DPP-1</span>
+          <span class="deck-timer">⏱ Live</span>
+        </div>
+        <div class="deck-q">${cur.q.text}</div>
+        <div class="deck-opts" id="deckOpts">
+          ${cur.q.options.map((o,i)=>`<div class="deck-opt" data-i="${i}"><b>${String.fromCharCode(65+i)}</b><span>${o}</span></div>`).join('')}
+        </div>
+        <div class="deck-foot"><span>D1-Q1 · DPP-1 (Basic)</span><span>NEET pattern</span></div>
+      </div>`;
+    setTimeout(()=>{
+      const opts = wrap.querySelectorAll('.deck-opt');
+      if(opts[cur.q.correctIndex]) opts[cur.q.correctIndex].classList.add('correct');
+    }, 900);
+  }
+  paint();
+  deckTimer = setInterval(()=>{ deckIndex++; paint(); }, 3600);
+}
+
+/* ============================== AUTH =================================== */
+function renderAuth(){
+  const role = ROUTE.params.role || 'student';
+  const mode = ROUTE.params.mode || 'login';
+  const roleLabels = {student:'Student', parent:'Parent', admin:'Admin'};
+  return `
+  <div class="auth-wrap">
+    <div class="card auth-card">
+      <div style="text-align:center;margin-bottom:18px">
+        <img src="DSA_LOGO.png" style="width:52px;height:52px;margin:0 auto 10px;border-radius:12px">
+        <h2 style="font-size:20px">${mode==='signup'?'Create your account':'Welcome back'}</h2>
+      </div>
+      <div class="role-tabs">
+        ${['student','parent','admin'].map(r=>`<button class="role-tab ${r===role?'active':''}" onclick="go('auth',{role:'${r}',mode:'${mode}'})">${roleLabels[r]}</button>`).join('')}
+      </div>
+      <form onsubmit="return handleAuth(event,'${role}')">
+        ${mode==='signup'?`<div class="field"><label>Full name</label><input required id="authName" placeholder="Your name"></div>`:''}
+        ${mode==='signup' && role==='student'?`<div class="field"><label>Class</label><select id="authClass"><option>11th</option><option>12th</option><option>Dropper</option></select></div>`:''}
+        ${mode==='signup' && role==='parent'?`<div class="field"><label>Child's registered email</label><input required id="authChildEmail" placeholder="child@dsa.academy"></div>`:''}
+        <div class="field"><label>Email</label><input required type="email" id="authEmail" placeholder="you@example.com" value="${ROUTE.params.prefillEmail || ''}"></div>
+        <div class="field"><label>Password</label><input required type="password" id="authPass" placeholder="••••••••" minlength="6"></div>
+        <button class="btn btn-primary btn-block" type="submit">${mode==='signup'?'Create account':'Log in'} →</button>
+      </form>
+      <div class="auth-switch">
+        ${mode==='signup'
+          ? `Already have an account? <a onclick="go('auth',{role:'${role}',mode:'login'})">Log in</a>`
+          : `New here? <a onclick="go('auth',{role:'${role}',mode:'signup'})">Create an account</a>`}
+      </div>
+      <div class="demo-note">${window.FIREBASE_ENABLED
+        ? `🟢 <b>Live Mode:</b> Connected to Firebase — real accounts, real saved results.`
+        : `⚡ <b>Demo Mode:</b> Firebase isn't connected yet, so any email + password works and takes you straight into the ${roleLabels[role]} dashboard.`}</div>
+      ${ROUTE.params.prefillEmail ? `<div class="demo-note" style="margin-top:8px">🔗 Signed in via K Spider — enter your DSA admin password to continue.</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function handleAuth(e, role){
+  e.preventDefault();
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const mode = ROUTE.params.mode || 'login';
+  const nameField = document.getElementById('authName');
+  const name = nameField ? nameField.value.trim() : email.split('@')[0];
+  const classField = document.getElementById('authClass');
+  const cls = classField ? classField.value : null;
+  const childEmailField = document.getElementById('authChildEmail');
+  const childEmail = childEmailField ? childEmailField.value.trim() : null;
+
+  if(!window.FIREBASE_ENABLED){
+    DB.currentUser = {role, name: name || 'Student', email, uid: null, plan: 'free', bookmarks: []};
+    toast(`Signed in as ${role} (demo)`);
+    enterDashboard(role);
+    return false;
+  }
+
+  const submitBtn = e.target.querySelector('button[type=submit]');
+  if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Please wait…'; }
+
+  const afterAuth = (userCred) => {
+    const uid = userCred.user.uid;
+    if(mode === 'signup'){
+      const profile = {name, email, role, plan:'free', bookmarks:[], createdAt: firebase.firestore.FieldValue.serverTimestamp()};
+      if(role==='student') profile.cls = cls;
+      if(role==='parent') profile.childEmail = childEmail;
+      return fbDb.collection('users').doc(uid).set(profile).then(()=>({...profile, uid}));
+    }
+    return fbDb.collection('users').doc(uid).get().then(doc=>{
+      if(!doc.exists) throw new Error('No profile found for this account — please sign up first.');
+      return {...doc.data(), uid};
+    });
+  };
+
+  const authCall = mode==='signup'
+    ? fbAuth.createUserWithEmailAndPassword(email, pass)
+    : fbAuth.signInWithEmailAndPassword(email, pass);
+
+  authCall
+    .then(afterAuth)
+    .then(profile=>{
+      DB.currentUser = {
+        role: profile.role || role, name: profile.name || name, email,
+        uid: profile.uid, plan: profile.plan || 'free', bookmarks: profile.bookmarks || []
+      };
+      toast(`Signed in as ${DB.currentUser.role}`);
+      if(role==='student') loadStudentResults().then(()=>enterDashboard(role));
+      else if(role==='parent'){ DB.linkedChild = profile.childEmail ? {name:profile.childEmail.split('@')[0], email:profile.childEmail} : null; loadParentResults().then(()=>enterDashboard(role)); }
+      else enterDashboard(role);
+    })
+    .catch(err=>{ toast(err.message || 'Something went wrong, please try again', '⚠️'); })
+    .finally(()=>{ if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = (mode==='signup'?'Create account':'Log in') + ' →'; } });
+
+  return false;
+}
+
+function enterDashboard(role){
+  if(role==='student') go('student');
+  else if(role==='parent') go('parent');
+  else go('admin');
+}
+function loadStudentResults(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve();
+  return fbDb.collection('testResults').where('email','==',DB.currentUser.email).get()
+    .then(snap=>{ DB.results = snap.docs.map(d=>d.data()); })
+    .catch(err=>console.error('[DSA] could not load results', err));
+}
+function loadParentResults(){
+  if(!window.FIREBASE_ENABLED || !DB.linkedChild) return Promise.resolve();
+  return fbDb.collection('testResults').where('email','==',DB.linkedChild.email).get()
+    .then(snap=>{ DB.results = snap.docs.map(d=>d.data()); })
+    .catch(err=>console.error('[DSA] could not load child results', err));
+}
+function logout(){
+  if(window.FIREBASE_ENABLED && window.fbAuth) fbAuth.signOut();
+  DB.currentUser = null; DB.results = []; DB.linkedChild = null; DB.leaderboardCache = null;
+  go('landing');
+}
+
+/* ============================== STUDENT DASHBOARD ======================= */
+function renderStudentDashboard(){
+  if(!DB.currentUser) return renderAuth();
+  const u = DB.currentUser;
+  const myResults = DB.results;
+  const avg = myResults.length ? Math.round(myResults.reduce((a,r)=>a+r.pct,0)/myResults.length) : null;
+
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main">
+      <div class="main-head">
+        <div><h2>Welcome back, ${u.name.split(' ')[0]}</h2><p>Class 11 · Pick a subject to continue where you left off</p></div>
+      </div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>${myResults.length}</b><span>Tests attempted</span></div>
+        <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
+        <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters unlocked</span></div>
+        <div class="card stat-box"><b>${totalPlatformQuestions()}</b><span>Questions available</span></div>
+      </div>
+
+      <div class="subject-grid" style="margin-bottom:30px">
+        ${SUBJECTS.map(s=>{
+          const meta = SUBJECT_META[s];
+          const chapters = chaptersFor(s);
+          return `<div class="card subject-card" onclick="go('subject',{subject:'${s}'})">
+            <div class="subject-icon" style="background:${meta.bg};color:${meta.color}">${meta.icon}</div>
+            <h3>${s}</h3><p>${chapters.length} chapters ready</p>
+            <div class="subject-meta"><span class="pill pill-green">Ch. ${chapters.join(', ')}</span></div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h3 style="font-size:15px">🧪 Full Syllabus Mock Test</h3>
+          <span class="pill pill-gold">Premium</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">45 questions across all three subjects, NEET pattern (+4/−1), one continuous exam.</p>
+        <button class="btn btn-gold btn-sm" onclick="go('mock')">Go to Mock Test →</button>
+      </div>
+
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Recent attempts</h3>
+        ${myResults.length===0 ? `<div class="empty"><div class="ic">🗒️</div>Nothing attempted yet — open a subject above and try a DPP.</div>` : `
+        <table class="table-simple"><thead><tr><th>Test</th><th>Score</th><th>Accuracy</th><th>When</th></tr></thead><tbody>
+        ${myResults.slice().reverse().map(r=>`<tr><td>${r.subject}${r.chapter?' · Ch.'+r.chapter:''} · ${r.section}</td><td>${r.score}/${r.max}</td><td>${r.pct}%</td><td>${formatWhen(r.when)}</td></tr>`).join('')}
+        </tbody></table>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================== SUBJECT → CHAPTER LIST =================== */
+function renderSubjectChapters(){
+  if(!DB.currentUser) return renderAuth();
+  const subject = ROUTE.params.subject || 'Physics';
+  const meta = SUBJECT_META[subject];
+  const chapters = chaptersFor(subject);
+  const myResults = DB.results.filter(r=>r.subject===subject);
+
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main">
+      <div class="main-head">
+        <div>
+          <span class="pill pill-navy" style="margin-bottom:8px;display:inline-flex">${meta.icon} ${subject}</span>
+          <h2>${subject} — Chapters</h2>
+          <p>${chapters.length} chapters unlocked for Class 11</p>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="go('student')">← All subjects</button>
+      </div>
+      ${chapters.map(ch=>{
+        const done = myResults.filter(r=>Number(r.chapter)===ch && r.section==='Chapter Test').length>0;
+        const key = subject+'-'+ch;
+        const marked = (DB.currentUser.bookmarks||[]).includes(key);
+        return `
+        <div class="chapter-row">
+          <div class="l" style="cursor:pointer" onclick="go('chapter',{subject:'${subject}',chapter:${ch}})">
+            <div class="chapter-badge">${ch}</div>
+            <div><h4>${DATA.titles[subject][ch]}</h4><span>${totalQCount(subject,ch)} questions · Notes + 3 DPPs + Chapter Test</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn btn-ghost btn-sm" onclick="toggleBookmark('${subject}',${ch})" title="Bookmark">${marked?'⭐':'☆'}</button>
+            <span class="pill ${done?'pill-green':'pill-navy'}" style="cursor:pointer" onclick="go('chapter',{subject:'${subject}',chapter:${ch}})">${done?'Test attempted ✓':'Open →'}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+/* ============================== CHAPTER VIEW ============================ */
+function renderChapter(){
+  if(!DB.currentUser) return renderAuth();
+  const subject = ROUTE.params.subject || 'Physics';
+  const chapter = Number(ROUTE.params.chapter || 1);
+  const tab = ROUTE.params.tab || 'notes';
+  const meta = SUBJECT_META[subject];
+  const sections = DATA.questions[subject][chapter];
+  const chapters = chaptersFor(subject);
+  const idx = chapters.indexOf(chapter);
+  const prevCh = idx>0 ? chapters[idx-1] : null;
+  const nextCh = idx<chapters.length-1 ? chapters[idx+1] : null;
+
+  const tabs = [
+    {id:'notes', label:'Master Notes'},
+    {id:'DPP-1', label:'DPP-1 · Basic'},
+    {id:'DPP-2', label:'DPP-2 · Intermediate'},
+    {id:'DPP-3', label:'DPP-3 · Advanced'},
+    {id:'Chapter Test', label:'Chapter Test'},
+  ];
+
+  let body = '';
+  if(tab==='notes'){
+    body = renderNotesReader(subject, chapter);
+  } else {
+    const sec = sections[tab];
+    body = `
+      <div class="card" style="padding:26px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h3 style="font-size:17px">${tab}</h3>
+          <span class="pill pill-navy">${sec.length} questions</span>
+        </div>
+        <p style="color:var(--muted);font-size:13.5px;margin-bottom:18px">
+          ${tab==='Chapter Test' ? 'Full chapter test · NEET pattern marking (+4 / −1) · Timed.' : "Practice set — attempt it as a timed run, palette on the right tracks what you've answered."}
+        </p>
+        <button class="btn btn-primary" onclick="startChapterTest('${subject}',${chapter},'${tab}')">Start ${tab} →</button>
+      </div>`;
+  }
+
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main">
+      <div class="main-head">
+        <div>
+          <span class="pill pill-navy" style="margin-bottom:8px;display:inline-flex">${meta.icon} ${subject} · Chapter ${chapter}</span>
+          <h2>${DATA.titles[subject][chapter]}</h2>
+          <p>${DATA.units[subject][chapter]}</p>
+        </div>
+        <div style="display:flex;gap:8px">
+          ${prevCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${prevCh}})">← Ch.${prevCh}</button>`:''}
+          ${nextCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${nextCh}})">Ch.${nextCh} →</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="go('subject',{subject:'${subject}'})">All chapters</button>
+        </div>
+      </div>
+      <div class="tabs">
+        ${tabs.map(t=>`<button class="tab-btn ${t.id===tab?'active':''}" onclick="go('chapter',{subject:'${subject}',chapter:${chapter},tab:'${t.id}'})">${t.label}</button>`).join('')}
+      </div>
+      ${body}
+    </div>
+  </div>`;
+}
+
+function renderNotesReader(subject, chapter){
+  const blocks = DATA.notes[subject][chapter];
+  const u = DB.currentUser;
+  const wm = Array.from({length:24}).map((_,i)=>{
+    const top = (i%6)*18+2, left = Math.floor(i/6)*26+2;
+    return `<span style="top:${top}%;left:${left}%">${u.email} · DSA</span>`;
+  }).join('');
+  const html = blocks.map(b=>{
+    if(b.type==='h1') return `<h2>${b.text.replace(/^\s*\d+\s*/,'')}</h2>`;
+    if(b.type==='h2') return `<h3>${b.text}</h3>`;
+    if(b.type==='li') return `<li>${b.text}</li>`;
+    if(b.type==='img') return `<div class="notes-img-wrap"><img src="${b.src}" alt="diagram" draggable="false" oncontextmenu="return false"></div>`;
+    return `<p>${b.text}</p>`;
+  }).join('');
+  return `
+    <div class="protect-banner">🔒 View-only reader — selection, copy, dragging, printing and downloading are disabled on this page.</div>
+    <div class="card" style="position:relative;overflow:hidden">
+      <div class="watermark-layer">${wm}</div>
+      <div class="notes-reader" oncontextmenu="return false" onselectstart="return false">${html}</div>
+    </div>`;
+}
+
+/* ============================== TEST ENGINE (chapter + mock share this) == */
+let TEST_STATE = null;
+let TEST_TIME_LEFT = 0;
+let TEST_TIMER_HANDLE = null;
+
+function startChapterTest(subject, chapter, section){
+  const qs = DATA.questions[subject][chapter][section];
+  const perQ = section==='Chapter Test' ? 60 : 45;
+  TEST_STATE = {
+    mode:'chapter', subject, chapter, section,
+    questions: qs,
+    answers: Array(qs.length).fill(null),
+    marked: Array(qs.length).fill(false),
+    current: 0, submitted: false,
+  };
+  TEST_TIME_LEFT = qs.length * perQ;
+  go('test', {_justStarted:true});
+}
+
+function buildMockQuestions(){
+  let all = [];
+  SUBJECTS.forEach(s=>{
+    let pool = [];
+    chaptersFor(s).forEach(ch=>{
+      const ct = (DATA.questions[s][ch] && DATA.questions[s][ch]['Chapter Test']) || [];
+      ct.forEach(q=>pool.push(Object.assign({}, q, {subject:s, chapter:ch})));
+    });
+    shuffle(pool);
+    all = all.concat(pool.slice(0,15));
+  });
+  return shuffle(all);
+}
+function startMockTest(){
+  const qs = buildMockQuestions();
+  TEST_STATE = {
+    mode:'mock', subject:'Full Mock', chapter:null, section:'Full Syllabus Mock Test',
+    questions: qs,
+    answers: Array(qs.length).fill(null),
+    marked: Array(qs.length).fill(false),
+    current: 0, submitted: false,
+  };
+  TEST_TIME_LEFT = qs.length * 60;
+  go('test', {_justStarted:true});
+}
+
+function renderTest(){
+  if(!DB.currentUser) return renderAuth();
+  if(!TEST_STATE) return renderStudentDashboard();
+  const qs = TEST_STATE.questions;
+  const i = TEST_STATE.current;
+  const q = qs[i];
+  const chosen = TEST_STATE.answers[i];
+  const headerLabel = TEST_STATE.mode==='mock' ? 'Full Syllabus Mock Test' : `${TEST_STATE.subject} · Ch.${TEST_STATE.chapter} · ${TEST_STATE.section}`;
+  const qMeta = TEST_STATE.mode==='mock' ? `<span class="pill pill-navy" style="margin-bottom:8px;display:inline-block">${q.subject} · Ch.${q.chapter}</span><br>` : '';
+
+  return `
+  <div class="app-shell">
+    ${sidebar(TEST_STATE.mode==='mock'?'mock':'overview')}
+    <div class="main" style="max-width:1040px">
+      <div class="card test-head">
+        <h3>${headerLabel}</h3>
+        <div class="test-timer" id="testTimer">⏱ --:--</div>
+      </div>
+      <div class="test-shell">
+        <div>
+          <div class="card q-card">
+            <div class="q-tag">Question ${i+1} of ${qs.length}</div>
+            ${qMeta}
+            <div class="q-text">${q.text}</div>
+            <div class="opt-list">
+              ${q.options.map((o,oi)=>`
+                <div class="opt-row ${chosen===oi?'selected':''}" onclick="selectAnswer(${oi})">
+                  <span class="opt-letter">${String.fromCharCode(65+oi)}</span><span>${o}</span>
+                </div>`).join('')}
+            </div>
+          </div>
+          <div class="q-nav">
+            <button class="btn btn-outline btn-sm" ${i===0?'disabled':''} onclick="navQuestion(-1)">← Previous</button>
+            <button class="btn btn-ghost btn-sm" onclick="toggleMark()">${TEST_STATE.marked[i]?'★ Marked':'☆ Mark for review'}</button>
+            ${i===qs.length-1
+              ? `<button class="btn btn-gold btn-sm" onclick="submitTest()">Submit test ✓</button>`
+              : `<button class="btn btn-primary btn-sm" onclick="navQuestion(1)">Next →</button>`}
+          </div>
+        </div>
+        <div class="card palette">
+          <h5>Question palette</h5>
+          <div class="palette-grid">
+            ${qs.map((_,qi)=>`<div class="pnum ${TEST_STATE.answers[qi]!==null?'answered':''} ${TEST_STATE.marked[qi]?'marked':''} ${qi===i?'current':''}" onclick="jumpQuestion(${qi})">${qi+1}</div>`).join('')}
+          </div>
+          <div class="palette-legend">
+            <div><span class="dot" style="background:var(--green-600)"></span>Answered</div>
+            <div><span class="dot" style="background:var(--gold-500)"></span>Marked for review</div>
+            <div><span class="dot" style="background:#fff;border:1.5px solid var(--border)"></span>Not answered</div>
+          </div>
+          <button class="btn btn-outline btn-block btn-sm" onclick="submitTest()">Submit now</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function selectAnswer(oi){ TEST_STATE.answers[TEST_STATE.current] = oi; render(); }
+function navQuestion(delta){ TEST_STATE.current = Math.max(0, TEST_STATE.current + delta); render(); }
+function jumpQuestion(qi){ TEST_STATE.current = qi; render(); }
+function toggleMark(){ TEST_STATE.marked[TEST_STATE.current] = !TEST_STATE.marked[TEST_STATE.current]; render(); }
+
+function startTimer(){
+  clearInterval(TEST_TIMER_HANDLE);
+  TEST_TIMER_HANDLE = setInterval(()=>{
+    TEST_TIME_LEFT--;
+    const el = document.getElementById('testTimer');
+    if(!el){ clearInterval(TEST_TIMER_HANDLE); return; }
+    const m = Math.floor(TEST_TIME_LEFT/60), s = TEST_TIME_LEFT%60;
+    el.textContent = `⏱ ${m}:${String(s).padStart(2,'0')}`;
+    if(TEST_TIME_LEFT<=60) el.classList.add('low');
+    if(TEST_TIME_LEFT<=0){ clearInterval(TEST_TIMER_HANDLE); submitTest(); }
+  },1000);
+}
+
+function submitTest(){
+  clearInterval(TEST_TIMER_HANDLE);
+  const qs = TEST_STATE.questions;
+  let correct=0, wrong=0, unattempted=0;
+  const bySubject = {};
+  qs.forEach((q,i)=>{
+    const a = TEST_STATE.answers[i];
+    const subj = q.subject || TEST_STATE.subject;
+    bySubject[subj] = bySubject[subj] || {correct:0,wrong:0,unattempted:0,total:0};
+    bySubject[subj].total++;
+    if(a===null){ unattempted++; bySubject[subj].unattempted++; }
+    else if(a===q.correctIndex){ correct++; bySubject[subj].correct++; }
+    else { wrong++; bySubject[subj].wrong++; }
+  });
+  const isNEET = TEST_STATE.mode==='mock' || TEST_STATE.section==='Chapter Test';
+  const score = isNEET ? (correct*4 - wrong*1) : correct;
+  const max = isNEET ? qs.length*4 : qs.length;
+  const pct = Math.max(0, Math.round((score/max)*100));
+
+  const result = {
+    mode: TEST_STATE.mode,
+    subject: TEST_STATE.subject, chapter: TEST_STATE.chapter, section: TEST_STATE.section,
+    email: DB.currentUser.email, name: DB.currentUser.name,
+    correct, wrong, unattempted, total: qs.length, score, max, pct,
+    bySubject, when: 'Just now'
+  };
+  DB.results.push(result);
+  TEST_STATE.submitted = true;
+  TEST_STATE.result = result;
+  DB.leaderboardCache = null; // force refresh next visit
+
+  if(window.FIREBASE_ENABLED){
+    fbDb.collection('testResults').add(Object.assign({}, result, {when: firebase.firestore.FieldValue.serverTimestamp()}))
+      .catch(err=>console.error('[DSA] could not save result', err));
+  }
+  go('result', {});
+}
+
+function renderResult(){
+  if(!TEST_STATE || !TEST_STATE.submitted) return renderStudentDashboard();
+  const qs = TEST_STATE.questions;
+  const r = TEST_STATE.result;
+  const headerLabel = TEST_STATE.mode==='mock' ? 'Full Syllabus Mock Test' : `${TEST_STATE.subject} · Ch.${TEST_STATE.chapter} · ${TEST_STATE.section}`;
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main" style="max-width:900px">
+      <div class="card result-hero">
+        <span class="eyebrow">${headerLabel} · Result</span>
+        <div class="score-ring" style="--pct:${r.pct}"><div class="score-ring-inner"><b>${r.pct}%</b><span>score</span></div></div>
+        <h2 style="font-size:20px">${r.score} / ${r.max} marks</h2>
+        <p style="color:var(--muted);font-size:13.5px;margin-top:6px">${r.correct} correct · ${r.wrong} wrong · ${r.unattempted} unattempted</p>
+      </div>
+      ${r.mode==='mock' ? `
+      <div class="result-stats">
+        ${Object.keys(r.bySubject).map(s=>{
+          const b = r.bySubject[s];
+          const p = Math.round((b.correct/b.total)*100);
+          return `<div class="card"><b>${p}%</b><span>${s}</span></div>`;
+        }).join('')}
+      </div>` : `
+      <div class="result-stats">
+        <div class="card"><b>${r.correct}</b><span>Correct</span></div>
+        <div class="card"><b>${r.wrong}</b><span>Wrong</span></div>
+        <div class="card"><b>${r.unattempted}</b><span>Skipped</span></div>
+        <div class="card"><b>${r.total}</b><span>Total Qs</span></div>
+      </div>`}
+      <div class="card" style="padding:22px">
+        <h3 style="font-size:15px;margin-bottom:16px">Answer review</h3>
+        ${qs.map((q,i)=>{
+          const a = TEST_STATE.answers[i];
+          return `
+          <div style="margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border)">
+            <div class="q-tag">Question ${i+1}${q.subject?' · '+q.subject+' Ch.'+q.chapter:''}</div>
+            <div class="q-text" style="font-size:14.5px">${q.text}</div>
+            ${q.options.map((o,oi)=>{
+              let cls='opt-row';
+              if(oi===q.correctIndex) cls+=' correct';
+              else if(oi===a) cls+=' wrong';
+              return `<div class="${cls}"><span class="opt-letter">${String.fromCharCode(65+oi)}</span><span>${o}</span></div>`;
+            }).join('')}
+            <div class="explain-box">💡 ${q.explanation||'—'}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn btn-primary" onclick="go('student')">Dashboard</button>
+        <button class="btn btn-outline" onclick="go('leaderboard')">View leaderboard</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================== FULL MOCK TEST LANDING =================== */
+function renderMock(){
+  if(!DB.currentUser) return renderAuth();
+  const isPremium = DB.currentUser.plan === 'premium';
+  return `
+  <div class="app-shell">
+    ${sidebar('mock')}
+    <div class="main" style="max-width:720px">
+      <div class="main-head"><div><h2>Full Syllabus Mock Test</h2><p>One combined exam — Physics, Chemistry and Biology together</p></div></div>
+      <div class="card" style="padding:30px">
+        <div class="stat-row" style="margin-bottom:20px">
+          <div class="card stat-box"><b>45</b><span>Questions</span></div>
+          <div class="card stat-box"><b>45</b><span>Minutes</span></div>
+          <div class="card stat-box"><b>+4/−1</b><span>NEET marking</span></div>
+          <div class="card stat-box"><b>3</b><span>Subjects mixed</span></div>
+        </div>
+        <p style="font-size:13.5px;color:var(--muted);margin-bottom:20px">Pulls 15 questions from each subject's Chapter Test bank across every unlocked chapter, shuffled into one continuous NEET-pattern paper — the same experience as exam day.</p>
+        ${isPremium
+          ? `<button class="btn btn-gold btn-block" onclick="startMockTest()">Start Full Mock Test →</button>`
+          : `<div class="pill pill-gold" style="margin-bottom:12px">★ Premium feature</div>
+             <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Full mock tests are part of the Premium plan. Chapter-wise DPPs and Chapter Tests stay free, always.</p>
+             <button class="btn btn-gold btn-block" onclick="go('plans')">Unlock with Premium →</button>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================== LEADERBOARD ============================== */
+function loadLeaderboard(){
+  if(!window.FIREBASE_ENABLED){
+    const mine = DB.results.map(r=>({name:DB.currentUser.name, pct:r.pct, subject: r.mode==='mock'?'Full Mock':`${r.subject} · Ch.${r.chapter}`, when: formatWhen(r.when)}));
+    return Promise.resolve(DEMO_LEADERBOARD.concat(mine).sort((a,b)=>b.pct-a.pct).slice(0,15));
+  }
+  return fbDb.collection('testResults').orderBy('pct','desc').limit(15).get()
+    .then(snap=>snap.docs.map(d=>{
+      const x = d.data();
+      return {name:x.name, pct:x.pct, subject: x.mode==='mock'?'Full Mock':`${x.subject} · Ch.${x.chapter}`, when: formatWhen(x.when)};
+    }))
+    .catch(()=>DEMO_LEADERBOARD);
+}
+function renderLeaderboard(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB.leaderboardCache){
+    loadLeaderboard().then(rows=>{ DB.leaderboardCache = rows; if(ROUTE.view==='leaderboard') render(); });
+    return `<div class="app-shell">${sidebar('leaderboard')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading leaderboard…</div></div></div>`;
+  }
+  const rows = DB.leaderboardCache;
+  return `
+  <div class="app-shell">
+    ${sidebar('leaderboard')}
+    <div class="main">
+      <div class="main-head"><div><h2>🏆 Leaderboard</h2><p>${window.FIREBASE_ENABLED ? 'Top scores across the academy' : 'Demo leaderboard — connect Firebase for real cross-student ranking'}</p></div></div>
+      <div class="card" style="padding:10px 0">
+        <table class="table-simple"><thead><tr><th>#</th><th>Name</th><th>Test</th><th>Score</th><th>When</th></tr></thead><tbody>
+        ${rows.map((r,i)=>`<tr><td style="font-family:var(--font-mono)">${i+1}</td><td style="display:flex;align-items:center;gap:8px"><span class="avatar-sm">${(r.name||'?')[0]}</span>${r.name}</td><td>${r.subject}</td><td><b>${r.pct}%</b></td><td>${r.when}</td></tr>`).join('')}
+        </tbody></table>
+      </div>
+      ${!window.FIREBASE_ENABLED ? `<div class="demo-note" style="margin-top:16px">🏆 Live Mode ranks every real student by their actual Firestore results — this demo blends a few sample names with your own attempts so the feature is visible now.</div>`:''}
+    </div>
+  </div>`;
+}
+
+/* ============================== PROGRESS / WEAK TOPICS ==================== */
+function renderProgress(){
+  if(!DB.currentUser) return renderAuth();
+  const results = DB.results;
+  const weak = {};
+  results.forEach(r=>{
+    const key = r.mode==='mock' ? null : `${r.subject} · Ch.${r.chapter}`;
+    if(key){ weak[key] = weak[key] || {wrong:0,total:0}; weak[key].wrong += r.wrong; weak[key].total += r.total; }
+    if(r.bySubject){
+      Object.keys(r.bySubject).forEach(s=>{
+        // mock breakdown doesn't carry chapter, skip chapter-level attribution for mock
+      });
+    }
+  });
+  const weakList = Object.keys(weak).map(k=>({label:k, wrong:weak[k].wrong, total:weak[k].total, rate: Math.round((weak[k].wrong/weak[k].total)*100)}))
+    .sort((a,b)=>b.rate-a.rate).slice(0,5);
+
+  const bySubjectAvg = {};
+  SUBJECTS.forEach(s=>{
+    const rs = results.filter(r=>r.subject===s);
+    bySubjectAvg[s] = rs.length ? Math.round(rs.reduce((a,r)=>a+r.pct,0)/rs.length) : null;
+  });
+
+  const distinctDays = window.FIREBASE_ENABLED
+    ? new Set(results.map(r=>formatWhen(r.when).split(',')[0])).size
+    : null;
+
+  return `
+  <div class="app-shell">
+    ${sidebar('progress')}
+    <div class="main">
+      <div class="main-head"><div><h2>📈 My Progress</h2><p>Weak-topic report generated from your actual test attempts</p></div></div>
+
+      <div class="stat-row">
+        ${SUBJECTS.map(s=>`<div class="card stat-box"><b>${bySubjectAvg[s]===null?'—':bySubjectAvg[s]+'%'}</b><span>${s} average</span></div>`).join('')}
+        <div class="card stat-box"><b>${distinctDays===null?'—':distinctDays}</b><span>Active days${window.FIREBASE_ENABLED?'':' (Live Mode only)'}</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Weakest chapters</h3>
+        ${weakList.length===0 ? `<div class="empty"><div class="ic">✅</div>No weak areas flagged yet — attempt a few DPPs and this fills in automatically.</div>` : `
+        <table class="table-simple"><thead><tr><th>Chapter</th><th>Wrong / Total</th><th>Error rate</th></tr></thead><tbody>
+        ${weakList.map(w=>`<tr><td>${w.label}</td><td>${w.wrong} / ${w.total}</td><td><b style="color:${w.rate>50?'var(--red-600)':'var(--gold-600)'}">${w.rate}%</b></td></tr>`).join('')}
+        </tbody></table>`}
+      </div>
+
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">🔔 Daily study reminder</h3>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Turns on browser notifications reminding you to open a DPP. Works while this tab/app is installed — true reminders even when the app is fully closed need one more step on our end (noted below).</p>
+        <button class="btn btn-outline btn-sm" onclick="enableDailyReminder()">Enable reminder</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function enableDailyReminder(){
+  if(!('Notification' in window)){ toast('Notifications are not supported in this browser', '⚠️'); return; }
+  Notification.requestPermission().then(perm=>{
+    if(perm==='granted'){
+      new Notification('Dr. Shreyansh Academy', {body:"Reminders are on — we'll nudge you to keep your streak going!"});
+      toast('Daily reminder enabled');
+    } else {
+      toast('Notification permission was not granted', '⚠️');
+    }
+  });
+}
+
+/* ============================== DOUBTS (STUDENT) ========================== */
+function loadDoubts(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve(DB.doubts.filter(d=>d.email===DB.currentUser.email));
+  return fbDb.collection('doubts').where('email','==',DB.currentUser.email).get()
+    .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function renderDoubts(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB._doubtsCache){
+    loadDoubts().then(rows=>{ DB._doubtsCache = rows; if(ROUTE.view==='doubts') render(); });
+    return `<div class="app-shell">${sidebar('doubts')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading your doubts…</div></div></div>`;
+  }
+  const rows = DB._doubtsCache;
+  const subject = ROUTE.params.subject || 'Physics';
+  const chapters = chaptersFor(subject);
+
+  return `
+  <div class="app-shell">
+    ${sidebar('doubts')}
+    <div class="main">
+      <div class="main-head"><div><h2>💬 Ask a Doubt</h2><p>Post a question against any chapter — an admin/teacher will reply here</p></div></div>
+      <div class="card" style="padding:22px;margin-bottom:20px">
+        <form onsubmit="return submitDoubt(event)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+            <div class="field"><label>Subject</label>
+              <select id="doubtSubject" onchange="go('doubts',{subject:this.value})">
+                ${SUBJECTS.map(s=>`<option ${s===subject?'selected':''}>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div class="field"><label>Chapter</label>
+              <select id="doubtChapter">${chapters.map(ch=>`<option value="${ch}">Ch.${ch} — ${DATA.titles[subject][ch]}</option>`).join('')}</select>
+            </div>
+          </div>
+          <div class="field"><label>Your question</label>
+            <input required id="doubtText" placeholder="Type your doubt here...">
+          </div>
+          <button class="btn btn-primary btn-sm" type="submit">Post doubt →</button>
+        </form>
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Your doubts</h3>
+        ${rows.length===0 ? `<div class="empty"><div class="ic">💬</div>No doubts posted yet.</div>` : rows.slice().reverse().map(d=>`
+          <div style="padding:14px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span>
+              <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+            </div>
+            <p style="font-size:14px;margin-bottom:6px"><b>Q:</b> ${d.question}</p>
+            ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px">💡 ${d.answer}</p>` : `<p style="font-size:12.5px;color:var(--faint)">Waiting for a reply…</p>`}
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function submitDoubt(e){
+  e.preventDefault();
+  const subject = document.getElementById('doubtSubject').value;
+  const chapter = Number(document.getElementById('doubtChapter').value);
+  const question = document.getElementById('doubtText').value.trim();
+  if(!question) return false;
+  const doubt = {email:DB.currentUser.email, name:DB.currentUser.name, subject, chapter, question, answer:null, status:'pending', when:'Just now'};
+
+  if(window.FIREBASE_ENABLED){
+    fbDb.collection('doubts').add(Object.assign({}, doubt, {when: firebase.firestore.FieldValue.serverTimestamp()}))
+      .then(ref=>{ DB._doubtsCache.push(Object.assign({id:ref.id}, doubt)); render(); })
+      .catch(err=>toast(err.message,'⚠️'));
+  } else {
+    doubt.id = 'demo-'+Date.now();
+    DB.doubts.push(doubt);
+    DB._doubtsCache = DB.doubts.filter(d=>d.email===DB.currentUser.email);
+    render();
+  }
+  toast('Doubt posted — an admin will reply soon');
+  return false;
+}
+
+/* ============================== DOUBTS (ADMIN INBOX) ====================== */
+function loadAllDoubts(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve(DB.doubts.slice());
+  return fbDb.collection('doubts').orderBy('when','desc').limit(50).get()
+    .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function renderAdminDoubts(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB._adminDoubtsCache){
+    loadAllDoubts().then(rows=>{ DB._adminDoubtsCache = rows; if(ROUTE.view==='admindoubts') render(); });
+    return `<div class="app-shell">${sidebar('admindoubts')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading doubts inbox…</div></div></div>`;
+  }
+  const rows = DB._adminDoubtsCache;
+  const pending = rows.filter(d=>d.status!=='answered');
+  const answered = rows.filter(d=>d.status==='answered');
+  return `
+  <div class="app-shell">
+    ${sidebar('admindoubts')}
+    <div class="main">
+      <div class="main-head"><div><h2>💬 Doubts inbox</h2><p>${pending.length} pending · ${answered.length} answered</p></div></div>
+      ${rows.length===0 ? `<div class="card"><div class="empty"><div class="ic">📭</div>No doubts submitted yet.</div></div>` : rows.slice().reverse().map(d=>`
+        <div class="card" style="padding:18px;margin-bottom:12px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px"><span class="avatar-sm">${(d.name||'?')[0]}</span><b style="font-size:13.5px">${d.name}</b><span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span></div>
+            <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+          </div>
+          <p style="font-size:14px;margin-bottom:10px"><b>Q:</b> ${d.question}</p>
+          ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px;margin-bottom:8px">💡 ${d.answer}</p>` : ''}
+          <div style="display:flex;gap:8px">
+            <input id="reply-${d.id}" placeholder="${d.answer?'Update reply...':'Type a reply...'}" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+            <button class="btn btn-primary btn-sm" onclick="answerDoubt('${d.id}')">Send</button>
+          </div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+function answerDoubt(id){
+  const input = document.getElementById('reply-'+id);
+  const answer = input.value.trim();
+  if(!answer) return;
+  if(window.FIREBASE_ENABLED){
+    fbDb.collection('doubts').doc(id).update({answer, status:'answered'})
+      .then(()=>{
+        const d = DB._adminDoubtsCache.find(x=>x.id===id);
+        if(d){ d.answer=answer; d.status='answered'; }
+        render();
+      }).catch(err=>toast(err.message,'⚠️'));
+  } else {
+    const d = DB.doubts.find(x=>x.id===id);
+    if(d){ d.answer=answer; d.status='answered'; }
+    DB._adminDoubtsCache = DB.doubts.slice();
+    render();
+  }
+  toast('Reply sent');
+}
+
+/* ============================== BOOKMARKS ================================= */
+function toggleBookmark(subject, chapter){
+  const key = subject+'-'+chapter;
+  DB.currentUser.bookmarks = DB.currentUser.bookmarks || [];
+  const idx = DB.currentUser.bookmarks.indexOf(key);
+  if(idx>=0) DB.currentUser.bookmarks.splice(idx,1);
+  else DB.currentUser.bookmarks.push(key);
+
+  if(window.FIREBASE_ENABLED && DB.currentUser.uid){
+    fbDb.collection('users').doc(DB.currentUser.uid).update({
+      bookmarks: idx>=0
+        ? firebase.firestore.FieldValue.arrayRemove(key)
+        : firebase.firestore.FieldValue.arrayUnion(key)
+    }).catch(err=>console.error('[DSA] bookmark sync failed', err));
+  }
+  toast(idx>=0 ? 'Bookmark removed' : 'Chapter bookmarked ⭐');
+  render();
+}
+function renderBookmarks(){
+  if(!DB.currentUser) return renderAuth();
+  const bms = DB.currentUser.bookmarks || [];
+  const items = bms.map(key=>{
+    const [subject, chapterStr] = key.split('-');
+    const chapter = Number(chapterStr);
+    return {subject, chapter, title: DATA.titles[subject] ? DATA.titles[subject][chapter] : null};
+  }).filter(x=>x.title);
+
+  return `
+  <div class="app-shell">
+    ${sidebar('bookmarks')}
+    <div class="main">
+      <div class="main-head"><div><h2>⭐ Bookmarks</h2><p>Chapters you've starred for quick access</p></div></div>
+      ${items.length===0 ? `<div class="card"><div class="empty"><div class="ic">⭐</div>No bookmarks yet — star a chapter from its subject page.</div></div>` : items.map(it=>`
+        <div class="chapter-row" onclick="go('chapter',{subject:'${it.subject}',chapter:${it.chapter}})" style="cursor:pointer">
+          <div class="l"><div class="chapter-badge">${SUBJECT_META[it.subject].icon}</div><div><h4>${it.subject} — Ch.${it.chapter}</h4><span>${it.title}</span></div></div>
+          <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();toggleBookmark('${it.subject}',${it.chapter})">Remove</button>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+/* ============================== PLANS / PREMIUM ============================ */
+function renderPlans(){
+  if(!DB.currentUser) return renderAuth();
+  const isPremium = DB.currentUser.plan==='premium';
+  return `
+  <div class="app-shell">
+    ${sidebar('plans')}
+    <div class="main" style="max-width:820px">
+      <div class="main-head"><div><h2>💎 Plans</h2><p>Chapter notes, DPPs and Chapter Tests are free — forever</p></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+        <div class="card" style="padding:24px">
+          <span class="pill pill-navy" style="margin-bottom:12px">Free</span>
+          <h3 style="font-size:22px;margin-bottom:6px">₹0</h3>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:18px">Forever</p>
+          <ul style="font-size:13.5px;color:var(--navy-800);line-height:2;padding-left:18px;margin-bottom:18px">
+            <li>All Master Notes with diagrams</li>
+            <li>All DPPs (1/2/3) per chapter</li>
+            <li>All Chapter Tests</li>
+            <li>Doubt-solving</li>
+            <li>Progress &amp; weak-topic report</li>
+          </ul>
+          <button class="btn btn-outline btn-block btn-sm" disabled>${isPremium?'':'Current plan'}</button>
+        </div>
+        <div class="card" style="padding:24px;border-color:var(--gold-500)">
+          <span class="pill pill-gold" style="margin-bottom:12px">Premium</span>
+          <h3 style="font-size:22px;margin-bottom:6px">₹499<span style="font-size:13px;color:var(--muted)">/month</span></h3>
+          <p style="font-size:12.5px;color:var(--muted);margin-bottom:18px">Cancel anytime</p>
+          <ul style="font-size:13.5px;color:var(--navy-800);line-height:2;padding-left:18px;margin-bottom:18px">
+            <li>Everything in Free</li>
+            <li><b>Full Syllabus Mock Tests</b></li>
+            <li>Leaderboard eligibility badge</li>
+            <li>Priority doubt replies</li>
+          </ul>
+          ${isPremium
+            ? `<button class="btn btn-gold btn-block btn-sm" onclick="setPlan('free')">You're Premium — switch to Free</button>`
+            : `<button class="btn btn-gold btn-block btn-sm" onclick="setPlan('premium')">Upgrade to Premium →</button>`}
+        </div>
+      </div>
+      <div class="demo-note" style="margin-top:18px">💳 <b>No real payment is wired up yet</b> — this button flips your plan instantly for demo purposes. Taking real money needs a Razorpay (or similar) account plus a small Cloud Function to verify payment signatures server-side before marking a user premium — tell me when you're ready and I'll wire that in.</div>
+    </div>
+  </div>`;
+}
+function setPlan(plan){
+  DB.currentUser.plan = plan;
+  if(window.FIREBASE_ENABLED && DB.currentUser.uid){
+    fbDb.collection('users').doc(DB.currentUser.uid).update({plan}).catch(err=>console.error('[DSA] plan sync failed', err));
+  }
+  toast(plan==='premium' ? 'Upgraded to Premium (demo)' : 'Switched to Free');
+  render();
+}
+
+/* ============================== PARENT DASHBOARD ========================= */
+function renderParentDashboard(){
+  if(!DB.currentUser) return renderAuth();
+  const child = window.FIREBASE_ENABLED && DB.linkedChild ? DB.linkedChild : DB.demoChild;
+  const childResults = DB.results;
+  const avg = childResults.length ? Math.round(childResults.reduce((a,r)=>a+r.pct,0)/childResults.length) : null;
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main">
+      <div class="main-head"><div><h2>Tracking ${child.name}</h2><p>Read-only view · Class 11 · ${child.email}</p></div></div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>${childResults.length}</b><span>Tests attempted</span></div>
+        <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
+        <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters available</span></div>
+        <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects enrolled</span></div>
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Test history</h3>
+        ${childResults.length===0 ? `<div class="empty"><div class="ic">📭</div>No attempts yet.</div>` : `
+        <table class="table-simple"><thead><tr><th>Test</th><th>Score</th><th>Accuracy</th><th>When</th></tr></thead><tbody>
+        ${childResults.slice().reverse().map(r=>`<tr><td>${r.subject}${r.chapter?' · Ch.'+r.chapter:''} · ${r.section}</td><td>${r.score}/${r.max}</td><td>${r.pct}%</td><td>${formatWhen(r.when)}</td></tr>`).join('')}
+        </tbody></table>`}
+      </div>
+      <div class="demo-note" style="margin-top:16px">👪 A parent account is linked to their child's UID in Firestore, so this table reads live from the same <code>testResults</code> collection the student dashboard uses.</div>
+    </div>
+  </div>`;
+}
+
+/* ============================== ADMIN DASHBOARD =========================== */
+function renderAdminDashboard(){
+  if(!DB.currentUser) return renderAuth();
+  const demoStudents = [
+    {name:'Aarav Patel', email:'aarav.patel@student.dsa', tests: DB.results.length, cls:'11th'},
+    {name:'Diya Shah', email:'diya.shah@student.dsa', tests:0, cls:'11th'},
+    {name:'Krishna Mehta', email:'krishna.mehta@student.dsa', tests:0, cls:'12th'},
+  ];
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main">
+      <div class="main-head"><div><h2>Admin control panel</h2><p>Students, content, doubts and test performance</p></div></div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>${demoStudents.length}</b><span>Students (demo)</span></div>
+        <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects live</span></div>
+        <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters published</span></div>
+        <div class="card stat-box"><b>${DB.results.length}</b><span>Attempts this session</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:15px">Doubts inbox</h3>
+          <button class="btn btn-outline btn-sm" onclick="go('admindoubts')">Open inbox →</button>
+        </div>
+        <p style="font-size:13px;color:var(--muted)">Students can post chapter-specific doubts; reply to them from the dedicated inbox.</p>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Students</h3>
+        <table class="table-simple"><thead><tr><th>Name</th><th>Class</th><th>Attempts</th><th></th></tr></thead><tbody>
+        ${demoStudents.map(s=>`<tr><td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${s.name[0]}</span>${s.name}<span style="color:var(--faint);font-size:12px">${s.email}</span></td><td>${s.cls}</td><td>${s.tests}</td><td><button class="btn btn-ghost btn-sm">View →</button></td></tr>`).join('')}
+        </tbody></table>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Content library</h3>
+        ${SUBJECTS.map(s=>chaptersFor(s).map(ch=>`
+          <div class="chapter-row">
+            <div class="l"><div class="chapter-badge">${SUBJECT_META[s].icon}</div><div><h4>${s} — Chapter ${ch}: ${DATA.titles[s][ch]}</h4><span>${totalQCount(s,ch)} questions · Notes + diagrams + 3 DPPs + Chapter Test</span></div></div>
+            <span class="pill pill-green">Published</span>
+          </div>`).join('')).join('')}
+      </div>
+      <div class="demo-note">🛠️ Send more chapters whenever you're ready — each one gets processed through the same pipeline and published the same way.</div>
+    </div>
+  </div>`;
+}
+
+/* ============================== KSPIDER SSO BRIDGE ========================
+   When this tool is opened from www.kspiderai.in (launchTool sets a short-
+   lived sessionStorage token + KSpider stores the logged-in user's profile
+   in localStorage 'ks_u'), a verified STUDENT is signed straight into their
+   DSA dashboard — no second signup. This only fires for students; admin
+   access always still requires the real DSA admin password (security).
+   ========================================================================= */
+function getKSpiderUser(){
+  try{
+    const raw = localStorage.getItem('ks_u');
+    if(!raw) return null;
+    const parsed = JSON.parse(raw);
+    return (parsed && parsed.v) ? parsed.v : null;
+  }catch(e){ return null; }
+}
+function tryKspiderSSO(){
+  if(!window.FIREBASE_ENABLED) return false;
+  try{
+    const ksUser = getKSpiderUser();
+    const toolId = sessionStorage.getItem('ks_tool_id');
+    const exp = Number(sessionStorage.getItem('ks_tool_exp') || 0);
+    if(!ksUser || !ksUser.verified || !ksUser.email) return false;
+    if(toolId !== 'dr-shreyansh-academy') return false;
+    if(!exp || Date.now() > exp) return false; // token expired (3-min window)
+
+    fbAuth.signInAnonymously().then(cred=>{
+      const uid = cred.user.uid;
+      return fbDb.collection('users').doc(uid).get().then(doc=>{
+        if(doc.exists) return doc.data();
+        const profile = {
+          name: ksUser.name || 'Student', email: ksUser.email, role:'student',
+          plan:'free', bookmarks:[], viaKSpider:true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        return fbDb.collection('users').doc(uid).set(profile).then(()=>profile);
+      }).then(profile=>{
+        DB.currentUser = {
+          role:'student', name:profile.name, email:profile.email,
+          uid, plan: profile.plan||'free', bookmarks: profile.bookmarks||[]
+        };
+        return loadStudentResults();
+      }).then(()=>{
+        go('student');
+        toast(`Welcome from K Spider, ${DB.currentUser.name.split(' ')[0]}! 👋`);
+      });
+    }).catch(err=>console.warn('[DSA] KSpider SSO failed', err));
+
+    return true; // SSO attempt started (async) — normal render still happens below
+  }catch(e){ return false; }
+}
+
+/* Admin arriving from KSpider Admin panel (?ks_admin=1): prefill the email +
+   default to the Admin tab, but a real DSA admin password is still required. */
+function maybePrefillAdminFromKSpider(){
+  try{
+    const params = new URLSearchParams(window.location.search);
+    if(params.get('ks_admin') !== '1') return;
+    const ksUser = getKSpiderUser();
+    if(ksUser && ksUser.email){
+      ROUTE = {view:'auth', params:{role:'admin', prefillEmail: ksUser.email}};
+    } else {
+      ROUTE = {view:'auth', params:{role:'admin'}};
+    }
+  }catch(e){}
+}
+
+/* ============================== INIT ===================================== */
+maybePrefillAdminFromKSpider();
+render();
+if(ROUTE.view==='landing') setTimeout(mountDeck, 30);
+tryKspiderSSO();
+
+const _origGo = go;
+window.go = function(view, params){
+  clearInterval(deckTimer);
+  _origGo(view, params);
+  if(view==='landing') setTimeout(mountDeck, 30);
+};
+
+document.addEventListener('keydown', function(e){
+  const onNotes = document.querySelector('.notes-reader');
+  if(!onNotes) return;
+  const blocked = (e.ctrlKey||e.metaKey) && ['p','s','c','u'].includes(e.key.toLowerCase());
+  if(blocked){ e.preventDefault(); toast('Downloading & printing is disabled for chapter content','🔒'); }
+});
