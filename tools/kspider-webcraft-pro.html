@@ -2560,17 +2560,21 @@ Social Media, 2000, 📱" oninput="updatePreview()" style="min-height:90px;"></t
               </div>
               <div id="gs-all-records" style="display:none;max-height:200px;overflow-y:auto;border:1.5px solid var(--border);border-radius:8px;margin-bottom:8px;font-size:.65rem;"></div>
 
-              <!-- ── Add via Google Form (zero CORS, permanent solution) ── -->
-              <button class="btn-p" onclick="gsOpenGoogleForm()" id="gs-add-client-btn"
-                style="width:100%;padding:9px;font-size:.76rem;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(135deg,#4285F4,#1a73e8);" disabled>
-                📝 Add Client via Google Form
+              <!-- ── Client Form (built-in, shareable, direct submit) ── -->
+              <button class="btn-p" onclick="gsOpenClientForm()" id="gs-add-client-btn"
+                style="width:100%;padding:10px;font-size:.78rem;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:7px;background:linear-gradient(135deg,#4285F4,#1a73e8);" disabled>
+                📝 Open Client Intake Form
+              </button>
+              <button class="btn-s" onclick="gsShareClientForm()" id="gs-share-form-btn"
+                style="width:100%;padding:8px;font-size:.72rem;margin-bottom:6px;display:flex;align-items:center;justify-content:center;gap:6px;" disabled>
+                📤 Share Form Link
               </button>
               <button class="btn-s" onclick="gsShowAddClientModal()" id="gs-manual-btn"
-                style="width:100%;padding:7px;font-size:.68rem;margin-bottom:6px;" disabled>
-                ✏️ Manual Entry (offline fallback)
+                style="width:100%;padding:7px;font-size:.68rem;margin-bottom:8px;" disabled>
+                ✏️ Manual Entry (offline)
               </button>
               <div style="background:rgba(66,133,244,.06);border:1px solid rgba(66,133,244,.2);border-radius:8px;padding:8px 10px;margin-bottom:8px;font-size:.6rem;color:var(--text2);line-height:1.7;">
-                💡 <strong>Google Form Flow:</strong> Form submit karo → Sheet mein data → Yahan "Fetch My Clients" dabao → Builder mein load → Website generate!
+                💡 Form submit hone ke baad <strong>"Fetch My Clients"</strong> dabao — data builder mein load hoga!
               </div>
 
               <hr style="border:none;border-top:1px solid var(--border);margin:10px 0;">
@@ -9219,10 +9223,9 @@ details summary { transition: background .2s; }
     if (addClientBtn) addClientBtn.disabled = !sel.value;
     var manualBtn = document.getElementById('gs-manual-btn');
     if (manualBtn) manualBtn.disabled = !sel.value;
-    // Show form status in button
-    var _db2 = GS.databases.find(function(d) { return d.id === sel.value; });
-    var _hasForm = (_db2 && _db2.googleFormUrl) || window._GS_GOOGLE_FORM_URL;
-    if (addClientBtn) addClientBtn.innerHTML = _hasForm ? '📝 Open Google Form' : '📝 Add Client via Google Form';
+    var shareFormBtn2 = document.getElementById('gs-share-form-btn');
+    if (shareFormBtn2) shareFormBtn2.disabled = !sel.value;
+    if (addClientBtn) addClientBtn.innerHTML = '📝 Open Client Intake Form';
     if (openFormBtn) openFormBtn.disabled = !sel.value;
     if (editBtn) editBtn.disabled = !sel.value;
     if (delBtn) delBtn.disabled = !sel.value;
@@ -10567,6 +10570,444 @@ window.gsSaveGFormUrl = function() {
   if (typeof showToast === 'function')
     showToast('✅ Google Form saved! Ab button dabao to form khulega.', 'success');
 };
+
+
+// ════════════════════════════════════════════════════════════════
+// BUILT-IN CLIENT INTAKE FORM
+// - Opens as full-screen overlay inside the tool
+// - Submits via no-cors POST to master Apps Script
+// - Share button generates a standalone HTML file for external sharing
+// - After submit: auto-fetches updated sheet data into builder
+// ════════════════════════════════════════════════════════════════
+
+var _KS_FORM_PROMO_MSGS = [
+  '🚀 *मात्र 1 मिनट में Professional Website पाएं!*\n\nK Spider AI आपका data लेकर तुरंत website बनाता है!\n✅ Free | ⚡ 60 Seconds | 🌐 12 Languages\n\n👇 Form fill karein:',
+  '🔥 *अपना Business Online लाएं — बिल्कुल Free!*\n\nWebsite, WhatsApp, UPI Payment — सब एक click में!\nबस form fill karein → K Spider AI बाकी करेगा! 🕷\n\n👇 Link:',
+  '💼 *Professional Website — सिर्फ 60 Seconds में!*\n\nData bharo → Website ready! Koi coding nahi.\n🕷 K Spider AI — kspiderai.in\n\n👇 Form:',
+  '✅ *Free Website — Abhi Banao!*\n\nK Spider AI — India का #1 Free AI Website Builder\n10+ Themes | 12 Languages | WhatsApp + UPI Ready\n\n👇 Apna data bharo:',
+  '⚡ *60 Seconds mein Website Ready!*\n\nForm bharo → AI website banayega → Download karo!\n🕷 kspiderai.in\n\n👇 Start karo:'
+];
+
+// Open the built-in intake form as a full-screen overlay
+window.gsOpenClientForm = function() {
+  var existing = document.getElementById('ks-intake-overlay');
+  if (existing) { existing.remove(); return; }
+
+  var overlay = document.createElement('div');
+  overlay.id = 'ks-intake-overlay';
+  overlay.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:99999',
+    'background:rgba(0,0,0,.65)', 'display:flex',
+    'align-items:center', 'justify-content:center', 'padding:10px',
+    'backdrop-filter:blur(4px)'
+  ].join(';');
+
+  var db = window.GS && GS.databases && GS.databases.find(function(d){return d.id===GS.activeDbId;});
+  var dbName = (db && db.name) || 'Client';
+
+  overlay.innerHTML = _buildIntakeModalHTML(dbName);
+  document.body.appendChild(overlay);
+
+  // Focus first field
+  setTimeout(function(){
+    var f = overlay.querySelector('input[name="name"]');
+    if (f) f.focus();
+  }, 100);
+};
+
+function _buildIntakeModalHTML(dbName) {
+  return '<div id="ks-intake-modal" style="background:#fff;border-radius:18px;width:100%;max-width:560px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 30px 80px rgba(0,0,0,.3);overflow:hidden;">'
+
+  /* Header */
+  + '<div style="background:linear-gradient(135deg,#0a0500 0%,#2a1000 50%,#FF3D00 100%);color:#fff;padding:16px 20px;flex-shrink:0;position:relative;overflow:hidden;">'
+  + '<div style="position:absolute;top:-30px;right:-30px;width:160px;height:160px;border-radius:50%;background:radial-gradient(circle,rgba(255,107,0,.2),transparent 70%);pointer-events:none;"></div>'
+  + '<div style="display:flex;align-items:center;justify-content:space-between;">'
+  + '<div>'
+  + '<div style="font-size:.62rem;background:rgba(255,255,255,.15);border-radius:50px;padding:3px 10px;display:inline-block;margin-bottom:6px;letter-spacing:1px;text-transform:uppercase;font-weight:700;">🕷 K Spider AI</div>'
+  + '<div style="font-size:1.1rem;font-weight:800;line-height:1.2;">अपनी Website का Data भरें</div>'
+  + '<div style="font-size:.68rem;opacity:.85;margin-top:3px;">Fill करो → Website तुरंत तैयार!</div>'
+  + '</div>'
+  + '<button onclick="document.getElementById(\'ks-intake-overlay\').remove()" style="background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.25);color:#fff;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1rem;line-height:1;flex-shrink:0;">✕</button>'
+  + '</div>'
+  /* Progress bar */
+  + '<div style="height:3px;background:rgba(255,255,255,.15);border-radius:2px;margin-top:10px;overflow:hidden;">'
+  + '<div id="ks-form-prog" style="height:100%;background:linear-gradient(90deg,#FFD700,#FF6B00);width:0;transition:width .3s;border-radius:2px;"></div>'
+  + '</div>'
+  + '</div>'
+
+  /* Scrollable body */
+  + '<div style="overflow-y:auto;flex:1;padding:16px;">'
+  + '<form id="ks-intake-form" onsubmit="ksSubmitIntakeForm(event)" novalidate>'
+  + '<div style="display:grid;gap:10px;">'
+
+  /* Business Info */
+  + _fsec('📋 Business की जानकारी')
+  + _fi('name','text','Business Name','Gaurang Raval Digital',true)
+  + _fi('tagline','text','Tagline / Slogan','Aapka Digital Partner!',false)
+  + _fa('about','Business के बारे में','2015 se digital services de rahe hain...',true)
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+  + _fsel('type','Business Type',['Business','Shop','Restaurant','Clinic','Academy','Salon','Tech','Freelancer','Hotel','NGO','Other'])
+  + _fi('hours','text','Working Hours','Mon-Sat: 9AM–7PM',false)
+  + '</div>'
+
+  /* Contact */
+  + _fsec('📞 Contact Details')
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+  + _fi('phone','tel','Phone Number','+91 XXXXX XXXXX',true)
+  + _fi('wa','tel','WhatsApp','WhatsApp number',true)
+  + '</div>'
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+  + _fi('email','email','Email','aapka@email.com',false)
+  + _fi('upiId','text','UPI ID','yourname@upi',false)
+  + '</div>'
+  + _fi('city','text','City / Full Address','Aapka Sheher, State',true)
+
+  /* Services */
+  + _fsec('⚙️ Services और Offer')
+  + _fa('services','Services (Name, Price, Emoji — एक per line)','Website Design, 5000, 🌐\nLogo Design, 1500, 🎨\nSEO Package, 3000, 🔍',true)
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+  + _fi('offer','text','Special Offer','20% OFF — Abhi contact karo!',false)
+  + _fi('cta','text','CTA Button Text','Get Free Quote',false)
+  + '</div>'
+
+  /* Social */
+  + _fsec('📱 Social Media')
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+  + _fi('insta','url','Instagram URL','https://instagram.com/...',false)
+  + _fi('fb','url','Facebook URL','https://facebook.com/...',false)
+  + '</div>'
+  + _fi('yt','url','YouTube URL','https://youtube.com/@...',false)
+
+  /* Images */
+  + _fsec('🖼️ Images (URL — Google Drive / ImgBB)')
+  + _fi('logo','url','Logo Image URL','https://drive.google.com/uc?id=...',false)
+  + _fi('heroImg','url','Hero/Banner Image URL','https://...',false)
+  + _fi('upiImg','url','UPI QR Code Image URL','https://...',false)
+
+  /* Preferences */
+  + _fsec('🎨 Preferences')
+  + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">'
+  + _fsel('lang','Language',['hinglish','en','hi','gu','mr','ta','te','kn','ml','pa','bn'])
+  + '<div><label style="display:block;font-size:.68rem;font-weight:700;margin-bottom:3px;">Brand Color</label>'
+  + '<input name="color" type="color" value="#FF6B00" style="width:100%;height:38px;border:1.5px solid #e5e7eb;border-radius:8px;padding:3px;cursor:pointer;"></div>'
+  + '</div>'
+
+  + '</div>'
+
+  /* Submit button */
+  + '<div style="margin-top:14px;display:flex;gap:8px;">'
+  + '<button type="submit" id="ks-intake-submit" style="flex:1;padding:13px;background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;border:none;border-radius:12px;font-weight:800;font-size:.88rem;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(255,107,0,.35);transition:all .2s;">🚀 Submit — Website Generate Karo!</button>'
+  + '</div>'
+  + '<div id="ks-intake-status" style="text-align:center;font-size:.68rem;margin-top:8px;min-height:18px;"></div>'
+  + '</form>'
+  + '</div>'
+
+  /* Footer note */
+  + '<div style="padding:8px 16px;background:#f9f9f9;border-top:1px solid #eee;font-size:.58rem;color:#9ca3af;text-align:center;flex-shrink:0;">'
+  + '🔒 Data secure hai · 🕷 K Spider AI — kspiderai.in · Gaurang Raval, Khush Raval & Shreyansh Raval'
+  + '</div>'
+  + '</div>';
+}
+
+/* Field builders */
+function _fi(name, type, label, ph, req) {
+  return '<div><label style="display:block;font-size:.68rem;font-weight:700;margin-bottom:3px;color:#374151;">' + label + (req ? ' <span style="color:#FF6B00;">*</span>' : '') + '</label>'
+    + '<input name="' + name + '" type="' + type + '" placeholder="' + ph + '"' + (req ? ' required' : '') + ' oninput="ksFormProgress()" style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:.8rem;font-family:inherit;outline:none;transition:border .2s;box-sizing:border-box;" onfocus="this.style.borderColor=\'#FF6B00\'" onblur="this.style.borderColor=\'#e5e7eb\'"></div>';
+}
+function _fa(name, label, ph, req) {
+  return '<div><label style="display:block;font-size:.68rem;font-weight:700;margin-bottom:3px;color:#374151;">' + label + (req ? ' <span style="color:#FF6B00;">*</span>' : '') + '</label>'
+    + '<textarea name="' + name + '" placeholder="' + ph + '"' + (req ? ' required' : '') + ' rows="3" oninput="ksFormProgress()" style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:.8rem;font-family:inherit;outline:none;resize:vertical;line-height:1.55;box-sizing:border-box;" onfocus="this.style.borderColor=\'#FF6B00\'" onblur="this.style.borderColor=\'#e5e7eb\'"></textarea></div>';
+}
+function _fsel(name, label, opts) {
+  return '<div><label style="display:block;font-size:.68rem;font-weight:700;margin-bottom:3px;color:#374151;">' + label + '</label>'
+    + '<select name="' + name + '" style="width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:.8rem;font-family:inherit;outline:none;cursor:pointer;box-sizing:border-box;">'
+    + opts.map(function(o){ return '<option value="'+o+'">'+o+'</option>'; }).join('')
+    + '</select></div>';
+}
+function _fsec(title) {
+  return '<div style="font-weight:800;font-size:.72rem;color:#FF6B00;padding-top:6px;padding-bottom:2px;border-bottom:2px solid #fff5f0;margin-bottom:2px;letter-spacing:.3px;">' + title + '</div>';
+}
+
+// Progress bar update
+function ksFormProgress() {
+  var form = document.getElementById('ks-intake-form');
+  if (!form) return;
+  var reqs = form.querySelectorAll('[required]');
+  var done = Array.from(reqs).filter(function(e){ return e.value.trim(); }).length;
+  var pct = reqs.length ? Math.round(done / reqs.length * 100) : 0;
+  var prog = document.getElementById('ks-form-prog');
+  if (prog) prog.style.width = pct + '%';
+}
+
+// Submit handler — no-cors to master Apps Script + local apply
+window.ksSubmitIntakeForm = function(e) {
+  e.preventDefault();
+  var form = document.getElementById('ks-intake-form');
+  var statusEl = document.getElementById('ks-intake-status');
+  var submitBtn = document.getElementById('ks-intake-submit');
+
+  // Validate required fields
+  var missing = [];
+  form.querySelectorAll('[required]').forEach(function(el) {
+    el.style.borderColor = '';
+    if (!el.value.trim()) {
+      el.style.borderColor = '#dc2626';
+      missing.push(el.name);
+    }
+  });
+  if (missing.length) {
+    statusEl.textContent = '⚠️ Required fields bharo: ' + missing.join(', ');
+    statusEl.style.color = '#dc2626';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  submitBtn.textContent = '⏳ Submit ho raha hai...';
+  statusEl.textContent = '';
+
+  // Collect form data
+  var fd = new FormData(form);
+  var payload = { _action: 'add' };
+  fd.forEach(function(v, k) { payload[k] = v; });
+  payload.timestamp = new Date().toLocaleString('en-IN');
+
+  // 1. Immediately apply to builder (works even without network)
+  if (typeof gsApplyClientToBuilder === 'function') {
+    gsApplyClientToBuilder({
+      name: payload.name, tagline: payload.tagline, about: payload.about,
+      phone: payload.phone, wa: payload.wa, email: payload.email,
+      upiId: payload.upiId, city: payload.city, type: payload.type,
+      services: payload.services, offer: payload.offer, cta: payload.cta,
+      hours: payload.hours, insta: payload.insta, fb: payload.fb,
+      yt: payload.yt, logo: payload.logo, heroImg: payload.heroImg,
+      upiImg: payload.upiImg, color: payload.color || '#FF6B00',
+      lang: payload.lang || 'hinglish',
+      portfolioImgs: '', serviceIcons: ''
+    });
+  }
+
+  // 2. POST to master Apps Script (no-cors, text/plain — no CORS errors)
+  fetch(window._GS_MASTER_SCRIPT || 'https://script.google.com/macros/s/AKfycbwjqZmPgLik9S2yjW_UBq-pIiDdE7skxSQPIQIB1slHwb378gXU9ejke6Bo8C3l2Wpz/exec', {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=UTF-8' },
+    body: JSON.stringify(payload)
+  })
+  .then(function() {
+    // Success (no-cors always resolves)
+    statusEl.textContent = '✅ Data saved! Builder mein apply ho gaya.';
+    statusEl.style.color = '#059669';
+    submitBtn.textContent = '✅ Submitted!';
+
+    // Close form after 1.5s, then auto-fetch
+    setTimeout(function() {
+      var ov = document.getElementById('ks-intake-overlay');
+      if (ov) ov.remove();
+      if (typeof showToast === 'function')
+        showToast('✅ Client data saved + applied to builder! Preview dekho.', 'success');
+      // Auto re-fetch sheet
+      setTimeout(function() {
+        if (typeof gsFetchSheet === 'function') gsFetchSheet();
+      }, 1500);
+    }, 1500);
+  })
+  .catch(function(err) {
+    // Even on error, data already applied to builder above
+    statusEl.textContent = '⚠️ Builder mein apply hua, Sheet save fail: ' + err.message;
+    statusEl.style.color = '#D97706';
+    submitBtn.disabled = false;
+    submitBtn.textContent = '🚀 Submit — Website Generate Karo!';
+  });
+};
+
+// Generate standalone form HTML for external sharing
+function _buildStandaloneFormHTML() {
+  var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwjqZmPgLik9S2yjW_UBq-pIiDdE7skxSQPIQIB1slHwb378gXU9ejke6Bo8C3l2Wpz/exec';
+  return '<!DOCTYPE html><html lang="hi"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Website Order Form | K Spider AI</title>'
+    + '<meta property="og:title" content="Website Order Form — K Spider AI"><meta property="og:description" content="अपना Business data fill करें — K Spider AI आपकी Website बनाएगा!">'
+    + '<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:"Plus Jakarta Sans",system-ui,sans-serif;background:#f0ebe3;min-height:100vh}'
+    + '.hero{background:linear-gradient(135deg,#0a0500,#2a1000,#FF3D00);color:#fff;padding:40px 20px;text-align:center}'
+    + '.hero h1{font-size:clamp(1.5rem,4vw,2.2rem);font-weight:800;margin-bottom:8px}'
+    + '.hero p{font-size:.9rem;opacity:.85;margin-bottom:16px}'
+    + '.pills{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}'
+    + '.pill{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:50px;padding:4px 12px;font-size:.65rem;font-weight:600}'
+    + '.share-bar{background:#1a0800;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}'
+    + '.sbtn{display:flex;align-items:center;gap:4px;padding:7px 14px;border-radius:8px;border:none;font-size:.7rem;font-weight:700;cursor:pointer;font-family:inherit;text-decoration:none}'
+    + '.swa{background:#25d366;color:#fff}.stg{background:#0088cc;color:#fff}.scp{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2)}'
+    + '.wrap{max-width:560px;margin:0 auto;padding:18px 14px 50px}'
+    + '.card{background:#fff;border-radius:14px;padding:18px;margin-bottom:10px;box-shadow:0 2px 12px rgba(0,0,0,.07);border:1.5px solid #f0f0f0}'
+    + '.card-title{font-size:.68rem;font-weight:800;color:#FF6B00;margin-bottom:12px;text-transform:uppercase;letter-spacing:.8px}'
+    + '.field{margin-bottom:9px}'
+    + 'label{display:block;font-size:.7rem;font-weight:700;margin-bottom:3px;color:#374151}'
+    + 'input,textarea,select{width:100%;padding:9px 11px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:.82rem;font-family:inherit;outline:none;transition:border .2s}'
+    + 'input:focus,textarea:focus,select:focus{border-color:#FF6B00;box-shadow:0 0 0 3px rgba(255,107,0,.1)}'
+    + 'textarea{min-height:75px;resize:vertical;line-height:1.55}'
+    + '.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}'
+    + '.req{color:#FF6B00}'
+    + '#prog-wrap{height:4px;background:#f0f0f0;border-radius:2px;margin-bottom:16px;overflow:hidden}'
+    + '#prog-fill{height:100%;background:linear-gradient(90deg,#FF6B00,#FF3D00);width:0;transition:width .3s;border-radius:2px}'
+    + '.submit-btn{width:100%;padding:14px;background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;border:none;border-radius:12px;font-size:.9rem;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 6px 20px rgba(255,107,0,.3);transition:all .2s}'
+    + '.submit-btn:hover{transform:translateY(-2px);box-shadow:0 10px 28px rgba(255,107,0,.4)}'
+    + '.submit-btn:disabled{opacity:.65;cursor:not-allowed;transform:none}'
+    + '#success{display:none;background:#d1fae5;border:2px solid #059669;border-radius:14px;padding:24px;text-align:center;margin-bottom:12px}'
+    + '#err{display:none;background:#fee2e2;border:1.5px solid #dc2626;border-radius:9px;padding:10px 14px;margin-bottom:10px;font-size:.76rem;color:#7f1d1d}'
+    + '.img-note{background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:8px 11px;font-size:.62rem;color:#1e40af;line-height:1.7;margin-bottom:8px}'
+    + '.footer{text-align:center;padding:14px 0;font-size:.62rem;color:#9ca3af}'
+    + '.footer a{color:#FF6B00;text-decoration:none;font-weight:700}'
+    + '@media(max-width:480px){.g2{grid-template-columns:1fr}}'
+    + '</style></head><body>'
+    + '<div class="hero">'
+    + '<div style="font-size:.6rem;background:rgba(255,255,255,.15);display:inline-block;padding:3px 10px;border-radius:50px;margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">🕷 K Spider AI</div>'
+    + '<h1>अपनी Website का<br>Data भरें</h1>'
+    + '<p>Form fill karein — K Spider AI Website तुरंत बनाएगा!</p>'
+    + '<div class="pills"><span class="pill">✅ 100% Free</span><span class="pill">⚡ 60 Seconds</span><span class="pill">🌐 12 Languages</span><span class="pill">📱 Mobile Ready</span></div>'
+    + '</div>'
+    + '<div class="share-bar" id="sbar">'
+    + '<span style="font-size:.65rem;color:rgba(255,255,255,.7);font-weight:700;letter-spacing:.5px;">SHARE:</span>'
+    + '<a class="sbtn swa" href="#" onclick="shareWA();return false;">💬 WhatsApp</a>'
+    + '<a class="sbtn stg" href="#" onclick="shareTG();return false;">✈️ Telegram</a>'
+    + '<button class="sbtn scp" onclick="copyLink()">🔗 Copy Link</button>'
+    + '</div>'
+    + '<div class="wrap">'
+    + '<div id="success"><div style="font-size:2.5rem;margin-bottom:8px;">🎉</div><h2 style="color:#065f46;margin-bottom:5px;">Data Successfully Submitted!</h2><p style="color:#047857;font-size:.8rem;line-height:1.6;">Aapka data save ho gaya. K Spider AI jald hi aapki website banayega!</p>'
+    + '<div style="margin-top:12px;"><a href="https://www.kspiderai.in" style="background:linear-gradient(135deg,#FF6B00,#FF3D00);color:#fff;padding:10px 22px;border-radius:50px;text-decoration:none;font-weight:800;font-size:.82rem;">🌐 kspiderai.in Visit Karein</a></div></div>'
+    + '<div id="err"></div>'
+    + '<div id="prog-wrap"><div id="prog-fill"></div></div>'
+    + '<form id="kf" onsubmit="submitForm(event)" novalidate>'
+    + '<div class="card"><div class="card-title">📋 Business Info</div>'
+    + '<div class="field"><label>Business Name <span class="req">*</span></label><input name="name" required placeholder="Gaurang Raval Digital" oninput="prog()"></div>'
+    + '<div class="field"><label>Tagline</label><input name="tagline" placeholder="Aapka Digital Partner!"></div>'
+    + '<div class="field"><label>About <span class="req">*</span></label><textarea name="about" required placeholder="Business ke baare mein..." oninput="prog()"></textarea></div>'
+    + '<div class="g2">'
+    + '<div class="field"><label>Type</label><select name="type"><option>Business</option><option>Shop</option><option>Restaurant</option><option>Clinic</option><option>Academy</option><option>Salon</option><option>Tech</option><option>Other</option></select></div>'
+    + '<div class="field"><label>Working Hours</label><input name="hours" placeholder="Mon-Sat 9-7"></div>'
+    + '</div></div>'
+    + '<div class="card"><div class="card-title">📞 Contact</div>'
+    + '<div class="g2">'
+    + '<div class="field"><label>Phone <span class="req">*</span></label><input name="phone" type="tel" required placeholder="+91 XXXXX XXXXX" oninput="prog()"></div>'
+    + '<div class="field"><label>WhatsApp <span class="req">*</span></label><input name="wa" type="tel" required placeholder="WhatsApp number" oninput="prog()"></div>'
+    + '</div>'
+    + '<div class="g2">'
+    + '<div class="field"><label>Email</label><input name="email" type="email" placeholder="aapka@email.com"></div>'
+    + '<div class="field"><label>UPI ID</label><input name="upiId" placeholder="yourname@upi"></div>'
+    + '</div>'
+    + '<div class="field"><label>City / Address <span class="req">*</span></label><input name="city" required placeholder="Aapka Sheher, State" oninput="prog()"></div>'
+    + '</div>'
+    + '<div class="card"><div class="card-title">⚙️ Services</div>'
+    + '<div class="field"><label>Services <span class="req">*</span> (Name, Price, Emoji — per line)</label><textarea name="services" required rows="4" placeholder="Website Design, 5000, 🌐\nLogo Design, 1500, 🎨\nSEO Package, 3000, 🔍" oninput="prog()"></textarea></div>'
+    + '<div class="g2">'
+    + '<div class="field"><label>Offer</label><input name="offer" placeholder="20% OFF!"></div>'
+    + '<div class="field"><label>CTA Text</label><input name="cta" placeholder="Get Free Quote"></div>'
+    + '</div></div>'
+    + '<div class="card"><div class="card-title">📱 Social Media</div>'
+    + '<div class="g2">'
+    + '<div class="field"><label>Instagram</label><input name="insta" type="url" placeholder="https://instagram.com/..."></div>'
+    + '<div class="field"><label>Facebook</label><input name="fb" type="url" placeholder="https://facebook.com/..."></div>'
+    + '</div>'
+    + '<div class="field"><label>YouTube</label><input name="yt" type="url" placeholder="https://youtube.com/@..."></div>'
+    + '</div>'
+    + '<div class="card"><div class="card-title">🖼️ Images (Public URLs)</div>'
+    + '<div class="img-note">📌 Images Google Drive / ImgBB pe upload karo → Public URL yahan paste karo</div>'
+    + '<div class="field"><label>Logo URL</label><input name="logo" type="url" placeholder="https://drive.google.com/uc?id=..."></div>'
+    + '<div class="field"><label>Hero/Banner URL</label><input name="heroImg" type="url" placeholder="https://..."></div>'
+    + '<div class="field"><label>UPI QR URL</label><input name="upiImg" type="url" placeholder="https://..."></div>'
+    + '</div>'
+    + '<div class="card"><div class="card-title">🎨 Preferences</div>'
+    + '<div class="g2">'
+    + '<div class="field"><label>Language</label><select name="lang"><option value="hinglish">Hinglish</option><option value="en">English</option><option value="hi">Hindi</option><option value="gu">Gujarati</option><option value="mr">Marathi</option><option value="ta">Tamil</option><option value="te">Telugu</option><option value="kn">Kannada</option><option value="ml">Malayalam</option><option value="pa">Punjabi</option><option value="bn">Bengali</option></select></div>'
+    + '<div class="field"><label>Brand Color</label><input name="color" type="color" value="#FF6B00" style="height:40px;padding:3px;border-radius:9px;cursor:pointer;"></div>'
+    + '</div></div>'
+    + '<button type="submit" class="submit-btn" id="sbtn">🚀 Website Order Submit Karein</button>'
+    + '<p style="text-align:center;font-size:.58rem;color:#9ca3af;margin-top:6px;">🔒 Aapka data secure hai — K Spider AI team hi dekh sakti hai</p>'
+    + '</form>'
+    + '<div class="footer">Powered by <a href="https://www.kspiderai.in">K Spider AI</a> · Gaurang Raval, Khush Raval & Shreyansh Raval</div>'
+    + '</div>'
+    + '<script>'
+    + 'var SU="' + SCRIPT_URL + '";'
+    + 'var PL=window.location.href;'
+    + 'var PM=' + JSON.stringify([
+        '🚀 *मात्र 1 मिनट में Professional Website पाएं!*\n\nK Spider AI आपका data लेकर तुरंत website बनाता है!\n✅ Free | ⚡ 60 Seconds | 🌐 12 Languages\n\n👇 Form fill karein:',
+        '🔥 *अपना Business Online लाएं — बिल्कुल Free!*\n\nForm fill karein → K Spider AI website banayega! 🕷\n\n👇 Link:',
+        '💼 *Professional Website — सिर्फ 60 Seconds!*\n\nData bharo → Website ready! 🕷 kspiderai.in\n\n👇 Form:',
+        '✅ *Free Website — Abhi Banao!*\n\nK Spider AI — India ka #1 Free AI Website Builder\n\n👇 Apna data bharo:'
+      ]) + ';'
+    + 'function rp(){return PM[Math.floor(Math.random()*PM.length)];}'
+    + 'function prog(){var r=document.querySelectorAll("[required]");var d=Array.from(r).filter(function(e){return e.value.trim();}).length;document.getElementById("prog-fill").style.width=Math.round(d/r.length*100)+"%";}'
+    + 'function shareWA(){window.open("https://wa.me/?text="+encodeURIComponent(rp()+"\n\n"+PL),"_blank");}'
+    + 'function shareTG(){window.open("https://t.me/share/url?url="+encodeURIComponent(PL)+"&text="+encodeURIComponent(rp()),"_blank");}'
+    + 'function copyLink(){if(navigator.clipboard){navigator.clipboard.writeText(PL).then(function(){var b=document.querySelector(".scp");b.textContent="✅ Copied!";b.style.background="#059669";setTimeout(function(){b.textContent="🔗 Copy Link";b.style.background="";},2000);}catch(e){});}}'
+    + 'function submitForm(e){e.preventDefault();var b=document.getElementById("sbtn");var err=document.getElementById("err");err.style.display="none";var req=document.querySelectorAll("[required]");var miss=[];req.forEach(function(el){el.style.borderColor="";if(!el.value.trim()){el.style.borderColor="#dc2626";miss.push(el.name);}});if(miss.length){err.textContent="⚠️ Required fields: "+miss.join(", ");err.style.display="block";return;}b.disabled=true;b.textContent="⏳ Submit ho raha hai...";var fd=new FormData(e.target);var d={_action:"add"};fd.forEach(function(v,k){d[k]=v;});d.timestamp=new Date().toLocaleString("en-IN");fetch(SU,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=UTF-8"},body:JSON.stringify(d)}).then(function(){document.getElementById("kf").style.display="none";document.getElementById("success").style.display="block";window.scrollTo({top:0,behavior:"smooth"});setTimeout(function(){window.location.href="https://www.kspiderai.in";},4000);}).catch(function(er){err.textContent="Network error: "+er.message;err.style.display="block";b.disabled=false;b.textContent="🚀 Website Order Submit Karein";});}'
+    + 'document.addEventListener("DOMContentLoaded",function(){prog();document.querySelectorAll("[required]").forEach(function(el){el.addEventListener("input",prog);});});'
+    + '<\/script></body></html>';
+}
+
+// Share form — generate standalone HTML + show share options
+window.gsShareClientForm = function() {
+  var formHtml = _buildStandaloneFormHTML();
+  var blob = new Blob([formHtml], { type: 'text/html;charset=utf-8' });
+  var blobUrl = URL.createObjectURL(blob);
+
+  // Download file
+  var a = document.createElement('a');
+  a.href = blobUrl; a.download = 'kspider-client-form.html';
+  a.style.display = 'none';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ a.remove(); }, 800);
+
+  // Show share guide
+  _showFormShareModal(blobUrl);
+};
+
+function _showFormShareModal(blobUrl) {
+  var old = document.getElementById('ksShareModal');
+  if (old) old.remove();
+  var m = document.createElement('div');
+  m.id = 'ksShareModal';
+  m.className = 'modal-bg active';
+  m.style.zIndex = '99998';
+  m.onclick = function(e) { if (e.target === m) m.remove(); };
+
+  var promo = _KS_FORM_PROMO_MSGS[Math.floor(Math.random() * _KS_FORM_PROMO_MSGS.length)];
+
+  m.innerHTML = '<div class="modal" style="max-width:460px;width:95vw;">'
+    + '<div class="modal-head"><div class="modal-title">📤 Form Share Karein</div>'
+    + '<button class="modal-close" onclick="document.getElementById(\'ksShareModal\').remove()">✕</button></div>'
+    + '<div class="modal-body">'
+    + '<div style="background:rgba(5,150,105,.07);border:1.5px solid rgba(5,150,105,.2);border-radius:9px;padding:9px 12px;margin-bottom:10px;font-size:.7rem;color:#047857;font-weight:700;">✅ Form downloaded! Ab share karo:</div>'
+
+    + '<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;">'
+
+    + '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">'
+    + '<div style="font-weight:800;font-size:.74rem;color:#00c7b7;margin-bottom:5px;">⚡ Netlify Drop — 30 Seconds! (Best)</div>'
+    + '<ol style="font-size:.67rem;color:var(--text2);line-height:1.8;padding-left:14px;margin:0;">'
+    + '<li><strong>app.netlify.com/drop</strong> kholo</li>'
+    + '<li>Downloaded HTML file drag-drop karo</li>'
+    + '<li>Permanent link milega → share karo!</li>'
+    + '</ol></div>'
+
+    + '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:10px 12px;">'
+    + '<div style="font-weight:800;font-size:.74rem;color:#1a1a2e;margin-bottom:5px;">🔧 GitHub Pages (Free Forever)</div>'
+    + '<ol style="font-size:.67rem;color:var(--text2);line-height:1.8;padding-left:14px;margin:0;">'
+    + '<li>github.com → New repo (public)</li>'
+    + '<li>File upload → naam index.html rakho</li>'
+    + '<li>Settings → Pages → main branch → Save</li>'
+    + '</ol></div>'
+
+    + '</div>'
+
+    + '<div style="font-size:.7rem;font-weight:700;color:var(--text);margin-bottom:6px;">Link milne ke baad share karo:</div>'
+    + '<div style="display:flex;gap:7px;">'
+    + '<a href="https://wa.me/?text=' + encodeURIComponent(promo + '\n\n[FORM_LINK_YAHAN_PASTE_KARO]') + '" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px;background:#25d366;color:#fff;border-radius:9px;text-decoration:none;font-weight:700;font-size:.74rem;">💬 WhatsApp</a>'
+    + '<a href="https://t.me/share/url?url=[LINK]&text=' + encodeURIComponent(promo) + '" target="_blank" style="flex:1;display:flex;align-items:center;justify-content:center;gap:5px;padding:10px;background:#0088cc;color:#fff;border-radius:9px;text-decoration:none;font-weight:700;font-size:.74rem;">✈️ Telegram</a>'
+    + '</div>'
+
+    + '<div style="margin-top:10px;padding:8px 10px;background:rgba(255,107,0,.06);border-radius:8px;border-left:3px solid var(--p);font-size:.63rem;color:var(--text2);line-height:1.6;">'
+    + '💡 Client form bharega → Data aapki Sheet mein jayega → Tool mein "Fetch My Clients" → Website generate!'
+    + '</div>'
+    + '</div></div>';
+  document.body.appendChild(m);
+}
 
 (function KsToolAds() {
   'use strict';
