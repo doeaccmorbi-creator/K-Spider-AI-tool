@@ -110,6 +110,8 @@ function render(){
     admindoubts: renderAdminDoubts,
     bookmarks: renderBookmarks,
     plans: renderPlans,
+    facultydoubts: renderFacultyDoubts,
+    facultypending: renderFacultyPending,
   };
   app.innerHTML = (routes[ROUTE.view] || renderLanding)();
   afterRender();
@@ -139,6 +141,9 @@ const NAV = {
   admin: [
     {id:'overview', ic:'🏠', label:'Overview', view:'admin'},
     {id:'admindoubts', ic:'💬', label:'Doubts inbox', view:'admindoubts'},
+  ],
+  faculty: [
+    {id:'facultydoubts', ic:'💬', label:'Doubts inbox', view:'facultydoubts'},
   ],
 };
 function sidebar(activeId){
@@ -289,7 +294,7 @@ function mountDeck(){
 function renderAuth(){
   const role = ROUTE.params.role || 'student';
   const mode = ROUTE.params.mode || 'login';
-  const roleLabels = {student:'Student', parent:'Parent', admin:'Admin'};
+  const roleLabels = {student:'Student', parent:'Parent', admin:'Admin', faculty:'Faculty'};
   return `
   <div class="auth-wrap">
     <div class="card auth-card">
@@ -298,12 +303,13 @@ function renderAuth(){
         <h2 style="font-size:20px">${mode==='signup'?'Create your account':'Welcome back'}</h2>
       </div>
       <div class="role-tabs">
-        ${['student','parent','admin'].map(r=>`<button class="role-tab ${r===role?'active':''}" onclick="go('auth',{role:'${r}',mode:'${mode}'})">${roleLabels[r]}</button>`).join('')}
+        ${['student','parent','admin','faculty'].map(r=>`<button class="role-tab ${r===role?'active':''}" onclick="go('auth',{role:'${r}',mode:'${mode}'})">${roleLabels[r]}</button>`).join('')}
       </div>
       <form onsubmit="return handleAuth(event,'${role}')">
         ${mode==='signup'?`<div class="field"><label>Full name</label><input required id="authName" placeholder="Your name"></div>`:''}
         ${mode==='signup' && role==='student'?`<div class="field"><label>Class</label><select id="authClass"><option>11th</option><option>12th</option><option>Dropper</option></select></div>`:''}
         ${mode==='signup' && role==='parent'?`<div class="field"><label>Child's registered email</label><input required id="authChildEmail" placeholder="child@dsa.academy"></div>`:''}
+        ${mode==='signup' && role==='faculty'?`<div class="field"><label>Subject you teach</label><select id="authSubject">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>`:''}
         <div class="field"><label>Email</label><input required type="email" id="authEmail" placeholder="you@example.com" value="${ROUTE.params.prefillEmail || ''}"></div>
         <div class="field"><label>Password</label><input required type="password" id="authPass" placeholder="••••••••" minlength="6"></div>
         <button class="btn btn-primary btn-block" type="submit">${mode==='signup'?'Create account':'Log in'} →</button>
@@ -332,9 +338,11 @@ function handleAuth(e, role){
   const cls = classField ? classField.value : null;
   const childEmailField = document.getElementById('authChildEmail');
   const childEmail = childEmailField ? childEmailField.value.trim() : null;
+  const subjectField = document.getElementById('authSubject');
+  const facultySubject = subjectField ? subjectField.value : null;
 
   if(!window.FIREBASE_ENABLED){
-    DB.currentUser = {role, name: name || 'Student', email, uid: null, plan: 'free', bookmarks: []};
+    DB.currentUser = {role, name: name || 'Student', email, uid: null, plan: 'free', bookmarks: [], subject: facultySubject, approved:true};
     toast(`Signed in as ${role} (demo)`);
     enterDashboard(role);
     return false;
@@ -349,6 +357,7 @@ function handleAuth(e, role){
       const profile = {name, email, role, plan:'free', bookmarks:[], createdAt: firebase.firestore.FieldValue.serverTimestamp()};
       if(role==='student') profile.cls = cls;
       if(role==='parent') profile.childEmail = childEmail;
+      if(role==='faculty'){ profile.subject = facultySubject; profile.approved = false; }
       return fbDb.collection('users').doc(uid).set(profile).then(()=>({...profile, uid}));
     }
     return fbDb.collection('users').doc(uid).get().then(doc=>{
@@ -366,11 +375,13 @@ function handleAuth(e, role){
     .then(profile=>{
       DB.currentUser = {
         role: profile.role || role, name: profile.name || name, email,
-        uid: profile.uid, plan: profile.plan || 'free', bookmarks: profile.bookmarks || []
+        uid: profile.uid, plan: profile.plan || 'free', bookmarks: profile.bookmarks || [],
+        subject: profile.subject || null, approved: profile.approved !== false
       };
       toast(`Signed in as ${DB.currentUser.role}`);
       if(role==='student') loadStudentResults().then(()=>enterDashboard(role));
       else if(role==='parent'){ DB.linkedChild = profile.childEmail ? {name:profile.childEmail.split('@')[0], email:profile.childEmail} : null; loadParentResults().then(()=>enterDashboard(role)); }
+      else if(role==='faculty' && !DB.currentUser.approved) go('facultypending');
       else enterDashboard(role);
     })
     .catch(err=>{ toast(err.message || 'Something went wrong, please try again', '⚠️'); })
@@ -382,6 +393,7 @@ function handleAuth(e, role){
 function enterDashboard(role){
   if(role==='student') go('student');
   else if(role==='parent') go('parent');
+  else if(role==='faculty') go('facultydoubts');
   else go('admin');
 }
 function loadStudentResults(){
@@ -986,16 +998,52 @@ function submitDoubt(e){
 
   if(window.FIREBASE_ENABLED){
     fbDb.collection('doubts').add(Object.assign({}, doubt, {when: firebase.firestore.FieldValue.serverTimestamp()}))
-      .then(ref=>{ DB._doubtsCache.push(Object.assign({id:ref.id}, doubt)); render(); })
+      .then(ref=>{ DB._doubtsCache.push(Object.assign({id:ref.id}, doubt)); render(); notifyFacultyOfNewDoubt(doubt); })
       .catch(err=>toast(err.message,'⚠️'));
   } else {
     doubt.id = 'demo-'+Date.now();
     DB.doubts.push(doubt);
     DB._doubtsCache = DB.doubts.filter(d=>d.email===DB.currentUser.email);
     render();
+    notifyFacultyOfNewDoubt(doubt);
   }
-  toast('Doubt posted — an admin will reply soon');
+  toast('Doubt posted — the subject faculty will be notified');
   return false;
+}
+
+/* ============================== EMAIL NOTIFICATIONS (EmailJS) =============
+   No backend needed — EmailJS sends mail straight from the browser using a
+   public key + template. Wire your credentials in emailjs-config.js; until
+   then these calls are safely no-ops (checked via window.EMAILJS_ENABLED).
+   ========================================================================= */
+function notifyFacultyOfNewDoubt(doubt){
+  if(!window.EMAILJS_ENABLED || !window.FIREBASE_ENABLED) return;
+  fbDb.collection('users').where('role','==','faculty').where('subject','==',doubt.subject).get()
+    .then(snap=>{
+      snap.forEach(docSnap=>{
+        const faculty = docSnap.data();
+        if(!faculty.email) return;
+        emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateDoubtPosted, {
+          to_email: faculty.email,
+          faculty_name: faculty.name || 'Faculty',
+          student_name: doubt.name,
+          subject: doubt.subject,
+          chapter: doubt.chapter,
+          question: doubt.question
+        }).catch(err=>console.warn('[DSA] faculty email notify failed', err));
+      });
+    }).catch(err=>console.warn('[DSA] could not look up faculty for notify', err));
+}
+function notifyStudentOfReply(doubt){
+  if(!window.EMAILJS_ENABLED) return;
+  emailjs.send(EMAILJS_CONFIG.serviceId, EMAILJS_CONFIG.templateDoubtAnswered, {
+    to_email: doubt.email,
+    student_name: doubt.name,
+    subject: doubt.subject,
+    chapter: doubt.chapter,
+    question: doubt.question,
+    answer: doubt.answer
+  }).catch(err=>console.warn('[DSA] student email notify failed', err));
 }
 
 /* ============================== DOUBTS (ADMIN INBOX) ====================== */
@@ -1018,38 +1066,107 @@ function renderAdminDoubts(){
   <div class="app-shell">
     ${sidebar('admindoubts')}
     <div class="main">
-      <div class="main-head"><div><h2>💬 Doubts inbox</h2><p>${pending.length} pending · ${answered.length} answered</p></div></div>
-      ${rows.length===0 ? `<div class="card"><div class="empty"><div class="ic">📭</div>No doubts submitted yet.</div></div>` : rows.slice().reverse().map(d=>`
-        <div class="card" style="padding:18px;margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-            <div style="display:flex;align-items:center;gap:8px"><span class="avatar-sm">${(d.name||'?')[0]}</span><b style="font-size:13.5px">${d.name}</b><span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span></div>
-            <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
-          </div>
-          <p style="font-size:14px;margin-bottom:10px"><b>Q:</b> ${d.question}</p>
-          ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px;margin-bottom:8px">💡 ${d.answer}</p>` : ''}
-          <div style="display:flex;gap:8px">
-            <input id="reply-${d.id}" placeholder="${d.answer?'Update reply...':'Type a reply...'}" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
-            <button class="btn btn-primary btn-sm" onclick="answerDoubt('${d.id}')">Send</button>
-          </div>
-        </div>`).join('')}
+      <div class="main-head"><div><h2>💬 Doubts inbox</h2><p>${pending.length} pending · ${answered.length} answered · all subjects</p></div></div>
+      ${renderDoubtCards(rows, 'admin')}
     </div>
   </div>`;
 }
-function answerDoubt(id){
+
+/* ============================== DOUBTS (FACULTY, SUBJECT-SCOPED) ========== */
+function loadFacultyDoubts(subject){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve(DB.doubts.filter(d=>d.subject===subject));
+  return fbDb.collection('doubts').where('subject','==',subject).orderBy('when','desc').limit(50).get()
+    .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .catch(()=>[]);
+}
+/* ============================== FACULTY APPROVAL (ADMIN) ================== */
+function loadPendingFaculty(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('users').where('role','==','faculty').where('approved','==',false).get()
+    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function approveFaculty(uid){
+  fbDb.collection('users').doc(uid).update({approved:true})
+    .then(()=>{
+      DB._pendingFacultyCache = (DB._pendingFacultyCache||[]).filter(f=>f.uid!==uid);
+      toast('Faculty approved ✅');
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+
+function renderFacultyPending(){
+  if(!DB.currentUser) return renderAuth();
+  return `
+  <div class="auth-wrap">
+    <div class="card auth-card" style="text-align:center">
+      <div style="font-size:38px;margin-bottom:10px">⏳</div>
+      <h2 style="font-size:19px;margin-bottom:10px">Waiting for admin approval</h2>
+      <p style="font-size:13.5px;color:var(--muted);margin-bottom:18px">Your faculty account for <b>${DB.currentUser.subject}</b> has been created but needs to be approved by a DSA admin before you can see or reply to doubts. This usually only takes a short while — check back soon.</p>
+      <button class="btn btn-outline btn-block" onclick="logout()">Log out</button>
+    </div>
+  </div>`;
+}
+function renderFacultyDoubts(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB.currentUser.approved) return renderFacultyPending();
+  const subject = DB.currentUser.subject;
+  if(!subject){
+    return `<div class="app-shell">${sidebar('facultydoubts')}<div class="main"><div class="empty"><div class="ic">⚠️</div>No subject set on your faculty account — please contact the admin.</div></div></div>`;
+  }
+  if(!DB._facultyDoubtsCache){
+    loadFacultyDoubts(subject).then(rows=>{ DB._facultyDoubtsCache = rows; if(ROUTE.view==='facultydoubts') render(); });
+    return `<div class="app-shell">${sidebar('facultydoubts')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading your doubts inbox…</div></div></div>`;
+  }
+  const rows = DB._facultyDoubtsCache;
+  const pending = rows.filter(d=>d.status!=='answered');
+  const answered = rows.filter(d=>d.status==='answered');
+  return `
+  <div class="app-shell">
+    ${sidebar('facultydoubts')}
+    <div class="main">
+      <div class="main-head"><div><h2>${SUBJECT_META[subject].icon} ${subject} — Doubts inbox</h2><p>${pending.length} pending · ${answered.length} answered</p></div></div>
+      ${renderDoubtCards(rows, 'faculty')}
+    </div>
+  </div>`;
+}
+
+function renderDoubtCards(rows, mode){
+  if(rows.length===0) return `<div class="card"><div class="empty"><div class="ic">📭</div>No doubts here yet.</div></div>`;
+  return rows.slice().reverse().map(d=>`
+    <div class="card" style="padding:18px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px"><span class="avatar-sm">${(d.name||'?')[0]}</span><b style="font-size:13.5px">${d.name}</b><span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span></div>
+        <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+      </div>
+      <p style="font-size:14px;margin-bottom:10px"><b>Q:</b> ${d.question}</p>
+      ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px;margin-bottom:8px">💡 ${d.answer}</p>` : ''}
+      <div style="display:flex;gap:8px">
+        <input id="reply-${d.id}" placeholder="${d.answer?'Update reply...':'Type a reply...'}" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+        <button class="btn btn-primary btn-sm" onclick="answerDoubt('${d.id}','${mode}')">Send</button>
+      </div>
+    </div>`).join('');
+}
+
+function answerDoubt(id, mode){
   const input = document.getElementById('reply-'+id);
   const answer = input.value.trim();
   if(!answer) return;
+  const cacheKey = mode==='faculty' ? '_facultyDoubtsCache' : '_adminDoubtsCache';
+  const cache = DB[cacheKey] || [];
+  const doubt = cache.find(x=>x.id===id);
+
   if(window.FIREBASE_ENABLED){
     fbDb.collection('doubts').doc(id).update({answer, status:'answered'})
       .then(()=>{
-        const d = DB._adminDoubtsCache.find(x=>x.id===id);
-        if(d){ d.answer=answer; d.status='answered'; }
+        if(doubt){ doubt.answer=answer; doubt.status='answered'; notifyStudentOfReply(doubt); }
         render();
       }).catch(err=>toast(err.message,'⚠️'));
   } else {
     const d = DB.doubts.find(x=>x.id===id);
-    if(d){ d.answer=answer; d.status='answered'; }
+    if(d){ d.answer=answer; d.status='answered'; notifyStudentOfReply(d); }
     DB._adminDoubtsCache = DB.doubts.slice();
+    DB._facultyDoubtsCache = DB.doubts.filter(x=>x.subject===DB.currentUser.subject);
     render();
   }
   toast('Reply sent');
@@ -1179,6 +1296,10 @@ function renderParentDashboard(){
 /* ============================== ADMIN DASHBOARD =========================== */
 function renderAdminDashboard(){
   if(!DB.currentUser) return renderAuth();
+  if(!DB._pendingFacultyCache){
+    loadPendingFaculty().then(rows=>{ DB._pendingFacultyCache = rows; if(ROUTE.view==='admin') render(); });
+  }
+  const pendingFaculty = DB._pendingFacultyCache || [];
   const demoStudents = [
     {name:'Aarav Patel', email:'aarav.patel@student.dsa', tests: DB.results.length, cls:'11th'},
     {name:'Diya Shah', email:'diya.shah@student.dsa', tests:0, cls:'11th'},
@@ -1194,6 +1315,17 @@ function renderAdminDashboard(){
         <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects live</span></div>
         <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters published</span></div>
         <div class="card stat-box"><b>${DB.results.length}</b><span>Attempts this session</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:15px">🎓 Faculty approvals ${pendingFaculty.length>0?`<span class="pill pill-gold" style="margin-left:6px">${pendingFaculty.length} pending</span>`:''}</h3>
+        </div>
+        ${pendingFaculty.length===0 ? `<p style="font-size:13px;color:var(--muted)">No pending faculty signups right now.</p>` : pendingFaculty.map(f=>`
+          <div class="chapter-row">
+            <div class="l"><div class="chapter-badge">${(SUBJECT_META[f.subject]&&SUBJECT_META[f.subject].icon)||'🎓'}</div><div><h4>${f.name}</h4><span>${f.email} · wants to teach ${f.subject}</span></div></div>
+            <button class="btn btn-green btn-sm" onclick="approveFaculty('${f.uid}')">Approve →</button>
+          </div>`).join('')}
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
