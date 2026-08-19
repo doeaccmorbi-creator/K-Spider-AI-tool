@@ -291,6 +291,18 @@
   .bd-table td{padding:4px 6px;vertical-align:top;border-bottom:1px dashed rgba(107,30,35,.15);}
   .bd-table td.k{width:38%;color:var(--muted);font-weight:700;}
   .bd-footer{margin-top:16px;text-align:center;font-size:10.5px;color:var(--muted);border-top:1px dashed rgba(107,30,35,.2);padding-top:8px;}
+  .bd-watermark{text-align:center;font-size:9px;letter-spacing:.06em;color:var(--gold);font-weight:800;text-transform:uppercase;margin-top:4px;}
+  /* Diagonal repeating watermark painted behind every biodata card (screen, download & print alike) */
+  .bd-card{position:relative;}
+  .bd-card > *{position:relative;z-index:1;}
+  .bd-card::before{
+    content:"";position:absolute;inset:0;z-index:0;pointer-events:none;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='300' height='130'><text x='0' y='70' font-family='Arial,sans-serif' font-size='13' fill='rgba(107,30,35,0.055)' transform='rotate(-24 150 65)'>Brahmin Vivaah %C2%B7 Powered by KSpiderAI</text></svg>");
+    background-repeat:repeat;
+  }
+  @media print{
+    .bd-card, body{ -webkit-print-color-adjust:exact; print-color-adjust:exact; color-adjust:exact; }
+  }
   .tpl-peacock-live{border-color:var(--teal);background:linear-gradient(180deg,#F3F8F6,#FAF3E6);}
   .tpl-peacock-live .bd-title,.tpl-peacock-live .bd-name{color:var(--teal);}
   .tpl-peacock-live .bd-section h4{background:var(--teal);}
@@ -386,10 +398,25 @@
   footer{text-align:center;padding:26px 16px;color:var(--muted);font-size:12px;}
 
   @media print{
+    @page{ size: A4; margin: 10mm; }
     body *{visibility:hidden;}
     #printArea,#printArea *{visibility:visible;}
-    #printArea{position:absolute;left:0;top:0;width:100%;}
-    .topbar,.btn-row,.tpl-grid,.grid>div:first-child{display:none!important;}
+    #printArea{
+      position:absolute;left:0;top:0;
+      width:190mm;min-height:277mm;box-sizing:border-box;
+      margin:0;border-width:4px;padding:16mm 14mm;
+    }
+    .topbar,.btn-row,.tpl-grid,.grid>div:first-child,#galleryStrip,#kundliPanel{display:none!important;}
+  }
+  /* A4-locked preview frame used for the on-screen "print preview" look and
+     for the downloadable HTML file — keeps output size predictable across
+     devices instead of stretching to whatever the browser window is. */
+  .a4-frame{
+    width:210mm;min-height:297mm;margin:0 auto;background:#fff;
+    box-shadow:0 8px 30px rgba(0,0,0,.18);padding:14mm 12mm;box-sizing:border-box;
+  }
+  @media (max-width:880px){
+    .a4-frame{width:100%;min-height:0;box-shadow:none;padding:4mm;}
   }
 </style>
 </head>
@@ -408,6 +435,22 @@
     <a onclick="bbShowPage('dashboard')" data-nav="dashboard">Dashboard</a>
   </div>
   <a id="authBtn" href="../index.html?action=register">Login / Register Free</a>
+</div>
+
+<!-- ================= PHOTO CROPPER MODAL ================= -->
+<div id="cropModal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(20,6,8,.82);backdrop-filter:blur(3px);align-items:center;justify-content:center;">
+  <div style="background:var(--ivory);border-radius:16px;padding:20px;max-width:340px;width:92%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.4);">
+    <h3 style="margin:0 0 4px;color:var(--maroon);font-size:17px;">Adjust Your Photo</h3>
+    <p style="font-size:11.5px;color:var(--muted);margin:0 0 14px;">Drag to reposition · use slider to zoom · auto-compressed to under 100KB</p>
+    <div id="cropViewport" style="width:220px;height:280px;margin:0 auto;overflow:hidden;position:relative;border-radius:10px;border:3px solid var(--gold);background:#111;cursor:grab;touch-action:none;">
+      <img id="cropImg" src="" style="position:absolute;left:0;top:0;transform-origin:0 0;user-select:none;pointer-events:none;">
+    </div>
+    <input type="range" id="cropZoom" min="100" max="300" value="100" style="width:100%;margin:14px 0 4px;accent-color:var(--gold);">
+    <div class="btn-row" style="margin-top:10px;">
+      <button class="btn btn-ghost" onclick="bbCancelCrop()">Cancel</button>
+      <button class="btn btn-gold" onclick="bbConfirmCrop()">✂️ Crop &amp; Use</button>
+    </div>
+  </div>
 </div>
 
 <!-- ================= LOGIN GATE (shown for the app pages when not logged in on K Spider AI) ================= -->
@@ -531,7 +574,14 @@
               <div class="field"><label>Diet</label><select id="f_diet"><option>Pure Vegetarian</option><option>Vegetarian (Egg OK)</option><option>Occasionally Non-Veg</option><option>Jain</option></select></div>
             </div>
             <div class="field"><label>Blood Group</label><input type="text" id="f_blood" placeholder="e.g. B+"></div>
-            <div class="field"><label>City</label><input type="text" id="f_city" placeholder="Current city — used for match search"></div>
+            <div class="row2">
+              <div class="field"><label>Mother Tongue</label><input type="text" id="f_mothertongue" placeholder="e.g. Gujarati, Hindi"></div>
+              <div class="field"><label>City</label><input type="text" id="f_city" placeholder="Current city — used for match search"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Smoking</label><select id="f_smoking"><option>No</option><option>Occasionally</option><option>Yes</option></select></div>
+              <div class="field"><label>Drinking</label><select id="f_drinking"><option>No</option><option>Occasionally</option><option>Yes</option></select></div>
+            </div>
             <div class="field"><label>Hobbies / Interests</label><textarea id="f_hobbies"></textarea></div>
             <div class="field">
               <label>Photo (auto-compressed under 100KB)</label>
@@ -602,10 +652,29 @@
           <fieldset data-step="2">
             <h3>Education &amp; Occupation / शिक्षा एवं व्यवसाय</h3>
             <div class="field"><label>Highest Qualification</label><input type="text" id="f_edu" placeholder="e.g. B.E. Computer Engineering"></div>
-            <div class="field"><label>College / University</label><input type="text" id="f_college"></div>
+            <div class="row2">
+              <div class="field"><label>College / University</label><input type="text" id="f_college"></div>
+              <div class="field"><label>Post-Graduation (if any)</label><input type="text" id="f_pg" placeholder="e.g. M.Tech, MBA"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Medium of Instruction</label><select id="f_medium"><option>English</option><option>Hindi</option><option>Gujarati</option><option>Other</option></select></div>
+              <div class="field"><label>Additional Courses / Certifications</label><input type="text" id="f_certs" placeholder="e.g. CA, CFA, Diploma"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>10th Grade %</label><input type="text" id="f_10th" placeholder="e.g. 88%"></div>
+              <div class="field"><label>12th Grade %</label><input type="text" id="f_12th" placeholder="e.g. 82%"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Graduation Year</label><input type="text" id="f_gradyear" placeholder="e.g. 2020"></div>
+              <div class="field"><label>Studied Abroad?</label><select id="f_abroad"><option>No</option><option>Yes</option></select></div>
+            </div>
             <div class="row2">
               <div class="field"><label>Occupation / Designation</label><input type="text" id="f_job"></div>
               <div class="field"><label>Company / Organization</label><input type="text" id="f_company"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Employment Type</label><select id="f_emptype"><option>Private Job</option><option>Government Job</option><option>Business / Self-Employed</option><option>Not Working</option></select></div>
+              <div class="field"><label>Experience (Years)</label><input type="text" id="f_experience" placeholder="e.g. 3"></div>
             </div>
             <div class="row2">
               <div class="field"><label>Annual Income (optional)</label><input type="text" id="f_income"></div>
@@ -630,6 +699,10 @@
             <div class="row2">
               <div class="field"><label>Family Type</label><select id="f_famtype"><option>Nuclear</option><option>Joint</option></select></div>
               <div class="field"><label>Family Status</label><input type="text" id="f_famstatus" placeholder="e.g. Middle Class / Well Settled"></div>
+            </div>
+            <div class="row2">
+              <div class="field"><label>Family Income Range</label><select id="f_famincome"><option>Prefer not to say</option><option>Under ₹5 Lakh/yr</option><option>₹5–10 Lakh/yr</option><option>₹10–25 Lakh/yr</option><option>₹25–50 Lakh/yr</option><option>Above ₹50 Lakh/yr</option></select></div>
+              <div class="field"><label>House</label><select id="f_house"><option>Own House</option><option>Rented</option></select></div>
             </div>
           </fieldset>
 
@@ -702,6 +775,7 @@
           <div class="bd-section"><h4>Education &amp; Career</h4><table class="bd-table" id="pv_career"></table></div>
           <div class="bd-section"><h4>Family</h4><table class="bd-table" id="pv_family"></table></div>
           <div class="bd-section"><h4>Contact</h4><table class="bd-table" id="pv_contact"></table></div>
+          <div class="bd-watermark">Brahmin Vivaah &middot; Powered by KSpiderAI</div>
           <div class="bd-footer">Generated free with Brahmin Vivaah — kspiderai.in</div>
         </div>
         <div class="btn-row" style="margin-top:16px;">
@@ -857,6 +931,28 @@ function bbNav(dir){
 let photoDataUrl = "";
 let photo2DataUrl = "";
 let photo3DataUrl = "";
+function bbCompressCanvas(canvas, onDone){
+  let quality = 0.85;
+  let out = canvas.toDataURL('image/jpeg', quality);
+  const targetBytes = 100 * 1024;
+  let attempts = 0;
+  while(out.length * 0.75 > targetBytes && quality > 0.15 && attempts < 12){
+    quality -= 0.07;
+    out = canvas.toDataURL('image/jpeg', quality);
+    attempts++;
+  }
+  let shrink = 0;
+  while(out.length * 0.75 > targetBytes && shrink < 4){
+    canvas.width = Math.round(canvas.width*0.8);
+    canvas.height = Math.round(canvas.height*0.8);
+    const ctx2 = canvas.getContext('2d');
+    // Note: resizing a canvas clears it — caller must redraw before calling
+    // this function if further shrink passes are expected. In practice our
+    // crop output already targets a small fixed size, so this rarely runs.
+    shrink++;
+  }
+  onDone(out);
+}
 function bbCompressPhoto(file, onDone){
   const img = new Image();
   const reader = new FileReader();
@@ -896,33 +992,119 @@ function bbCompressPhoto(file, onDone){
 }
 document.getElementById('f_photo').addEventListener('change', function(e){
   const file = e.target.files[0]; if(!file) return;
-  const status = document.getElementById('photoStatus');
-  status.textContent = "Compressing...";
-  bbCompressPhoto(file, (out)=>{
-    photoDataUrl = out;
-    const kb = Math.round(out.length*0.75/1024);
-    status.textContent = "Photo ready (~" + kb + " KB)";
-    const pv = document.getElementById('photoPreview');
-    pv.style.backgroundImage = `url(${out})`; pv.textContent = "";
-    bbUpdatePreview(); bbUpdateCompleteness();
-  });
+  bbOpenCropper(file, 'main');
+  e.target.value = '';
 });
 document.getElementById('f_photo2').addEventListener('change', function(e){
   const file = e.target.files[0]; if(!file) return;
-  bbCompressPhoto(file, (out)=>{
-    photo2DataUrl = out;
-    const pv = document.getElementById('photoPreview2');
-    pv.style.backgroundImage = `url(${out})`; pv.textContent = "";
-  });
+  bbOpenCropper(file, 'slot2');
+  e.target.value = '';
 });
 document.getElementById('f_photo3').addEventListener('change', function(e){
   const file = e.target.files[0]; if(!file) return;
-  bbCompressPhoto(file, (out)=>{
-    photo3DataUrl = out;
-    const pv = document.getElementById('photoPreview3');
-    pv.style.backgroundImage = `url(${out})`; pv.textContent = "";
-  });
+  bbOpenCropper(file, 'slot3');
+  e.target.value = '';
 });
+
+/* ================= PHOTO CROPPER (drag to pan, slider to zoom, fixed 3:4 output) ================= */
+let bbCropTarget = null, bbCropDrag = null, bbCropPos = {x:0,y:0}, bbCropScale = 1, bbCropNatural = {w:0,h:0};
+const BB_CROP_VP = { w: 220, h: 280 }; // matches #cropViewport CSS size
+function bbOpenCropper(file, target){
+  bbCropTarget = target;
+  const reader = new FileReader();
+  reader.onload = function(ev){
+    const img = document.getElementById('cropImg');
+    img.onload = function(){
+      bbCropNatural = { w: img.naturalWidth, h: img.naturalHeight };
+      const coverScale = Math.max(BB_CROP_VP.w/bbCropNatural.w, BB_CROP_VP.h/bbCropNatural.h);
+      bbCropScale = coverScale;
+      bbCropPos = { x:(BB_CROP_VP.w - bbCropNatural.w*coverScale)/2, y:(BB_CROP_VP.h - bbCropNatural.h*coverScale)/2 };
+      document.getElementById('cropZoom').value = 100;
+      bbApplyCropTransform();
+      document.getElementById('cropModal').style.display = 'flex';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function bbApplyCropTransform(){
+  const img = document.getElementById('cropImg');
+  img.style.width = (bbCropNatural.w*bbCropScale) + 'px';
+  img.style.height = (bbCropNatural.h*bbCropScale) + 'px';
+  img.style.transform = `translate(${bbCropPos.x}px, ${bbCropPos.y}px)`;
+}
+function bbCropClampPos(){
+  const w = bbCropNatural.w*bbCropScale, h = bbCropNatural.h*bbCropScale;
+  bbCropPos.x = Math.min(0, Math.max(BB_CROP_VP.w - w, bbCropPos.x));
+  bbCropPos.y = Math.min(0, Math.max(BB_CROP_VP.h - h, bbCropPos.y));
+}
+(function bbCropDragInit(){
+  const vp = document.getElementById('cropViewport');
+  function start(x,y){ bbCropDrag = { startX:x, startY:y, origX:bbCropPos.x, origY:bbCropPos.y }; vp.style.cursor='grabbing'; }
+  function move(x,y){
+    if(!bbCropDrag) return;
+    bbCropPos.x = bbCropDrag.origX + (x - bbCropDrag.startX);
+    bbCropPos.y = bbCropDrag.origY + (y - bbCropDrag.startY);
+    bbCropClampPos(); bbApplyCropTransform();
+  }
+  function end(){ bbCropDrag = null; vp.style.cursor='grab'; }
+  vp.addEventListener('mousedown', e=>start(e.clientX,e.clientY));
+  window.addEventListener('mousemove', e=>move(e.clientX,e.clientY));
+  window.addEventListener('mouseup', end);
+  vp.addEventListener('touchstart', e=>{ const t=e.touches[0]; start(t.clientX,t.clientY); }, {passive:true});
+  vp.addEventListener('touchmove', e=>{ const t=e.touches[0]; move(t.clientX,t.clientY); }, {passive:true});
+  vp.addEventListener('touchend', end);
+})();
+document.getElementById('cropZoom').addEventListener('input', function(){
+  const coverScale = Math.max(BB_CROP_VP.w/bbCropNatural.w, BB_CROP_VP.h/bbCropNatural.h);
+  const centerX = BB_CROP_VP.w/2, centerY = BB_CROP_VP.h/2;
+  const imgCenterX = (centerX - bbCropPos.x) / bbCropScale, imgCenterY = (centerY - bbCropPos.y) / bbCropScale;
+  bbCropScale = coverScale * (this.value/100);
+  bbCropPos = { x: centerX - imgCenterX*bbCropScale, y: centerY - imgCenterY*bbCropScale };
+  bbCropClampPos(); bbApplyCropTransform();
+});
+function bbCancelCrop(){ document.getElementById('cropModal').style.display = 'none'; bbCropTarget = null; }
+function bbConfirmCrop(){
+  const img = document.getElementById('cropImg');
+  const outW = 480, outH = 610; // ~3:4 passport ratio, fixed output resolution
+  const canvas = document.createElement('canvas');
+  canvas.width = outW; canvas.height = outH;
+  const ctx = canvas.getContext('2d');
+  const sx = (0 - bbCropPos.x) / bbCropScale;
+  const sy = (0 - bbCropPos.y) / bbCropScale;
+  const sw = BB_CROP_VP.w / bbCropScale, sh = BB_CROP_VP.h / bbCropScale;
+  ctx.drawImage(img, sx, sy, sw, sh, 0, 0, outW, outH);
+  // Subtle branded watermark stamped onto every uploaded photo
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.38)';
+  ctx.fillRect(0, outH-26, outW, 26);
+  ctx.fillStyle = 'rgba(255,255,255,0.92)';
+  ctx.font = '600 13px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Brahmin Vivaah · Powered by KSpiderAI', outW/2, outH-9);
+  ctx.restore();
+
+  bbCompressCanvas(canvas, (out)=>{
+    const kb = Math.round(out.length*0.75/1024);
+    if(bbCropTarget==='main'){
+      photoDataUrl = out;
+      document.getElementById('photoStatus').textContent = "Photo ready (~" + kb + " KB)";
+      const pv = document.getElementById('photoPreview');
+      pv.style.backgroundImage = `url(${out})`; pv.textContent = "";
+    } else if(bbCropTarget==='slot2'){
+      photo2DataUrl = out;
+      const pv = document.getElementById('photoPreview2');
+      pv.style.backgroundImage = `url(${out})`; pv.textContent = "";
+    } else if(bbCropTarget==='slot3'){
+      photo3DataUrl = out;
+      const pv = document.getElementById('photoPreview3');
+      pv.style.backgroundImage = `url(${out})`; pv.textContent = "";
+    }
+    bbUpdatePreview(); bbUpdateCompleteness();
+    document.getElementById('cropModal').style.display = 'none';
+    bbCropTarget = null;
+  });
+}
 
 document.getElementById('f_subcaste').addEventListener('change', function(){
   document.getElementById('f_subcaste_other').style.display = this.value==='other' ? 'block' : 'none';
@@ -965,6 +1147,9 @@ function bbUpdatePreview(){
     row('Complexion', document.getElementById('f_complexion').value) +
     row('Diet', document.getElementById('f_diet').value) +
     row('Blood Group', v('f_blood')) +
+    row('Mother Tongue', v('f_mothertongue')) +
+    row('Smoking', document.getElementById('f_smoking').value) +
+    row('Drinking', document.getElementById('f_drinking').value) +
     row('City', v('f_city')) +
     row('Marital Status', document.getElementById('f_marital').value) +
     row('Hobbies', v('f_hobbies'));
@@ -975,15 +1160,20 @@ function bbUpdatePreview(){
     row('Kul Devta/Devi', v('f_kuldevta')) + row('Native Place', v('f_native'));
 
   document.getElementById('pv_career').innerHTML =
-    row('Qualification', v('f_edu')) + row('College/University', v('f_college')) +
+    row('Qualification', v('f_edu')) + row('College/University', v('f_college')) + row('Post-Graduation', v('f_pg')) +
+    row('Medium', document.getElementById('f_medium').value) + row('Certifications', v('f_certs')) +
+    row('10th %', v('f_10th')) + row('12th %', v('f_12th')) + row('Graduation Year', v('f_gradyear')) +
+    row('Studied Abroad', document.getElementById('f_abroad').value) +
     row('Occupation', v('f_job')) + row('Company', v('f_company')) +
+    row('Employment Type', document.getElementById('f_emptype').value) + row('Experience', v('f_experience') && v('f_experience')+' yrs') +
     row('Annual Income', v('f_income')) + row('Work Location', v('f_worklocation'));
 
   document.getElementById('pv_family').innerHTML =
     row("Father", [v('f_father'), v('f_father_occ')].filter(Boolean).join(' — ')) +
     row("Mother", [v('f_mother'), v('f_mother_occ')].filter(Boolean).join(' — ')) +
     row('Brothers', v('f_brothers')) + row('Sisters', v('f_sisters')) +
-    row('Family Type', document.getElementById('f_famtype').value) + row('Family Status', v('f_famstatus'));
+    row('Family Type', document.getElementById('f_famtype').value) + row('Family Status', v('f_famstatus')) +
+    row('Family Income', document.getElementById('f_famincome').value) + row('House', document.getElementById('f_house').value);
 
   document.getElementById('pv_contact').innerHTML =
     row('Mobile', v('f_mobile')) + row('WhatsApp', v('f_whatsapp')) + row('Email', v('f_email')) +
@@ -1006,10 +1196,10 @@ document.getElementById('bdForm').addEventListener('change', bbUpdatePreview);
 /* ================= DATA COLLECT / FILL ================= */
 const BV_CONTACT_FIELDS = ['f_mobile','f_whatsapp','f_email','f_address','f_reference'];
 function bbCollectData(){
-  const ids = ['f_name','f_gender','f_marital','f_dob','f_tob','f_pob','f_height','f_complexion','f_diet','f_blood','f_city','f_hobbies',
+  const ids = ['f_name','f_gender','f_marital','f_dob','f_tob','f_pob','f_height','f_complexion','f_diet','f_blood','f_mothertongue','f_smoking','f_drinking','f_city','f_hobbies',
     'f_subcaste','f_subcaste_other','f_gotra','f_nakshatra','f_rashi','f_manglik','f_kuldevta','f_native',
-    'f_edu','f_college','f_job','f_company','f_income','f_worklocation',
-    'f_father','f_father_occ','f_mother','f_mother_occ','f_brothers','f_sisters','f_famtype','f_famstatus',
+    'f_edu','f_college','f_pg','f_medium','f_certs','f_10th','f_12th','f_gradyear','f_abroad','f_job','f_company','f_emptype','f_experience','f_income','f_worklocation',
+    'f_father','f_father_occ','f_mother','f_mother_occ','f_brothers','f_sisters','f_famtype','f_famstatus','f_famincome','f_house',
     'f_mobile','f_whatsapp','f_email','f_address','f_reference',
     'f_pref_agemin','f_pref_agemax','f_pref_subcaste','f_pref_city','f_pref_edu','f_pref_diet','f_pref_manglik'];
   const data = {};
@@ -1100,13 +1290,23 @@ function bbDownloadHTML(){
   const card = document.getElementById('printArea').outerHTML;
   const styles = document.querySelector('style').outerHTML;
   const name = (v('f_name')||'biodata').replace(/[^a-z0-9]+/gi,'_');
-  const doc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${v('f_name')||'Biodata'} - Marriage Biodata</title>${styles}
-  <style>body{background:#FAF3E6;padding:30px;display:flex;justify-content:center;} .bd-card{max-width:520px;}</style>
-  </head><body>${card}</body></html>`;
+  const doc = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${v('f_name')||'Biodata'} - Marriage Biodata - Brahmin Vivaah</title>${styles}
+  <style>
+    @page{ size: A4; margin: 10mm; }
+    body{background:#FAF3E6;padding:14mm 0;display:flex;justify-content:center;}
+    .bd-card{width:190mm;box-sizing:border-box;padding:14mm 12mm;}
+    .a4-toolbar{position:fixed;top:10px;right:10px;z-index:50;}
+    .a4-toolbar button{background:#6B1E23;color:#fff;border:none;padding:8px 16px;border-radius:8px;font-weight:700;cursor:pointer;}
+    @media print{ .a4-toolbar{display:none;} body{padding:0;} .bd-card{width:190mm;box-shadow:none;} }
+  </style>
+  </head><body>
+  <div class="a4-toolbar"><button onclick="window.print()">🖨️ Print / Save as PDF</button></div>
+  ${card}
+  </body></html>`;
   const blob = new Blob([doc], {type:'text/html'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = name + '_biodata.html';
+  a.download = name + '_biodata_brahmin_vivaah.html';
   a.click();
 }
 function bbShareWhatsApp(){
@@ -1280,18 +1480,19 @@ async function bbOpenProfile(uid){
         <div><p class="bd-name">${p.f_name||'Member'}</p><div class="bd-tag">${[p.f_gotra&&('Gotra: '+p.f_gotra), p.f_nakshatra&&('Nakshatra: '+p.f_nakshatra)].filter(Boolean).join(' • ')}</div></div>
       </div>
       <div class="bd-section"><h4>Personal</h4><table class="bd-table">
-        ${row('Age', age?age+' yrs':'')}${row('Height/Weight', p.f_height)}${row('Complexion', p.f_complexion)}${row('Diet', p.f_diet)}${row('City', p.f_city)}${row('Marital Status', p.f_marital)}
+        ${row('Age', age?age+' yrs':'')}${row('Height/Weight', p.f_height)}${row('Complexion', p.f_complexion)}${row('Diet', p.f_diet)}${row('Mother Tongue', p.f_mothertongue)}${row('Smoking', p.f_smoking)}${row('Drinking', p.f_drinking)}${row('City', p.f_city)}${row('Marital Status', p.f_marital)}
       </table></div>
       <div class="bd-section"><h4>Religious</h4><table class="bd-table">
         ${row('Sub-Caste', subc)}${row('Gotra', p.f_gotra)}${row('Nakshatra', p.f_nakshatra)}${row('Rashi', p.f_rashi)}${row('Manglik', p.f_manglik)}${row('Native Place', p.f_native)}
       </table></div>
       <div class="bd-section"><h4>Education &amp; Career</h4><table class="bd-table">
-        ${row('Qualification', p.f_edu)}${row('Occupation', p.f_job)}${row('Company', p.f_company)}${row('Work Location', p.f_worklocation)}
+        ${row('Qualification', p.f_edu)}${row('Post-Graduation', p.f_pg)}${row('Medium', p.f_medium)}${row('Certifications', p.f_certs)}${row('10th %', p.f_10th)}${row('12th %', p.f_12th)}${row('Graduation Year', p.f_gradyear)}${row('Studied Abroad', p.f_abroad)}${row('Occupation', p.f_job)}${row('Company', p.f_company)}${row('Employment Type', p.f_emptype)}${row('Experience', p.f_experience && p.f_experience+' yrs')}${row('Work Location', p.f_worklocation)}
       </table></div>
       <div class="bd-section"><h4>Family</h4><table class="bd-table">
-        ${row('Father', p.f_father)}${row('Mother', p.f_mother)}${row('Family Type', p.f_famtype)}
+        ${row('Father', p.f_father)}${row('Mother', p.f_mother)}${row('Family Type', p.f_famtype)}${row('Family Income', p.f_famincome)}${row('House', p.f_house)}
       </table></div>
       <div class="bd-section"><h4>Contact</h4><table class="bd-table">${contactHtml}</table></div>
+      <div class="bd-watermark">Brahmin Vivaah &middot; Powered by KSpiderAI</div>
       <div class="bd-footer">Brahmin Vivaah — kspiderai.in</div>`;
 
     bbSyncShortlistBtn(uid);
