@@ -1537,6 +1537,43 @@ img{max-width:100%;display:block;}
               <button onclick="saveJobAlert()" class="bprim">🔔 Save My Job Alert</button>
             </div>
 
+
+            <!-- v18: BULK WHATSAPP OUTREACH -->
+            <div class="wgt">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:22px;">📤</span>
+                <div><div style="font-weight:700;font-size:13px;">Bulk WhatsApp Outreach <span class="min" style="font-size:9px;">RECRUITER</span></div>
+                <div style="font-size:11px;color:var(--t3);">Message matching candidates via WhatsApp instantly</div></div>
+              </div>
+              <div class="fg"><label class="fl">Job Title *</label><input type="text" class="fc" id="bwoJobTitle" placeholder="e.g. React Developer, Sales Manager"></div>
+              <div class="fg"><label class="fl">Custom Message (optional)</label><textarea class="fc" rows="2" id="bwoMsg" placeholder="Leave blank for auto-generated professional message..."></textarea></div>
+              <button onclick="bulkWhatsAppOutreach()" class="bprim">📤 Find Candidates &amp; Generate Links</button>
+              <div id="bwoResult" style="margin-top:10px;"></div>
+            </div>
+
+            <!-- v18: SKILL ASSESSMENT QUIZ -->
+            <div class="wgt">
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;"><span style="font-size:22px;">🏅</span>
+                <div><div style="font-weight:700;font-size:13px;">Skill Assessment Quiz <span class="min" style="font-size:9px;">AI-POWERED</span></div>
+                <div style="font-size:11px;color:var(--t3);">Test your skill — earn verified badge on profile</div></div>
+              </div>
+              <div style="display:flex;gap:8px;margin-bottom:8px;">
+                <input type="text" class="fc" id="quizSkillInput" placeholder="Enter skill: React, Python, HR, Sales..." style="flex:1;">
+                <button onclick="startSkillQuiz()" class="bprim" style="flex-shrink:0;padding:8px 14px;">Start Quiz</button>
+              </div>
+              <div id="quizBox"></div>
+            </div>
+
+            <!-- v18: INDUSTRY NEWS -->
+            <div class="wgt">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <div style="display:flex;align-items:center;gap:10px;"><span style="font-size:22px;">📰</span>
+                <div><div style="font-weight:700;font-size:13px;">Industry News Feed</div>
+                <div style="font-size:11px;color:var(--t3);">Latest India job market &amp; business news</div></div></div>
+                <button onclick="loadIndustryNews()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+              </div>
+              <div id="industryNewsBox"><div style="text-align:center;padding:16px;color:var(--t3);font-size:12px;">Click Refresh to load latest news</div></div>
+            </div>
+
           </div>
           <div style="text-align:center;margin-top:12px;font-size:12px;color:var(--t3);">400+ more AI tools at <a href="https://kspiderai.in" target="_blank" style="color:var(--primary);font-weight:600;">kspiderai.in</a></div>
         </div>
@@ -2200,6 +2237,22 @@ img{max-width:100%;display:block;}
             </div>
           </div>
         </div><!-- /page-minirecruiter -->
+
+
+        <!-- ── v18: WALK-IN DRIVES PAGE ── -->
+        <div id="page-walkin" class="page">
+          <div class="ph2" style="display:flex;align-items:center;justify-content:space-between;">
+            <span>🚶 Walk-in Drives</span>
+            <button onclick="showModal('postWalkinModal')" style="padding:7px 14px;border-radius:var(--rs);background:var(--primary);color:#fff;border:none;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">+ Post Walk-in</button>
+          </div>
+          <div style="background:linear-gradient(135deg,#7C3AED20,#0A84FF15);border:1.5px solid #7C3AED30;border-radius:var(--r);padding:12px;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:700;color:#7C3AED;">What is a Walk-in Drive?</div>
+            <div style="font-size:11px;color:var(--t2);margin-top:4px;">Job seekers visit the company on a specific date for direct interviews. No prior appointment needed. Great for bulk hiring!</div>
+          </div>
+          <div id="walkinBox" style="display:flex;flex-direction:column;gap:10px;">
+            <div style="text-align:center;padding:24px;color:var(--t3);font-size:12px;"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div>Loading walk-in drives...</div>
+          </div>
+        </div>
 
         <!-- ── CAMPUS RECRUITMENT PAGE (Feature #5) ── -->
         <div id="page-campus" class="page">
@@ -4434,6 +4487,7 @@ function renderJobCard(j){
         <button class="bap" onclick="openApply('${t}','${co}','${sal}','${exp}','${typ}','${jId}','${rId}','${validateInput(j.whatsappApply||'')}')">⚡ Easy Apply</button>
         <button class="bsv" onclick="saveJob(this,'${jId}')" title="Save Job">🔖</button>
         <button class="bsv" onclick="shareJob('${t}','${co}','${loc}','${jId}')" title="Share" style="font-size:14px;">📤</button>
+        <button class="bsv" onclick="translateJobCard(this,'${jId}')" title="Translate job" style="font-size:13px;">🌐</button>
       </div>
     </div>
   </div>`;
@@ -6863,6 +6917,308 @@ function listenJobAlerts(){
   }).catch(function(){});
 }
 
+
+// ══════════════════════════════════════
+// v18 — WALK-IN DRIVES
+// ══════════════════════════════════════
+async function loadWalkins(){
+  var box=document.getElementById('walkinBox');
+  if(!box)return;
+  if(!window._fb){box.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);">Configure Firebase to see walk-in drives.</div>';return;}
+  box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div></div>';
+  try{
+    var today=new Date().toISOString().split('T')[0];
+    var q=window._fb.query(window._fb.collection(window._fb.db,'walkin_drives'),window._fb.where('date','>=',today),window._fb.orderBy('date','asc'),window._fb.limit(30));
+    var snap=await window._fb.getDocs(q);
+    if(snap.empty){box.innerHTML='<div style="text-align:center;padding:24px;color:var(--t3);font-size:12px;">No upcoming walk-in drives. Post one above!</div>';return;}
+    box.innerHTML='';
+    snap.forEach(function(d){box.insertAdjacentHTML('beforeend',renderWalkinCard({id:d.id,...d.data()}));});
+  }catch(e){box.innerHTML='<div style="padding:12px;color:var(--red);font-size:12px;">'+validateInput(e.message)+'</div>';}
+}
+
+function renderWalkinCard(w){
+  var dateObj=w.date?new Date(w.date+'T00:00:00'):null;
+  var dateStr=dateObj?dateObj.toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'TBD';
+  var daysLeft=dateObj?Math.ceil((dateObj-new Date())/86400000):0;
+  var urgency=daysLeft<=1?'#EF4444':daysLeft<=3?'#F59E0B':'#10B981';
+  var daysLabel=daysLeft<=0?'Today!':daysLeft===1?'Tomorrow':daysLeft+' days left';
+  return '<div class="pc" style="animation:fu .3s ease;"><div style="padding:14px;">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;">'
+    +'<div style="flex:1;min-width:0;">'
+    +'<div style="font-size:14px;font-weight:800;color:var(--text);">'+validateInput(w.role||'')+'</div>'
+    +'<div style="font-size:12px;color:var(--primary);font-weight:600;">'+validateInput(w.company||'')+'</div></div>'
+    +'<span style="font-size:10px;font-weight:700;color:#fff;background:'+urgency+';padding:3px 8px;border-radius:99px;flex-shrink:0;margin-left:8px;">'+daysLabel+'</span>'
+    +'</div>'
+    +'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px;">'
+    +'<span style="font-size:11px;background:#7C3AED15;color:#7C3AED;padding:3px 8px;border-radius:99px;">📅 '+dateStr+'</span>'
+    +(w.time?'<span style="font-size:11px;background:var(--s2);color:var(--t2);padding:3px 8px;border-radius:99px;">🕐 '+validateInput(w.time)+'</span>':'')
+    +(w.salary?'<span style="font-size:11px;background:#10B98112;color:#10B981;padding:3px 8px;border-radius:99px;">💰 '+validateInput(w.salary)+'</span>':'')
+    +(w.openings?'<span style="font-size:11px;background:var(--s2);color:var(--t2);padding:3px 8px;border-radius:99px;">👥 '+w.openings+' openings</span>':'')
+    +'</div>'
+    +(w.venue?'<div style="font-size:11px;color:var(--t2);margin-bottom:6px;display:flex;gap:6px;"><span>📍</span><span>'+validateInput(w.venue)+'</span></div>':'')
+    +(w.requirements?'<div style="font-size:11px;color:var(--t2);margin-bottom:6px;"><strong>Requirements:</strong> '+validateInput(w.requirements.slice(0,100))+(w.requirements.length>100?'...':'')+'</div>':'')
+    +(w.dressCode?'<div style="font-size:11px;color:var(--t3);margin-bottom:8px;">👔 '+validateInput(w.dressCode)+'</div>':'')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;">'
+    +(w.mapLink?'<a href="'+validateInput(w.mapLink)+'" target="_blank" style="padding:6px 12px;background:#10B98118;color:#10B981;border:1px solid #10B98130;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">🗺️ Directions</a>':'')
+    +(w.contact?'<a href="tel:'+validateInput(w.contact)+'" style="padding:6px 12px;background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;">📞 Contact</a>':'')
+    +'<button onclick="shareWalkin(\''+validateInput(w.role||'')+'\',\''+validateInput(w.company||'')+'\',\''+dateStr+'\',\''+validateInput(w.venue||'')+'\')" style="padding:6px 12px;background:var(--s2);color:var(--t2);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">📤 Share</button>'
+    +'<button onclick="addToCalendar(\''+validateInput(w.role||'')+'\',\''+validateInput(w.company||'')+'\',\''+validateInput(w.date||'')+'\',\''+validateInput(w.venue||'')+'\')" style="padding:6px 12px;background:var(--s2);color:var(--t2);border:1px solid var(--border);border-radius:6px;font-size:11px;cursor:pointer;font-family:inherit;">📅 Add to Calendar</button>'
+    +'</div></div></div>';
+}
+
+async function submitWalkin(){
+  var company=$('wiCompany')&&$('wiCompany').value.trim();
+  var role=$('wiRole')&&$('wiRole').value.trim();
+  var date=$('wiDate')&&$('wiDate').value;
+  var venue=$('wiVenue')&&$('wiVenue').value.trim();
+  if(!company||!role||!date||!venue)return showToast('Fill Company, Role, Date and Venue!');
+  if(!window._fb||!_user)return showToast('Login required!');
+  var btn=$('postWalkinBtn');
+  if(btn){btn.disabled=true;btn.textContent='Posting...';}
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'walkin_drives'),{
+      company:validateInput(company),role:validateInput(role),date:date,
+      time:$('wiTime')?validateInput($('wiTime').value):'',
+      venue:validateInput(venue),
+      mapLink:$('wiMapLink')?validateInput($('wiMapLink').value):'',
+      salary:$('wiSalary')?validateInput($('wiSalary').value):'',
+      openings:$('wiOpenings')?parseInt($('wiOpenings').value)||0:0,
+      requirements:$('wiReq')?validateInput($('wiReq').value):'',
+      dressCode:$('wiDress')?validateInput($('wiDress').value):'',
+      contact:$('wiContact')?validateInput($('wiContact').value):'',
+      posterId:_user.uid,posterName:(_up&&_up.name)||'',
+      createdAt:window._fb.serverTimestamp()
+    });
+    closeModal('postWalkinModal');
+    showToast('Walk-in drive posted!');
+    ['wiCompany','wiRole','wiDate','wiTime','wiVenue','wiMapLink','wiSalary','wiOpenings','wiReq','wiDress','wiContact'].forEach(function(id){var el=$(id);if(el)el.value='';});
+    showPage('walkin',null);
+  }catch(e){showToast('Error: '+e.message);}
+  finally{if(btn){btn.disabled=false;btn.textContent='Post Walk-in Drive';}}
+}
+
+function shareWalkin(role,company,date,venue){
+  var msg='Walk-in Drive Alert!\n\nRole: '+role+'\nCompany: '+company+'\nDate: '+date+'\nVenue: '+venue+'\n\nRegister on KSpider Connect: https://kspiderai.in/tools/KSpider_Job_Placement.html\n\n#WalkIn #Jobs #KSpiderAI';
+  if(navigator.share)navigator.share({title:role+' Walk-in at '+company,text:msg}).catch(function(){});
+  else navigator.clipboard.writeText(msg).then(function(){showToast('Walk-in details copied!');});
+}
+
+function addToCalendar(role,company,date,venue){
+  if(!date){showToast('No date set for this drive.');return;}
+  var d=date.replace(/-/g,'');
+  var title=encodeURIComponent(role+' Walk-in at '+company);
+  var loc=encodeURIComponent(venue);
+  window.open('https://calendar.google.com/calendar/render?action=TEMPLATE&text='+title+'&dates='+d+'T090000/'+d+'T170000&details=Walk-in+Drive+via+KSpider+Connect&location='+loc,'_blank');
+}
+
+// ══════════════════════════════════════
+// v18 — MULTILINGUAL JOB CARDS
+// ══════════════════════════════════════
+var _jobTranslCache={};
+async function translateJobCard(btn,jobId){
+  var card=btn.closest('.pc');
+  if(!card)return;
+  if(card.dataset.translated==='1'){
+    card.dataset.translated='0';btn.textContent='🌐';btn.title='Translate';
+    if(_jobTranslCache[jobId]){
+      var titleEl=card.querySelector('[data-jtt]')||card.querySelector('div[style*="font-size:14px"][style*="font-weight:800"]');
+      var descEl=card.querySelector('[data-jdesc]')||card.querySelector('div[style*="font-size:12px"][style*="color:var(--t2)"][style*="margin-bottom:10px"]');
+      if(titleEl&&_jobTranslCache[jobId].origTitle)titleEl.textContent=_jobTranslCache[jobId].origTitle;
+      if(descEl&&_jobTranslCache[jobId].origDesc)descEl.textContent=_jobTranslCache[jobId].origDesc;
+    }
+    showToast('Showing in English');return;
+  }
+  var lang=window._transLang||'hi';
+  if(lang==='en'){showToast('Select a language in Profile dropdown first');return;}
+  btn.textContent='⏳';btn.disabled=true;
+  try{
+    if(!_jobTranslCache[jobId])_jobTranslCache[jobId]={};
+    var titleEl=card.querySelector('div[style*="font-size:14px"][style*="font-weight:800"]');
+    var descEl=card.querySelector('div[style*="font-size:12px"][style*="line-height:1.6"]')||card.querySelector('div[style*="font-size:12px"][style*="color:var(--t2)"][style*="margin-bottom:10px"]');
+    if(titleEl){
+      if(!_jobTranslCache[jobId].origTitle)_jobTranslCache[jobId].origTitle=titleEl.textContent;
+      var tTitle=await translateText(_jobTranslCache[jobId].origTitle,lang);
+      titleEl.textContent=tTitle;
+    }
+    if(descEl){
+      if(!_jobTranslCache[jobId].origDesc)_jobTranslCache[jobId].origDesc=descEl.textContent;
+      var tDesc=await translateText(_jobTranslCache[jobId].origDesc.slice(0,300),lang);
+      descEl.textContent=tDesc;
+    }
+    card.dataset.translated='1';btn.textContent='🔤';btn.title='Show in English';
+    var ll=typeof TRANS_LANGS!=='undefined'?TRANS_LANGS.find(function(l){return l.code===lang;}):null;
+    showToast('Translated to '+(ll?ll.label:lang));
+  }catch(e){showToast('Translation failed');}
+  finally{btn.disabled=false;}
+}
+
+// ══════════════════════════════════════
+// v18 — BULK WHATSAPP OUTREACH
+// ══════════════════════════════════════
+async function bulkWhatsAppOutreach(){
+  var jobTitle=$('bwoJobTitle')&&$('bwoJobTitle').value.trim();
+  var customMsg=$('bwoMsg')&&$('bwoMsg').value.trim();
+  var rb=document.getElementById('bwoResult');
+  if(!jobTitle)return showToast('Enter job title first!');
+  if(!window._fb||!_user)return showToast('Login required!');
+  if(!rb)return;
+  rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Finding candidates...</div>';
+  try{
+    var snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','jobseeker'),window._fb.limit(50)));
+    var candidates=[];
+    snap.forEach(function(d){var u=d.data();if(u.phone)candidates.push({id:d.id,...u});});
+    if(!candidates.length){rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px;">No candidates with phone numbers found yet.</div>';return;}
+    var html='<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:8px;">'+candidates.length+' candidates found — send individual WhatsApp messages:</div><div style="display:flex;flex-direction:column;gap:6px;">';
+    candidates.slice(0,20).forEach(function(u){
+      var name=validateInput(u.name||'Candidate');
+      var phone=(u.phone||'').replace(/[^\d+]/g,'').replace(/^\+/,'');
+      var deepLink='https://kspiderai.in/tools/KSpider_Job_Placement.html';
+      var msg=customMsg||('Namaste '+name+', we have an opening for '+jobTitle+' that matches your profile. Apply on KSpider Connect: '+deepLink+' #Jobs #KSpiderAI');
+      var waUrl='https://wa.me/'+phone+'?text='+encodeURIComponent(msg);
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--s2);border-radius:var(--rs);border:1px solid var(--border);">'
+        +'<div style="flex:1;min-width:0;"><div style="font-size:11px;font-weight:700;color:var(--text);">'+name+'</div>'
+        +'<div style="font-size:10px;color:var(--t3);">'+validateInput(u.headline||u.role||'Job Seeker')+'</div></div>'
+        +'<a href="'+waUrl+'" target="_blank" style="padding:5px 10px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:700;text-decoration:none;white-space:nowrap;">💬 WhatsApp</a></div>';
+    });
+    html+='</div>';
+    if(candidates.length>20)html+='<div style="font-size:10px;color:var(--t3);text-align:center;margin-top:6px;">Showing first 20 of '+candidates.length+' candidates</div>';
+    rb.innerHTML=html;
+  }catch(e){rb.innerHTML='<div style="color:var(--red);font-size:11px;">'+validateInput(e.message)+'</div>';}
+}
+
+// ══════════════════════════════════════
+// v18 — INDUSTRY NEWS FEED
+// ══════════════════════════════════════
+var _newsCache=[];
+async function loadIndustryNews(){
+  var box=document.getElementById('industryNewsBox');
+  if(!box)return;
+  if(_newsCache.length){renderNews();return;}
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Loading news...</div>';
+  var feedUrl='https://economictimes.indiatimes.com/industry/rssfeeds/13352306.cms';
+  var apiUrl='https://api.rss2json.com/v1/api.json?rss_url='+encodeURIComponent(feedUrl)+'&count=8';
+  try{
+    var r=await fetch(apiUrl);
+    var d=await r.json();
+    if(d.status==='ok'&&d.items&&d.items.length){_newsCache=d.items;renderNews();}
+    else{loadAINewsSummary();}
+  }catch(e){loadAINewsSummary();}
+}
+
+function renderNews(){
+  var box=document.getElementById('industryNewsBox');
+  if(!box||!_newsCache.length)return;
+  box.innerHTML='';
+  _newsCache.slice(0,8).forEach(function(item){
+    var pubDate=item.pubDate?new Date(item.pubDate).toLocaleDateString('en-IN',{day:'numeric',month:'short'}):'';
+    box.insertAdjacentHTML('beforeend',
+      '<div style="background:var(--surface);border:1.5px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:8px;animation:fu .2s ease;">'
+      +'<div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:4px;line-height:1.4;">'+validateInput(item.title||'')+'</div>'
+      +'<div style="font-size:10px;color:var(--t3);margin-bottom:6px;">'+pubDate+(item.author?' · '+validateInput(item.author):'')+'</div>'
+      +(item.link?'<a href="'+validateInput(item.link)+'" target="_blank" style="font-size:11px;color:var(--primary);font-weight:600;text-decoration:none;">Read more →</a>':'')
+      +'</div>');
+  });
+}
+
+async function loadAINewsSummary(){
+  var box=document.getElementById('industryNewsBox');
+  if(!box)return;
+  try{
+    var yr=new Date().getFullYear();
+    var result=await ksAI('Give 5 latest India job market news for '+yr+'. Format each as: HEADLINE: [title] | SUMMARY: [1 line]. Topics: hiring trends, salary changes, top companies hiring, IT sector, startups.','You are an India job market news curator.');
+    box.innerHTML='<div style="background:var(--pl);border:1.5px solid var(--primary);border-radius:var(--rs);padding:8px 12px;font-size:10px;color:var(--primary);margin-bottom:8px;">AI-curated news summary</div>'
+      +'<div style="font-size:12px;color:var(--text);white-space:pre-wrap;line-height:1.7;">'+validateInput(result)+'</div>';
+  }catch(e){box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px;">Could not load news. Check your connection.</div>';}
+}
+
+// ══════════════════════════════════════
+// v18 — SKILL ASSESSMENT QUIZ
+// ══════════════════════════════════════
+var _quizQuestions=[],_quizAnswers=[],_quizSkill='',_quizScore=0;
+
+async function startSkillQuiz(){
+  var skill=$('quizSkillInput')&&$('quizSkillInput').value.trim();
+  var rb=document.getElementById('quizBox');
+  if(!skill)return showToast('Enter skill name first!');
+  if(!rb)return;
+  _quizSkill=skill;_quizQuestions=[];_quizAnswers=[];_quizScore=0;
+  rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Generating '+validateInput(skill)+' quiz...</div>';
+  var prompt='Create 5 multiple choice questions for '+skill+' knowledge test for India job interviews. Return ONLY a JSON array with no markdown. Format: [{"q":"question text","options":["option A","option B","option C","option D"],"answer":"A","explanation":"brief reason"}]';
+  try{
+    var result=await ksAI(prompt,'You are a technical quiz generator. Return only valid JSON array, no markdown, no extra text.');
+    var clean=result.replace(/```json|```/g,'').trim();
+    _quizQuestions=JSON.parse(clean);
+    if(!Array.isArray(_quizQuestions)||!_quizQuestions.length)throw new Error('Invalid format');
+    renderQuizQ(0);
+  }catch(e){rb.innerHTML='<div style="color:var(--red);font-size:11px;padding:12px;">Could not generate quiz. Please try again!</div>';}
+}
+
+function renderQuizQ(idx){
+  var rb=document.getElementById('quizBox');
+  if(!rb)return;
+  if(idx>=_quizQuestions.length){showQuizResult();return;}
+  var q=_quizQuestions[idx];
+  var pct=Math.round((idx/_quizQuestions.length)*100);
+  var html='<div>'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">'
+    +'<span style="font-size:11px;font-weight:700;color:var(--primary);">Q'+(idx+1)+' of '+_quizQuestions.length+'</span>'
+    +'<span style="font-size:11px;color:var(--t3);">'+_quizSkill+'</span></div>'
+    +'<div style="height:4px;background:var(--border);border-radius:99px;margin-bottom:12px;"><div style="height:4px;background:var(--primary);border-radius:99px;width:'+pct+'%;"></div></div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:12px;line-height:1.5;">'+validateInput(q.q||'')+'</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px;">';
+  (q.options||[]).forEach(function(opt,i){
+    var letter=['A','B','C','D'][i];
+    html+='<button onclick="answerQuizQ('+idx+',\''+letter+'\',\''+validateInput(q.answer||'A')+'\')" style="text-align:left;padding:10px 14px;background:var(--s2);border:1.5px solid var(--border);border-radius:var(--rs);font-size:12px;cursor:pointer;font-family:inherit;color:var(--text);">'
+      +'<span style="font-weight:700;color:var(--primary);margin-right:8px;">'+letter+'.</span>'+validateInput(opt)+'</button>';
+  });
+  html+='</div></div>';
+  rb.innerHTML=html;
+}
+
+function answerQuizQ(idx,selected,correct){
+  if(selected===correct)_quizScore++;
+  _quizAnswers.push({idx:idx,selected:selected,correct:correct});
+  var rb=document.getElementById('quizBox');
+  var ok=selected===correct;
+  var exp=_quizQuestions[idx]&&_quizQuestions[idx].explanation?_quizQuestions[idx].explanation:'';
+  rb.innerHTML='<div style="padding:20px;text-align:center;">'
+    +'<div style="font-size:32px;margin-bottom:8px;">'+(ok?'✅':'❌')+'</div>'
+    +'<div style="font-size:14px;font-weight:800;color:'+(ok?'#10B981':'#EF4444')+'">'+(ok?'Correct!':'Wrong! Answer: '+correct)+'</div>'
+    +(exp?'<div style="font-size:11px;color:var(--t3);margin-top:8px;text-align:left;background:var(--s2);padding:8px;border-radius:var(--rs);">'+validateInput(exp)+'</div>':'')
+    +'</div>';
+  setTimeout(function(){renderQuizQ(idx+1);},1500);
+}
+
+async function showQuizResult(){
+  var rb=document.getElementById('quizBox');
+  if(!rb)return;
+  var pct=Math.round((_quizScore/_quizQuestions.length)*100);
+  var passed=pct>=60;
+  var color=pct>=80?'#10B981':pct>=60?'#F59E0B':'#EF4444';
+  rb.innerHTML='<div style="text-align:center;padding:20px;">'
+    +'<div style="width:80px;height:80px;border-radius:50%;border:5px solid '+color+';display:flex;align-items:center;justify-content:center;margin:0 auto 12px;flex-direction:column;">'
+    +'<span style="font-size:20px;font-weight:900;color:'+color+';">'+pct+'%</span>'
+    +'<span style="font-size:9px;color:var(--t3);">score</span></div>'
+    +'<div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px;">'+validateInput(_quizSkill)+' Assessment</div>'
+    +'<div style="font-size:12px;color:'+color+';margin-bottom:12px;">'+(passed?'Certified 🏆':'Needs Practice')+'</div>'
+    +'<div style="font-size:11px;color:var(--t3);margin-bottom:16px;">'+_quizScore+' / '+_quizQuestions.length+' correct</div>'
+    +(passed?'<button onclick="saveSkillBadge()" class="bprim" style="margin-bottom:8px;">🏆 Save Badge to Profile</button><br>':'')
+    +'<button onclick="startSkillQuiz()" style="padding:8px 16px;background:var(--s2);color:var(--t2);border:1px solid var(--border);border-radius:var(--rs);font-size:11px;cursor:pointer;font-family:inherit;">🔄 Try Again</button>'
+    +'</div>';
+}
+
+async function saveSkillBadge(){
+  if(!window._fb||!_user)return showToast('Login to save badge!');
+  var pct=Math.round((_quizScore/_quizQuestions.length)*100);
+  try{
+    var badgeText=_quizSkill+' Verified '+pct+'%';
+    var newSkills=(_up&&_up.skills?_up.skills+', ':'')+badgeText;
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{skills:newSkills});
+    if(_up)_up.skills=newSkills;
+    showToast(_quizSkill+' badge saved to profile!');
+  }catch(e){showToast('Error: '+e.message);}
+}
+
 async function loadAnalytics(){
   if(!window._fb||!_user){
     if($('anJobs')) $('anJobs').textContent='3';
@@ -7046,6 +7402,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(pg==='network'){setTimeout(function(){searchNetwork();loadOnlineUsers();},200);}
     if(pg==='analytics'){setTimeout(loadAnalytics,200);}
     if(pg==='viral'){setTimeout(vmInit,50);}
+    if(pg==='walkin'){setTimeout(loadWalkins,200);}
   };
 });
 
@@ -9006,6 +9363,31 @@ window.appendBranding=appendBranding;
 <div id="adminAnnounceBanner" style="display:none;position:fixed;top:var(--hh);left:0;right:0;z-index:9999;background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;padding:8px 16px;text-align:center;font-size:12px;font-weight:700;box-shadow:0 2px 8px rgba(239,68,68,.4);">
   <span id="adminAnnounceText"></span>
   <button onclick="document.getElementById('adminAnnounceBanner').style.display='none'" style="background:rgba(255,255,255,.2);border:none;color:#fff;padding:2px 8px;border-radius:99px;margin-left:10px;cursor:pointer;font-size:11px;font-family:inherit;">✕ Dismiss</button>
+</div>
+
+<!-- ── v18: POST WALK-IN MODAL ── -->
+<div class="mo" id="postWalkinModal">
+  <div class="md" style="max-width:520px;">
+    <div class="mhd"><div class="mht">🚶 Post Walk-in Drive</div><button class="mcl" onclick="closeModal('postWalkinModal')">✕</button></div>
+    <div class="mbd">
+      <div class="fg"><label class="fl">Company Name *</label><input type="text" class="fc" id="wiCompany" placeholder="Your company name"></div>
+      <div class="fg"><label class="fl">Role / Position *</label><input type="text" class="fc" id="wiRole" placeholder="e.g. Sales Executive, HR Manager"></div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Walk-in Date *</label><input type="date" class="fc" id="wiDate"></div>
+        <div class="fg"><label class="fl">Time Slot</label><input type="text" class="fc" id="wiTime" placeholder="e.g. 10 AM - 4 PM"></div>
+      </div>
+      <div class="fg"><label class="fl">Venue / Address *</label><textarea class="fc" rows="2" id="wiVenue" placeholder="Full address where candidates should report"></textarea></div>
+      <div class="fg"><label class="fl">Google Maps Link</label><input type="url" class="fc" id="wiMapLink" placeholder="https://maps.google.com/..."></div>
+      <div class="fr2">
+        <div class="fg"><label class="fl">Salary</label><input type="text" class="fc" id="wiSalary" placeholder="e.g. 3-6 LPA"></div>
+        <div class="fg"><label class="fl">No. of Openings</label><input type="number" class="fc" id="wiOpenings" placeholder="e.g. 20"></div>
+      </div>
+      <div class="fg"><label class="fl">Requirements</label><textarea class="fc" rows="2" id="wiReq" placeholder="Qualification, experience, skills required..."></textarea></div>
+      <div class="fg"><label class="fl">Dress Code</label><input type="text" class="fc" id="wiDress" placeholder="e.g. Formal attire mandatory"></div>
+      <div class="fg"><label class="fl">Contact for Queries</label><input type="text" class="fc" id="wiContact" placeholder="Phone or email for candidate queries"></div>
+      <button class="bprim" id="postWalkinBtn" onclick="submitWalkin()">🚶 Post Walk-in Drive</button>
+    </div>
+  </div>
 </div>
 
 </body>
