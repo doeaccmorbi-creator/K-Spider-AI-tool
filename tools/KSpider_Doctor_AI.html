@@ -14780,6 +14780,18 @@ setTimeout(function() {
 
 <!-- &#x2500;&#x2500;&#x2500; ADVANCED OPD QUEUE SECTION &#x2500;&#x2500;&#x2500; -->
 <div id="adv-opd-queue" class="section" style="display:none;">
+
+  <!-- Today's Appointments -> Check-In panel: links Appointments booking to OPD walk-in flow -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title">&#x1F4C5; Today's Appointments &mdash; Check-In Patients
+      <span style="margin-left:auto;font-size:11px;font-weight:500;color:#64748b;">Time-wise, earliest first</span>
+    </div>
+    <input type="text" id="opd-appt-search" placeholder="&#x1F50D; Search any patient by Registration No. (UHID) / Name / Mobile..." oninput="opdApptListRender()" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;margin-bottom:12px;">
+    <div id="opd-appt-list" style="display:flex;flex-direction:column;gap:8px;">
+      <div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">Loading appointments...</div>
+    </div>
+  </div>
+
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;">
 
     <!-- Add Patient Form -->
@@ -16547,7 +16559,9 @@ function opdQueueAdd() {
         existing.lastUpdated = new Date().toISOString();
         if (typeof ksPtSaveAll === 'function') ksPtSaveAll(pts);
       } else {
-        uhid = (typeof ksGenUHID === 'function') ? ksGenUHID(name) : ('KS-' + Date.now().toString().slice(-6));
+        uhid = (typeof ksGenApptUHID === 'function')
+          ? ksGenApptUHID(phone, new Date().toISOString().slice(0,10), pts.length + 1)
+          : ((typeof ksGenUHID === 'function') ? ksGenUHID(name) : ('KS-' + Date.now().toString().slice(-6)));
         const newPt = {
           uhid, name, age, dob: '', gender: gender || 'Male',
           phone, phone2: '', blood: '', type: 'OPD',
@@ -16681,6 +16695,191 @@ function _opdUpdateStats() {
   // Update saas dashboard queue stat
   const qEl = document.getElementById('saas-active-queue');
   if (qEl) qEl.textContent = waiting;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   🔗 APPOINTMENTS ⇄ OPD QUEUE LINK
+   Shows today's booked appointments (time-sorted) right inside OPD Queue,
+   lets reception search any patient by Registration No./Name/Mobile, and
+   opens a single "next steps" panel with every follow-on action for that
+   patient (check-in, diagnosis, prescription, billing, record, cancel).
+   ══════════════════════════════════════════════════════════════════════ */
+
+function _opdApptTimeToMinutes(t) {
+  if (!t) return 9999;
+  const m = String(t).trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)?$/i);
+  if (!m) return 9999;
+  let h = parseInt(m[1], 10);
+  const min = parseInt(m[2], 10);
+  const ap = (m[3] || '').toUpperCase();
+  if (ap === 'PM' && h !== 12) h += 12;
+  if (ap === 'AM' && h === 12) h = 0;
+  return h * 60 + min;
+}
+
+function opdApptListRender() {
+  const wrap = document.getElementById('opd-appt-list');
+  if (!wrap) return;
+  const q = (document.getElementById('opd-appt-search')?.value || '').trim().toLowerCase();
+  const todayStr = new Date().toISOString().split('T')[0];
+  let list;
+  let searching = false;
+
+  if (q) {
+    // Search across ALL appointments (any date) by UHID / name / mobile
+    searching = true;
+    list = (_apptAdvState.appointments || []).filter(a => {
+      return (a.name && a.name.toLowerCase().includes(q)) ||
+             (a.phone && a.phone.includes(q)) ||
+             (a.checkedInUhid && a.checkedInUhid.toLowerCase().includes(q));
+    }).slice().sort((a, b) => (b.id || 0) - (a.id || 0)).slice(0, 25);
+  } else {
+    // Default: today's appointments, earliest time first, Pending on top
+    list = (_apptAdvState.appointments || [])
+      .filter(a => a.date === todayStr && a.status !== 'Cancelled')
+      .slice()
+      .sort((a, b) => _opdApptTimeToMinutes(a.time) - _opdApptTimeToMinutes(b.time));
+  }
+
+  if (!list.length) {
+    wrap.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px;">
+      ${searching ? 'No matching appointment found.' : 'No appointments booked for today yet. New walk-in patients can be added directly below.'}
+    </div>`;
+    return;
+  }
+
+  wrap.innerHTML = list.map(a => {
+    const statusCls = a.status === 'Pending' ? 'opd-type-online' : a.status === 'Completed' ? 'opd-q-done' : 'opd-q-emergency';
+    const checkedBadge = a.checkedInUhid ? '<span class="opd-q-badge opd-q-done" style="margin-left:6px;">&#x2713; Checked-In</span>' : '';
+    const dateBadge = searching ? `<span style="font-size:10px;color:#94a3b8;">${a.date ? new Date(a.date).toLocaleDateString('en-IN',{day:'numeric',month:'short'}) : ''}</span>` : '';
+    return `<div onclick="opdOpenApptActions(${a.id})" style="display:flex;align-items:center;gap:12px;background:#f8fafc;border:1px solid #e8edf5;border-radius:10px;padding:10px 14px;cursor:pointer;transition:background 0.15s;" onmouseover="this.style.background='#eef2ff'" onmouseout="this.style.background='#f8fafc'">
+      <div style="min-width:64px;text-align:center;">
+        <div style="font-size:13px;font-weight:800;color:#0b3c5d;">${a.time || '—'}</div>
+        ${dateBadge}
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:13px;font-weight:700;color:#0f172a;">${a.name}${checkedBadge}</div>
+        <div style="font-size:11px;color:#64748b;">${a.type || ''}${a.age ? ' &middot; ' + a.age + 'yr' : ''}${a.phone ? ' &middot; ' + a.phone : ''}${a.checkedInUhid ? ' &middot; ' + a.checkedInUhid : ''}</div>
+      </div>
+      <span class="opd-q-badge ${statusCls}">${a.status}</span>
+      <button onclick="event.stopPropagation();opdOpenApptActions(${a.id})" style="background:#0b3c5d;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">Open &rarr;</button>
+    </div>`;
+  }).join('');
+}
+
+// ── Quick Actions panel: everything that can happen next for one patient ──
+function ksInjectApptActionsModal() {
+  if (document.getElementById('ks-appt-actions-modal')) return;
+  const shell = document.getElementById('saas-shell') || document.body;
+  const modal = document.createElement('div');
+  modal.id = 'ks-appt-actions-modal';
+  modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:9999;align-items:center;justify-content:center;padding:16px;';
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:14px;max-width:420px;width:100%;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+        <div>
+          <div id="ks-aa-name" style="font-size:16px;font-weight:800;color:#0b3c5d;">—</div>
+          <div id="ks-aa-sub" style="font-size:12px;color:#64748b;margin-top:2px;">—</div>
+        </div>
+        <button onclick="ksCloseApptActions()" style="background:#f1f5f9;border:none;border-radius:8px;width:28px;height:28px;cursor:pointer;font-size:14px;color:#64748b;">&#x2715;</button>
+      </div>
+      <div id="ks-aa-uhid-row" style="font-size:11px;color:#2563eb;font-weight:700;margin:6px 0 14px;"></div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <button id="ks-aa-checkin-btn" onclick="apptQuickCheckIn()" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;border:none;border-radius:9px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;text-align:left;padding-left:16px;">&#x2705; Check-In to OPD Queue</button>
+        <button onclick="ksApptGoTo('adv-ai-diagnosis')" style="background:#f4f7fb;color:#0b3c5d;border:1px solid #e2e8f0;border-radius:9px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;text-align:left;padding-left:16px;">&#x1F9E0; AI Diagnosis</button>
+        <button onclick="ksApptGoTo('adv-eprescription')" style="background:#f4f7fb;color:#0b3c5d;border:1px solid #e2e8f0;border-radius:9px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;text-align:left;padding-left:16px;">&#x1F58A;&#xFE0F; E-Prescription</button>
+        <button onclick="ksApptGoTo('saas-billing')" style="background:#f4f7fb;color:#0b3c5d;border:1px solid #e2e8f0;border-radius:9px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;text-align:left;padding-left:16px;">&#x1F4B0; Billing / Invoice</button>
+        <button id="ks-aa-record-btn" onclick="ksApptViewRecord()" style="background:#f4f7fb;color:#0b3c5d;border:1px solid #e2e8f0;border-radius:9px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;text-align:left;padding-left:16px;">&#x1F5C2;&#xFE0F; View Patient Record</button>
+        <button onclick="ksApptCancelFromModal()" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:9px;padding:11px;font-weight:700;font-size:13px;cursor:pointer;text-align:left;padding-left:16px;">&#x2716; Cancel Appointment</button>
+      </div>
+    </div>`;
+  shell.appendChild(modal);
+}
+
+let _ksAaApptId = null;
+
+function opdOpenApptActions(apptId) {
+  ksInjectApptActionsModal();
+  const a = _apptAdvState.appointments.find(x => x.id === apptId);
+  if (!a) return;
+  _ksAaApptId = apptId;
+  document.getElementById('ks-aa-name').textContent = a.name;
+  document.getElementById('ks-aa-sub').textContent = `${a.type || ''}${a.age ? ' · ' + a.age + 'yr' : ''}${a.phone ? ' · ' + a.phone : ''} · ${a.date || ''} ${a.time || ''}`;
+  document.getElementById('ks-aa-uhid-row').textContent = a.checkedInUhid ? ('Registration No.: ' + a.checkedInUhid) : 'Registration No. will be generated on Check-In';
+  const checkinBtn = document.getElementById('ks-aa-checkin-btn');
+  if (checkinBtn) {
+    checkinBtn.innerHTML = a.checkedInUhid ? '&#x2705; Already Checked-In (Add another token)' : '&#x2705; Check-In to OPD Queue';
+  }
+  document.getElementById('ks-appt-actions-modal').style.display = 'flex';
+}
+
+function ksCloseApptActions() {
+  const m = document.getElementById('ks-appt-actions-modal');
+  if (m) m.style.display = 'none';
+  _ksAaApptId = null;
+}
+
+function apptQuickCheckIn() {
+  const a = _apptAdvState.appointments.find(x => x.id === _ksAaApptId);
+  if (!a) return;
+  // Pre-fill the OPD "Add Patient to Queue" form with this appointment's data
+  const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+  set('opd-q-name', a.name);
+  set('opd-q-age', a.age);
+  if (a.gender) set('opd-q-gender', a.gender);
+  set('opd-q-type', 'Walk-in');
+  set('opd-q-complaint', a.notes || '');
+  set('opd-q-phone', a.phone);
+  opdQueueAdd();
+  // Remember this patient's UHID against the appointment (does not touch its status,
+  // so it still shows correctly / can still be tracked on the Appointments page)
+  const latest = _opdState.queue[_opdState.queue.length - 1];
+  if (latest && latest.uhid) { a.checkedInUhid = latest.uhid; _apptAdvSave(); }
+  ksCloseApptActions();
+  opdApptListRender();
+  const target = document.getElementById('adv-opd-queue');
+  if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function ksApptGoTo(sectionId) {
+  const a = _apptAdvState.appointments.find(x => x.id === _ksAaApptId);
+  ksCloseApptActions();
+  const titles = {
+    'adv-ai-diagnosis': ['\uD83E\uDD16 AI Diagnosis', 'DDx engine + BMI tools'],
+    'adv-eprescription': ['\uD83D\uDCCB E-Prescription', 'VoiceRx + SmartSync builder'],
+    'saas-billing': ['\uD83D\uDCB0 Billing', 'Invoice & payment management']
+  };
+  const t = titles[sectionId] || [sectionId, ''];
+  if (typeof saasSwitchSection === 'function') saasSwitchSection(sectionId, t[0], t[1], null);
+  setTimeout(() => {
+    if (!a) return;
+    if (sectionId === 'adv-eprescription') {
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      set('erx-pt-name', a.name);
+      set('erx-pt-age', a.age);
+      if (a.gender) { const g = document.getElementById('erx-pt-gender'); if (g) g.value = a.gender[0]; }
+    } else if (sectionId === 'saas-billing') {
+      const set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+      set('saas-bill-patient', a.name);
+    }
+  }, 150);
+}
+
+function ksApptViewRecord() {
+  const a = _apptAdvState.appointments.find(x => x.id === _ksAaApptId);
+  if (!a) return;
+  ksCloseApptActions();
+  if (!a.checkedInUhid) { alert('This patient has not been checked-in yet, so no patient record exists. Please Check-In first.'); return; }
+  if (typeof saasSwitchSection === 'function') saasSwitchSection('ks-patient-db', '\uD83E\uDDD1\u200D\u2695\uFE0F Patient Database', 'UHID \u00B7 Records \u00B7 History', null);
+  setTimeout(() => { if (typeof ksPtOpenDetail === 'function') ksPtOpenDetail(a.checkedInUhid); }, 150);
+}
+
+function ksApptCancelFromModal() {
+  if (_ksAaApptId == null) return;
+  if (!confirm('Cancel this appointment?')) return;
+  apptCancel(_ksAaApptId);
+  ksCloseApptActions();
+  opdApptListRender();
 }
 
 
@@ -17409,7 +17608,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.sidebar-nav-item').forEach(b => b.classList.remove('active'));
       if (btn) btn.classList.add('active');
       else { const m = document.querySelector(`.sidebar-nav-item[data-section="${sectionId}"]`); if (m) m.classList.add('active'); }
-      if (sectionId === 'adv-opd-queue') { opdQueueRender(); _opdUpdateStats(); }
+      if (sectionId === 'adv-opd-queue') { opdQueueRender(); _opdUpdateStats(); if (typeof opdApptListRender === 'function') opdApptListRender(); }
       if (sectionId === 'adv-appointments') { apptRenderList(); apptUpdateCounts(); }
       if (sectionId === 'adv-eprescription' && !_erxMedRowCount) erxAddMedRow();
       if (sectionId === 'adv-patient-engagement') { fuRenderReminders(); waBroadcastPreview(); }
@@ -21445,6 +21644,7 @@ document.addEventListener('DOMContentLoaded',function(){
     ksInjectHealthTipsUI();
     ksInjectPatientSearch();
     ksUpdateAllBadges();
+    if (typeof ksInjectApptActionsModal === 'function') ksInjectApptActionsModal();
 
     // Patch saasSwitchSection
     var _orig=window.saasSwitchSection;
@@ -21822,10 +22022,19 @@ window.apptBook = function() {
   // Generate UHID before booking
   var mobile  = (document.getElementById('appt-phone')||{value:''}).value.trim();
   var date    = (document.getElementById('appt-date')||{value:''}).value || new Date().toISOString().slice(0,10);
-  var appts   = JSON.parse(localStorage.getItem('ks_appointments_v1') || '[]');
-  var todayAppts = appts.filter(function(a){ return a.date === date; });
+  // Use the real, live appointment list (not the separate doctor-scope backup key)
+  // so the daily sequence number is always accurate.
+  var todayAppts = (typeof _apptAdvState !== 'undefined' && _apptAdvState.appointments)
+    ? _apptAdvState.appointments.filter(function(a){ return a.date === date; })
+    : [];
   var seqNum  = todayAppts.length + 1;
-  var uhid    = ksGenApptUHID(mobile, date, seqNum);
+
+  // If this patient already has a Registration No. (matched by mobile), reuse
+  // it instead of minting a new one — keeps one patient = one UHID for life,
+  // whether they were first registered via Appointments or OPD Queue.
+  var pts = JSON.parse(localStorage.getItem('ks_patient_db_v1') || '[]');
+  var existing = pts.findIndex(function(p){ return mobile && p.phone === mobile; });
+  var uhid = (existing >= 0) ? pts[existing].uhid : ksGenApptUHID(mobile, date, seqNum);
 
   // Set UHID in the form
   var uhidEl = document.getElementById('appt-uhid');
@@ -21841,8 +22050,6 @@ window.apptBook = function() {
   var state   = (document.getElementById('appt-state')||{value:''}).value.trim();
 
   if (name && mobile) {
-    var pts = JSON.parse(localStorage.getItem('ks_patient_db_v1') || '[]');
-    var existing = pts.findIndex(function(p){ return p.phone===mobile||p.uhid===uhid; });
     var ptRecord = {
       uhid: uhid, name: name, age: age, dob: dob, gender: gender||'Male',
       phone: mobile, phone2:'', blood:'', type:'OPD',
