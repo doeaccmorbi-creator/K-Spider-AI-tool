@@ -982,7 +982,8 @@ function renderDoubts(){
               <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
             </div>
             <p style="font-size:14px;margin-bottom:6px"><b>Q:</b> ${d.question}</p>
-            ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px">💡 ${d.answer}</p>` : `<p style="font-size:12.5px;color:var(--faint)">Waiting for a reply…</p>`}
+            ${d.aiAnswer ? `<div style="font-size:13px;color:var(--navy-800);background:var(--gold-100);padding:10px 12px;border-radius:9px;margin-bottom:8px"><b>🤖 Instant AI answer</b> <span style="color:var(--faint);font-weight:400">(unverified — your faculty will confirm below)</span><br>${d.aiAnswer}</div>` : ''}
+            ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px">💡 <b>Faculty:</b> ${d.answer}</p>` : `<p style="font-size:12.5px;color:var(--faint)">Waiting for a faculty reply…</p>`}
           </div>`).join('')}
       </div>
     </div>
@@ -994,11 +995,22 @@ function submitDoubt(e){
   const chapter = Number(document.getElementById('doubtChapter').value);
   const question = document.getElementById('doubtText').value.trim();
   if(!question) return false;
-  const doubt = {email:DB.currentUser.email, name:DB.currentUser.name, subject, chapter, question, answer:null, status:'pending', when:'Just now'};
+  const doubt = {email:DB.currentUser.email, name:DB.currentUser.name, subject, chapter, question, answer:null, aiAnswer:null, status:'pending', when:'Just now'};
 
   if(window.FIREBASE_ENABLED){
     fbDb.collection('doubts').add(Object.assign({}, doubt, {when: firebase.firestore.FieldValue.serverTimestamp()}))
-      .then(ref=>{ DB._doubtsCache.push(Object.assign({id:ref.id}, doubt)); render(); notifyFacultyOfNewDoubt(doubt); })
+      .then(ref=>{
+        const localDoubt = Object.assign({id:ref.id}, doubt);
+        DB._doubtsCache.push(localDoubt);
+        render();
+        notifyFacultyOfNewDoubt(doubt);
+        fetchAIAnswer(subject, chapter, question).then(aiText=>{
+          if(!aiText) return;
+          fbDb.collection('doubts').doc(ref.id).update({aiAnswer: aiText}).catch(()=>{});
+          localDoubt.aiAnswer = aiText;
+          if(ROUTE.view==='doubts') render();
+        });
+      })
       .catch(err=>toast(err.message,'⚠️'));
   } else {
     doubt.id = 'demo-'+Date.now();
@@ -1006,8 +1018,13 @@ function submitDoubt(e){
     DB._doubtsCache = DB.doubts.filter(d=>d.email===DB.currentUser.email);
     render();
     notifyFacultyOfNewDoubt(doubt);
+    fetchAIAnswer(subject, chapter, question).then(aiText=>{
+      if(!aiText) return;
+      doubt.aiAnswer = aiText;
+      if(ROUTE.view==='doubts') render();
+    });
   }
-  toast('Doubt posted — the subject faculty will be notified');
+  toast('Doubt posted — getting an instant AI answer, and notifying the subject faculty');
   return false;
 }
 
@@ -1016,6 +1033,32 @@ function submitDoubt(e){
    public key + template. Wire your credentials in emailjs-config.js; until
    then these calls are safely no-ops (checked via window.EMAILJS_ENABLED).
    ========================================================================= */
+/* ============================== AI DOUBT ASSISTANT =========================
+   Instant, unverified AI answer while the human faculty reply is pending —
+   uses the same KSpider AI proxy the rest of the platform already relies
+   on, so no new API key or backend is needed here.
+   ========================================================================= */
+function fetchAIAnswer(subject, chapter, question){
+  const chapterTitle = (DATA.titles[subject] && DATA.titles[subject][chapter]) || '';
+  const prompt = `You are a NEET/JEE tutor helping a Class 11 student. Subject: ${subject}, Chapter ${chapter} (${chapterTitle}). The student's doubt: "${question}". Give a clear, exam-focused answer in simple language, under 130 words. No preamble, start straight with the explanation.`;
+  return fetch('https://ks-api-proxy.kspiderai.workers.dev/v1/messages', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 400,
+      messages: [{role:'user', content: prompt}]
+    })
+  })
+    .then(res=>res.json())
+    .then(data=>{
+      const blocks = (data && data.content) || [];
+      const text = blocks.map(b=>b.text).filter(Boolean).join('\n').trim();
+      return text || null;
+    })
+    .catch(err=>{ console.warn('[DSA] AI doubt answer failed', err); return null; });
+}
+
 function notifyFacultyOfNewDoubt(doubt){
   if(!window.EMAILJS_ENABLED || !window.FIREBASE_ENABLED) return;
   fbDb.collection('users').where('role','==','faculty').where('subject','==',doubt.subject).get()
@@ -1133,19 +1176,26 @@ function renderFacultyDoubts(){
 
 function renderDoubtCards(rows, mode){
   if(rows.length===0) return `<div class="card"><div class="empty"><div class="ic">📭</div>No doubts here yet.</div></div>`;
-  return rows.slice().reverse().map(d=>`
+  return rows.slice().reverse().map(d=>{
+    const waText = encodeURIComponent(`New doubt on Dr. Shreyansh Academy\nSubject: ${d.subject} · Ch.${d.chapter}\nStudent: ${d.name}\nQ: ${d.question}${d.answer?`\nA: ${d.answer}`:''}`);
+    return `
     <div class="card" style="padding:18px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
         <div style="display:flex;align-items:center;gap:8px"><span class="avatar-sm">${(d.name||'?')[0]}</span><b style="font-size:13.5px">${d.name}</b><span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span></div>
-        <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <a href="https://wa.me/?text=${waText}" target="_blank" title="Forward this doubt via WhatsApp" style="text-decoration:none;font-size:16px">📱</a>
+          <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+        </div>
       </div>
       <p style="font-size:14px;margin-bottom:10px"><b>Q:</b> ${d.question}</p>
-      ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px;margin-bottom:8px">💡 ${d.answer}</p>` : ''}
+      ${d.aiAnswer ? `<div style="font-size:13px;color:var(--navy-800);background:var(--gold-100);padding:10px 12px;border-radius:9px;margin-bottom:8px"><b>🤖 Instant AI answer</b> <span style="color:var(--faint);font-weight:400">(unverified — human reply below confirms it)</span><br>${d.aiAnswer}</div>` : ''}
+      ${d.answer ? `<p style="font-size:13.5px;color:var(--navy-800);background:var(--paper-2);padding:10px 12px;border-radius:9px;margin-bottom:8px">💡 <b>Faculty:</b> ${d.answer}</p>` : ''}
       <div style="display:flex;gap:8px">
         <input id="reply-${d.id}" placeholder="${d.answer?'Update reply...':'Type a reply...'}" style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
         <button class="btn btn-primary btn-sm" onclick="answerDoubt('${d.id}','${mode}')">Send</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function answerDoubt(id, mode){
@@ -1423,6 +1473,26 @@ function maybePrefillAdminFromKSpider(){
 }
 
 /* ============================== INIT ===================================== */
+/* ============================== PWA (INSTALL + OFFLINE SHELL) ============= */
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('service-worker.js').catch(err=>console.warn('[DSA] SW register failed', err));
+  });
+}
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e=>{
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+  const btn = document.getElementById('installAppBtn');
+  if(btn) btn.classList.remove('hidden');
+});
+function installApp(){
+  if(!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  _deferredInstallPrompt.userChoice.then(()=>{ _deferredInstallPrompt = null; });
+}
+window.addEventListener('appinstalled', ()=>toast('DSA installed — find it on your home screen 🎉'));
+
 maybePrefillAdminFromKSpider();
 render();
 if(ROUTE.view==='landing') setTimeout(mountDeck, 30);
