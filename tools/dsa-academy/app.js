@@ -103,6 +103,8 @@ function render(){
     result: renderResult,
     parent: renderParentDashboard,
     admin: renderAdminDashboard,
+    adminstudent: renderAdminStudentDetail,
+    myfees: renderMyFees,
     mock: renderMock,
     leaderboard: renderLeaderboard,
     progress: renderProgress,
@@ -134,6 +136,7 @@ const NAV = {
     {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
     {id:'bookmarks', ic:'⭐', label:'Bookmarks', view:'bookmarks'},
     {id:'plans', ic:'💎', label:'Plans', view:'plans'},
+    {id:'myfees', ic:'💳', label:'My Fees', view:'myfees'},
   ],
   parent: [
     {id:'overview', ic:'🏠', label:'Overview', view:'parent'},
@@ -373,10 +376,17 @@ function handleAuth(e, role){
   authCall
     .then(afterAuth)
     .then(profile=>{
+      if(profile.banned){
+        fbAuth.signOut();
+        toast('This account has been suspended — contact your admin.', '🚫');
+        return;
+      }
       DB.currentUser = {
         role: profile.role || role, name: profile.name || name, email,
         uid: profile.uid, plan: profile.plan || 'free', bookmarks: profile.bookmarks || [],
-        subject: profile.subject || null, approved: profile.approved !== false
+        subject: profile.subject || null, approved: profile.approved !== false,
+        feeTotal: profile.feeTotal||0, feePaid: profile.feePaid||0,
+        feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[]
       };
       toast(`Signed in as ${DB.currentUser.role}`);
       if(role==='student') loadStudentResults().then(()=>enterDashboard(role));
@@ -415,6 +425,33 @@ function logout(){
 }
 
 /* ============================== STUDENT DASHBOARD ======================= */
+function renderMyFees(){
+  if(!DB.currentUser) return renderAuth();
+  const u = DB.currentUser;
+  const due = Math.max(0, (u.feeTotal||0) - (u.feePaid||0));
+  const history = u.feeHistory || [];
+  return `
+  <div class="app-shell">
+    ${sidebar('myfees')}
+    <div class="main" style="max-width:820px">
+      <div class="main-head"><div><h2>💳 My Fees</h2><p>Read-only — contact the academy admin for any changes</p></div></div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>₹${u.feeTotal||0}</b><span>Total fees</span></div>
+        <div class="card stat-box"><b>₹${u.feePaid||0}</b><span>Paid so far</span></div>
+        <div class="card stat-box"><b style="color:${due>0?'var(--red-600)':'var(--green-600)'}">₹${due}</b><span>Remaining</span></div>
+        <div class="card stat-box"><b>${u.feeDueDate||'—'}</b><span>Due date</span></div>
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Payment history</h3>
+        ${history.length===0 ? `<div class="empty"><div class="ic">💳</div>No fee record yet — this fills in once the academy sets up your fee plan.</div>` : `
+        <table class="table-simple"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody>
+        ${history.slice().reverse().map(h=>`<tr><td>${h.when}</td><td style="color:${h.amount<0?'var(--gold-600)':'var(--green-600)'}"><b>${h.amount<0?'-':''}₹${Math.abs(h.amount)}</b></td><td>${h.method}</td><td>${h.note||'—'}</td></tr>`).join('')}
+        </tbody></table>`}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderStudentDashboard(){
   if(!DB.currentUser) return renderAuth();
   const u = DB.currentUser;
@@ -1138,6 +1175,202 @@ function approveFaculty(uid){
     }).catch(err=>toast(err.message,'⚠️'));
 }
 
+/* ============================== STUDENT MANAGEMENT (ADMIN) ================
+   Real registered students, individual full record, fee/payment ledger,
+   and access control (ban/unban). Fees are recorded manually by admin —
+   there is no live payment gateway wired up (see the Plans page note);
+   this is a ledger for whatever fee collection process you already run
+   (cash, UPI, bank transfer, etc.), not an automatic charge.
+   ========================================================================= */
+function loadAllStudents(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('users').where('role','==','student').get()
+    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function loadStudentFullRecord(uid){
+  return fbDb.collection('users').doc(uid).get().then(doc=>{
+    if(!doc.exists) return null;
+    const student = Object.assign({uid}, doc.data());
+    return Promise.all([
+      fbDb.collection('testResults').where('email','==',student.email).get().then(s=>s.docs.map(d=>d.data())),
+      fbDb.collection('doubts').where('email','==',student.email).get().then(s=>s.docs.map(d=>Object.assign({id:d.id},d.data())))
+    ]).then(([results, doubts])=>{
+      student._results = results;
+      student._doubts = doubts;
+      return student;
+    });
+  });
+}
+function banStudent(uid, banned){
+  fbDb.collection('users').doc(uid).update({banned})
+    .then(()=>{
+      toast(banned ? 'Student banned 🚫' : 'Student access restored ✅');
+      if(DB._studentDetailCache && DB._studentDetailCache.uid===uid) DB._studentDetailCache.banned = banned;
+      if(DB._studentsCache){ const s = DB._studentsCache.find(x=>x.uid===uid); if(s) s.banned = banned; }
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+function recordPayment(uid){
+  const amountInput = document.getElementById('payAmount');
+  const methodInput = document.getElementById('payMethod');
+  const noteInput = document.getElementById('payNote');
+  const amount = Number(amountInput.value);
+  if(!amount || amount<=0){ toast('Enter a valid amount','⚠️'); return; }
+  const entry = {amount, method: methodInput.value, note: (noteInput.value||'').trim(), when: new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})};
+  const student = DB._studentDetailCache;
+  const newPaid = (student.feePaid||0) + amount;
+  const newHistory = (student.feeHistory||[]).concat([entry]);
+  fbDb.collection('users').doc(uid).update({feePaid: newPaid, feeHistory: newHistory})
+    .then(()=>{
+      student.feePaid = newPaid;
+      student.feeHistory = newHistory;
+      toast('Payment recorded ✅');
+      amountInput.value=''; noteInput.value='';
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+function saveFeePlan(uid){
+  const totalInput = document.getElementById('feeTotal');
+  const dueInput = document.getElementById('feeDueDate');
+  const total = Number(totalInput.value)||0;
+  const dueDate = dueInput.value || null;
+  fbDb.collection('users').doc(uid).update({feeTotal: total, feeDueDate: dueDate})
+    .then(()=>{
+      DB._studentDetailCache.feeTotal = total;
+      DB._studentDetailCache.feeDueDate = dueDate;
+      toast('Fee plan saved ✅');
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+function refundStudent(uid){
+  const amountInput = document.getElementById('refundAmount');
+  const amount = Number(amountInput.value);
+  if(!amount || amount<=0){ toast('Enter a valid refund amount','⚠️'); return; }
+  const student = DB._studentDetailCache;
+  const newPaid = Math.max(0, (student.feePaid||0) - amount);
+  const entry = {amount:-amount, method:'refund', note:'Refund issued', when: new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})};
+  const newHistory = (student.feeHistory||[]).concat([entry]);
+  fbDb.collection('users').doc(uid).update({feePaid: newPaid, feeHistory: newHistory})
+    .then(()=>{
+      student.feePaid = newPaid;
+      student.feeHistory = newHistory;
+      toast('Refund recorded ✅');
+      amountInput.value='';
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+
+function renderAdminStudentDetail(){
+  if(!DB.currentUser) return renderAuth();
+  const uid = ROUTE.params.uid;
+  if(!DB._studentDetailCache || DB._studentDetailCache.uid !== uid){
+    DB._studentDetailCache = null;
+    loadStudentFullRecord(uid).then(student=>{ DB._studentDetailCache = student; render(); });
+    return `<div class="app-shell">${sidebar('overview')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading student record…</div></div></div>`;
+  }
+  const s = DB._studentDetailCache;
+  if(!s) return `<div class="app-shell">${sidebar('overview')}<div class="main"><div class="empty"><div class="ic">❓</div>Student not found.</div></div></div>`;
+
+  const due = Math.max(0, (s.feeTotal||0) - (s.feePaid||0));
+  const avg = s._results.length ? Math.round(s._results.reduce((a,r)=>a+r.pct,0)/s._results.length) : null;
+  const bySubject = {};
+  SUBJECTS.forEach(sub=>{
+    const rs = s._results.filter(r=>r.subject===sub);
+    bySubject[sub] = rs.length ? Math.round(rs.reduce((a,r)=>a+r.pct,0)/rs.length) : null;
+  });
+
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main">
+      <div class="main-head">
+        <div><h2>${s.name}</h2><p>${s.email} · Class ${s.cls||'—'}</p></div>
+        <button class="btn btn-outline btn-sm" onclick="go('admin')">← All students</button>
+      </div>
+
+      <div class="stat-row">
+        <div class="card stat-box"><b>${s._results.length}</b><span>Tests attempted</span></div>
+        <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
+        <div class="card stat-box"><b>${s._doubts.length}</b><span>Doubts posted</span></div>
+        <div class="card stat-box"><b>${due>0?'₹'+due:'₹0'}</b><span>Fees due</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:15px">Account status</h3>
+          <span class="pill ${s.banned?'pill-red':'pill-green'}">${s.banned?'🚫 Banned':'✅ Active'}</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">${s.banned ? 'This student cannot log in or access any content right now.' : 'This student has normal access to the platform.'}</p>
+        ${s.banned
+          ? `<button class="btn btn-green btn-sm" onclick="banStudent('${uid}',false)">Restore access</button>`
+          : `<button class="btn btn-outline btn-sm" style="border-color:var(--red-500);color:var(--red-600)" onclick="banStudent('${uid}',true)">Ban this student</button>`}
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Subject-wise performance</h3>
+        <div class="result-stats" style="margin:0">
+          ${SUBJECTS.map(sub=>`<div class="card"><b>${bySubject[sub]===null?'—':bySubject[sub]+'%'}</b><span>${sub}</span></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">💳 Fees &amp; payments</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+          <div class="field"><label>Total fees (₹)</label><input type="number" id="feeTotal" value="${s.feeTotal||''}" placeholder="e.g. 25000"></div>
+          <div class="field"><label>Due date</label><input type="date" id="feeDueDate" value="${s.feeDueDate||''}"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" style="margin-bottom:20px" onclick="saveFeePlan('${uid}')">Save fee plan</button>
+
+        <div class="stat-row" style="margin-bottom:18px">
+          <div class="card stat-box"><b>₹${s.feeTotal||0}</b><span>Total</span></div>
+          <div class="card stat-box"><b>₹${s.feePaid||0}</b><span>Paid</span></div>
+          <div class="card stat-box"><b style="color:${due>0?'var(--red-600)':'var(--green-600)'}">₹${due}</b><span>Remaining</span></div>
+          <div class="card stat-box"><b>${s.feeDueDate||'—'}</b><span>Due date</span></div>
+        </div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px">
+          <input type="number" id="payAmount" placeholder="Amount ₹" style="width:110px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+          <select id="payMethod" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px"><option>Cash</option><option>UPI</option><option>Bank Transfer</option><option>Card</option><option>Other</option></select>
+          <input id="payNote" placeholder="Note (optional)" style="flex:1;min-width:140px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+          <button class="btn btn-green btn-sm" onclick="recordPayment('${uid}')">Record payment</button>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:20px;padding-top:14px;border-top:1px dashed var(--border)">
+          <input type="number" id="refundAmount" placeholder="Refund amount ₹" style="width:150px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+          <button class="btn btn-outline btn-sm" style="border-color:var(--gold-500);color:var(--gold-600)" onclick="refundStudent('${uid}')">Issue refund</button>
+        </div>
+
+        <h4 style="font-size:13px;margin-bottom:10px;color:var(--muted)">Payment history</h4>
+        ${(s.feeHistory||[]).length===0 ? `<p style="font-size:13px;color:var(--faint)">No payments recorded yet.</p>` : `
+        <table class="table-simple"><thead><tr><th>Date</th><th>Amount</th><th>Method</th><th>Note</th></tr></thead><tbody>
+        ${s.feeHistory.slice().reverse().map(h=>`<tr><td>${h.when}</td><td style="color:${h.amount<0?'var(--gold-600)':'var(--green-600)'}"><b>${h.amount<0?'-':''}₹${Math.abs(h.amount)}</b></td><td>${h.method}</td><td>${h.note||'—'}</td></tr>`).join('')}
+        </tbody></table>`}
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Test history</h3>
+        ${s._results.length===0 ? `<p style="font-size:13px;color:var(--muted)">No attempts yet.</p>` : `
+        <table class="table-simple"><thead><tr><th>Test</th><th>Score</th><th>Accuracy</th></tr></thead><tbody>
+        ${s._results.slice().reverse().map(r=>`<tr><td>${r.subject}${r.chapter?' · Ch.'+r.chapter:''} · ${r.section}</td><td>${r.score}/${r.max}</td><td>${r.pct}%</td></tr>`).join('')}
+        </tbody></table>`}
+      </div>
+
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Doubts posted</h3>
+        ${s._doubts.length===0 ? `<p style="font-size:13px;color:var(--muted)">No doubts posted yet.</p>` : s._doubts.map(d=>`
+          <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span>
+              <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+            </div>
+            <p style="font-size:13.5px">${d.question}</p>
+          </div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderFacultyPending(){
   if(!DB.currentUser) return renderAuth();
   return `
@@ -1349,19 +1582,18 @@ function renderAdminDashboard(){
   if(!DB._pendingFacultyCache){
     loadPendingFaculty().then(rows=>{ DB._pendingFacultyCache = rows; if(ROUTE.view==='admin') render(); });
   }
+  if(!DB._studentsCache){
+    loadAllStudents().then(rows=>{ DB._studentsCache = rows; if(ROUTE.view==='admin') render(); });
+  }
   const pendingFaculty = DB._pendingFacultyCache || [];
-  const demoStudents = [
-    {name:'Aarav Patel', email:'aarav.patel@student.dsa', tests: DB.results.length, cls:'11th'},
-    {name:'Diya Shah', email:'diya.shah@student.dsa', tests:0, cls:'11th'},
-    {name:'Krishna Mehta', email:'krishna.mehta@student.dsa', tests:0, cls:'12th'},
-  ];
+  const students = DB._studentsCache || [];
   return `
   <div class="app-shell">
     ${sidebar('overview')}
     <div class="main">
       <div class="main-head"><div><h2>Admin control panel</h2><p>Students, content, doubts and test performance</p></div></div>
       <div class="stat-row">
-        <div class="card stat-box"><b>${demoStudents.length}</b><span>Students (demo)</span></div>
+        <div class="card stat-box"><b>${students.length}</b><span>Registered students</span></div>
         <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects live</span></div>
         <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters published</span></div>
         <div class="card stat-box"><b>${DB.results.length}</b><span>Attempts this session</span></div>
@@ -1387,10 +1619,25 @@ function renderAdminDashboard(){
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
-        <h3 style="font-size:15px;margin-bottom:14px">Students</h3>
-        <table class="table-simple"><thead><tr><th>Name</th><th>Class</th><th>Attempts</th><th></th></tr></thead><tbody>
-        ${demoStudents.map(s=>`<tr><td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${s.name[0]}</span>${s.name}<span style="color:var(--faint);font-size:12px">${s.email}</span></td><td>${s.cls}</td><td>${s.tests}</td><td><button class="btn btn-ghost btn-sm">View →</button></td></tr>`).join('')}
-        </tbody></table>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:15px">Students ${students.length>0?`<span class="pill pill-navy" style="margin-left:6px">${students.length} registered</span>`:''}</h3>
+          <button class="btn btn-outline btn-sm" onclick="DB._studentsCache=null;render();">🔄 Refresh</button>
+        </div>
+        ${!window.FIREBASE_ENABLED ? `<div class="empty"><div class="ic">🔌</div>Connect Firebase (Live Mode) to see real registered students here.</div>` :
+          students.length===0 ? `<div class="empty"><div class="ic">📭</div>No students have signed up yet.</div>` : `
+        <table class="table-simple"><thead><tr><th>Name</th><th>Class</th><th>Plan</th><th>Fees due</th><th>Status</th><th></th></tr></thead><tbody>
+        ${students.map(s=>{
+          const due = Math.max(0, (s.feeTotal||0) - (s.feePaid||0));
+          return `<tr>
+            <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(s.name||'?')[0]}</span>${s.name}<span style="color:var(--faint);font-size:12px">${s.email}</span></td>
+            <td>${s.cls||'—'}</td>
+            <td><span class="pill ${s.plan==='premium'?'pill-gold':'pill-navy'}">${s.plan==='premium'?'★ Premium':'Free'}</span></td>
+            <td>${due>0?`<b style="color:var(--red-600)">₹${due}</b>`:'₹0'}</td>
+            <td><span class="pill ${s.banned?'pill-red':'pill-green'}">${s.banned?'Banned':'Active'}</span></td>
+            <td><button class="btn btn-ghost btn-sm" onclick="go('adminstudent',{uid:'${s.uid}'})">View →</button></td>
+          </tr>`;
+        }).join('')}
+        </tbody></table>`}
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
@@ -1442,12 +1689,20 @@ function tryKspiderSSO(){
         };
         return fbDb.collection('users').doc(uid).set(profile).then(()=>profile);
       }).then(profile=>{
+        if(profile.banned){
+          fbAuth.signOut();
+          toast('This account has been suspended — contact your admin.', '🚫');
+          return null;
+        }
         DB.currentUser = {
           role:'student', name:profile.name, email:profile.email,
-          uid, plan: profile.plan||'free', bookmarks: profile.bookmarks||[]
+          uid, plan: profile.plan||'free', bookmarks: profile.bookmarks||[],
+          feeTotal: profile.feeTotal||0, feePaid: profile.feePaid||0,
+          feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[]
         };
         return loadStudentResults();
       }).then(()=>{
+        if(!DB.currentUser) return;
         go('student');
         toast(`Welcome from K Spider, ${DB.currentUser.name.split(' ')[0]}! 👋`);
       });
