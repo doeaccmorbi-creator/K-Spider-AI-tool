@@ -2552,6 +2552,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
           <option value="banned">⛔ Banned</option>
         </select>
       </div>
+      <div id="bv-diag" style="margin:0 16px 10px;padding:10px 14px;border-radius:8px;background:rgba(37,99,235,.08);border:1px solid rgba(37,99,235,.25);font-size:.75rem;color:var(--t2);display:none"></div>
       <div style="overflow-x:auto;padding:0 16px 16px" id="bv-table-wrap">
         <table style="width:100%;border-collapse:collapse;font-size:.82rem">
           <thead id="bv-table-head"></thead>
@@ -9296,60 +9297,98 @@ function vvDetailDelete() {
   vvCloseDetail();
 }
 
+function bvDiag(msg, isError) {
+  var el = document.getElementById('bv-diag');
+  if (!el) return;
+  if (!msg) { el.style.display = 'none'; return; }
+  el.style.display = 'block';
+  el.style.background = isError ? 'rgba(220,38,38,.10)' : 'rgba(37,99,235,.08)';
+  el.style.borderColor = isError ? 'rgba(220,38,38,.35)' : 'rgba(37,99,235,.25)';
+  el.style.color = isError ? '#dc2626' : 'var(--t2)';
+  el.innerHTML = msg;
+}
+function bvWithTimeout(promise, label, ms) {
+  return new Promise(function(resolve, reject) {
+    var done = false;
+    var t = setTimeout(function(){
+      if (!done) { done = true; reject(new Error(label + ' timed out after ' + (ms/1000) + 's — check your internet connection or Firestore rules.')); }
+    }, ms || 12000);
+    promise.then(function(v){ if(!done){ done=true; clearTimeout(t); resolve(v); } })
+           .catch(function(e){ if(!done){ done=true; clearTimeout(t); reject(e); } });
+  });
+}
 function loadBrahminVivaah(tab) {
   bvTab = tab || 'profiles';
+  bvDiag('');
   ['profiles','reports','stories','business','jobs'].forEach(function(t){
     var b = document.getElementById('bv-tab-'+t);
     if (b) { b.className = 'btn btn-sm ' + (t===bvTab ? '' : 'btn-gh'); if (t===bvTab) b.style.cssText='background:#2563eb;color:#fff'; else b.style.cssText=''; }
   });
   var body = document.getElementById('bv-table-body');
   body.innerHTML = '<tr><td style="text-align:center;padding:32px;color:var(--t3)">Loading…</td></tr>';
-  if (!db) { body.innerHTML = '<tr><td style="text-align:center;padding:32px;color:var(--red)">Firestore not connected.</td></tr>'; return; }
+  if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) {
+    bvDiag('⚠️ Firebase SDK has not initialised on this admin page yet. Try refreshing.', true);
+    body.innerHTML = '<tr><td style="text-align:center;padding:28px;color:var(--red)">Firebase not ready.</td></tr>';
+    return;
+  }
+  if (!db) { bvDiag('⚠️ Firestore (var db) is not connected on this admin page.', true); body.innerHTML = '<tr><td style="text-align:center;padding:32px;color:var(--red)">Firestore not connected.</td></tr>'; return; }
 
   // Always refresh stats regardless of active tab
-  db.collection('bcBiodata').get().then(function(snap){
+  bvWithTimeout(db.collection('bcBiodata').get(), 'Loading biodatas', 12000).then(function(snap){
     bvProfiles = []; snap.forEach(function(d){ bvProfiles.push(Object.assign({_id:d.id}, d.data())); });
     var pub = bvProfiles.filter(function(p){ return p.visibility==='public'; }).length;
     var susp = bvProfiles.filter(function(p){ return p.accountStatus==='suspended' || p.accountStatus==='banned'; }).length;
     document.getElementById('bv-stat-total').textContent = bvProfiles.length;
     document.getElementById('bv-stat-public').textContent = pub;
     document.getElementById('bv-stat-suspended').textContent = susp;
+    if (bvProfiles.length === 0) {
+      bvDiag('ℹ️ Connected fine — the bcBiodata collection genuinely has 0 documents right now. Ask a user to open tools/brahminconnect.html, fill "My Biodata", and save once — it should appear here immediately after.', false);
+    } else {
+      bvDiag('');
+    }
     if (bvTab === 'profiles') bvFilterProfiles();
   }).catch(function(e){
-    console.error(e);
-    if (bvTab==='profiles') body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">⚠️ Error loading biodatas: '+e.message+'<br><span style="font-size:.72rem;color:var(--t3)">Agar yahan "Missing or insufficient permissions" dikhe, toh Firestore Rules mein brahminBiodata collection pe admin ke liye read/list access add karna hoga.</span></td></tr>';
+    console.error('[BrahminConnect]', e);
+    var hint = '';
+    if (String(e.message||'').toLowerCase().indexOf('permission') !== -1) {
+      hint = ' This is a Firestore Rules issue — confirm the deployed rules actually have a match block for /bcBiodata with public read (allow read: if true).';
+    } else if (String(e.message||'').toLowerCase().indexOf('timed out') !== -1) {
+      hint = ' The request never came back at all — check your internet connection, or that this admin page and the tool are on the same Firebase project (kspideraimain).';
+    }
+    bvDiag('❌ ' + e.message + hint, true);
+    if (bvTab==='profiles') body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error loading biodatas — see the box above for details.</td></tr>';
   });
 
-  db.collection('bcInterests').get().then(function(snap){ document.getElementById('bv-stat-interests').textContent = snap.size; }).catch(function(){});
+  db.collection('bcInterests').get().then(function(snap){ var el=document.getElementById('bv-stat-interests'); if(el) el.textContent = snap.size; }).catch(function(){});
 
   if (bvTab === 'reports') {
-    db.collection('bc_reports').orderBy('createdAt','desc').limit(200).get().then(function(snap){
+    bvWithTimeout(db.collection('bc_reports').orderBy('createdAt','desc').limit(200).get(), 'Loading reports', 12000).then(function(snap){
       bvReports = []; snap.forEach(function(d){ bvReports.push(Object.assign({_id:d.id}, d.data())); });
       document.getElementById('bv-stat-reports').textContent = bvReports.filter(function(r){ return r.status==='pending'; }).length;
       bvRenderReports(bvReports);
-    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
+    }).catch(function(e){ bvDiag('❌ ' + e.message, true); body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error — see box above.</td></tr>'; });
   }
   if (bvTab === 'stories') {
-    db.collection('bcSuccessStories').orderBy('createdAt','desc').limit(200).get().then(function(snap){
+    bvWithTimeout(db.collection('bcSuccessStories').orderBy('createdAt','desc').limit(200).get(), 'Loading success stories', 12000).then(function(snap){
       bvStories = []; snap.forEach(function(d){ bvStories.push(Object.assign({_id:d.id}, d.data())); });
       document.getElementById('bv-stat-stories').textContent = bvStories.filter(function(s){ return !s.approved; }).length;
       bvRenderStories(bvStories);
-    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error: '+e.message+'</td></tr>'; });
+    }).catch(function(e){ bvDiag('❌ ' + e.message, true); body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error — see box above.</td></tr>'; });
   }
   if (bvTab === 'business') {
-    db.collection('bcBusiness').orderBy('createdAt','desc').limit(300).get().then(function(snap){
+    bvWithTimeout(db.collection('bcBusiness').orderBy('createdAt','desc').limit(300).get(), 'Loading businesses', 12000).then(function(snap){
       bvBusinesses = []; snap.forEach(function(d){ bvBusinesses.push(Object.assign({_id:d.id}, d.data())); });
       var pendingBiz = bvBusinesses.filter(function(b){ return b.status==='pending'; }).length;
       var badge = document.getElementById('bv-badge-biz');
       if (badge) { badge.textContent = pendingBiz; badge.style.display = pendingBiz>0 ? 'inline-block' : 'none'; }
       bvRenderBusiness(bvBusinesses);
-    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">⚠️ Error: '+e.message+'<br><span style="font-size:.72rem;color:var(--t3)">Firestore Rules mein brahminBusiness collection pe admin read/list access chahiye.</span></td></tr>'; });
+    }).catch(function(e){ bvDiag('❌ ' + e.message, true); body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error — see box above.</td></tr>'; });
   }
   if (bvTab === 'jobs') {
-    db.collection('bcJobs').orderBy('createdAt','desc').limit(300).get().then(function(snap){
+    bvWithTimeout(db.collection('bcJobs').orderBy('createdAt','desc').limit(300).get(), 'Loading jobs', 12000).then(function(snap){
       bvJobs = []; snap.forEach(function(d){ bvJobs.push(Object.assign({_id:d.id}, d.data())); });
       bvRenderJobs(bvJobs);
-    }).catch(function(e){ body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">⚠️ Error: '+e.message+'<br><span style="font-size:.72rem;color:var(--t3)">Firestore Rules mein brahminJobs collection pe admin read/list access chahiye.</span></td></tr>'; });
+    }).catch(function(e){ bvDiag('❌ ' + e.message, true); body.innerHTML = '<tr><td style="text-align:center;padding:24px;color:var(--red)">Error — see box above.</td></tr>'; });
   }
   checkBrahminVivaahAlerts();
 }
