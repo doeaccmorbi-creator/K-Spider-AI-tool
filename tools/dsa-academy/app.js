@@ -105,6 +105,8 @@ function render(){
     admin: renderAdminDashboard,
     adminstudent: renderAdminStudentDetail,
     myfees: renderMyFees,
+    adminfaculty: renderAdminFaculty,
+    adminparents: renderAdminParents,
     mock: renderMock,
     leaderboard: renderLeaderboard,
     progress: renderProgress,
@@ -144,6 +146,8 @@ const NAV = {
   admin: [
     {id:'overview', ic:'🏠', label:'Overview', view:'admin'},
     {id:'admindoubts', ic:'💬', label:'Doubts inbox', view:'admindoubts'},
+    {id:'adminfaculty', ic:'🎓', label:'Manage Faculty', view:'adminfaculty'},
+    {id:'adminparents', ic:'👪', label:'Parent Accounts', view:'adminparents'},
   ],
   faculty: [
     {id:'facultydoubts', ic:'💬', label:'Doubts inbox', view:'facultydoubts'},
@@ -1174,6 +1178,122 @@ function approveFaculty(uid){
       render();
     }).catch(err=>toast(err.message,'⚠️'));
 }
+function deactivateFaculty(uid){
+  fbDb.collection('users').doc(uid).update({approved:false})
+    .then(()=>{
+      const f = (DB._allFacultyCache||[]).find(x=>x.uid===uid);
+      if(f) f.approved = false;
+      toast('Faculty deactivated');
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+function reactivateFaculty(uid){
+  fbDb.collection('users').doc(uid).update({approved:true})
+    .then(()=>{
+      const f = (DB._allFacultyCache||[]).find(x=>x.uid===uid);
+      if(f) f.approved = true;
+      toast('Faculty reactivated ✅');
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+function loadAllFaculty(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('users').where('role','==','faculty').get()
+    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function renderAdminFaculty(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB._allFacultyCache){
+    loadAllFaculty().then(rows=>{ DB._allFacultyCache = rows; if(ROUTE.view==='adminfaculty') render(); });
+    return `<div class="app-shell">${sidebar('adminfaculty')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading faculty…</div></div></div>`;
+  }
+  const rows = DB._allFacultyCache;
+  return `
+  <div class="app-shell">
+    ${sidebar('adminfaculty')}
+    <div class="main">
+      <div class="main-head"><div><h2>🎓 Manage Faculty</h2><p>${rows.length} faculty account${rows.length===1?'':'s'} across all subjects</p></div></div>
+      <div class="card" style="padding:20px">
+        ${!window.FIREBASE_ENABLED ? `<div class="empty"><div class="ic">🔌</div>Connect Firebase (Live Mode) to manage real faculty accounts.</div>` :
+          rows.length===0 ? `<div class="empty"><div class="ic">📭</div>No faculty have signed up yet.</div>` : `
+        <table class="table-simple"><thead><tr><th>Name</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody>
+        ${rows.map(f=>`<tr>
+          <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(f.name||'?')[0]}</span>${f.name}<span style="color:var(--faint);font-size:12px">${f.email}</span></td>
+          <td><span class="pill pill-navy">${(SUBJECT_META[f.subject]&&SUBJECT_META[f.subject].icon)||''} ${f.subject||'—'}</span></td>
+          <td><span class="pill ${f.approved?'pill-green':'pill-gold'}">${f.approved?'Active':'Pending / Deactivated'}</span></td>
+          <td>${f.approved
+            ? `<button class="btn btn-ghost btn-sm" style="color:var(--red-600)" onclick="deactivateFaculty('${f.uid}')">Deactivate</button>`
+            : `<button class="btn btn-green btn-sm" onclick="reactivateFaculty('${f.uid}')">Approve →</button>`}</td>
+        </tr>`).join('')}
+        </tbody></table>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================== PARENT ACCOUNTS (ADMIN) ==================== */
+function loadAllParents(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('users').where('role','==','parent').get()
+    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function renderAdminParents(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB._allParentsCache){
+    loadAllParents().then(rows=>{ DB._allParentsCache = rows; if(ROUTE.view==='adminparents') render(); });
+    return `<div class="app-shell">${sidebar('adminparents')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading parent accounts…</div></div></div>`;
+  }
+  const rows = DB._allParentsCache;
+  return `
+  <div class="app-shell">
+    ${sidebar('adminparents')}
+    <div class="main">
+      <div class="main-head"><div><h2>👪 Parent Accounts</h2><p>${rows.length} parent account${rows.length===1?'':'s'} registered</p></div></div>
+      <div class="card" style="padding:20px">
+        ${!window.FIREBASE_ENABLED ? `<div class="empty"><div class="ic">🔌</div>Connect Firebase (Live Mode) to see real parent accounts.</div>` :
+          rows.length===0 ? `<div class="empty"><div class="ic">📭</div>No parents have signed up yet.</div>` : `
+        <table class="table-simple"><thead><tr><th>Parent</th><th>Linked child email</th></tr></thead><tbody>
+        ${rows.map(p=>`<tr>
+          <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(p.name||'?')[0]}</span>${p.name}<span style="color:var(--faint);font-size:12px">${p.email}</span></td>
+          <td>${p.childEmail || '<span style="color:var(--faint)">not set</span>'}</td>
+        </tr>`).join('')}
+        </tbody></table>`}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ============================== STUDENTS TABLE: SEARCH + EXPORT ============= */
+function filterStudentsTable(){
+  const q = (document.getElementById('studentSearch').value||'').toLowerCase();
+  const cls = document.getElementById('studentClassFilter').value;
+  const status = document.getElementById('studentStatusFilter').value;
+  document.querySelectorAll('#studentsTableBody tr').forEach(row=>{
+    const matchesQ = !q || row.dataset.name.includes(q) || row.dataset.email.includes(q);
+    const matchesCls = !cls || row.dataset.cls === cls;
+    const matchesStatus = !status || row.dataset.status === status;
+    row.style.display = (matchesQ && matchesCls && matchesStatus) ? '' : 'none';
+  });
+}
+function exportStudentsCSV(){
+  const students = DB._studentsCache || [];
+  if(students.length===0){ toast('No students to export','⚠️'); return; }
+  const header = ['Name','Email','Class','Plan','Fee Total','Fee Paid','Fee Due','Due Date','Status'];
+  const rows = students.map(s=>{
+    const due = Math.max(0,(s.feeTotal||0)-(s.feePaid||0));
+    return [s.name, s.email, s.cls||'', s.plan||'free', s.feeTotal||0, s.feePaid||0, due, s.feeDueDate||'', s.banned?'Banned':'Active'];
+  });
+  const csv = [header].concat(rows).map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'dsa-students-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toast('Students exported ✅');
+}
 
 /* ============================== STUDENT MANAGEMENT (ADMIN) ================
    Real registered students, individual full record, fee/payment ledger,
@@ -1587,6 +1707,9 @@ function renderAdminDashboard(){
   }
   const pendingFaculty = DB._pendingFacultyCache || [];
   const students = DB._studentsCache || [];
+  const totalCollected = students.reduce((a,s)=>a+(s.feePaid||0),0);
+  const totalDue = students.reduce((a,s)=>a+Math.max(0,(s.feeTotal||0)-(s.feePaid||0)),0);
+  const premiumCount = students.filter(s=>s.plan==='premium').length;
   return `
   <div class="app-shell">
     ${sidebar('overview')}
@@ -1597,6 +1720,12 @@ function renderAdminDashboard(){
         <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects live</span></div>
         <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters published</span></div>
         <div class="card stat-box"><b>${DB.results.length}</b><span>Attempts this session</span></div>
+      </div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>${premiumCount}</b><span>Premium students</span></div>
+        <div class="card stat-box"><b style="color:var(--green-600)">₹${totalCollected}</b><span>Fees collected</span></div>
+        <div class="card stat-box"><b style="color:${totalDue>0?'var(--red-600)':'var(--green-600)'}">₹${totalDue}</b><span>Fees pending</span></div>
+        <div class="card stat-box"><b>${DB._pendingFacultyCache?DB._pendingFacultyCache.length:0}</b><span>Faculty awaiting approval</span></div>
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
@@ -1619,16 +1748,33 @@ function renderAdminDashboard(){
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px">
           <h3 style="font-size:15px">Students ${students.length>0?`<span class="pill pill-navy" style="margin-left:6px">${students.length} registered</span>`:''}</h3>
-          <button class="btn btn-outline btn-sm" onclick="DB._studentsCache=null;render();">🔄 Refresh</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="exportStudentsCSV()">⬇ Export CSV</button>
+            <button class="btn btn-outline btn-sm" onclick="DB._studentsCache=null;render();">🔄 Refresh</button>
+          </div>
         </div>
         ${!window.FIREBASE_ENABLED ? `<div class="empty"><div class="ic">🔌</div>Connect Firebase (Live Mode) to see real registered students here.</div>` :
           students.length===0 ? `<div class="empty"><div class="ic">📭</div>No students have signed up yet.</div>` : `
-        <table class="table-simple"><thead><tr><th>Name</th><th>Class</th><th>Plan</th><th>Fees due</th><th>Status</th><th></th></tr></thead><tbody>
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+          <input id="studentSearch" oninput="filterStudentsTable()" placeholder="Search by name or email…" style="flex:1;min-width:180px;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+          <select id="studentClassFilter" onchange="filterStudentsTable()" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+            <option value="">All classes</option>
+            <option value="11th">11th</option>
+            <option value="12th">12th</option>
+            <option value="Dropper">Dropper</option>
+          </select>
+          <select id="studentStatusFilter" onchange="filterStudentsTable()" style="padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13.5px">
+            <option value="">All status</option>
+            <option value="active">Active only</option>
+            <option value="banned">Banned only</option>
+          </select>
+        </div>
+        <table class="table-simple"><thead><tr><th>Name</th><th>Class</th><th>Plan</th><th>Fees due</th><th>Status</th><th></th></tr></thead><tbody id="studentsTableBody">
         ${students.map(s=>{
           const due = Math.max(0, (s.feeTotal||0) - (s.feePaid||0));
-          return `<tr>
+          return `<tr data-name="${(s.name||'').toLowerCase()}" data-email="${(s.email||'').toLowerCase()}" data-cls="${s.cls||''}" data-status="${s.banned?'banned':'active'}">
             <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(s.name||'?')[0]}</span>${s.name}<span style="color:var(--faint);font-size:12px">${s.email}</span></td>
             <td>${s.cls||'—'}</td>
             <td><span class="pill ${s.plan==='premium'?'pill-gold':'pill-navy'}">${s.plan==='premium'?'★ Premium':'Free'}</span></td>
