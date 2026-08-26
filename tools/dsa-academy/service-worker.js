@@ -7,7 +7,7 @@
    AI answers need a real connection.
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v1';
+const CACHE_NAME = 'dsa-shell-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -49,9 +49,11 @@ self.addEventListener('fetch', event => {
     req.url.includes('gstatic.com/firebasejs')
   ) return;
 
-  if (req.mode === 'navigate') {
-    // Network-first for the page itself, so logged-in users always get the
-    // latest build when online; falls back to the cached shell if offline.
+  if (req.mode === 'navigate' || req.url.endsWith('.js') || req.url.endsWith('.json')) {
+    // Network-first for the page itself AND app.js/config files, so a
+    // logged-in user always gets the latest code+content when online —
+    // this is what makes future updates show up without a manual cache
+    // bump. Falls back to the cached copy only when fully offline.
     event.respondWith(
       fetch(req)
         .then(res => {
@@ -59,12 +61,13 @@ self.addEventListener('fetch', event => {
           caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
           return res;
         })
-        .catch(() => caches.match('./index.html'))
+        .catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
     );
     return;
   }
 
-  // Cache-first for static assets (JS, images, fonts) — fast repeat loads.
+  // Cache-first for genuinely static assets (images, icons, fonts) — these
+  // rarely change, so serving from cache first keeps repeat loads instant.
   event.respondWith(
     caches.match(req).then(cached => {
       if (cached) return cached;
