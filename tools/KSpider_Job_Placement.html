@@ -3757,15 +3757,24 @@ function listenNotifications(){
   if(!window._fb||!_user) return;
   if(_notifUnsub){_notifUnsub();_notifUnsub=null;}
   try{
+    // NOTE: sorted client-side (not via Firestore orderBy) so this listener works
+    // instantly for every recruiter/user without needing a manual composite index
+    // to be created in Firebase console. (A where+orderBy on different fields
+    // requires a composite index in Firestore — this was silently failing before,
+    // which is why recruiters were not seeing new-application notifications.)
     var q=window._fb.query(
       window._fb.collection(window._fb.db,'notifications'),
       window._fb.where('toUid','==',_user.uid),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
     _notifUnsub=window._fb.onSnapshot(q,function(snap){
+      var docs=snap.docs.slice().sort(function(a,b){
+        var at=a.data().createdAt?.toMillis?a.data().createdAt.toMillis():0;
+        var bt=b.data().createdAt?.toMillis?b.data().createdAt.toMillis():0;
+        return bt-at;
+      });
       _notifCache=[];
-      snap.forEach(function(d){_notifCache.push({id:d.id,...d.data()});});
+      docs.forEach(function(d){_notifCache.push({id:d.id,...d.data()});});
       var unread=_notifCache.filter(function(n){return !n.read;}).length;
       var badge=document.getElementById('nBadge');
       if(badge){badge.textContent=unread>99?'99+':unread;badge.style.display=unread>0?'flex':'none';}
@@ -5707,11 +5716,12 @@ async function loadMyApplications(){
       return;
     }
     // Get notifications (applications) for this recruiter
+    // NOTE: sorted client-side (not via Firestore orderBy) so this works instantly
+    // without needing a manual composite index to be created in Firebase console.
     const notifsQ=window._fb.query(
       window._fb.collection(window._fb.db,'notifications'),
       window._fb.where('toUid','==',_user.uid),
       window._fb.where('type','==','new_application'),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(50)
     );
     const notifsSnap=await window._fb.getDocs(notifsQ);
@@ -5719,16 +5729,21 @@ async function loadMyApplications(){
       box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">📭 No applications received yet.<br>Share your job posts to attract candidates!</div>';
       return;
     }
+    const notifDocs=notifsSnap.docs.slice().sort(function(a,b){
+      const at=a.data().createdAt?.toMillis?a.data().createdAt.toMillis():0;
+      const bt=b.data().createdAt?.toMillis?b.data().createdAt.toMillis():0;
+      return bt-at;
+    });
     box.innerHTML='';
     let unread=0;
-    notifsSnap.forEach(d=>{
+    notifDocs.forEach(d=>{
       const n=d.data();
       if(!n.read) unread++;
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,n,false));
     });
     // Update badge
     const badge=$('appCountBadge');
-    if(badge){badge.textContent=notifsSnap.size;badge.style.display='inline';}
+    if(badge){badge.textContent=notifDocs.length;badge.style.display='inline';}
     const unreadBadge=document.getElementById('nBadge');
     if(unreadBadge&&unread>0){unreadBadge.textContent=unread;unreadBadge.style.display='flex';}
   }catch(e){
@@ -5775,7 +5790,8 @@ function renderApplicationCard(id, n, isSeeker){
     </div>
     ${n.hasResume?`<div style="font-size:11px;color:#10B981;background:#10B98112;border:1px solid #10B98130;border-radius:6px;padding:5px 10px;margin-bottom:8px;">📎 Resume attached</div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
-      ${n.applicantEmail?`<a href="mailto:${validateInput(n.applicantEmail)}?subject=Re: Your application for ${encodeURIComponent(n.jobTitle||'')}" style="flex:1;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;min-width:80px;">✉️ Reply</a>`:''}
+      <button onclick="openChatWithUser('${n.applicantId||''}','${(n.applicantName||'Applicant').replace(/'/g,"\\'")}')" style="flex:1;padding:7px;background:#7C3AED;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;min-width:80px;font-family:inherit;">💬 Message</button>
+      ${n.applicantEmail?`<a href="mailto:${validateInput(n.applicantEmail)}?subject=Re: Your application for ${encodeURIComponent(n.jobTitle||'')}" style="flex:1;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;min-width:80px;">✉️ Email</a>`:''}
       ${n.applicantPhone?`<a href="tel:${validateInput(n.applicantPhone)}" style="padding:7px 12px;background:#10B98118;color:#10B981;border:1px solid #10B98130;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">📞 Call</a>`:''}
       <button onclick="updateAppStatus('${id}','Shortlisted')" style="padding:7px 10px;background:#F59E0B18;color:#F59E0B;border:1px solid #F59E0B30;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">⭐ Shortlist</button>
       <button onclick="updateAppStatus('${id}','Rejected')" style="padding:7px 10px;background:#EF444418;color:#EF4444;border:1px solid #EF444430;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Reject</button>
@@ -5838,10 +5854,11 @@ async function loadMySubmittedApps(){
   }
   box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:20px;height:20px;border-width:2px;"></div><div style="font-size:12px;">Loading…</div></div>';
   try{
+    // NOTE: sorted client-side (not via Firestore orderBy) so this works instantly
+    // without needing a manual composite index to be created in Firebase console.
     const q=window._fb.query(
       window._fb.collection(window._fb.db,'applications'),
       window._fb.where('applicantId','==',_user.uid),
-      window._fb.orderBy('createdAt','desc'),
       window._fb.limit(20)
     );
     const snap=await window._fb.getDocs(q);
@@ -5852,7 +5869,12 @@ async function loadMySubmittedApps(){
     box.innerHTML='';
     const badge=$('myAppCountBadge');
     if(badge){badge.textContent=snap.size;badge.style.display='inline';}
-    snap.forEach(d=>{
+    const appDocs=snap.docs.slice().sort(function(x,y){
+      const xt=x.data().createdAt?.toMillis?x.data().createdAt.toMillis():0;
+      const yt=y.data().createdAt?.toMillis?y.data().createdAt.toMillis():0;
+      return yt-xt;
+    });
+    appDocs.forEach(d=>{
       const a=d.data();
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,{
         jobTitle:a.jobTitle,company:a.company,
@@ -5930,16 +5952,22 @@ function openChat(uid,name,convId){
   if(!window._fb||!_user){box.innerHTML='<div style="padding:16px;text-align:center;font-size:11px;color:var(--t3);">Configure Firebase to enable chat.</div>';return;}
   // Build conversation ID (sorted UIDs)
   var cid=convId||[_user.uid,uid].sort().join('_');
+  // NOTE: sorted client-side (not via Firestore orderBy) so chat works instantly
+  // without needing a manual composite index to be created in Firebase console.
   var q=window._fb.query(
     window._fb.collection(window._fb.db,'messages'),
     window._fb.where('conversationId','==',cid),
-    window._fb.orderBy('createdAt','asc'),
     window._fb.limit(50)
   );
   _msgUnsub=window._fb.onSnapshot(q,function(snap){
     box.innerHTML='';
     if(snap.empty){box.innerHTML='<div style="text-align:center;padding:24px;font-size:12px;color:var(--t3);">Say hello! 👋</div>';return;}
-    snap.forEach(function(d){
+    var msgDocs=snap.docs.slice().sort(function(a,b){
+      var at=a.data().createdAt?.toMillis?a.data().createdAt.toMillis():0;
+      var bt=b.data().createdAt?.toMillis?b.data().createdAt.toMillis():0;
+      return at-bt;
+    });
+    msgDocs.forEach(function(d){
       var m=d.data();
       var isMine=m.senderId===_user.uid;
       var tm=m.createdAt&&m.createdAt.toDate?timeAgo(m.createdAt.toDate()):'';
@@ -6616,14 +6644,21 @@ async function loadAppTracker(){
   if(!window._fb||!_user){box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Login to track applications.</div>';return;}
   box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div></div>';
   try{
-    var q=window._fb.query(window._fb.collection(window._fb.db,'applications'),window._fb.where('applicantId','==',_user.uid),window._fb.orderBy('createdAt','desc'),window._fb.limit(50));
+    // NOTE: sorted client-side (not via Firestore orderBy) so this works instantly
+    // without needing a manual composite index to be created in Firebase console.
+    var q=window._fb.query(window._fb.collection(window._fb.db,'applications'),window._fb.where('applicantId','==',_user.uid),window._fb.limit(50));
     var snap=await window._fb.getDocs(q);
     if(snap.empty){box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">No applications yet. Browse jobs and click Easy Apply!</div>';return;}
     var stages=['Applied','Seen','Shortlisted','Interview','Offered','Hired','Rejected'];
     var stageColors={Applied:'#0A84FF',Seen:'#7C3AED',Shortlisted:'#F59E0B',Interview:'#8B5CF6',Offered:'#10B981',Hired:'#059669',Rejected:'#EF4444'};
     var grouped={};
     stages.forEach(function(s){grouped[s]=[];});
-    snap.forEach(function(d){var a=d.data();var st=a.status||'Applied';if(!grouped[st])grouped[st]=[];grouped[st].push({id:d.id,...a});});
+    var appDocs=snap.docs.slice().sort(function(x,y){
+      var xt=x.data().createdAt?.toMillis?x.data().createdAt.toMillis():0;
+      var yt=y.data().createdAt?.toMillis?y.data().createdAt.toMillis():0;
+      return yt-xt;
+    });
+    appDocs.forEach(function(d){var a=d.data();var st=a.status||'Applied';if(!grouped[st])grouped[st]=[];grouped[st].push({id:d.id,...a});});
     var html='<div style="display:flex;gap:8px;overflow-x:auto;padding-bottom:8px;">';
     stages.forEach(function(stage){
       var color=stageColors[stage]||'#64748B';
@@ -6848,13 +6883,18 @@ async function loadLeaderboard(){
   if(!box||!window._fb)return;
   box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div></div>';
   try{
-    var recSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','recruiter'),window._fb.orderBy('jobs','desc'),window._fb.limit(5)));
-    var seekSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','jobseeker'),window._fb.orderBy('posts','desc'),window._fb.limit(5)));
+    // NOTE: sorted client-side (not via Firestore orderBy) so this works instantly
+    // without needing a manual composite index to be created in Firebase console.
+    var recSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','recruiter'),window._fb.limit(30)));
+    var seekSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'users'),window._fb.where('role','==','jobseeker'),window._fb.limit(30)));
     var medals=['#1','#2','#3','#4','#5'];
-    function makeBoard(snap,label,metric){
+    function sortTop(snap,metric){
+      return snap.docs.slice().sort(function(a,b){return (b.data()[metric]||0)-(a.data()[metric]||0);}).slice(0,5);
+    }
+    function makeBoard(docs,label,metric){
       var html='<div style="font-size:11px;font-weight:800;color:var(--text);margin-bottom:8px;">'+label+'</div>';
       var i=0;
-      snap.forEach(function(d){
+      docs.forEach(function(d){
         var u=d.data();
         var photo=u.photoURL||('https://ui-avatars.com/api/?name='+encodeURIComponent(u.name||'U')+'&background=0A84FF&color=fff&size=32');
         html+='<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:var(--s2);border-radius:var(--rs);margin-bottom:5px;border:1.5px solid var(--border);">'
@@ -6871,8 +6911,8 @@ async function loadLeaderboard(){
       return html;
     }
     box.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;">'
-      +'<div>'+makeBoard(recSnap,'Top Recruiters','jobs')+'</div>'
-      +'<div>'+makeBoard(seekSnap,'Top Active Members','posts')+'</div>'
+      +'<div>'+makeBoard(sortTop(recSnap,'jobs'),'Top Recruiters','jobs')+'</div>'
+      +'<div>'+makeBoard(sortTop(seekSnap,'posts'),'Top Active Members','posts')+'</div>'
       +'</div>';
   }catch(e){box.innerHTML='<div style="font-size:11px;color:var(--t3);text-align:center;padding:12px;">Could not load leaderboard.</div>';}
 }
