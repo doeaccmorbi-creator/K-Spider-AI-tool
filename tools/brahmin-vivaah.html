@@ -428,12 +428,18 @@
 
   @media print{
     @page{ size: A4; margin: 10mm; }
+    html, body{ margin:0; padding:0; height:auto; }
     body *{visibility:hidden;}
     #printArea,#printArea *{visibility:visible;}
     #printArea{
-      position:absolute;left:0;top:0;
-      width:190mm;min-height:277mm;box-sizing:border-box;
-      margin:0;border-width:4px;padding:16mm 14mm;
+      /* position:fixed (not absolute) — anchors to the physical page itself,
+         not to any positioned ancestor (e.g. the sticky .preview-shell this
+         sits inside on screen). Using absolute here was the root cause of
+         the big blank gap above the content in print preview: it was
+         anchoring "top:0" to the ancestor's box, not the page's. */
+      position:fixed;left:0;top:0;
+      width:190mm;box-sizing:border-box;
+      margin:0;border-width:4px;padding:12mm 14mm;
     }
     .topbar,.btn-row,.tpl-grid,.grid>div:first-child,#galleryStrip,#kundliPanel{display:none!important;}
   }
