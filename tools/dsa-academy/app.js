@@ -1167,8 +1167,8 @@ function loadFacultyDoubts(subject){
 function loadPendingFaculty(){
   if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
   return fbDb.collection('users').where('role','==','faculty').where('approved','==',false).get()
-    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
-    .catch(()=>[]);
+    .then(snap=>{ DB._adminLoadError=null; return snap.docs.map(d=>Object.assign({uid:d.id}, d.data())); })
+    .catch(err=>{ console.error('[DSA] loadPendingFaculty failed:', err); DB._adminLoadError = err.message; return []; });
 }
 function approveFaculty(uid){
   fbDb.collection('users').doc(uid).update({approved:true})
@@ -1199,8 +1199,8 @@ function reactivateFaculty(uid){
 function loadAllFaculty(){
   if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
   return fbDb.collection('users').where('role','==','faculty').get()
-    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
-    .catch(()=>[]);
+    .then(snap=>{ DB._adminLoadError=null; return snap.docs.map(d=>Object.assign({uid:d.id}, d.data())); })
+    .catch(err=>{ console.error('[DSA] loadAllFaculty failed:', err); DB._adminLoadError = err.message; return []; });
 }
 function renderAdminFaculty(){
   if(!DB.currentUser) return renderAuth();
@@ -1236,8 +1236,8 @@ function renderAdminFaculty(){
 function loadAllParents(){
   if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
   return fbDb.collection('users').where('role','==','parent').get()
-    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
-    .catch(()=>[]);
+    .then(snap=>{ DB._adminLoadError=null; return snap.docs.map(d=>Object.assign({uid:d.id}, d.data())); })
+    .catch(err=>{ console.error('[DSA] loadAllParents failed:', err); DB._adminLoadError = err.message; return []; });
 }
 function renderAdminParents(){
   if(!DB.currentUser) return renderAuth();
@@ -1305,8 +1305,8 @@ function exportStudentsCSV(){
 function loadAllStudents(){
   if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
   return fbDb.collection('users').where('role','==','student').get()
-    .then(snap=>snap.docs.map(d=>Object.assign({uid:d.id}, d.data())))
-    .catch(()=>[]);
+    .then(snap=>{ DB._adminLoadError=null; return snap.docs.map(d=>Object.assign({uid:d.id}, d.data())); })
+    .catch(err=>{ console.error('[DSA] loadAllStudents failed:', err); DB._adminLoadError = err.message; return []; });
 }
 function loadStudentFullRecord(uid){
   return fbDb.collection('users').doc(uid).get().then(doc=>{
@@ -1715,6 +1715,7 @@ function renderAdminDashboard(){
     ${sidebar('overview')}
     <div class="main">
       <div class="main-head"><div><h2>Admin control panel</h2><p>Students, content, doubts and test performance</p></div></div>
+      ${DB._adminLoadError ? `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--red-100);border-color:var(--red-500)"><b style="color:var(--red-600)">⚠️ Couldn't load some admin data:</b> <span style="font-size:13px">${DB._adminLoadError}</span><div style="font-size:12px;color:var(--muted);margin-top:6px">This is almost always a Firestore rules or account-role issue — check that your own account was created via the <b>Admin</b> tab, and that firestore.rules is published.</div></div>` : ''}
       <div class="stat-row">
         <div class="card stat-box"><b>${students.length}</b><span>Registered students</span></div>
         <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects live</span></div>
