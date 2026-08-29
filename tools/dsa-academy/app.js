@@ -106,6 +106,7 @@ function render(){
     adminstudent: renderAdminStudentDetail,
     myfees: renderMyFees,
     adminfaculty: renderAdminFaculty,
+    adminfacultydetail: renderAdminFacultyDetail,
     adminparents: renderAdminParents,
     mock: renderMock,
     leaderboard: renderLeaderboard,
@@ -116,6 +117,8 @@ function render(){
     plans: renderPlans,
     facultydoubts: renderFacultyDoubts,
     facultypending: renderFacultyPending,
+    completeProfile: renderCompleteProfile,
+    myprofile: renderMyProfile,
   };
   app.innerHTML = (routes[ROUTE.view] || renderLanding)();
   afterRender();
@@ -139,6 +142,7 @@ const NAV = {
     {id:'bookmarks', ic:'⭐', label:'Bookmarks', view:'bookmarks'},
     {id:'plans', ic:'💎', label:'Plans', view:'plans'},
     {id:'myfees', ic:'💳', label:'My Fees', view:'myfees'},
+    {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
   parent: [
     {id:'overview', ic:'🏠', label:'Overview', view:'parent'},
@@ -151,6 +155,7 @@ const NAV = {
   ],
   faculty: [
     {id:'facultydoubts', ic:'💬', label:'Doubts inbox', view:'facultydoubts'},
+    {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
 };
 function sidebar(activeId){
@@ -321,6 +326,14 @@ function renderAuth(){
         <div class="field"><label>Password</label><input required type="password" id="authPass" placeholder="••••••••" minlength="6"></div>
         <button class="btn btn-primary btn-block" type="submit">${mode==='signup'?'Create account':'Log in'} →</button>
       </form>
+      ${window.FIREBASE_ENABLED ? `
+      <div style="display:flex;align-items:center;gap:10px;margin:16px 0 14px">
+        <div style="flex:1;height:1px;background:var(--border)"></div><span style="font-size:11.5px;color:var(--faint)">OR</span><div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <button type="button" class="btn btn-outline btn-block" onclick="signInWithGoogle('${role}')" style="gap:10px">
+        <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6.1 8-11.3 8-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.7-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.5 15.9 18.9 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.6 6 29.6 4 24 4c-7.7 0-14.3 4.4-17.7 10.7z"/><path fill="#4CAF50" d="M24 44c5.5 0 10.4-1.9 14.3-5.1l-6.6-5.6c-2 1.4-4.6 2.2-7.7 2.2-5.2 0-9.6-3.3-11.3-8l-6.6 5.1C9.6 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.2 4.2-4 5.6l6.6 5.6C39.9 37 44 31 44 24c0-1.3-.1-2.7-.4-3.5z"/></svg>
+        Continue with Google
+      </button>` : ''}
       <div class="auth-switch">
         ${mode==='signup'
           ? `Already have an account? <a onclick="go('auth',{role:'${role}',mode:'login'})">Log in</a>`
@@ -390,7 +403,11 @@ function handleAuth(e, role){
         uid: profile.uid, plan: profile.plan || 'free', bookmarks: profile.bookmarks || [],
         subject: profile.subject || null, approved: profile.approved !== false,
         feeTotal: profile.feeTotal||0, feePaid: profile.feePaid||0,
-        feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[]
+        feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[],
+        adminNote: profile.adminNote||null,
+        phone: profile.phone||'', dob: profile.dob||'', address: profile.address||'',
+        parentName: profile.parentName||'', parentPhone: profile.parentPhone||'', previousSchool: profile.previousSchool||'',
+        qualification: profile.qualification||'', experienceYears: profile.experienceYears||'', bio: profile.bio||''
       };
       toast(`Signed in as ${DB.currentUser.role}`);
       if(role==='student') loadStudentResults().then(()=>enterDashboard(role));
@@ -401,6 +418,78 @@ function handleAuth(e, role){
     .catch(err=>{ toast(err.message || 'Something went wrong, please try again', '⚠️'); })
     .finally(()=>{ if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = (mode==='signup'?'Create account':'Log in') + ' →'; } });
 
+  return false;
+}
+
+function signInWithGoogle(role){
+  if(!window.FIREBASE_ENABLED){ toast('Connect Firebase to use Google Sign-In','⚠️'); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(provider).then(result=>{
+    const user = result.user;
+    const uid = user.uid;
+    return fbDb.collection('users').doc(uid).get().then(doc=>{
+      if(doc.exists) return {profile: doc.data(), isNew:false};
+      const profile = {
+        name: user.displayName || 'User', email: user.email, role,
+        plan:'free', bookmarks:[], createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      };
+      if(role==='faculty') profile.approved = false;
+      return fbDb.collection('users').doc(uid).set(profile).then(()=>({profile, isNew:true}));
+    });
+  }).then(({profile, isNew})=>{
+    if(profile.banned){ fbAuth.signOut(); toast('This account has been suspended — contact your admin.', '🚫'); return; }
+    DB.currentUser = {
+      role: profile.role || role, name: profile.name, email: profile.email,
+      uid: fbAuth.currentUser.uid, plan: profile.plan||'free', bookmarks: profile.bookmarks||[],
+      subject: profile.subject||null, approved: profile.approved !== false,
+      feeTotal: profile.feeTotal||0, feePaid: profile.feePaid||0,
+      feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[],
+      adminNote: profile.adminNote||null
+    };
+    toast(`Signed in as ${DB.currentUser.role}`);
+    if(isNew && DB.currentUser.role==='faculty'){ go('completeProfile',{need:'subject'}); return; }
+    if(isNew && DB.currentUser.role==='parent'){ go('completeProfile',{need:'childEmail'}); return; }
+    if(DB.currentUser.role==='student') loadStudentResults().then(()=>enterDashboard(DB.currentUser.role));
+    else if(DB.currentUser.role==='parent'){ DB.linkedChild = profile.childEmail ? {name:profile.childEmail.split('@')[0], email:profile.childEmail} : null; loadParentResults().then(()=>enterDashboard(DB.currentUser.role)); }
+    else if(DB.currentUser.role==='faculty' && !DB.currentUser.approved) go('facultypending');
+    else enterDashboard(DB.currentUser.role);
+  }).catch(err=>{ if(err.code!=='auth/popup-closed-by-user') toast(err.message,'⚠️'); });
+}
+
+function renderCompleteProfile(){
+  if(!DB.currentUser) return renderAuth();
+  const need = ROUTE.params.need;
+  return `
+  <div class="auth-wrap">
+    <div class="card auth-card">
+      <div style="text-align:center;margin-bottom:18px">
+        <img src="DSA_LOGO.png" style="width:52px;height:52px;margin:0 auto 10px;border-radius:12px">
+        <h2 style="font-size:20px">Just one more thing</h2>
+      </div>
+      <form onsubmit="return submitCompleteProfile(event,'${need}')">
+        ${need==='subject' ? `<div class="field"><label>Subject you teach</label><select id="completeSubject">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>` : ''}
+        ${need==='childEmail' ? `<div class="field"><label>Child's registered email</label><input required id="completeChildEmail" placeholder="child@dsa.academy"></div>` : ''}
+        <button class="btn btn-primary btn-block" type="submit">Continue →</button>
+      </form>
+    </div>
+  </div>`;
+}
+function submitCompleteProfile(e, need){
+  e.preventDefault();
+  const uid = DB.currentUser.uid;
+  if(need==='subject'){
+    const subject = document.getElementById('completeSubject').value;
+    fbDb.collection('users').doc(uid).update({subject}).then(()=>{
+      DB.currentUser.subject = subject;
+      go('facultypending');
+    }).catch(err=>toast(err.message,'⚠️'));
+  } else if(need==='childEmail'){
+    const childEmail = document.getElementById('completeChildEmail').value.trim();
+    fbDb.collection('users').doc(uid).update({childEmail}).then(()=>{
+      DB.linkedChild = {name:childEmail.split('@')[0], email:childEmail};
+      loadParentResults().then(()=>enterDashboard('parent'));
+    }).catch(err=>toast(err.message,'⚠️'));
+  }
   return false;
 }
 
@@ -429,6 +518,71 @@ function logout(){
 }
 
 /* ============================== STUDENT DASHBOARD ======================= */
+function renderMyProfile(){
+  if(!DB.currentUser) return renderAuth();
+  const u = DB.currentUser;
+  const isFaculty = u.role==='faculty';
+  return `
+  <div class="app-shell">
+    ${sidebar('myprofile')}
+    <div class="main" style="max-width:640px">
+      <div class="main-head"><div><h2>👤 My Profile</h2><p>Keep your details up to date — admin can see this too</p></div></div>
+      ${u.adminNote ? `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--gold-100);border-color:var(--gold-500)"><b>📢 Message from Admin:</b> ${u.adminNote}</div>` : ''}
+      <div class="card" style="padding:24px">
+        <form onsubmit="return saveMyProfile(event)">
+          <div class="field"><label>Full name</label><input id="profName" value="${u.name||''}" required></div>
+          <div class="field"><label>Email</label><input value="${u.email||''}" disabled style="background:var(--paper-2);color:var(--muted)"></div>
+          <div class="field"><label>Phone number</label><input id="profPhone" value="${u.phone||''}" placeholder="10-digit mobile number"></div>
+          ${isFaculty ? `
+          <div class="field"><label>Subject you teach</label><input value="${u.subject||''}" disabled style="background:var(--paper-2);color:var(--muted)"></div>
+          <div class="field"><label>Qualification</label><input id="profQualification" value="${u.qualification||''}" placeholder="e.g. M.Sc Physics, B.Ed"></div>
+          <div class="field"><label>Years of experience</label><input id="profExperience" type="number" value="${u.experienceYears||''}" placeholder="e.g. 5"></div>
+          <div class="field"><label>Short bio</label><input id="profBio" value="${u.bio||''}" placeholder="A line about your teaching style"></div>
+          ` : `
+          <div class="field"><label>Date of birth</label><input id="profDob" type="date" value="${u.dob||''}"></div>
+          <div class="field"><label>Address</label><input id="profAddress" value="${u.address||''}" placeholder="City, State"></div>
+          <div class="field"><label>Previous school</label><input id="profSchool" value="${u.previousSchool||''}" placeholder="Last attended school"></div>
+          <div class="field"><label>Parent's name</label><input id="profParentName" value="${u.parentName||''}"></div>
+          <div class="field"><label>Parent's phone</label><input id="profParentPhone" value="${u.parentPhone||''}" placeholder="10-digit mobile number"></div>
+          `}
+          <button class="btn btn-primary btn-block" type="submit">Save profile</button>
+        </form>
+      </div>
+    </div>
+  </div>`;
+}
+function saveMyProfile(e){
+  e.preventDefault();
+  const u = DB.currentUser;
+  const updates = {
+    name: document.getElementById('profName').value.trim(),
+    phone: document.getElementById('profPhone').value.trim(),
+  };
+  if(u.role==='faculty'){
+    updates.qualification = document.getElementById('profQualification').value.trim();
+    updates.experienceYears = document.getElementById('profExperience').value;
+    updates.bio = document.getElementById('profBio').value.trim();
+  } else {
+    updates.dob = document.getElementById('profDob').value;
+    updates.address = document.getElementById('profAddress').value.trim();
+    updates.previousSchool = document.getElementById('profSchool').value.trim();
+    updates.parentName = document.getElementById('profParentName').value.trim();
+    updates.parentPhone = document.getElementById('profParentPhone').value.trim();
+  }
+  if(!window.FIREBASE_ENABLED || !u.uid){
+    Object.assign(DB.currentUser, updates);
+    toast('Profile saved (demo)');
+    render();
+    return false;
+  }
+  fbDb.collection('users').doc(u.uid).update(updates).then(()=>{
+    Object.assign(DB.currentUser, updates);
+    toast('Profile saved ✅');
+    render();
+  }).catch(err=>toast(err.message,'⚠️'));
+  return false;
+}
+
 function renderMyFees(){
   if(!DB.currentUser) return renderAuth();
   const u = DB.currentUser;
@@ -469,6 +623,7 @@ function renderStudentDashboard(){
       <div class="main-head">
         <div><h2>Welcome back, ${u.name.split(' ')[0]}</h2><p>Class 11 · Pick a subject to continue where you left off</p></div>
       </div>
+      ${u.adminNote ? `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--gold-100);border-color:var(--gold-500)"><b>📢 Message from Admin:</b> ${u.adminNote}</div>` : ''}
       <div class="stat-row">
         <div class="card stat-box"><b>${myResults.length}</b><span>Tests attempted</span></div>
         <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
@@ -1219,17 +1374,96 @@ function renderAdminFaculty(){
           rows.length===0 ? `<div class="empty"><div class="ic">📭</div>No faculty have signed up yet.</div>` : `
         <table class="table-simple"><thead><tr><th>Name</th><th>Subject</th><th>Status</th><th></th></tr></thead><tbody>
         ${rows.map(f=>`<tr>
-          <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(f.name||'?')[0]}</span>${f.name}<span style="color:var(--faint);font-size:12px">${f.email}</span></td>
+          <td style="display:flex;align-items:center;gap:10px;cursor:pointer" onclick="go('adminfacultydetail',{uid:'${f.uid}'})"><span class="avatar-sm">${(f.name||'?')[0]}</span>${f.name}<span style="color:var(--faint);font-size:12px">${f.email}</span></td>
           <td><span class="pill pill-navy">${(SUBJECT_META[f.subject]&&SUBJECT_META[f.subject].icon)||''} ${f.subject||'—'}</span></td>
           <td><span class="pill ${f.approved?'pill-green':'pill-gold'}">${f.approved?'Active':'Pending / Deactivated'}</span></td>
-          <td>${f.approved
-            ? `<button class="btn btn-ghost btn-sm" style="color:var(--red-600)" onclick="deactivateFaculty('${f.uid}')">Deactivate</button>`
-            : `<button class="btn btn-green btn-sm" onclick="reactivateFaculty('${f.uid}')">Approve →</button>`}</td>
+          <td style="display:flex;gap:6px">
+            <button class="btn btn-ghost btn-sm" onclick="go('adminfacultydetail',{uid:'${f.uid}'})">View →</button>
+            ${f.approved
+              ? `<button class="btn btn-ghost btn-sm" style="color:var(--red-600)" onclick="deactivateFaculty('${f.uid}')">Deactivate</button>`
+              : `<button class="btn btn-green btn-sm" onclick="reactivateFaculty('${f.uid}')">Approve →</button>`}
+          </td>
         </tr>`).join('')}
         </tbody></table>`}
       </div>
     </div>
   </div>`;
+}
+
+function renderAdminFacultyDetail(){
+  if(!DB.currentUser) return renderAuth();
+  const uid = ROUTE.params.uid;
+  if(!DB._facultyDetailCache || DB._facultyDetailCache.uid !== uid){
+    DB._facultyDetailCache = null;
+    fbDb.collection('users').doc(uid).get().then(doc=>{
+      if(doc.exists) DB._facultyDetailCache = Object.assign({uid}, doc.data());
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+    return `<div class="app-shell">${sidebar('adminfaculty')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading faculty record…</div></div></div>`;
+  }
+  const f = DB._facultyDetailCache;
+  if(!f) return `<div class="app-shell">${sidebar('adminfaculty')}<div class="main"><div class="empty"><div class="ic">❓</div>Faculty not found.</div></div></div>`;
+  return `
+  <div class="app-shell">
+    ${sidebar('adminfaculty')}
+    <div class="main">
+      <div class="main-head">
+        <div><h2>${f.name}</h2><p>${f.email} · ${f.subject||'—'}</p></div>
+        <button class="btn btn-outline btn-sm" onclick="go('adminfaculty')">← All faculty</button>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="font-size:15px">Account status</h3>
+          <span class="pill ${f.approved?'pill-green':'pill-gold'}">${f.approved?'✅ Active':'⏳ Pending / Deactivated'}</span>
+        </div>
+        ${f.approved
+          ? `<button class="btn btn-outline btn-sm" style="border-color:var(--red-500);color:var(--red-600)" onclick="deactivateFaculty('${uid}')">Deactivate</button>`
+          : `<button class="btn btn-green btn-sm" onclick="reactivateFaculty('${uid}')">Approve →</button>`}
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Profile details</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+          <div class="field"><label>Phone</label><input id="adminFacPhone" value="${f.phone||''}" placeholder="Phone number"></div>
+          <div class="field"><label>Subject</label><select id="adminFacSubject">${SUBJECTS.map(s=>`<option ${s===f.subject?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div class="field"><label>Qualification</label><input id="adminFacQualification" value="${f.qualification||''}"></div>
+          <div class="field"><label>Years of experience</label><input id="adminFacExperience" type="number" value="${f.experienceYears||''}"></div>
+        </div>
+        <div class="field"><label>Bio</label><input id="adminFacBio" value="${f.bio||''}"></div>
+        <button class="btn btn-outline btn-sm" onclick="saveAdminFacultyProfile('${uid}')">Save profile details</button>
+      </div>
+
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">📢 Direct instruction / message</h3>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Shown to this faculty member on their dashboard.</p>
+        <textarea id="adminFacNote" rows="3" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px" placeholder="e.g. Please clear pending doubts by tonight.">${f.adminNote||''}</textarea>
+        <button class="btn btn-primary btn-sm" onclick="saveAdminFacultyNote('${uid}')">Send message</button>
+      </div>
+    </div>
+  </div>`;
+}
+function saveAdminFacultyProfile(uid){
+  const updates = {
+    phone: document.getElementById('adminFacPhone').value.trim(),
+    subject: document.getElementById('adminFacSubject').value,
+    qualification: document.getElementById('adminFacQualification').value.trim(),
+    experienceYears: document.getElementById('adminFacExperience').value,
+    bio: document.getElementById('adminFacBio').value.trim(),
+  };
+  fbDb.collection('users').doc(uid).update(updates).then(()=>{
+    Object.assign(DB._facultyDetailCache, updates);
+    toast('Profile updated ✅');
+    render();
+  }).catch(err=>toast(err.message,'⚠️'));
+}
+function saveAdminFacultyNote(uid){
+  const adminNote = document.getElementById('adminFacNote').value.trim();
+  fbDb.collection('users').doc(uid).update({adminNote}).then(()=>{
+    DB._facultyDetailCache.adminNote = adminNote;
+    toast('Message sent ✅');
+    render();
+  }).catch(err=>toast(err.message,'⚠️'));
 }
 
 /* ============================== PARENT ACCOUNTS (ADMIN) ==================== */
@@ -1381,6 +1615,32 @@ function refundStudent(uid){
     }).catch(err=>toast(err.message,'⚠️'));
 }
 
+function saveAdminStudentProfile(uid){
+  const updates = {
+    phone: document.getElementById('adminStuPhone').value.trim(),
+    cls: document.getElementById('adminStuCls').value.trim(),
+    dob: document.getElementById('adminStuDob').value,
+    previousSchool: document.getElementById('adminStuSchool').value.trim(),
+    address: document.getElementById('adminStuAddress').value.trim(),
+    parentName: document.getElementById('adminStuParentName').value.trim(),
+    parentPhone: document.getElementById('adminStuParentPhone').value.trim(),
+  };
+  fbDb.collection('users').doc(uid).update(updates).then(()=>{
+    Object.assign(DB._studentDetailCache, updates);
+    const s = (DB._studentsCache||[]).find(x=>x.uid===uid); if(s) Object.assign(s, updates);
+    toast('Profile updated ✅');
+    render();
+  }).catch(err=>toast(err.message,'⚠️'));
+}
+function saveAdminStudentNote(uid){
+  const adminNote = document.getElementById('adminStuNote').value.trim();
+  fbDb.collection('users').doc(uid).update({adminNote}).then(()=>{
+    DB._studentDetailCache.adminNote = adminNote;
+    toast('Message sent ✅');
+    render();
+  }).catch(err=>toast(err.message,'⚠️'));
+}
+
 function renderAdminStudentDetail(){
   if(!DB.currentUser) return renderAuth();
   const uid = ROUTE.params.uid;
@@ -1414,6 +1674,27 @@ function renderAdminStudentDetail(){
         <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
         <div class="card stat-box"><b>${s._doubts.length}</b><span>Doubts posted</span></div>
         <div class="card stat-box"><b>${due>0?'₹'+due:'₹0'}</b><span>Fees due</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Profile details</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px">
+          <div class="field"><label>Phone</label><input id="adminStuPhone" value="${s.phone||''}" placeholder="Phone number"></div>
+          <div class="field"><label>Class</label><input id="adminStuCls" value="${s.cls||''}" placeholder="11th / 12th / Dropper"></div>
+          <div class="field"><label>Date of birth</label><input id="adminStuDob" type="date" value="${s.dob||''}"></div>
+          <div class="field"><label>Previous school</label><input id="adminStuSchool" value="${s.previousSchool||''}"></div>
+          <div class="field"><label>Address</label><input id="adminStuAddress" value="${s.address||''}"></div>
+          <div class="field"><label>Parent's name</label><input id="adminStuParentName" value="${s.parentName||''}"></div>
+          <div class="field"><label>Parent's phone</label><input id="adminStuParentPhone" value="${s.parentPhone||''}"></div>
+        </div>
+        <button class="btn btn-outline btn-sm" onclick="saveAdminStudentProfile('${uid}')">Save profile details</button>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">📢 Direct instruction / message</h3>
+        <p style="font-size:12.5px;color:var(--muted);margin-bottom:10px">Shown to this student at the top of their "My Profile" page.</p>
+        <textarea id="adminStuNote" rows="3" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:12px" placeholder="e.g. Please submit your fee payment proof by Friday.">${s.adminNote||''}</textarea>
+        <button class="btn btn-primary btn-sm" onclick="saveAdminStudentNote('${uid}')">Send message</button>
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
@@ -1522,6 +1803,7 @@ function renderFacultyDoubts(){
     ${sidebar('facultydoubts')}
     <div class="main">
       <div class="main-head"><div><h2>${SUBJECT_META[subject].icon} ${subject} — Doubts inbox</h2><p>${pending.length} pending · ${answered.length} answered</p></div></div>
+      ${DB.currentUser.adminNote ? `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--gold-100);border-color:var(--gold-500)"><b>📢 Message from Admin:</b> ${DB.currentUser.adminNote}</div>` : ''}
       ${renderDoubtCards(rows, 'faculty')}
     </div>
   </div>`;
@@ -1845,7 +2127,8 @@ function tryKspiderSSO(){
           role:'student', name:profile.name, email:profile.email,
           uid, plan: profile.plan||'free', bookmarks: profile.bookmarks||[],
           feeTotal: profile.feeTotal||0, feePaid: profile.feePaid||0,
-          feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[]
+          feeDueDate: profile.feeDueDate||null, feeHistory: profile.feeHistory||[],
+          adminNote: profile.adminNote||null
         };
         return loadStudentResults();
       }).then(()=>{
