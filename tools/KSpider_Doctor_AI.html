@@ -80,17 +80,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function _ksDoRedirect() { _ksShowDoctorLogin(); }
 
-function _ksShowDoctorLogin(errorMsg) {
+function _ksShowDoctorLogin(errorMsg, mode) {
+  mode = mode || 'login';
   function _render() {
     var ldr = document.getElementById('ks-auth-loader');
-    var loginHTML = '<div id="ks-doctor-login" style="position:fixed;inset:0;z-index:999999;background:#0b2545;display:flex;align-items:center;justify-content:center;font-family:DM Sans,sans-serif;padding:20px;"><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;text-align:center;"><div style="font-size:44px;margin-bottom:8px;">🕷️</div><div style="font-size:22px;font-weight:800;color:white;margin-bottom:4px;">K Spider Doctor AI</div><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:28px;">Doctor Portal</div>'+(errorMsg?'<div style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff8080;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:18px;">'+errorMsg+'</div>':'')+'<div style="text-align:left;margin-bottom:14px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">EMAIL</label><input id="ks-dr-email" type="email" placeholder="doctor@example.com" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div><div style="text-align:left;margin-bottom:22px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">PASSWORD</label><input id="ks-dr-pass" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div><button id="ks-dr-btn" style="width:100%;background:linear-gradient(135deg,#00c9a7,#1a6eb5);border:none;color:white;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">🔐 Login to Doctor Portal</button><div style="margin-top:16px;font-size:12px;color:rgba(255,255,255,0.35);">Contact: <a href="mailto:kspider221206@gmail.com" style="color:#00c9a7;">kspider221206@gmail.com</a></div><div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);"><a href="https://kspiderai.in" style="font-size:12px;color:rgba(255,255,255,0.4);text-decoration:none;">← Back to kspiderai.in</a></div></div></div>';
+    var isReg = mode === 'register';
+    var loginHTML = '<div id="ks-doctor-login" style="position:fixed;inset:0;z-index:999999;background:#0b2545;display:flex;align-items:center;justify-content:center;font-family:DM Sans,sans-serif;padding:20px;overflow-y:auto;"><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:40px 36px;width:100%;max-width:400px;text-align:center;margin:20px 0;">'
+      + '<div style="font-size:44px;margin-bottom:8px;">🕷️</div><div style="font-size:22px;font-weight:800;color:white;margin-bottom:4px;">K Spider Doctor AI</div><div style="font-size:13px;color:rgba(255,255,255,0.5);margin-bottom:24px;">Doctor Portal</div>'
+      + (errorMsg?'<div style="background:rgba(255,80,80,0.15);border:1px solid rgba(255,80,80,0.3);color:#ff8080;border-radius:10px;padding:10px 14px;font-size:13px;margin-bottom:18px;">'+errorMsg+'</div>':'')
+      + '<button id="ks-dr-google-btn" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;background:white;border:none;color:#1f2937;padding:12px;border-radius:12px;font-size:14px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:10px;">'
+      + '<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.9 0 6.6 1.7 8.1 3.1l6-5.9C34.5 3.4 29.8 1.5 24 1.5 14.9 1.5 7.1 6.9 3.5 14.6l7.1 5.5C12.4 14 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 2.9-2.2 5.4-4.7 7l7.2 5.6c4.2-3.9 6.6-9.6 6.6-17.1z"/><path fill="#FBBC05" d="M10.6 20.1a14.5 14.5 0 000 8.6l-7.1 5.5A24 24 0 010 24c0-3 .7-5.9 1.9-8.4l7.1 5.5z"/><path fill="#34A853" d="M24 46.5c6.2 0 11.4-2 15.2-5.5l-7.2-5.6c-2 1.4-4.7 2.3-8 2.3-6.3 0-11.6-4.5-13.5-10.5l-7.1 5.5C7.1 41.1 14.9 46.5 24 46.5z"/></svg>'
+      + '<span id="ks-dr-google-label">Continue with Google</span></button>'
+      + '<div style="display:flex;align-items:center;gap:10px;margin:16px 0;"><div style="flex:1;height:1px;background:rgba(255,255,255,0.12);"></div><span style="font-size:10px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:0.5px;">OR USE EMAIL</span><div style="flex:1;height:1px;background:rgba(255,255,255,0.12);"></div></div>'
+      + (isReg
+          ? '<div style="text-align:left;margin-bottom:12px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">FULL NAME</label><input id="ks-dr-reg-name" type="text" placeholder="Dr. Full Name" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div>'
+          + '<div style="text-align:left;margin-bottom:12px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">EMAIL</label><input id="ks-dr-reg-email" type="email" placeholder="doctor@example.com" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div>'
+          + '<div style="text-align:left;margin-bottom:12px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">MOBILE NUMBER</label><input id="ks-dr-reg-mobile" type="tel" placeholder="10-digit mobile" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div>'
+          + '<div style="text-align:left;margin-bottom:22px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">PASSWORD (min 6 characters)</label><input id="ks-dr-reg-pass" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div>'
+          + '<button id="ks-dr-btn" style="width:100%;background:linear-gradient(135deg,#00c9a7,#1a6eb5);border:none;color:white;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">✅ Create My Account</button>'
+          + '<div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,0.5);">Already registered? <a href="#" id="ks-dr-switch" style="color:#00c9a7;font-weight:700;text-decoration:none;">Login</a></div>'
+        : '<div style="text-align:left;margin-bottom:14px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">EMAIL</label><input id="ks-dr-email" type="email" placeholder="doctor@example.com" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div><div style="text-align:left;margin-bottom:22px;"><label style="font-size:12px;color:rgba(255,255,255,0.5);display:block;margin-bottom:6px;">PASSWORD</label><input id="ks-dr-pass" type="password" placeholder="••••••••" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;padding:12px 14px;color:white;font-size:14px;outline:none;font-family:inherit;"></div><button id="ks-dr-btn" style="width:100%;background:linear-gradient(135deg,#00c9a7,#1a6eb5);border:none;color:white;padding:14px;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">🔐 Login to Doctor Portal</button><div style="margin-top:16px;font-size:13px;color:rgba(255,255,255,0.5);">New here? <a href="#" id="ks-dr-switch" style="color:#00c9a7;font-weight:700;text-decoration:none;">Create an account</a></div>')
+      + '<div style="margin-top:16px;font-size:12px;color:rgba(255,255,255,0.35);">Contact: <a href="mailto:kspider221206@gmail.com" style="color:#00c9a7;">kspider221206@gmail.com</a></div><div style="margin-top:20px;padding-top:16px;border-top:1px solid rgba(255,255,255,0.08);"><a href="https://kspiderai.in" style="font-size:12px;color:rgba(255,255,255,0.4);text-decoration:none;">← Back to kspiderai.in</a></div></div></div>';
     if (ldr) { ldr.outerHTML = loginHTML; } else { document.body.insertAdjacentHTML('afterbegin', loginHTML); }
-    var btn = document.getElementById('ks-dr-btn');
-    if (btn) btn.onclick = _ksDrSubmitLogin;
-    var passEl = document.getElementById('ks-dr-pass');
-    if (passEl) passEl.addEventListener('keydown', function(e){ if(e.key==='Enter') _ksDrSubmitLogin(); });
-    var emailEl = document.getElementById('ks-dr-email');
-    if (emailEl) emailEl.addEventListener('keydown', function(e){ if(e.key==='Enter') _ksDrSubmitLogin(); });
+    var gbtn = document.getElementById('ks-dr-google-btn');
+    if (gbtn) gbtn.onclick = _ksDrGoogleSignIn;
+    var switchLink = document.getElementById('ks-dr-switch');
+    if (switchLink) switchLink.onclick = function(e){ e.preventDefault(); _ksShowDoctorLogin(null, isReg ? 'login' : 'register'); };
+    if (isReg) {
+      var btn = document.getElementById('ks-dr-btn');
+      if (btn) btn.onclick = _ksDrSubmitRegister;
+    } else {
+      var btn2 = document.getElementById('ks-dr-btn');
+      if (btn2) btn2.onclick = _ksDrSubmitLogin;
+      var passEl = document.getElementById('ks-dr-pass');
+      if (passEl) passEl.addEventListener('keydown', function(e){ if(e.key==='Enter') _ksDrSubmitLogin(); });
+      var emailEl = document.getElementById('ks-dr-email');
+      if (emailEl) emailEl.addEventListener('keydown', function(e){ if(e.key==='Enter') _ksDrSubmitLogin(); });
+    }
   }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', _render); } else { _render(); }
 }
@@ -111,6 +137,85 @@ function _ksDrSubmitLogin() {
       else if (err.code === 'auth/network-request-failed') msg = 'Network error. Check connection.';
       _ksShowDoctorLogin(msg);
     });
+}
+
+function _ksDrSubmitRegister() {
+  if (!_ksAuth || !_ksDb) { alert('Firebase not loaded.'); return; }
+  var name   = (document.getElementById('ks-dr-reg-name')||{value:''}).value.trim();
+  var email  = (document.getElementById('ks-dr-reg-email')||{value:''}).value.trim();
+  var mobile = (document.getElementById('ks-dr-reg-mobile')||{value:''}).value.trim();
+  var pass   = (document.getElementById('ks-dr-reg-pass')||{value:''}).value||'';
+  var btn    = document.getElementById('ks-dr-btn');
+  if (!name || !email || !mobile || !pass) { _ksShowDoctorLogin('All fields are required.', 'register'); return; }
+  if (mobile.length < 10) { _ksShowDoctorLogin('Enter a valid 10-digit mobile number.', 'register'); return; }
+  if (pass.length < 6) { _ksShowDoctorLogin('Password must be at least 6 characters.', 'register'); return; }
+  if (btn) { btn.textContent = '⏳ Creating account...'; btn.disabled = true; }
+  _ksAuth.createUserWithEmailAndPassword(email, pass)
+    .then(function(cred) {
+      return cred.user.updateProfile({ displayName: name }).then(function(){ return cred.user; });
+    })
+    .then(function(user) {
+      return _ksEnsureDoctorRecord(user, { name: name, phone: mobile, authProvider: 'password' });
+    })
+    .then(function() { window.location.reload(); })
+    .catch(function(err) {
+      var msg = 'Registration failed. Please try again.';
+      if (err.code === 'auth/email-already-in-use') msg = 'An account with this email already exists — try logging in instead.';
+      else if (err.code === 'auth/invalid-email') msg = 'Please enter a valid email address.';
+      else if (err.code === 'auth/weak-password') msg = 'Password is too weak — use at least 6 characters.';
+      _ksShowDoctorLogin(msg, 'register');
+    });
+}
+
+function _ksDrGoogleSignIn() {
+  if (!_ksAuth || !_ksDb) { alert('Firebase not loaded.'); return; }
+  var btn = document.getElementById('ks-dr-google-btn');
+  var label = document.getElementById('ks-dr-google-label');
+  if (btn) { btn.disabled = true; if (label) label.textContent = 'Connecting...'; }
+  var provider = new firebase.auth.GoogleAuthProvider();
+  _ksAuth.signInWithPopup(provider)
+    .then(function(result) { return _ksEnsureDoctorRecord(result.user, { authProvider: 'google' }); })
+    .then(function() { window.location.reload(); })
+    .catch(function(err) {
+      if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
+      var msg = 'Google sign-in failed. Please try again.';
+      if (err.code === 'auth/popup-closed-by-user') msg = 'Sign-in was cancelled.';
+      else if (err.code === 'auth/popup-blocked') msg = 'Popup was blocked — please allow popups for this site.';
+      _ksShowDoctorLogin(msg);
+    });
+}
+
+// Shared Firestore doctor-record provisioning — used by both the main
+// login gate above and the in-app registration modal further down, so
+// every new doctor (via email/password or Google) gets the same
+// trial-plan record this auth guard expects to find.
+async function _ksEnsureDoctorRecord(user, extra) {
+  extra = extra || {};
+  if (!_ksDb) throw new Error('Database not available.');
+  const ref = _ksDb.collection('doctors').doc(user.uid);
+  const snap = await ref.get();
+  if (snap.exists) return snap.data();
+  const trialEnd = new Date();
+  trialEnd.setDate(trialEnd.getDate() + 14);
+  const record = {
+    name: extra.name || user.displayName || 'Doctor',
+    email: user.email || '',
+    phone: extra.phone || '',
+    qual: 'MBBS',
+    spec: 'General Physician',
+    clinic: '',
+    address: '',
+    reg: '',
+    plan: 'trial',
+    status: 'trial',
+    trialEndsAt: firebase.firestore.Timestamp.fromDate(trialEnd),
+    rxCount: 0,
+    rxLimit: KS_PLANS.trial.rxLimit,
+    authProvider: extra.authProvider || 'password',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  await ref.set(record);
+  return record;
 }
 
 function showBlockScreen(type, plan) {
@@ -152,6 +257,32 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
       }
     }
 
+    // Bridge to the legacy doctor-record helpers (ksSetCurrentDoctor,
+    // ksApplyDoctorProfile, ksLoadDoctorData) so per-doctor local data
+    // scoping, the Doctor Profile save form, and password-change flow
+    // continue working exactly as before, now keyed by the real Firebase
+    // UID instead of the old local-only doctor id. This runs before our
+    // own richer profile write below, which takes precedence.
+    if (typeof ksSetCurrentDoctor === 'function' && typeof ksApplyDoctorProfile === 'function') {
+      const compatDoc = {
+        id: user.uid,
+        name: data.name || 'Doctor',
+        mobile: data.phone || '',
+        username: user.email || '',
+        clinic: data.clinic || '',
+        degree: data.qual || 'MBBS',
+        spec: data.spec || 'General Physician',
+        reg: data.reg || '',
+        address: data.address || '',
+        phone: data.phone || '',
+        email: user.email || '',
+        signature: data.signature || '',
+        logo: data.logo || '',
+        authProvider: data.authProvider || 'password'
+      };
+      try { ksSetCurrentDoctor(compatDoc); ksApplyDoctorProfile(compatDoc); } catch(e) {}
+    }
+
     // Set global user
     window.KS_USER = {
       uid: user.uid,
@@ -164,7 +295,8 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
       rxLimit: data.rxLimit || KS_PLANS[data.plan]?.rxLimit || 50,
       clinic: data.clinic || '',
       phone: data.phone || '',
-      reg: data.reg || ''
+      reg: data.reg || '',
+      authProvider: data.authProvider || 'password'
     };
 
     // Auto-fill doctor profile in localStorage from Firestore
@@ -231,7 +363,17 @@ function updateTopbar() {
       </div>
     `;
   }
+  // The top-of-app Firebase auth gate has already confirmed a real signed-in
+  // doctor by this point, so the legacy in-page "Login / Register" button
+  // and "Multi-Doctor Private Mode" banner are now redundant — hide them to
+  // avoid confusing a signed-in doctor with a second, unrelated login entry
+  // point (their profile + Sign Out are already available above).
+  const legacyAuthWrap = document.getElementById('ks-sidebar-auth-wrap');
+  if (legacyAuthWrap) legacyAuthWrap.style.display = 'none';
+  const legacyBanner = document.getElementById('ks-multi-doc-banner');
+  if (legacyBanner) legacyBanner.style.display = 'none';
 }
+
 
 function applyPlanGating(plan, status) {
   const effectivePlan = status === 'trial' ? 'trial' : plan;
@@ -2200,8 +2342,6 @@ body.saas-mode > #pwa-banner {
     _con.log('%cCreated by Gaurang Raval & Khush Raval | © 2025 kspiderai.in','color:#6366f1;font-size:12px;');
   })();
   </script>
-  <!-- Google Identity Services — used for "Sign in with Google" doctor login. See ksGoogleAuth setup notes further down. -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="saas-mode">
 <div id="ks-sidebar-overlay" onclick="saasSidebarToggleMobile()"></div>
@@ -22406,93 +22546,6 @@ window.ksLoginDoctor = function(username, password) {
   return { ok:true, doc:doc };
 };
 
-// ── GOOGLE SIGN-IN (Sign in with Google email) ──────────────────────────
-// SETUP (one-time, by Gaurang/Khush): Google Sign-In needs an OAuth Client ID
-// from Google Cloud Console (console.cloud.google.com → APIs & Services →
-// Credentials → Create OAuth Client ID → Web application → Authorized
-// JavaScript origin: https://kspiderai.in). Paste that Client ID below in
-// place of the placeholder. Until then, the Google button stays hidden and
-// the existing mobile/password login continues to work exactly as before —
-// nothing else in the app is affected either way.
-var KS_GOOGLE_CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
-
-function ksParseGoogleJwt(token) {
-  try {
-    var base64Url = token.split('.')[1];
-    var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    var jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
-      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-    return JSON.parse(jsonPayload);
-  } catch (e) { return null; }
-}
-
-// Find-or-create a doctor account by Google email, then log them in
-window.ksGoogleLoginOrRegister = function(email, name, picture) {
-  if (!email) return { ok:false, msg:'Could not read email from Google.' };
-  var docs = ksGetDoctors();
-  var doc = docs.find(function(d){ return d.email && d.email.toLowerCase() === email.toLowerCase(); });
-  if (doc) {
-    if (picture && doc.googlePicture !== picture) { doc.googlePicture = picture; ksSaveDoctors(docs); }
-    ksSetCurrentDoctor(doc);
-    ksApplyDoctorProfile(doc);
-    return { ok:true, doc:doc, isNew:false };
-  }
-  var newDoc = {
-    id: 'DOC_G_' + email.replace(/[^a-zA-Z0-9]/g,'') + '_' + Date.now(),
-    name: name || email.split('@')[0],
-    mobile: '', // doctor can add their mobile later in Doctor Profile
-    password: btoa(Math.random().toString(36).slice(2) + Date.now()), // random — not used for Google accounts
-    username: email,
-    clinic: '', degree: 'MBBS', spec: 'General Physician',
-    reg: '', address: '', phone: '', email: email,
-    signature: '', logo: '', googlePicture: picture || '',
-    authProvider: 'google',
-    createdAt: new Date().toISOString(),
-    patientCount: 0
-  };
-  docs.push(newDoc);
-  ksSaveDoctors(docs);
-  ksSetCurrentDoctor(newDoc);
-  ksApplyDoctorProfile(newDoc);
-  return { ok:true, doc:newDoc, isNew:true };
-};
-
-// Callback fired by Google Identity Services after successful sign-in
-window.ksHandleGoogleCredential = function(response) {
-  var payload = response && response.credential ? ksParseGoogleJwt(response.credential) : null;
-  var msgEl = document.getElementById('ks-auth-msg') || document.getElementById('ks-reg-msg');
-  if (!payload || !payload.email) {
-    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626;">Google sign-in failed. Please try again or use mobile login below.</span>';
-    return;
-  }
-  var result = ksGoogleLoginOrRegister(payload.email, payload.name, payload.picture);
-  if (!result.ok) { if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626;">' + result.msg + '</span>'; return; }
-  if (msgEl) msgEl.innerHTML = '<span style="color:#059669;">✅ Welcome' + (result.isNew ? '' : ' back') + ', Dr. ' + (result.doc.name || '') + '!</span>';
-  setTimeout(function(){
-    var modal = document.getElementById('ks-doctor-auth-modal');
-    if (modal) modal.style.display = 'none';
-  }, 800);
-};
-
-// Initialise the Google button inside the auth modal (called each time the modal opens)
-function ksInitGoogleAuth() {
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
-    setTimeout(ksInitGoogleAuth, 500); // GIS script still loading — retry shortly
-    return;
-  }
-  if (KS_GOOGLE_CLIENT_ID.indexOf('YOUR_GOOGLE_CLIENT_ID') === 0) return; // not configured by site owner yet
-  try {
-    google.accounts.id.initialize({ client_id: KS_GOOGLE_CLIENT_ID, callback: ksHandleGoogleCredential });
-    var btnEl = document.getElementById('ks-google-btn-login');
-    if (btnEl && !btnEl.dataset.rendered) {
-      google.accounts.id.renderButton(btnEl, { theme: 'outline', size: 'large', width: 320, text: 'continue_with' });
-      btnEl.dataset.rendered = '1';
-      var wrap = document.getElementById('ks-google-auth-wrap'); if (wrap) wrap.style.display = 'block';
-      var div = document.getElementById('ks-auth-divider'); if (div) div.style.display = 'flex';
-    }
-  } catch (e) {}
-}
 
 // Apply doctor profile to all form fields
 window.ksApplyDoctorProfile = function(doc) {
@@ -22558,7 +22611,7 @@ window.ksLogoutDoctor = function(skipConfirm) {
 };
 
 // Update doctor profile
-window.ksUpdateDoctorProfile = function() {
+window.ksUpdateDoctorProfile = async function() {
   var doc = ksGetCurrentDoctor();
   if (!doc) return;
   var g = function(id){ return (document.getElementById(id)||{value:''}).value.trim(); };
@@ -22568,12 +22621,6 @@ window.ksUpdateDoctorProfile = function() {
     reg: g('doctor_reg'), address: g('doctor_address'),
     phone: g('doctor_phone'), email: g('doctor_email')
   };
-  // New password?
-  var newPwd = g('ks-new-password');
-  if (newPwd) updates.password = btoa(newPwd);
-  // New username?
-  var newUser = g('ks-new-username');
-  if (newUser) updates.username = newUser;
   Object.assign(doc, updates);
   var docs = ksGetDoctors();
   var idx = docs.findIndex(function(d){ return d.id===doc.id; });
@@ -22581,27 +22628,43 @@ window.ksUpdateDoctorProfile = function() {
   ksSaveDoctors(docs);
   ksSetCurrentDoctor(doc);
   ksApplyDoctorProfile(doc);
+  // Persist to Firestore too, so the profile survives reloads and syncs
+  // across devices for this doctor's real account.
+  if (_ksDb && _ksAuth && _ksAuth.currentUser && _ksAuth.currentUser.uid === doc.id) {
+    try {
+      await _ksDb.collection('doctors').doc(doc.id).update({
+        name: updates.name, clinic: updates.clinic, qual: updates.degree,
+        spec: updates.spec, reg: updates.reg, address: updates.address,
+        phone: updates.phone
+      });
+    } catch (e) { console.error('Profile sync to server failed', e); }
+  }
   if (typeof showToast==='function') showToast('Profile updated successfully');
   else alert('Profile updated!');
 };
 
-// Change password / username
-window.ksChangeCredentials = function() {
-  var doc = ksGetCurrentDoctor();
-  if (!doc) return;
+// Change password (real Firebase Auth — requires re-authentication for security)
+window.ksChangeCredentials = async function() {
+  if (!_ksAuth || !_ksAuth.currentUser) { alert('Not signed in.'); return; }
+  var user = _ksAuth.currentUser;
   var oldPwd = (document.getElementById('ks-old-password')||{value:''}).value;
   var newPwd = (document.getElementById('ks-new-password')||{value:''}).value;
-  var newUser= (document.getElementById('ks-new-username')||{value:''}).value;
-  if (oldPwd && doc.password !== btoa(oldPwd)) { alert('Old password incorrect'); return; }
-  if (newPwd) doc.password = btoa(newPwd);
-  if (newUser) doc.username = newUser;
-  var docs = ksGetDoctors();
-  var idx = docs.findIndex(function(d){ return d.id===doc.id; });
-  if (idx>=0) docs[idx]=doc;
-  ksSaveDoctors(docs);
-  ksSetCurrentDoctor(doc);
-  if (typeof showToast==='function') showToast('Credentials updated!');
-  else alert('Credentials updated!');
+  if (!oldPwd || !newPwd) { alert('Please enter both your current and new password.'); return; }
+  if (newPwd.length < 6) { alert('New password must be at least 6 characters.'); return; }
+  try {
+    var cred = firebase.auth.EmailAuthProvider.credential(user.email, oldPwd);
+    await user.reauthenticateWithCredential(cred);
+    await user.updatePassword(newPwd);
+    document.getElementById('ks-old-password').value = '';
+    document.getElementById('ks-new-password').value = '';
+    if (typeof showToast==='function') showToast('Password updated successfully!');
+    else alert('Password updated!');
+  } catch (e) {
+    var msg = 'Could not update password.';
+    if (e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'Current password is incorrect.';
+    else if (e.code === 'auth/weak-password') msg = 'New password is too weak — use at least 6 characters.';
+    alert(msg);
+  }
 };
 
 // ── AUTH MODAL ──────────────────────────────────────────────────────────
@@ -22612,19 +22675,19 @@ window.ksShowDoctorAuthModal = function() {
     modal.id = 'ks-doctor-auth-modal';
     modal.style.cssText = 'position:fixed;inset:0;background:#0b2545;z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;';
     var box = document.createElement('div');
-    box.style.cssText = 'background:#fff;border-radius:16px;padding:32px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);';
+    box.style.cssText = 'background:#fff;border-radius:16px;padding:32px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.4);max-height:92vh;overflow-y:auto;';
     box.innerHTML = '\
-<div style="text-align:center;margin-bottom:24px;">\
+<div style="text-align:center;margin-bottom:20px;">\
 <div style="font-size:48px;">\uD83D\uDD77\uFE0F</div>\
 <h2 style="color:#0b2545;margin:8px 0 4px;font-size:1.4rem;">K Spider Doctor AI</h2>\
 <p style="color:#64748b;font-size:0.83rem;margin:0;">Your private clinic management platform</p></div>\
-<div id="ks-google-auth-wrap" style="display:none;margin-bottom:14px;">\
-<div id="ks-google-btn-login" style="display:flex;justify-content:center;"></div>\
-<div style="text-align:center;font-size:11px;color:#94a3b8;margin-top:6px;">Sign in instantly with your Google email &mdash; no password to remember</div>\
-</div>\
-<div id="ks-auth-divider" style="display:none;align-items:center;gap:10px;margin:14px 0;">\
+<button id="ks-google-signin-btn" onclick="ksGoogleSignIn()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:11px;background:#fff;border:1.5px solid #e2e8f0;border-radius:9px;font-size:0.9rem;font-weight:700;color:#1f2937;cursor:pointer;margin-bottom:6px;">\
+<svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.9 0 6.6 1.7 8.1 3.1l6-5.9C34.5 3.4 29.8 1.5 24 1.5 14.9 1.5 7.1 6.9 3.5 14.6l7.1 5.5C12.4 14 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 2.9-2.2 5.4-4.7 7l7.2 5.6c4.2-3.9 6.6-9.6 6.6-17.1z"/><path fill="#FBBC05" d="M10.6 20.1a14.5 14.5 0 000 8.6l-7.1 5.5A24 24 0 010 24c0-3 .7-5.9 1.9-8.4l7.1 5.5z"/><path fill="#34A853" d="M24 46.5c6.2 0 11.4-2 15.2-5.5l-7.2-5.6c-2 1.4-4.7 2.3-8 2.3-6.3 0-11.6-4.5-13.5-10.5l-7.1 5.5C7.1 41.1 14.9 46.5 24 46.5z"/></svg>\
+<span id="ks-google-btn-label">Continue with Google</span></button>\
+<div style="text-align:center;font-size:11px;color:#94a3b8;margin-bottom:16px;">Instant sign-in with your Google email &mdash; no password needed</div>\
+<div style="display:flex;align-items:center;gap:10px;margin:14px 0;">\
 <div style="flex:1;height:1px;background:#e2e8f0;"></div>\
-<span style="font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;">OR USE MOBILE NUMBER</span>\
+<span style="font-size:10px;color:#94a3b8;font-weight:700;letter-spacing:0.5px;">OR USE EMAIL</span>\
 <div style="flex:1;height:1px;background:#e2e8f0;"></div>\
 </div>\
 <div id="ks-auth-tabs" style="display:flex;border-bottom:2px solid #e2e8f0;margin-bottom:20px;">\
@@ -22632,24 +22695,47 @@ window.ksShowDoctorAuthModal = function() {
 <button onclick="ksAuthTab(\'register\')" id="ks-tab-reg" style="flex:1;padding:8px;border:none;background:none;font-weight:600;color:#64748b;cursor:pointer;font-size:0.88rem;">Register New Doctor</button>\
 </div>\
 <div id="ks-auth-login">\
-<div style="margin-bottom:12px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Mobile / Username</label><input id="ks-auth-user" type="text" placeholder="Your registered mobile number" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
-<div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Password <span style="font-weight:400;">(default: your mobile number)</span></label><input id="ks-auth-pass" type="password" placeholder="Password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
-<button onclick="ksDoLogin()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:9px;font-size:0.93rem;font-weight:700;cursor:pointer;">\uD83D\uDD13 Login to My Account</button>\
+<div style="margin-bottom:12px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Email</label><input id="ks-auth-user" type="email" placeholder="doctor@example.com" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Password</label><input id="ks-auth-pass" type="password" placeholder="Password" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<button id="ks-login-btn" onclick="ksDoLogin()" style="width:100%;padding:12px;background:#2563eb;color:#fff;border:none;border-radius:9px;font-size:0.93rem;font-weight:700;cursor:pointer;">\uD83D\uDD13 Login to My Account</button>\
 <div id="ks-auth-msg" style="margin-top:10px;font-size:0.82rem;text-align:center;"></div>\
 </div>\
 <div id="ks-auth-register" style="display:none;">\
 <div style="margin-bottom:10px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Full Name *</label><input id="ks-reg-name" type="text" placeholder="Dr. Full Name" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
-<div style="margin-bottom:10px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Mobile Number * <span style="font-weight:400;">(will be your username & default password)</span></label><input id="ks-reg-mobile" type="tel" placeholder="10-digit mobile" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
-<div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Set Password <span style="font-weight:400;">(or leave blank to use mobile as password)</span></label><input id="ks-reg-pass" type="password" placeholder="Leave blank = use mobile number" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
-<button onclick="ksDoRegister()" style="width:100%;padding:12px;background:#059669;color:#fff;border:none;border-radius:9px;font-size:0.93rem;font-weight:700;cursor:pointer;">\u2705 Create My Account</button>\
+<div style="margin-bottom:10px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Email *</label><input id="ks-reg-email" type="email" placeholder="doctor@example.com" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<div style="margin-bottom:10px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Mobile Number *</label><input id="ks-reg-mobile" type="tel" placeholder="10-digit mobile" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<div style="margin-bottom:16px;"><label style="font-size:0.8rem;font-weight:600;color:#64748b;display:block;margin-bottom:4px;">Set Password * <span style="font-weight:400;">(minimum 6 characters)</span></label><input id="ks-reg-pass" type="password" placeholder="At least 6 characters" style="width:100%;padding:10px 12px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:0.88rem;box-sizing:border-box;"></div>\
+<button id="ks-reg-btn" onclick="ksDoRegister()" style="width:100%;padding:12px;background:#059669;color:#fff;border:none;border-radius:9px;font-size:0.93rem;font-weight:700;cursor:pointer;">\u2705 Create My Account</button>\
 <div id="ks-reg-msg" style="margin-top:10px;font-size:0.82rem;text-align:center;"></div>\
 </div>\
-<p style="text-align:center;margin-top:16px;font-size:0.75rem;color:#94a3b8;">Your data stays private on this device. Each doctor has their own secure space.</p>';
+<p style="text-align:center;margin-top:16px;font-size:0.75rem;color:#94a3b8;">Your account is securely stored in the cloud. Each doctor has their own private, encrypted space.</p>';
     modal.appendChild(box);
     var sh=document.getElementById('saas-shell')||document.body; sh.appendChild(modal);
   }
   modal.style.display = 'flex';
-  if (typeof ksInitGoogleAuth === 'function') ksInitGoogleAuth();
+};
+
+// (Firestore doctor-record provisioning — see _ksEnsureDoctorRecord defined
+// near the top of the file; shared by this modal and the main login gate.)
+
+window.ksGoogleSignIn = async function() {
+  if (!_ksAuth) { alert('Could not connect to the server. Please check your internet connection.'); return; }
+  var btn = document.getElementById('ks-google-signin-btn');
+  var label = document.getElementById('ks-google-btn-label');
+  if (btn) { btn.disabled = true; if (label) label.textContent = 'Connecting...'; }
+  try {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    const result = await _ksAuth.signInWithPopup(provider);
+    await _ksEnsureDoctorRecord(result.user, { authProvider: 'google' });
+    window.location.reload();
+  } catch (e) {
+    if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
+    var msgEl = document.getElementById('ks-auth-msg') || document.getElementById('ks-reg-msg');
+    var msg = 'Google sign-in failed. Please try again.';
+    if (e.code === 'auth/popup-closed-by-user') msg = 'Sign-in was cancelled.';
+    else if (e.code === 'auth/popup-blocked') msg = 'Popup was blocked — please allow popups for this site.';
+    if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626;">' + msg + '</span>';
+  }
 };
 
 window.ksAuthTab = function(tab) {
@@ -22661,42 +22747,53 @@ window.ksAuthTab = function(tab) {
   document.getElementById('ks-tab-reg').style.color  = tab==='register'?'#2563eb':'#64748b';
 };
 
-window.ksDoLogin = function() {
-  var user = (document.getElementById('ks-auth-user')||{value:''}).value.trim();
-  var pass = (document.getElementById('ks-auth-pass')||{value:''}).value.trim();
-  if (!user) { document.getElementById('ks-auth-msg').innerHTML='<span style="color:#dc2626;">Please enter your mobile/username</span>'; return; }
-  if (!pass) pass = user; // default password = username (mobile)
-  var result = ksLoginDoctor(user, pass);
+window.ksDoLogin = async function() {
+  var email = (document.getElementById('ks-auth-user')||{value:''}).value.trim();
+  var pass  = (document.getElementById('ks-auth-pass')||{value:''}).value;
   var msgEl = document.getElementById('ks-auth-msg');
-  if (result.ok) {
-    msgEl.innerHTML = '<span style="color:#059669;">\u2705 Welcome Dr. '+result.doc.name+'!</span>';
-    setTimeout(function(){
-      var modal = document.getElementById('ks-doctor-auth-modal');
-      if (modal) modal.style.display = 'none';
-    }, 800);
-  } else {
-    msgEl.innerHTML = '<span style="color:#dc2626;">' + result.msg + '</span>';
+  var btn   = document.getElementById('ks-login-btn');
+  if (!email || !pass) { msgEl.innerHTML='<span style="color:#dc2626;">Please enter your email and password</span>'; return; }
+  if (!_ksAuth) { msgEl.innerHTML='<span style="color:#dc2626;">Could not connect to the server.</span>'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Logging in...'; }
+  try {
+    await _ksAuth.signInWithEmailAndPassword(email, pass);
+    msgEl.innerHTML = '<span style="color:#059669;">✅ Welcome back!</span>';
+    window.location.reload();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '🔓 Login to My Account'; }
+    var msg = 'Login failed. Please try again.';
+    if (e.code === 'auth/user-not-found' || e.code === 'auth/wrong-password' || e.code === 'auth/invalid-credential') msg = 'Incorrect email or password.';
+    else if (e.code === 'auth/invalid-email') msg = 'Please enter a valid email address.';
+    else if (e.code === 'auth/too-many-requests') msg = 'Too many attempts. Please wait and try again.';
+    msgEl.innerHTML = '<span style="color:#dc2626;">' + msg + '</span>';
   }
 };
 
-window.ksDoRegister = function() {
+window.ksDoRegister = async function() {
   var name   = (document.getElementById('ks-reg-name')||{value:''}).value.trim();
+  var email  = (document.getElementById('ks-reg-email')||{value:''}).value.trim();
   var mobile = (document.getElementById('ks-reg-mobile')||{value:''}).value.trim();
-  var pass   = (document.getElementById('ks-reg-pass')||{value:''}).value.trim() || mobile;
+  var pass   = (document.getElementById('ks-reg-pass')||{value:''}).value;
   var msgEl  = document.getElementById('ks-reg-msg');
-  if (!name || !mobile) { msgEl.innerHTML='<span style="color:#dc2626;">Name and mobile are required</span>'; return; }
-  if (mobile.length < 10) { msgEl.innerHTML='<span style="color:#dc2626;">Enter valid 10-digit mobile</span>'; return; }
-  var result = ksRegisterDoctor(name, mobile, pass);
-  if (result.ok) {
-    msgEl.innerHTML = '<span style="color:#059669;">\u2705 Registered! Logging in...</span>';
-    ksSetCurrentDoctor(result.doc);
-    ksApplyDoctorProfile(result.doc);
-    setTimeout(function(){
-      var modal = document.getElementById('ks-doctor-auth-modal');
-      if (modal) modal.style.display = 'none';
-    }, 800);
-  } else {
-    msgEl.innerHTML = '<span style="color:#dc2626;">' + result.msg + '</span>';
+  var btn    = document.getElementById('ks-reg-btn');
+  if (!name || !email || !mobile || !pass) { msgEl.innerHTML='<span style="color:#dc2626;">All fields are required</span>'; return; }
+  if (mobile.length < 10) { msgEl.innerHTML='<span style="color:#dc2626;">Enter a valid 10-digit mobile number</span>'; return; }
+  if (pass.length < 6) { msgEl.innerHTML='<span style="color:#dc2626;">Password must be at least 6 characters</span>'; return; }
+  if (!_ksAuth) { msgEl.innerHTML='<span style="color:#dc2626;">Could not connect to the server.</span>'; return; }
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Creating account...'; }
+  try {
+    const cred = await _ksAuth.createUserWithEmailAndPassword(email, pass);
+    await cred.user.updateProfile({ displayName: name });
+    await _ksEnsureDoctorRecord(cred.user, { name: name, phone: mobile, authProvider: 'password' });
+    msgEl.innerHTML = '<span style="color:#059669;">✅ Registered! Logging you in...</span>';
+    window.location.reload();
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '✅ Create My Account'; }
+    var msg = 'Registration failed. Please try again.';
+    if (e.code === 'auth/email-already-in-use') msg = 'An account with this email already exists — try logging in instead.';
+    else if (e.code === 'auth/invalid-email') msg = 'Please enter a valid email address.';
+    else if (e.code === 'auth/weak-password') msg = 'Password is too weak — use at least 6 characters.';
+    msgEl.innerHTML = '<span style="color:#dc2626;">' + msg + '</span>';
   }
 };
 
@@ -22721,17 +22818,16 @@ function ksInjectCredentialFields() {
   var credDiv = document.createElement('div');
   credDiv.id = 'ks-cred-section';
   credDiv.style.cssText = 'background:linear-gradient(135deg,rgba(37,99,235,0.05),rgba(5,150,105,0.05));border:1px solid var(--border);border-radius:10px;padding:16px;margin-top:16px;';
-  credDiv.innerHTML = (isGoogle
+  credDiv.innerHTML = isGoogle
     ? '<div style="font-weight:700;color:var(--primary);margin-bottom:8px;font-size:0.9rem;">\uD83D\uDD12 Login Method</div>\
 <div style="font-size:12px;color:#374151;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:10px 12px;">\uD83D\uDD11 Signed in with Google (' + (curDoc.email||'') + '). No password needed \u2014 just use "Continue with Google" next time.</div>'
-    : '') + '\
-<div style="font-weight:700;color:var(--primary);margin:14px 0 12px;font-size:0.9rem;">\uD83D\uDD12 Change Login Credentials</div>\
+    : '<div style="font-weight:700;color:var(--primary);margin-bottom:12px;font-size:0.9rem;">\uD83D\uDD12 Change Password</div>\
+<div style="font-size:11px;color:#64748b;margin-bottom:10px;">Signed in as ' + (curDoc && curDoc.email ? curDoc.email : '') + '</div>\
 <div class="grid-2">\
-<div class="field"><label>New Username (optional)</label><input type="text" id="ks-new-username" placeholder="Leave blank to keep mobile"></div>\
-<div class="field"><label>Old Password</label><input type="password" id="ks-old-password" placeholder="Current password"></div>\
+<div class="field"><label>Current Password</label><input type="password" id="ks-old-password" placeholder="Current password"></div>\
+<div class="field"><label>New Password</label><input type="password" id="ks-new-password" placeholder="At least 6 characters"></div>\
 </div>\
-<div class="field"><label>New Password</label><input type="password" id="ks-new-password" placeholder="Enter new password"></div>\
-<button onclick="ksChangeCredentials()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:0.85rem;">\uD83D\uDD12 Update Credentials</button>';
+<button onclick="ksChangeCredentials()" style="background:#7c3aed;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-weight:700;cursor:pointer;font-size:0.85rem;">\uD83D\uDD12 Update Password</button>';
   var saveBtn = dpSec.querySelector('button[onclick*="saveProfile"], button[onclick*="ksUpdateDoctorProfile"]');
   if (saveBtn) {
     saveBtn.setAttribute('onclick', 'ksUpdateDoctorProfile()');
