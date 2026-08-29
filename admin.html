@@ -4106,8 +4106,8 @@ function show(name, el) {
   if (name==='apikeys')      { loadApiKeys(); }
   if (name==='wa-referrals') { loadWaReferrals('pending'); }
   if (name==='rto-agents')  { loadAgentRequests(); autoMarkExpired(); }
-  if (name==='brahminconnect') { loadBrahminVivaah('profiles'); }
-  if (name==='vivaah-only') { vvLoad('profiles'); }
+  if (name==='brahminconnect') { try{ loadBrahminVivaah('profiles'); }catch(e){ console.error('[BrahminConnect]', e); alert('BrahminConnect panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
+  if (name==='vivaah-only') { try{ vvLoad('profiles'); }catch(e){ console.error('[Brahmin Vivaah]', e); alert('Brahmin Vivaah panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
   if (name==='dsa-admin')      { loadDsaAdmin(); }
   closeMobMenu(); // Close sidebar on mobile after nav click
 }
@@ -9077,6 +9077,17 @@ function vvCheckAlerts() {
     }).catch(function(){});
   }).catch(function(e){ console.warn('[Brahmin Vivaah] alert check failed:', e.message); });
 }
+
+// Backup click listeners for the two matrimony nav items, in addition to
+// their inline onclick="show(...)" — if the inline handler is ever
+// prevented from firing for any reason, this still triggers the load.
+// Harmless if both fire (data reload is idempotent).
+document.addEventListener('DOMContentLoaded', function(){
+  var bcNav = document.getElementById('n-brahminconnect');
+  var vvNav = document.getElementById('n-vivaah-only');
+  if (bcNav) bcNav.addEventListener('click', function(){ setTimeout(function(){ try{ loadBrahminVivaah('profiles'); }catch(e){ console.error('[BrahminConnect backup trigger]', e); } }, 50); });
+  if (vvNav) vvNav.addEventListener('click', function(){ setTimeout(function(){ try{ vvLoad('profiles'); }catch(e){ console.error('[Brahmin Vivaah backup trigger]', e); } }, 50); });
+});
 
 function vvLoad(tab) {
   vvTab = tab || 'profiles';
