@@ -22598,16 +22598,17 @@ window.ksSaveDoctorData = function() {
 };
 
 // Logout
-window.ksLogoutDoctor = function(skipConfirm) {
+window.ksLogoutDoctor = async function(skipConfirm) {
   if (!skipConfirm && !confirm('Logout from K Spider Doctor AI?')) return;
   ksSaveDoctorData();
   localStorage.removeItem('ks_current_doctor');
   localStorage.removeItem(KS_CURRENT_DOCTOR);
-  var sbl=document.getElementById('ks-sidebar-auth-label');if(sbl)sbl.textContent='Login / Register';
-  var sbBtn=document.getElementById('ks-sidebar-login-btn');if(sbBtn){sbBtn.style.background='rgba(255,255,255,0.1)';sbBtn.style.borderColor='rgba(255,255,255,0.2)';}
-  var ab=document.getElementById('ks-multi-doc-banner');if(ab){ab.style.background='linear-gradient(135deg,#0b2545,#1e3a8a)';var lb=document.getElementById('ks-auth-main-btn')||ab.querySelector('button');if(lb){lb.textContent='\u{1F512} Login / Register';lb.setAttribute('onclick','ksShowDoctorAuthModal()');}}
-  var tn=document.getElementById('ks-dr-name-topbar');if(tn)tn.textContent='';
-  ksShowDoctorAuthModal();
+  localStorage.removeItem('ks_user');
+  // Sign out of the real Firebase session too — clearing only localStorage
+  // would leave the doctor still authenticated, so the next page load would
+  // just log them straight back in via the main auth gate.
+  if (_ksAuth) { try { await _ksAuth.signOut(); } catch (e) {} }
+  window.location.reload();
 };
 
 // Update doctor profile
@@ -23090,7 +23091,11 @@ document.addEventListener('DOMContentLoaded', function() {
       ksApplyDoctorProfile(currentDoc);
     }
 
-    ksInjectDoctorTopbar();
+    // Note: ksInjectDoctorTopbar() (legacy duplicate name/logout widget) is
+    // intentionally not called — updateTopbar() already renders the doctor's
+    // name and a working "Sign Out" button (real Firebase sign-out) in the
+    // topbar once signed in. Calling both would show two logout buttons,
+    // one of which doesn't actually sign out of the real account.
     ksInjectCredentialFields();
     ksEnhanceAppointmentForm();
     ksInjectExplainBtn();
