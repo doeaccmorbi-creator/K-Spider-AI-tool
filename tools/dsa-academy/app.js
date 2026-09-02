@@ -324,6 +324,7 @@ function renderAuth(){
         ${mode==='signup' && role==='faculty'?`<div class="field"><label>Subject you teach</label><select id="authSubject">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>`:''}
         <div class="field"><label>Email</label><input required type="email" id="authEmail" placeholder="you@example.com" value="${ROUTE.params.prefillEmail || ''}"></div>
         <div class="field"><label>Password</label><input required type="password" id="authPass" placeholder="••••••••" minlength="6"></div>
+        ${mode==='login' ? `<div style="text-align:right;margin:-6px 0 4px"><a onclick="sendPasswordReset()" style="font-size:12.5px;color:var(--green-600);font-weight:700;cursor:pointer">Forgot password?</a></div>` : ''}
         <button class="btn btn-primary btn-block" type="submit">${mode==='signup'?'Create account':'Log in'} →</button>
       </form>
       ${window.FIREBASE_ENABLED ? `
@@ -345,6 +346,15 @@ function renderAuth(){
       ${ROUTE.params.prefillEmail ? `<div class="demo-note" style="margin-top:8px">🔗 Signed in via K Spider — enter your DSA admin password to continue.</div>` : ''}
     </div>
   </div>`;
+}
+
+function sendPasswordReset(){
+  if(!window.FIREBASE_ENABLED){ toast('Connect Firebase to use password reset','⚠️'); return; }
+  const email = (document.getElementById('authEmail').value||'').trim();
+  if(!email){ toast('Enter your email above first, then click Forgot password','⚠️'); return; }
+  fbAuth.sendPasswordResetEmail(email)
+    .then(()=>toast(`Password reset link sent to ${email} 📧`))
+    .catch(err=>toast(err.message,'⚠️'));
 }
 
 function handleAuth(e, role){
