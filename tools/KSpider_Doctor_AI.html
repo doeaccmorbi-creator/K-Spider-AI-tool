@@ -167,8 +167,25 @@ function _ksDrSubmitRegister() {
     });
 }
 
+// Decode a Firebase Google sign-in error into an actionable message for the
+// doctor, and log the raw error so it's inspectable in the browser console
+// (Firebase's real error code/message is far more useful for diagnosing a
+// misconfiguration than a generic "please try again").
+function _ksDecodeGoogleAuthError(err) {
+  console.error('Google sign-in error:', err && err.code, err && err.message, err);
+  var code = err && err.code;
+  if (code === 'auth/popup-closed-by-user') return 'Sign-in was cancelled.';
+  if (code === 'auth/cancelled-popup-request') return 'Sign-in was cancelled — please try once more.';
+  if (code === 'auth/popup-blocked') return 'Popup was blocked by the browser — please allow popups for this site and try again.';
+  if (code === 'auth/unauthorized-domain') return 'This website\u2019s domain is not yet authorised for Google sign-in. (Fix: Firebase Console → Authentication → Settings → Authorized domains → add kspiderai.in)';
+  if (code === 'auth/operation-not-allowed') return 'Google sign-in is not enabled yet for this app. (Fix: Firebase Console → Authentication → Sign-in method → enable Google)';
+  if (code === 'auth/network-request-failed') return 'Network error — please check your internet connection and try again.';
+  if (code === 'auth/internal-error' || code === 'auth/permission-denied' || (err && /Missing or insufficient permissions/i.test(err.message||''))) return 'Your account signed in, but saving your doctor profile was blocked by server permissions. (Fix: check the Firestore security rules for the doctors collection)';
+  return 'Google sign-in failed' + (code ? ' (' + code + ')' : '') + '. Please try again, or use Email login below.';
+}
+
 function _ksDrGoogleSignIn() {
-  if (!_ksAuth || !_ksDb) { alert('Firebase not loaded.'); return; }
+  if (!_ksAuth || !_ksDb) { alert('Could not connect to Firebase — check your internet connection and reload the page.'); return; }
   var btn = document.getElementById('ks-dr-google-btn');
   var label = document.getElementById('ks-dr-google-label');
   if (btn) { btn.disabled = true; if (label) label.textContent = 'Connecting...'; }
@@ -178,10 +195,7 @@ function _ksDrGoogleSignIn() {
     .then(function() { window.location.reload(); })
     .catch(function(err) {
       if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
-      var msg = 'Google sign-in failed. Please try again.';
-      if (err.code === 'auth/popup-closed-by-user') msg = 'Sign-in was cancelled.';
-      else if (err.code === 'auth/popup-blocked') msg = 'Popup was blocked — please allow popups for this site.';
-      _ksShowDoctorLogin(msg);
+      _ksShowDoctorLogin(_ksDecodeGoogleAuthError(err));
     });
 }
 
@@ -22732,9 +22746,7 @@ window.ksGoogleSignIn = async function() {
   } catch (e) {
     if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
     var msgEl = document.getElementById('ks-auth-msg') || document.getElementById('ks-reg-msg');
-    var msg = 'Google sign-in failed. Please try again.';
-    if (e.code === 'auth/popup-closed-by-user') msg = 'Sign-in was cancelled.';
-    else if (e.code === 'auth/popup-blocked') msg = 'Popup was blocked — please allow popups for this site.';
+    var msg = _ksDecodeGoogleAuthError(e);
     if (msgEl) msgEl.innerHTML = '<span style="color:#dc2626;">' + msg + '</span>';
   }
 };
