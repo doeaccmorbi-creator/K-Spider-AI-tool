@@ -1812,7 +1812,7 @@ img{max-width:100%;display:block;}
               <span style="font-size:32px;">🔥</span>
               <div style="flex:1;">
                 <div style="font-weight:800;font-size:14px;font-family:'Sora',sans-serif;margin-bottom:3px;">Bestseller: Top 100 React Interview Qs</div>
-                <div style="font-size:11px;opacity:.9;">By Rahul Mehta · 4.8⭐ · 1,240 buyers</div>
+                <div style="font-size:11px;opacity:.9;">By Rahul Mehta · 4.8⭐ · Example listing</div>
               </div>
               <div style="text-align:right;">
                 <div style="font-weight:800;font-size:16px;color:#fff;">FREE</div>
@@ -2332,7 +2332,7 @@ img{max-width:100%;display:block;}
               <div style="background:linear-gradient(135deg,var(--pl),#fff);border:2px solid var(--primary);border-radius:var(--r);padding:14px;text-align:center;">
                 <div style="font-size:24px;margin-bottom:6px;">🏢</div>
                 <div style="font-weight:700;font-size:14px;margin-bottom:4px;">Are you a Recruiter?</div>
-                <div style="font-size:12px;color:var(--t2);margin-bottom:10px;">Post a campus drive and reach 50,000+ students across Gujarat &amp; India!</div>
+                <div style="font-size:12px;color:var(--t2);margin-bottom:10px;">Post a campus drive and reach engineering &amp; management students across Gujarat &amp; India!</div>
                 <button class="bap" style="width:auto;padding:10px 20px;border-radius:var(--rs);" onclick="showModal('postDriveModal')">📋 Post Campus Drive</button>
               </div>
             </div>
@@ -7711,6 +7711,7 @@ document.addEventListener('DOMContentLoaded',function(){
     if(pg==='analytics'){setTimeout(loadAnalytics,200);}
     if(pg==='viral'){setTimeout(vmInit,50);}
     if(pg==='walkin'){setTimeout(loadWalkins,200);}
+    if(pg==='marketplace'){setTimeout(loadMarketplaceProducts,200);}
   };
 });
 
@@ -7975,6 +7976,7 @@ async function uploadProduct(){
     const st=$('mktFileStatus');if(st)st.style.display='none';
     showToast('✅ Published! It\'s now live and free in the marketplace.');
     loadSellerStats();
+    loadMarketplaceProducts();
     // Switch to my sales
     mktTab(document.querySelectorAll('#page-marketplace .earn-tab')[3],'mysales');
   }catch(e){showToast('⚠️ '+e.message);}
@@ -7992,6 +7994,50 @@ function addProductToGrid(p){
         <div class="course-price-row"><span class="course-price" style="color:var(--green);">FREE</span></div>
       </div>
     </div>`);
+}
+
+// Real marketplace products from Firestore — the grid was previously always
+// showing the same 6 static example cards even after a seller published a
+// real product (it never actually appeared anywhere). Real products now
+// load and show first; the example cards stay only as illustrative filler
+// when there aren't yet enough real listings, so the grid never looks empty.
+var _mktRealProducts={};
+async function loadMarketplaceProducts(){
+  if(!window._fb) return;
+  const grid=$('mktGrid');
+  if(!grid) return;
+  try{
+    const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'marketplace_products'),window._fb.limit(30)));
+    if(snap.empty) return; // keep the example cards as illustrative placeholders
+    const cards=[];
+    snap.forEach(d=>{
+      const p=d.data();
+      _mktRealProducts[d.id]=p;
+      const photo=p.sellerPhoto||('https://ui-avatars.com/api/?name='+encodeURIComponent(p.sellerName||'S')+'&background=0A84FF&color=fff');
+      cards.push(
+        '<div class="course-card" onclick="openRealProduct(\''+d.id+'\')">'
+        +'<div class="course-thumb">📦</div>'
+        +'<div class="course-body">'
+        +'<div class="course-title">'+validateInput(p.title||'')+'</div>'
+        +'<div class="course-author"><img src="'+photo+'" alt="">'+validateInput(p.sellerName||'Creator')+'</div>'
+        +'<div class="course-meta"><span class="course-tag tt">'+validateInput(p.type||'')+'</span><span class="course-tag" style="background:var(--gl);color:var(--green);">'+(p.buyers||0)+' downloads</span></div>'
+        +'<div class="course-price-row"><span class="course-price" style="color:var(--green);">FREE</span></div>'
+        +'</div></div>'
+      );
+    });
+    // Once there are enough real listings, drop the illustrative example
+    // cards entirely so nothing fake is mixed in with real data.
+    if(cards.length>=3){
+      grid.innerHTML=cards.join('');
+    }else{
+      grid.insertAdjacentHTML('afterbegin',cards.join(''));
+    }
+  }catch(e){console.warn('loadMarketplaceProducts:',e);}
+}
+function openRealProduct(id){
+  const p=_mktRealProducts[id];
+  if(!p)return;
+  openProduct({id,title:p.title,price:0,seller:p.sellerName,sellerImg:p.sellerPhoto,type:p.type,rating:p.rating||5.0,buyers:p.buyers||0,icon:'📦',cat:p.category,fileData:p.fileData,resourceLink:p.resourceLink});
 }
 
 function openProduct(p){
@@ -8240,11 +8286,28 @@ function campTab(btn,tab){
 }
 
 function initCampus(){
-  // Load demo stats
-  animateCounter('campColleges',247);
-  animateCounter('campStudents',52400);
-  animateCounter('campDrives',38);
-  animateCounter('campPlaced',8920);
+  loadCampusStats();
+  // Real, honest campus stats — no fabricated scale numbers. "Active Drives"
+  // and "Colleges" come from campus_drives (openly readable). Student /
+  // placement counts stay honestly at 0 until a safe, privacy-respecting
+  // aggregate exists (those records are private per-user by design).
+  async function loadCampusStats(){
+    if(!window._fb) return;
+    try{
+      const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'campus_drives'),window._fb.limit(200)));
+      const colleges=new Set();
+      let activeDrives=0;
+      const now=Date.now();
+      snap.forEach(d=>{
+        const dr=d.data();
+        if(dr.collegeName)colleges.add(dr.collegeName.trim().toLowerCase());
+        const driveTime=dr.driveDate?new Date(dr.driveDate).getTime():null;
+        if(!driveTime||driveTime>=now)activeDrives++;
+      });
+      animateCounter('campColleges',colleges.size);
+      animateCounter('campDrives',activeDrives);
+    }catch(e){console.warn('loadCampusStats:',e);}
+  }
   // Pre-fill drive registration
   if(_up){
     const dn=$('drRegName');const de=$('drRegEmail');
@@ -8400,7 +8463,7 @@ async function saveCollegeReg(plan,paymentId){
     });
     showToast(`✅ College registered with ${plan} plan! Verification within 24 hours.`);
     // Update stat
-    const cc=$('campColleges');if(cc)cc.textContent=parseInt(cc.textContent||247)+1;
+    const cc=$('campColleges');if(cc)cc.textContent=(parseInt(cc.textContent)||0)+1;
   }catch(e){showToast('⚠️ '+e.message);}
 }
 
@@ -8571,7 +8634,7 @@ function copyRefLink(){
 function shareRef(platform){
   const name=_up?.name?.split(' ')[0]||'I';
   const msgs={
-    whatsapp:`🚀 ${name} is inviting you to *KSpider Connect* — India's #1 AI-powered Social + Job Platform!\n\n✅ Find jobs with AI matching\n✅ Practice mock interviews FREE\n✅ Connect with 10,000+ professionals\n\nJoin FREE using my link and I earn a reward:\n👉 ${_ref.link}\n\n#KSpiderConnect #Jobs #India`,
+    whatsapp:`🚀 ${name} is inviting you to *KSpider Connect* — India's AI-powered Social + Job Platform!\n\n✅ Find jobs with AI matching\n✅ Practice mock interviews FREE\n✅ Connect with professionals near you\n\nJoin FREE using my link and I earn a reward:\n👉 ${_ref.link}\n\n#KSpiderConnect #Jobs #India`,
     linkedin:`Excited to share KSpider Connect — India's AI-powered Social + Job platform!\n\n🤖 AI job matching\n🎤 Free mock interview simulator\n💼 1000+ jobs from verified companies\n\nJoining through my referral link supports my journey!\n\n${_ref.link}\n\n#KSpiderAI #JobSearch #India #AI`,
     twitter:`🇮🇳 Found the best job platform for India!\n\n@KSpiderAI Connect has:\n✅ AI job matching\n✅ Free mock interviews\n✅ Verified recruiters\n\nJoin free → ${_ref.link}\n\n#KSpiderConnect #JobSearch #AI #India`,
     group:`Hello everyone! 👋\n\nShare karna chahta/chahti hoon — KSpider Connect ek FREE AI job platform hai India ke liye!\n\n🎯 AI se job match\n🎤 FREE mock interview practice\n💼 Verified companies se jobs\n\nMere link se join karo:\n${_ref.link}\n\nDono ko benefit milega! 🙌`
@@ -8592,7 +8655,7 @@ function genRefMsg(type){
   box.innerHTML='<div style="display:flex;align-items:center;gap:8px;color:var(--primary);font-size:12px;"><div class="spinner2" style="margin:0;width:16px;height:16px;border-width:2px;"></div>Writing message…</div>';
 
   const templates={
-    whatsapp:`🚀 Join me on KSpider Connect — India's FREE AI-powered job platform!\n\n✅ Free AI job matching\n🎤 Free mock interview practice\n💼 Connect with 10,000+ professionals\n\nJoin free using my link:\n👉 [LINK]`,
+    whatsapp:`🚀 Join me on KSpider Connect — India's FREE AI-powered job platform!\n\n✅ Free AI job matching\n🎤 Free mock interview practice\n💼 Connect with professionals near you\n\nJoin free using my link:\n👉 [LINK]`,
     linkedin:`Excited to share KSpider Connect — India's AI-powered Social + Job Platform!\n\n🤖 AI-powered job matching\n🎤 Free mock interview simulator\n💼 Verified recruiters & real opportunities\n\nJoin through my link and let's grow together:\n[LINK]\n\n#KSpiderAI #JobSearch #India #CareerGrowth`,
     group:`Hello everyone! 👋\n\nShare karna chahta/chahti hoon — KSpider Connect ek FREE AI job platform hai India ke liye!\n\n🎯 AI se job match\n🎤 FREE mock interview practice\n💼 Verified companies se jobs\n\nMere link se join karo:\n[LINK]\n\nDono ko benefit milega! 🙌`,
     hindi:`KSpider Connect join karo — India ka FREE AI Job Platform! 🚀\n\n✅ AI job matching bilkul free\n🎤 Interview practice bhi free\n💰 Mujhe referral se thoda reward milta hai\n\nIस link se join karo:\n[LINK]`
