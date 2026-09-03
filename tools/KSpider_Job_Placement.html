@@ -973,6 +973,7 @@ img{max-width:100%;display:block;}
               <span id="localStatRecruiters"></span>
               <span id="localStatJobs"></span>
             </div>
+            <div style="margin-top:8px;font-size:10px;opacity:.85;">Not your city? <span onclick="showModal('editProfileModal')" style="text-decoration:underline;cursor:pointer;font-weight:600;">Update your Pin Code →</span></div>
           </div>
           <!-- Live Feed Indicator + Near Me -->
           <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 4px;margin-bottom:4px;">
@@ -3933,6 +3934,12 @@ async function doSignOut(){
 function demoLogin(){
   $('authScreen').style.display='none';$('appScreen').style.display='block';
   _up={name:'Gaurang Raval',headline:'🚀 AI Platform Builder · KSpider AI',photoURL:'https://i.pravatar.cc/150?img=12',posts:187,jobs:12,boostedJobs:2};
+  // Demo Mode has no real Firebase account, so location can't come from a
+  // saved profile Pin Code — always resolve fresh via GPS/IP for this
+  // device instead of reusing any previously cached city.
+  _user=null;
+  _userGeo=null;
+  try{localStorage.removeItem('ks_geo_guest');}catch(e){}
   updateUI();loadFeed();loadJobs();initGeo();listenNotifications();loadAnalytics();
   setTimeout(handleDeepLink,800); // v15: open shared job/post if URL has ?job= or ?post=
 }
@@ -5312,6 +5319,7 @@ async function initGeo(){
 function refineWithGPS(){
   if(!navigator.geolocation) return showToast('⚠️ GPS not supported on this device.');
   showToast('📍 Getting your exact location…');
+  const geoKey=_user&&_user.uid?('ks_geo_'+_user.uid):'ks_geo_guest';
   navigator.geolocation.getCurrentPosition(
     async pos=>{
       const lat=pos.coords.latitude, lng=pos.coords.longitude;
@@ -5322,7 +5330,7 @@ function refineWithGPS(){
         city=d.address?.city||d.address?.town||d.address?.village||city;
       }catch(e){}
       _userGeo={lat,lng,city,pin:(_up&&_up.cityPin)||'',source:'gps',ts:Date.now()};
-      try{localStorage.setItem('ks_geo',JSON.stringify(_userGeo));}catch(e){}
+      try{localStorage.setItem(geoKey,JSON.stringify(_userGeo));}catch(e){}
       updateGeoUI();
       loadFeed(true);
       loadJobs();
