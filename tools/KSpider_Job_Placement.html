@@ -97,7 +97,7 @@ try{
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);const db=getFirestore(app);const storage=getStorage(app);const gp=new GoogleAuthProvider();
 window._fb={auth,db,storage,googleProvider:gp,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint,getCountFromServer};
-onAuthStateChanged(auth,user=>{window._currentUser=user;if(user){document.getElementById('authScreen').style.display='none';document.getElementById('appScreen').style.display='block';window.initApp(user);}else{document.getElementById('authScreen').style.display='flex';document.getElementById('appScreen').style.display='none';}});
+onAuthStateChanged(auth,user=>{window._currentUser=user;if(user){document.getElementById('authScreen').style.display='none';window.initApp(user);}else{document.getElementById('authScreen').style.display='flex';document.getElementById('appScreen').style.display='none';document.getElementById('onboardingScreen').style.display='none';}});
 }catch(err){
   console.warn('Firebase init failed — Demo mode active:',err.message);
   window._fb=null;
@@ -866,6 +866,22 @@ img{max-width:100%;display:block;}
 </div>
 
 <!-- ══════════════════ APP SCREEN ══════════════════ -->
+<div id="onboardingScreen" style="display:none;position:fixed;inset:0;background:var(--bg);z-index:9999;overflow-y:auto;">
+  <div class="auth-card" style="max-width:420px;margin:40px auto;">
+    <div class="auth-logo">
+      <div class="ali">📍</div>
+      <h1>Complete Your Profile</h1>
+      <p>Just a few quick details so KSpider Connect feels local &amp; useful to you</p>
+    </div>
+    <div class="fg"><label class="fl">Your Pin Code * <span style="color:var(--t3);font-weight:400;">(shows you local jobs &amp; people nearby)</span></label><input type="text" class="fc" id="obPin" placeholder="e.g. 363641" maxlength="6" inputmode="numeric"></div>
+    <div class="fg"><label class="fl">Phone Number * <span style="color:var(--t3);font-weight:400;">(so recruiters/applicants can reach you)</span></label><input type="text" class="fc" id="obPhone" placeholder="10-digit mobile number" maxlength="10" inputmode="numeric"></div>
+    <div class="fg"><label class="fl" id="obHeadlineLabel">Current Role / Headline *</label><input type="text" class="fc" id="obHeadline" placeholder="e.g. React Developer at XYZ"></div>
+    <div class="fg" id="obSkillsWrap"><label class="fl">Your Skills * <span style="color:var(--t3);font-weight:400;">(comma separated — powers AI job matches)</span></label><input type="text" class="fc" id="obSkills" placeholder="e.g. React, Node.js, Firebase"></div>
+    <button class="bprim" onclick="saveOnboarding()" style="width:100%;margin-top:8px;">✅ Continue to KSpider Connect</button>
+    <div style="font-size:10px;color:var(--t3);text-align:center;margin-top:10px;">Your Pin Code is only used to personalize your feed — never shared publicly.</div>
+  </div>
+</div>
+
 <div id="appScreen">
   <!-- HEADER -->
   <header class="hdr">
@@ -959,6 +975,15 @@ img{max-width:100%;display:block;}
         <!-- ── FEED PAGE ── -->
         <div id="page-feed" class="page act">
           <!-- Hyperlocal City Banner (shows once user's city is known) -->
+          <!-- Job Alert Digest — WhatsApp-assisted (covers jobs posted while you were away) -->
+          <div id="jobAlertDigestBanner" style="display:none;background:linear-gradient(135deg,#10B981,#059669);border-radius:var(--r);padding:12px 14px;margin-bottom:12px;color:#fff;align-items:center;gap:10px;">
+            <span style="font-size:22px;">🔔</span>
+            <div style="flex:1;min-width:0;">
+              <div class="digest-text" style="font-weight:700;font-size:13px;"></div>
+              <div style="font-size:10px;opacity:.85;">Matched your saved Job Alert</div>
+            </div>
+            <button onclick="sendAlertDigestToWhatsApp()" style="padding:6px 12px;background:#fff;color:#059669;border:none;border-radius:99px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;">📲 Send to WhatsApp</button>
+          </div>
           <div id="localCityBanner" style="display:none;background:linear-gradient(135deg,var(--primary),var(--purple));border-radius:var(--r);padding:14px 16px;margin-bottom:12px;color:#fff;">
             <div style="display:flex;align-items:center;gap:10px;">
               <span style="font-size:26px;" id="localCityEmoji">📍</span>
@@ -2813,12 +2838,18 @@ img{max-width:100%;display:block;}
           </div>
           <div class="ppc" style="padding:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:8px;">About</div><div style="font-size:13px;color:var(--t2);" id="ppabout">Add a summary about yourself…</div></div>
           <div class="ppc" style="padding:14px;"><div style="font-weight:700;font-size:13px;margin-bottom:8px;">Skills</div><div class="sktgs" id="ppskills"><span class="sk">React.js</span><span class="sk">Firebase</span><span class="sk">AI/ML</span></div></div>
+          <div class="ppc" id="profileVerifiedSkills" style="padding:14px;display:none;"></div>
 
           <!-- ── RECRUITER: Applications Received Dashboard ── -->
           <div class="ppc" style="padding:14px;" id="recruiterDashboard">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
               <div style="font-weight:700;font-size:13px;">📬 Applications Received <span id="appCountBadge" style="display:none;background:var(--primary);color:#fff;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;margin-left:6px;"></span></div>
-              <button onclick="loadMyApplications()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);cursor:pointer;font-weight:600;" title="Show Immediate Joiners at the top">
+                  <input type="checkbox" id="prioritizeImmediateChk" onchange="loadMyApplications()" style="cursor:pointer;">⚡ Immediate first
+                </label>
+                <button onclick="loadMyApplications()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+              </div>
             </div>
             <div id="recruiterAppsBox" style="display:flex;flex-direction:column;gap:8px;">
               <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to load applications</div>
@@ -3953,6 +3984,70 @@ window.initApp=async function(user){
     const s=await window._fb.getDoc(window._fb.doc(window._fb.db,'users',user.uid));
     _up=s.exists()?s.data():{name:user.displayName||'User',headline:'KSpider Member',photoURL:user.photoURL||''};
   }catch{_up={name:user.displayName||'User',headline:'KSpider Member',photoURL:user.photoURL||''};}
+
+  // Gate: require a few key profile fields before entering the app, so
+  // KSpider Connect can personalize the experience (local city, AI
+  // matches, contact info) from the very first session.
+  if(!isProfileComplete(_up)){
+    showOnboarding();
+    return;
+  }
+  document.getElementById('appScreen').style.display='block';
+  continueInitApp();
+};
+
+function isProfileComplete(up){
+  if(!up) return false;
+  const hasBasics=!!(up.cityPin&&/^\d{4,6}$/.test(up.cityPin)&&up.phone&&up.headline&&up.headline.trim());
+  if(!hasBasics) return false;
+  if(up.role!=='recruiter'&&!(up.skills&&up.skills.trim())) return false;
+  return true;
+}
+
+function showOnboarding(){
+  document.getElementById('authScreen').style.display='none';
+  document.getElementById('appScreen').style.display='none';
+  document.getElementById('onboardingScreen').style.display='block';
+  // Pre-fill anything already known (e.g. only skills was missing)
+  if($('obPin'))$('obPin').value=(_up&&_up.cityPin)||'';
+  if($('obPhone'))$('obPhone').value=(_up&&_up.phone)||'';
+  if($('obHeadline'))$('obHeadline').value=(_up&&_up.headline&&_up.headline!=='KSpider Connect Member'&&_up.headline!=='KSpider Member')?_up.headline:'';
+  if($('obSkills'))$('obSkills').value=(_up&&_up.skills)||'';
+  const lbl=document.getElementById('obHeadlineLabel');
+  const skillsWrap=document.getElementById('obSkillsWrap');
+  const isRecruiter=_up&&_up.role==='recruiter';
+  if(lbl)lbl.textContent=isRecruiter?'Your Role & Company *':'Current Role / Headline *';
+  if(skillsWrap)skillsWrap.style.display=isRecruiter?'none':'block';
+}
+
+async function saveOnboarding(){
+  const pin=($('obPin').value||'').trim();
+  const phone=($('obPhone').value||'').replace(/\D/g,'');
+  const headline=($('obHeadline').value||'').trim();
+  const isRecruiter=_up&&_up.role==='recruiter';
+  const skills=isRecruiter?(_up.skills||''):($('obSkills').value||'').trim();
+  if(!/^\d{4,6}$/.test(pin))return showToast('⚠️ Valid Pin Code daalo (4-6 digits)');
+  if(!/^[6-9]\d{9}$/.test(phone))return showToast('⚠️ Valid 10-digit mobile number daalo');
+  if(!headline)return showToast('⚠️ Ye field zaroori hai');
+  if(!isRecruiter&&!skills)return showToast('⚠️ Apni skills daalo — AI matching ke liye zaroori hai');
+  const btn=document.querySelector('#onboardingScreen .bprim');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  try{
+    const updates={cityPin:pin,phone:phone,headline:headline};
+    if(!isRecruiter)updates.skills=skills;
+    if(window._fb&&_user)await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),updates);
+    _up={..._up,...updates};
+    document.getElementById('onboardingScreen').style.display='none';
+    document.getElementById('appScreen').style.display='block';
+    showToast('🎉 Welcome to KSpider Connect!');
+    continueInitApp();
+  }catch(e){
+    showToast('⚠️ '+e.message);
+    if(btn){btn.disabled=false;btn.textContent='✅ Continue to KSpider Connect';}
+  }
+}
+
+function continueInitApp(){
   updateUI();loadFeed();loadJobs();checkExistingSub();initGeo();listenNotifications();
   initReferral();saveReferralCode();initCampus();
   setTimeout(handleDeepLink,800);
@@ -3962,7 +4057,7 @@ window.initApp=async function(user){
   listenJobAlerts();
   var adminBtn=document.getElementById('adminBtn');
   if(adminBtn) adminBtn.style.display=isAdminUser()?'flex':'none';
-};
+}
 
 // v15: DEEP LINK HANDLER — when someone clicks a shared job/post link
 // (?job=ID or ?post=ID), automatically take them straight to that
@@ -4056,6 +4151,7 @@ function updateUI(){
   $('ppp').textContent=_up.posts||0;$('ppj').textContent=_up.jobs||0;
   if(_up.about)$('ppabout').textContent=_up.about;
   if(_up.skills){$('ppskills').innerHTML=_up.skills.split(',').map(s=>`<span class="sk">${s.trim()}</span>`).join('');}
+  renderProfileBadges();
   // Apply pre-fill
   if($('aname'))$('aname').value=nm;
   if($('aemail')&&_user)$('aemail').value=_user.email||'';
@@ -5757,6 +5853,7 @@ async function submitApp(mode){
             applicantName:nm,
             applicantEmail:em,
             applicantPhone:ph,
+            applicantVerifiedSkills:(_up&&Array.isArray(_up.verifiedSkills))?_up.verifiedSkills:[],
             applicationId:appRef.id,
             jobId:jobId,
             jobTitle:appData.jobTitle,
@@ -5798,6 +5895,7 @@ async function submitApp(mode){
                 body:nm+' applied for '+appData.jobTitle,
                 applicantId:_user.uid, applicantName:nm,
                 applicantEmail:em, applicantPhone:ph,
+                applicantVerifiedSkills:(_up&&Array.isArray(_up.verifiedSkills))?_up.verifiedSkills:[],
                 applicationId:appRef.id, jobTitle:appData.jobTitle,
                 company:appData.company, skills:appData.skills,
                 experience:appData.experience, hasResume:!!_appResumeData,
@@ -5927,6 +6025,17 @@ async function loadMyApplications(){
       const bt=b.data().createdAt?.toMillis?b.data().createdAt.toMillis():0;
       return bt-at;
     });
+    // Optional: put Immediate Joiners first (Notice Period Smart Match) —
+    // a real, high-value signal for Indian hiring where urgent roles need
+    // candidates who can start right away. Off by default; recruiter opts in.
+    const prioritizeImmediate=document.getElementById('prioritizeImmediateChk')&&document.getElementById('prioritizeImmediateChk').checked;
+    if(prioritizeImmediate){
+      notifDocs.sort(function(a,b){
+        const aImm=/immediate/i.test(a.data().noticePeriod||'')?1:0;
+        const bImm=/immediate/i.test(b.data().noticePeriod||'')?1:0;
+        return bImm-aImm; // immediate joiners bubble to top, recency preserved within each group
+      });
+    }
     box.innerHTML='';
     let unread=0;
     notifDocs.forEach(d=>{
@@ -5974,17 +6083,19 @@ function renderApplicationCard(id, n, isSeeker){
       </div>
       <span style="font-size:10px;font-weight:700;color:#0A84FF;background:#0A84FF18;border:1px solid #0A84FF30;padding:2px 8px;border-radius:99px;flex-shrink:0;">NEW</span>
     </div>
+    ${(n.applicantVerifiedSkills&&n.applicantVerifiedSkills.length)?`<div style="margin-bottom:8px;">${n.applicantVerifiedSkills.map(b=>{const color=b.pct>=90?'#10B981':b.pct>=80?'#0A84FF':'#F59E0B';return `<span style="display:inline-flex;align-items:center;gap:3px;background:${color}15;color:${color};border:1px solid ${color}30;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:700;margin:0 4px 4px 0;">🏆 ${validateInput(b.skill)} ${b.pct}%</span>`;}).join('')}</div>`:''}
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:8px;font-size:11px;color:var(--t2);">
       ${n.applicantEmail?`<div>📧 <a href="mailto:${validateInput(n.applicantEmail)}" style="color:var(--primary);">${validateInput(n.applicantEmail)}</a></div>`:''}
       ${n.applicantPhone?`<div>📞 <a href="tel:${validateInput(n.applicantPhone)}" style="color:var(--primary);">${validateInput(n.applicantPhone)}</a></div>`:''}
       ${n.experience?`<div>⭐ ${validateInput(n.experience)}</div>`:''}
-      ${n.noticePeriod?`<div>📅 ${validateInput(n.noticePeriod)}</div>`:''}
+      ${n.noticePeriod?`<div>${/immediate/i.test(n.noticePeriod)?`<span style="color:#10B981;font-weight:700;">⚡ Immediate Joiner</span>`:`📅 ${validateInput(n.noticePeriod)}`}</div>`:''}
       ${n.skills?`<div style="grid-column:1/-1;">🛠 ${validateInput(n.skills)}</div>`:''}
     </div>
     ${n.hasResume?`<div style="font-size:11px;color:#10B981;background:#10B98112;border:1px solid #10B98130;border-radius:6px;padding:5px 10px;margin-bottom:8px;">📎 Resume attached</div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <button onclick="openChatWithUser('${n.applicantId||''}','${(n.applicantName||'Applicant').replace(/'/g,"\\'")}')" style="flex:1;padding:7px;background:#7C3AED;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;min-width:80px;font-family:inherit;">💬 Message</button>
       ${n.applicantEmail?`<a href="mailto:${validateInput(n.applicantEmail)}?subject=Re: Your application for ${encodeURIComponent(n.jobTitle||'')}" style="flex:1;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;min-width:80px;">✉️ Email</a>`:''}
+      ${n.applicantPhone?`<a href="https://wa.me/91${validateInput(n.applicantPhone).replace(/\D/g,'').slice(-10)}?text=${encodeURIComponent('Hi '+(n.applicantName||'')+', regarding your application for '+(n.jobTitle||'the role')+' — ')}" target="_blank" style="padding:7px 10px;background:#25D36618;color:#128C7E;border:1px solid #25D36640;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">📲 WhatsApp</a>`:''}
       ${n.applicantPhone?`<a href="tel:${validateInput(n.applicantPhone)}" style="padding:7px 12px;background:#10B98118;color:#10B981;border:1px solid #10B98130;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">📞 Call</a>`:''}
       <button onclick="updateAppStatus('${id}','Shortlisted')" style="padding:7px 10px;background:#F59E0B18;color:#F59E0B;border:1px solid #F59E0B30;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">⭐ Shortlist</button>
       <button onclick="updateAppStatus('${id}','Rejected')" style="padding:7px 10px;background:#EF444418;color:#EF4444;border:1px solid #EF444430;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">✕ Reject</button>
@@ -7178,6 +7289,58 @@ function listenJobAlerts(){
       });
     });
   }).catch(function(){});
+  // Also check for anything matching that was posted while the person was
+  // away (the live listener above only ever catches jobs posted in the
+  // ~30 seconds right after it starts — it can't help with jobs posted
+  // hours or days earlier while the app was closed). This closes that gap
+  // using only things this app already has for free: a saved alert, a
+  // saved phone number, and a wa.me deep link — no paid WhatsApp Business
+  // API or server needed.
+  checkJobAlertsSinceLastVisit();
+}
+
+async function checkJobAlertsSinceLastVisit(){
+  if(!window._fb||!_user)return;
+  try{
+    const snap=await window._fb.getDoc(window._fb.doc(window._fb.db,'job_alerts',_user.uid));
+    if(!snap.exists()||!snap.data().active)return;
+    const alert=snap.data();
+    const kw=(alert.keyword||'').toLowerCase();
+    const alertLoc=(alert.location||'').toLowerCase();
+    const lastCheck=alert.lastCheckedMs||(Date.now()-7*24*60*60*1000); // first-ever check: look back 7 days
+    const jSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'jobs'),window._fb.orderBy('createdAtMs','desc'),window._fb.limit(50)));
+    const matches=[];
+    jSnap.forEach(d=>{
+      const j=d.data();
+      if(!j.createdAtMs||j.createdAtMs<=lastCheck)return;
+      const title=(j.title||'').toLowerCase();
+      const skills=(j.skills||'').toLowerCase();
+      const loc=(j.location||'').toLowerCase();
+      const matchKw=kw&&(title.indexOf(kw)!==-1||skills.indexOf(kw)!==-1);
+      const matchLoc=!alertLoc||loc.indexOf(alertLoc)!==-1;
+      if(matchKw&&matchLoc)matches.push(j);
+    });
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'job_alerts',_user.uid),{lastCheckedMs:Date.now()});
+    if(matches.length) showJobAlertDigest(matches);
+  }catch(e){console.warn('checkJobAlertsSinceLastVisit:',e);}
+}
+
+function showJobAlertDigest(matches){
+  const box=document.getElementById('jobAlertDigestBanner');
+  if(!box)return;
+  box.style.display='flex';
+  const list=matches.slice(0,10).map(j=>'• '+j.title+' at '+j.company+(j.location?' ('+j.location+')':'')).join('\n');
+  const textEl=box.querySelector('.digest-text');
+  if(textEl)textEl.textContent='🔔 '+matches.length+' new job'+(matches.length>1?'s':'')+' matched your alert!';
+  box.dataset.waText=encodeURIComponent('🔔 New jobs matching your KSpider Connect alert:\n\n'+list+'\n\nOpen KSpider Connect to apply: https://kspiderai.in');
+}
+function sendAlertDigestToWhatsApp(){
+  const box=document.getElementById('jobAlertDigestBanner');
+  const text=box?box.dataset.waText:'';
+  const phone=(_up&&_up.phone)?_up.phone.replace(/\D/g,''):'';
+  const waNumber=phone.length===10?('91'+phone):'';
+  const waUrl='https://wa.me/'+waNumber+'?text='+text;
+  window.open(waUrl,'_blank');
 }
 
 
@@ -7535,12 +7698,34 @@ async function saveSkillBadge(){
   if(!window._fb||!_user)return showToast('Login to save badge!');
   var pct=Math.round((_quizScore/_quizQuestions.length)*100);
   try{
-    var badgeText=_quizSkill+' Verified '+pct+'%';
-    var newSkills=(_up&&_up.skills?_up.skills+', ':'')+badgeText;
-    await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{skills:newSkills});
-    if(_up)_up.skills=newSkills;
-    showToast(_quizSkill+' badge saved to profile!');
+    var badge={skill:_quizSkill,pct:pct,dateMs:Date.now()};
+    // Store as a clean structured array (not mixed into the free-text
+    // skills field) so it can be shown as a real, distinct trust badge
+    // wherever the profile appears — not just crammed into a text string.
+    var existing=(_up&&Array.isArray(_up.verifiedSkills))?_up.verifiedSkills.slice():[];
+    var idx=existing.findIndex(function(b){return b.skill===_quizSkill;});
+    if(idx>=0){ if(pct>existing[idx].pct) existing[idx]=badge; } // keep best score
+    else existing.push(badge);
+    await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',_user.uid),{verifiedSkills:existing});
+    if(_up)_up.verifiedSkills=existing;
+    showToast('🏆 '+_quizSkill+' badge saved to your profile!');
+    renderProfileBadges();
   }catch(e){showToast('Error: '+e.message);}
+}
+
+// Renders the "✅ Verified Skills" section wherever it appears on the
+// profile page — safe to call even if the container isn't on screen yet.
+function renderProfileBadges(){
+  const box=document.getElementById('profileVerifiedSkills');
+  if(!box) return;
+  const badges=(_up&&Array.isArray(_up.verifiedSkills))?_up.verifiedSkills:[];
+  if(!badges.length){box.style.display='none';return;}
+  box.style.display='block';
+  const chips=badges.map(function(b){
+    const color=b.pct>=90?'#10B981':b.pct>=80?'#0A84FF':'#F59E0B';
+    return '<span style="display:inline-flex;align-items:center;gap:4px;background:'+color+'15;color:'+color+';border:1px solid '+color+'30;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;margin:0 6px 6px 0;">🏆 '+validateInput(b.skill)+' <span style="opacity:.75;font-weight:600;">'+b.pct+'%</span></span>';
+  }).join('');
+  box.innerHTML='<div style="font-weight:700;font-size:13px;margin-bottom:8px;">🏆 Verified Skills</div><div>'+chips+'</div>';
 }
 
 async function loadAnalytics(){
