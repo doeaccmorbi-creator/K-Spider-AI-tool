@@ -102,12 +102,14 @@ function render(){
     test: renderTest,
     result: renderResult,
     parent: renderParentDashboard,
+    parentaddchild: renderParentAddChild,
     admin: renderAdminDashboard,
     adminstudent: renderAdminStudentDetail,
     myfees: renderMyFees,
     adminfaculty: renderAdminFaculty,
     adminfacultydetail: renderAdminFacultyDetail,
     adminparents: renderAdminParents,
+    adminanalytics: renderAdminAnalytics,
     mock: renderMock,
     leaderboard: renderLeaderboard,
     progress: renderProgress,
@@ -117,6 +119,7 @@ function render(){
     plans: renderPlans,
     facultydoubts: renderFacultyDoubts,
     facultypending: renderFacultyPending,
+    facultyperformance: renderFacultyPerformance,
     completeProfile: renderCompleteProfile,
     myprofile: renderMyProfile,
   };
@@ -149,12 +152,14 @@ const NAV = {
   ],
   admin: [
     {id:'overview', ic:'🏠', label:'Overview', view:'admin'},
+    {id:'adminanalytics', ic:'📈', label:'Analytics', view:'adminanalytics'},
     {id:'admindoubts', ic:'💬', label:'Doubts inbox', view:'admindoubts'},
     {id:'adminfaculty', ic:'🎓', label:'Manage Faculty', view:'adminfaculty'},
     {id:'adminparents', ic:'👪', label:'Parent Accounts', view:'adminparents'},
   ],
   faculty: [
     {id:'facultydoubts', ic:'💬', label:'Doubts inbox', view:'facultydoubts'},
+    {id:'facultyperformance', ic:'📊', label:'Student Performance', view:'facultyperformance'},
     {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
 };
@@ -386,9 +391,16 @@ function handleAuth(e, role){
     if(mode === 'signup'){
       const profile = {name, email, role, plan:'free', bookmarks:[], createdAt: firebase.firestore.FieldValue.serverTimestamp()};
       if(role==='student') profile.cls = cls;
-      if(role==='parent') profile.childEmail = childEmail;
       if(role==='faculty'){ profile.subject = facultySubject; profile.approved = false; }
-      return fbDb.collection('users').doc(uid).set(profile).then(()=>({...profile, uid}));
+      return fbDb.collection('users').doc(uid).set(profile).then(()=>{
+        if(role==='parent' && childEmail){
+          return fbDb.collection('parentLinks').add({
+            parentUid: uid, parentEmail: email, parentName: name, childEmail,
+            status:'pending', when: firebase.firestore.FieldValue.serverTimestamp()
+          }).then(()=>({...profile, uid}));
+        }
+        return {...profile, uid};
+      });
     }
     return fbDb.collection('users').doc(uid).get().then(doc=>{
       if(!doc.exists) throw new Error('No profile found for this account — please sign up first.');
@@ -421,7 +433,7 @@ function handleAuth(e, role){
       };
       toast(`Signed in as ${DB.currentUser.role}`);
       if(role==='student') loadStudentResults().then(()=>enterDashboard(role));
-      else if(role==='parent'){ DB.linkedChild = profile.childEmail ? {name:profile.childEmail.split('@')[0], email:profile.childEmail} : null; loadParentResults().then(()=>enterDashboard(role)); }
+      else if(role==='parent'){ enterDashboard(role); }
       else if(role==='faculty' && !DB.currentUser.approved) go('facultypending');
       else enterDashboard(role);
     })
@@ -460,7 +472,7 @@ function signInWithGoogle(role){
     if(isNew && DB.currentUser.role==='faculty'){ go('completeProfile',{need:'subject'}); return; }
     if(isNew && DB.currentUser.role==='parent'){ go('completeProfile',{need:'childEmail'}); return; }
     if(DB.currentUser.role==='student') loadStudentResults().then(()=>enterDashboard(DB.currentUser.role));
-    else if(DB.currentUser.role==='parent'){ DB.linkedChild = profile.childEmail ? {name:profile.childEmail.split('@')[0], email:profile.childEmail} : null; loadParentResults().then(()=>enterDashboard(DB.currentUser.role)); }
+    else if(DB.currentUser.role==='parent'){ enterDashboard(DB.currentUser.role); }
     else if(DB.currentUser.role==='faculty' && !DB.currentUser.approved) go('facultypending');
     else enterDashboard(DB.currentUser.role);
   }).catch(err=>{ if(err.code!=='auth/popup-closed-by-user') toast(err.message,'⚠️'); });
@@ -495,9 +507,11 @@ function submitCompleteProfile(e, need){
     }).catch(err=>toast(err.message,'⚠️'));
   } else if(need==='childEmail'){
     const childEmail = document.getElementById('completeChildEmail').value.trim();
-    fbDb.collection('users').doc(uid).update({childEmail}).then(()=>{
-      DB.linkedChild = {name:childEmail.split('@')[0], email:childEmail};
-      loadParentResults().then(()=>enterDashboard('parent'));
+    fbDb.collection('parentLinks').add({
+      parentUid: uid, parentEmail: DB.currentUser.email, parentName: DB.currentUser.name, childEmail,
+      status:'pending', when: firebase.firestore.FieldValue.serverTimestamp()
+    }).then(()=>{
+      enterDashboard('parent');
     }).catch(err=>toast(err.message,'⚠️'));
   }
   return false;
@@ -515,15 +529,62 @@ function loadStudentResults(){
     .then(snap=>{ DB.results = snap.docs.map(d=>d.data()); })
     .catch(err=>console.error('[DSA] could not load results', err));
 }
-function loadParentResults(){
-  if(!window.FIREBASE_ENABLED || !DB.linkedChild) return Promise.resolve();
-  return fbDb.collection('testResults').where('email','==',DB.linkedChild.email).get()
-    .then(snap=>{ DB.results = snap.docs.map(d=>d.data()); })
-    .catch(err=>console.error('[DSA] could not load child results', err));
+/* ============================== PARENT-CHILD LINKING ======================
+   A parent's request to link to a child's account requires the STUDENT to
+   approve it before any data is shared — nobody can just type any email
+   and see that student's results. A parent can link multiple children.
+   ========================================================================= */
+function loadParentLinks(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('parentLinks').where('parentUid','==',DB.currentUser.uid).get()
+    .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .catch(()=>[]);
 }
+function requestChildLink(childEmail){
+  const u = DB.currentUser;
+  fbDb.collection('parentLinks').add({
+    parentUid: u.uid, parentEmail: u.email, parentName: u.name, childEmail,
+    status:'pending', when: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{
+    toast('Request sent — waiting for the student to approve');
+    DB._parentLinksCache = null;
+    render();
+  }).catch(err=>toast(err.message,'⚠️'));
+}
+function addChildLink(e){
+  e.preventDefault();
+  const email = document.getElementById('newChildEmail').value.trim();
+  if(email) requestChildLink(email);
+  return false;
+}
+function loadChildData(childEmail){
+  return Promise.all([
+    fbDb.collection('testResults').where('email','==',childEmail).get().then(s=>s.docs.map(d=>d.data())),
+    fbDb.collection('doubts').where('email','==',childEmail).get().then(s=>s.docs.map(d=>d.data())),
+    fbDb.collection('users').where('email','==',childEmail).limit(1).get().then(s=>s.empty?null:Object.assign({uid:s.docs[0].id}, s.docs[0].data()))
+  ]).then(([results, doubts, profile])=>({childEmail, results, doubts, profile}));
+}
+
+/* Student side: pending requests from a parent waiting for approval */
+function loadPendingLinkRequests(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('parentLinks').where('childEmail','==',DB.currentUser.email).where('status','==','pending').get()
+    .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .catch(()=>[]);
+}
+function respondToLinkRequest(id, approve){
+  fbDb.collection('parentLinks').doc(id).update({status: approve?'approved':'rejected'})
+    .then(()=>{
+      toast(approve?'Parent link approved ✅':'Request rejected');
+      DB._pendingLinkRequests = (DB._pendingLinkRequests||[]).filter(r=>r.id!==id);
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+
 function logout(){
   if(window.FIREBASE_ENABLED && window.fbAuth) fbAuth.signOut();
-  DB.currentUser = null; DB.results = []; DB.linkedChild = null; DB.leaderboardCache = null;
+  DB.currentUser = null; DB.results = []; DB.leaderboardCache = null;
+  DB._parentLinksCache = null; DB._pendingLinkRequests = null; DB._activeChildData = null;
   go('landing');
 }
 
@@ -626,6 +687,12 @@ function renderStudentDashboard(){
   const myResults = DB.results;
   const avg = myResults.length ? Math.round(myResults.reduce((a,r)=>a+r.pct,0)/myResults.length) : null;
 
+  if(window.FIREBASE_ENABLED && DB._pendingLinkRequests===undefined){
+    DB._pendingLinkRequests = null;
+    loadPendingLinkRequests().then(rows=>{ DB._pendingLinkRequests = rows; if(ROUTE.view==='student') render(); });
+  }
+  const pendingLinks = DB._pendingLinkRequests || [];
+
   return `
   <div class="app-shell">
     ${sidebar('overview')}
@@ -634,6 +701,15 @@ function renderStudentDashboard(){
         <div><h2>Welcome back, ${u.name.split(' ')[0]}</h2><p>Class 11 · Pick a subject to continue where you left off</p></div>
       </div>
       ${u.adminNote ? `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--gold-100);border-color:var(--gold-500)"><b>📢 Message from Admin:</b> ${u.adminNote}</div>` : ''}
+      ${renderAnnouncementBanner()}
+      ${pendingLinks.map(l=>`
+        <div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--paper-2)">
+          <b>👪 ${l.parentName}</b> (${l.parentEmail}) wants to link as your parent and view your scores, doubts and fees.
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn btn-green btn-sm" onclick="respondToLinkRequest('${l.id}',true)">Approve</button>
+            <button class="btn btn-outline btn-sm" onclick="respondToLinkRequest('${l.id}',false)">Decline</button>
+          </div>
+        </div>`).join('')}
       <div class="stat-row">
         <div class="card stat-box"><b>${myResults.length}</b><span>Tests attempted</span></div>
         <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
@@ -728,6 +804,7 @@ function renderChapter(){
 
   const tabs = [
     {id:'notes', label:'Master Notes'},
+    {id:'rankbooster', label:'⭐ Rank Booster'},
     {id:'DPP-1', label:'DPP-1 · Basic'},
     {id:'DPP-2', label:'DPP-2 · Intermediate'},
     {id:'DPP-3', label:'DPP-3 · Advanced'},
@@ -737,6 +814,8 @@ function renderChapter(){
   let body = '';
   if(tab==='notes'){
     body = renderNotesReader(subject, chapter);
+  } else if(tab==='rankbooster'){
+    body = renderRankBooster(subject, chapter);
   } else {
     const sec = sections[tab];
     body = `
@@ -776,6 +855,23 @@ function renderChapter(){
   </div>`;
 }
 
+function blocksToHTML(blocks){
+  return blocks.map(b=>{
+    if(b.type==='h1') return `<h2>${b.text.replace(/^\s*\d+\s*/,'')}</h2>`;
+    if(b.type==='h2') return `<h3>${b.text}</h3>`;
+    if(b.type==='li') return `<li>${b.text}</li>`;
+    if(b.type==='img') return `<div class="notes-img-wrap"><img src="${b.src}" alt="diagram" draggable="false" oncontextmenu="return false"></div>`;
+    if(b.type==='callout'){
+      return `<div class="content-callout"><b>${b.title}</b>${b.items.length?`<ul>${b.items.map(i=>`<li>${i}</li>`).join('')}</ul>`:''}</div>`;
+    }
+    if(b.type==='table'){
+      const [head, ...rows] = b.rows;
+      return `<div class="content-table-wrap"><table class="content-table"><thead><tr>${head.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+    }
+    return `<p>${b.text}</p>`;
+  }).join('');
+}
+
 function renderNotesReader(subject, chapter){
   const blocks = DATA.notes[subject][chapter];
   const u = DB.currentUser;
@@ -783,15 +879,26 @@ function renderNotesReader(subject, chapter){
     const top = (i%6)*18+2, left = Math.floor(i/6)*26+2;
     return `<span style="top:${top}%;left:${left}%">${u.email} · DSA</span>`;
   }).join('');
-  const html = blocks.map(b=>{
-    if(b.type==='h1') return `<h2>${b.text.replace(/^\s*\d+\s*/,'')}</h2>`;
-    if(b.type==='h2') return `<h3>${b.text}</h3>`;
-    if(b.type==='li') return `<li>${b.text}</li>`;
-    if(b.type==='img') return `<div class="notes-img-wrap"><img src="${b.src}" alt="diagram" draggable="false" oncontextmenu="return false"></div>`;
-    return `<p>${b.text}</p>`;
-  }).join('');
+  const html = blocksToHTML(blocks);
   return `
     <div class="protect-banner">🔒 View-only reader — selection, copy, dragging, printing and downloading are disabled on this page.</div>
+    <div class="card" style="position:relative;overflow:hidden">
+      <div class="watermark-layer">${wm}</div>
+      <div class="notes-reader" oncontextmenu="return false" onselectstart="return false">${html}</div>
+    </div>`;
+}
+
+function renderRankBooster(subject, chapter){
+  const blocks = (DATA.rankBooster[subject] && DATA.rankBooster[subject][chapter]) || [];
+  const u = DB.currentUser;
+  const wm = Array.from({length:24}).map((_,i)=>{
+    const top = (i%6)*18+2, left = Math.floor(i/6)*26+2;
+    return `<span style="top:${top}%;left:${left}%">${u.email} · DSA</span>`;
+  }).join('');
+  if(blocks.length===0) return `<div class="empty"><div class="ic">⭐</div>Rank Booster for this chapter is coming soon.</div>`;
+  const html = blocksToHTML(blocks);
+  return `
+    <div class="protect-banner">⭐ 1-day-before-exam revision sheet — high-yield facts, traps, and rapid-fire Q&amp;A. Also view-only.</div>
     <div class="card" style="position:relative;overflow:hidden">
       <div class="watermark-layer">${wm}</div>
       <div class="notes-reader" oncontextmenu="return false" onselectstart="return false">${html}</div>
@@ -1329,6 +1436,42 @@ function loadFacultyDoubts(subject){
     .catch(()=>[]);
 }
 /* ============================== FACULTY APPROVAL (ADMIN) ================== */
+/* ============================== SITE-WIDE ANNOUNCEMENTS ==================== */
+function loadLatestAnnouncement(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve(null);
+  return fbDb.collection('announcements').orderBy('when','desc').limit(1).get()
+    .then(snap=>snap.empty?null:Object.assign({id:snap.docs[0].id}, snap.docs[0].data()))
+    .catch(()=>null);
+}
+function renderAnnouncementBanner(){
+  if(!window.FIREBASE_ENABLED) return '';
+  if(DB._latestAnnouncement === undefined){
+    DB._latestAnnouncement = null;
+    loadLatestAnnouncement().then(a=>{ DB._latestAnnouncement = a; render(); });
+    return '';
+  }
+  const a = DB._latestAnnouncement;
+  if(!a) return '';
+  return `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--paper-2);border-left:4px solid var(--navy-700)"><b>📣 Announcement:</b> ${a.message}</div>`;
+}
+function postAnnouncement(){
+  const input = document.getElementById('announceText');
+  const text = input.value.trim();
+  if(!text){ toast('Type a message first','⚠️'); return; }
+  fbDb.collection('announcements').add({message:text, when:firebase.firestore.FieldValue.serverTimestamp(), by:DB.currentUser.name})
+    .then(()=>{
+      toast('Announcement posted to everyone ✅');
+      input.value='';
+      DB._latestAnnouncement = undefined;
+      render();
+    }).catch(err=>toast(err.message,'⚠️'));
+}
+function clearAnnouncement(id){
+  fbDb.collection('announcements').doc(id).delete()
+    .then(()=>{ toast('Announcement cleared'); DB._latestAnnouncement = undefined; render(); })
+    .catch(err=>toast(err.message,'⚠️'));
+}
+
 function loadPendingFaculty(){
   if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
   return fbDb.collection('users').where('role','==','faculty').where('approved','==',false).get()
@@ -1483,13 +1626,105 @@ function loadAllParents(){
     .then(snap=>{ DB._adminLoadError=null; return snap.docs.map(d=>Object.assign({uid:d.id}, d.data())); })
     .catch(err=>{ console.error('[DSA] loadAllParents failed:', err); DB._adminLoadError = err.message; return []; });
 }
+function loadAllParentLinks(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('parentLinks').get()
+    .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .catch(()=>[]);
+}
+/* ============================== ADMIN ANALYTICS (TRENDS) =================== */
+function loadAnalytics(){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve({signups:[], revenue:[]});
+  return fbDb.collection('users').get().then(snap=>{
+    const allUsers = snap.docs.map(d=>d.data());
+    const days = [];
+    const now = new Date();
+    for(let i=13;i>=0;i--){
+      const d = new Date(now); d.setDate(d.getDate()-i);
+      days.push(d.toLocaleDateString('en-IN',{day:'numeric',month:'short'}));
+    }
+    const counts = {}; days.forEach(d=>counts[d]=0);
+    allUsers.forEach(u=>{
+      if(u.createdAt && u.createdAt.toDate){
+        const label = u.createdAt.toDate().toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+        if(label in counts) counts[label]++;
+      }
+    });
+    const signups = days.map(d=>({label:d, count:counts[d]}));
+
+    const revByDay = {};
+    allUsers.filter(u=>u.role==='student').forEach(u=>{
+      (u.feeHistory||[]).forEach(h=>{
+        if(h.amount>0) revByDay[h.when] = (revByDay[h.when]||0) + h.amount;
+      });
+    });
+    const revenue = days.map(d=>({label:d, amount:revByDay[d]||0}));
+
+    return {signups, revenue, totalUsers: allUsers.length,
+      byRole: {
+        student: allUsers.filter(u=>u.role==='student').length,
+        faculty: allUsers.filter(u=>u.role==='faculty').length,
+        parent: allUsers.filter(u=>u.role==='parent').length,
+      }};
+  }).catch(()=>({signups:[], revenue:[], totalUsers:0, byRole:{}}));
+}
+function renderBarChart(data, key, color){
+  const max = Math.max(1, ...data.map(d=>d[key]));
+  return `<div style="display:flex;align-items:flex-end;gap:5px;height:130px;padding:10px 4px 0">
+    ${data.map(d=>`<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:5px" title="${d.label}: ${d[key]}">
+      <div style="width:100%;background:${color};border-radius:3px 3px 0 0;height:${Math.max(3,(d[key]/max)*88)}px"></div>
+      <span style="font-size:9px;color:var(--faint)">${d.label.split(' ')[0]}</span>
+    </div>`).join('')}
+  </div>`;
+}
+function renderAdminAnalytics(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB._analyticsCache){
+    loadAnalytics().then(data=>{ DB._analyticsCache = data; if(ROUTE.view==='adminanalytics') render(); });
+    return `<div class="app-shell">${sidebar('adminanalytics')}<div class="main"><div class="empty"><div class="ic">⏳</div>Crunching numbers…</div></div></div>`;
+  }
+  const a = DB._analyticsCache;
+  const totalRevenue14d = a.revenue.reduce((s,d)=>s+d.amount,0);
+  return `
+  <div class="app-shell">
+    ${sidebar('adminanalytics')}
+    <div class="main">
+      <div class="main-head">
+        <div><h2>📈 Analytics</h2><p>Last 14 days · ${window.FIREBASE_ENABLED?'live from Firestore':'connect Firebase for real data'}</p></div>
+        <button class="btn btn-outline btn-sm" onclick="DB._analyticsCache=null;render();">🔄 Refresh</button>
+      </div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>${a.totalUsers}</b><span>Total accounts</span></div>
+        <div class="card stat-box"><b>${a.byRole.student||0}</b><span>Students</span></div>
+        <div class="card stat-box"><b>${a.byRole.faculty||0}</b><span>Faculty</span></div>
+        <div class="card stat-box"><b style="color:var(--green-600)">₹${totalRevenue14d}</b><span>Revenue (14d)</span></div>
+      </div>
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:6px">New signups</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:6px">Every role, per day</p>
+        ${renderBarChart(a.signups,'count','var(--navy-700)')}
+      </div>
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:6px">Fees collected</h3>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:6px">Payments recorded per day (₹)</p>
+        ${renderBarChart(a.revenue,'amount','var(--green-600)')}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderAdminParents(){
   if(!DB.currentUser) return renderAuth();
   if(!DB._allParentsCache){
     loadAllParents().then(rows=>{ DB._allParentsCache = rows; if(ROUTE.view==='adminparents') render(); });
     return `<div class="app-shell">${sidebar('adminparents')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading parent accounts…</div></div></div>`;
   }
+  if(!DB._allParentLinksCache){
+    loadAllParentLinks().then(rows=>{ DB._allParentLinksCache = rows; if(ROUTE.view==='adminparents') render(); });
+    return `<div class="app-shell">${sidebar('adminparents')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading parent-child links…</div></div></div>`;
+  }
   const rows = DB._allParentsCache;
+  const links = DB._allParentLinksCache;
   return `
   <div class="app-shell">
     ${sidebar('adminparents')}
@@ -1498,11 +1733,15 @@ function renderAdminParents(){
       <div class="card" style="padding:20px">
         ${!window.FIREBASE_ENABLED ? `<div class="empty"><div class="ic">🔌</div>Connect Firebase (Live Mode) to see real parent accounts.</div>` :
           rows.length===0 ? `<div class="empty"><div class="ic">📭</div>No parents have signed up yet.</div>` : `
-        <table class="table-simple"><thead><tr><th>Parent</th><th>Linked child email</th></tr></thead><tbody>
-        ${rows.map(p=>`<tr>
-          <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(p.name||'?')[0]}</span>${p.name}<span style="color:var(--faint);font-size:12px">${p.email}</span></td>
-          <td>${p.childEmail || '<span style="color:var(--faint)">not set</span>'}</td>
-        </tr>`).join('')}
+        <table class="table-simple"><thead><tr><th>Parent</th><th>Linked children</th></tr></thead><tbody>
+        ${rows.map(p=>{
+          const myLinks = links.filter(l=>l.parentUid===p.uid);
+          const chips = myLinks.length===0 ? '<span style="color:var(--faint)">no link requested</span>' : myLinks.map(l=>`<span class="pill ${l.status==='approved'?'pill-green':(l.status==='pending'?'pill-gold':'pill-red')}" style="margin-right:4px">${l.childEmail} · ${l.status}</span>`).join('');
+          return `<tr>
+            <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(p.name||'?')[0]}</span>${p.name}<span style="color:var(--faint);font-size:12px">${p.email}</span></td>
+            <td>${chips}</td>
+          </tr>`;
+        }).join('')}
         </tbody></table>`}
       </div>
     </div>
@@ -1782,6 +2021,65 @@ function renderAdminStudentDetail(){
   </div>`;
 }
 
+/* ============================== FACULTY TEACHING RESOURCES ================
+/* ============================== FACULTY: STUDENT PERFORMANCE =============== */
+function loadSubjectPerformance(subject){
+  if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
+  return fbDb.collection('testResults').where('subject','==',subject).get()
+    .then(snap=>{
+      const byEmail = {};
+      snap.forEach(doc=>{
+        const r = doc.data();
+        byEmail[r.email] = byEmail[r.email] || {name:r.name, email:r.email, attempts:0, totalPct:0, weakChapters:{}};
+        const s = byEmail[r.email];
+        s.attempts++;
+        s.totalPct += r.pct;
+        if(r.chapter && r.wrong>0){
+          const key = 'Ch.'+r.chapter;
+          s.weakChapters[key] = (s.weakChapters[key]||0) + r.wrong;
+        }
+      });
+      return Object.values(byEmail).map(s=>{
+        const weakest = Object.entries(s.weakChapters).sort((a,b)=>b[1]-a[1])[0];
+        return {name:s.name, email:s.email, attempts:s.attempts, avg:Math.round(s.totalPct/s.attempts), weakest: weakest?weakest[0]:'—'};
+      }).sort((a,b)=>a.avg-b.avg);
+    })
+    .catch(()=>[]);
+}
+function renderFacultyPerformance(){
+  if(!DB.currentUser) return renderAuth();
+  if(!DB.currentUser.approved) return renderFacultyPending();
+  const subject = DB.currentUser.subject;
+  if(!DB._facultyPerfCache){
+    loadSubjectPerformance(subject).then(rows=>{ DB._facultyPerfCache = rows; if(ROUTE.view==='facultyperformance') render(); });
+    return `<div class="app-shell">${sidebar('facultyperformance')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading student performance…</div></div></div>`;
+  }
+  const rows = DB._facultyPerfCache;
+  const classAvg = rows.length ? Math.round(rows.reduce((a,r)=>a+r.avg,0)/rows.length) : null;
+  return `
+  <div class="app-shell">
+    ${sidebar('facultyperformance')}
+    <div class="main">
+      <div class="main-head"><div><h2>${SUBJECT_META[subject].icon} ${subject} — Student Performance</h2><p>Every student who has attempted a ${subject} test, sorted weakest first</p></div></div>
+      <div class="stat-row">
+        <div class="card stat-box"><b>${rows.length}</b><span>Students attempted</span></div>
+        <div class="card stat-box"><b>${classAvg===null?'—':classAvg+'%'}</b><span>Class average</span></div>
+      </div>
+      <div class="card" style="padding:20px">
+        ${rows.length===0 ? `<div class="empty"><div class="ic">📭</div>No attempts yet for ${subject}.</div>` : `
+        <table class="table-simple"><thead><tr><th>Student</th><th>Attempts</th><th>Average</th><th>Weakest chapter</th></tr></thead><tbody>
+        ${rows.map(r=>`<tr>
+          <td style="display:flex;align-items:center;gap:10px"><span class="avatar-sm">${(r.name||'?')[0]}</span>${r.name}<span style="color:var(--faint);font-size:12px">${r.email}</span></td>
+          <td>${r.attempts}</td>
+          <td><b style="color:${r.avg<40?'var(--red-600)':(r.avg<70?'var(--gold-600)':'var(--green-600)')}">${r.avg}%</b></td>
+          <td>${r.weakest}</td>
+        </tr>`).join('')}
+        </tbody></table>`}
+      </div>
+    </div>
+  </div>`;
+}
+
 function renderFacultyPending(){
   if(!DB.currentUser) return renderAuth();
   return `
@@ -1814,6 +2112,7 @@ function renderFacultyDoubts(){
     <div class="main">
       <div class="main-head"><div><h2>${SUBJECT_META[subject].icon} ${subject} — Doubts inbox</h2><p>${pending.length} pending · ${answered.length} answered</p></div></div>
       ${DB.currentUser.adminNote ? `<div class="card" style="padding:14px 18px;margin-bottom:18px;background:var(--gold-100);border-color:var(--gold-500)"><b>📢 Message from Admin:</b> ${DB.currentUser.adminNote}</div>` : ''}
+      ${renderAnnouncementBanner()}
       ${renderDoubtCards(rows, 'faculty')}
     </div>
   </div>`;
@@ -1962,28 +2261,156 @@ function setPlan(plan){
 /* ============================== PARENT DASHBOARD ========================= */
 function renderParentDashboard(){
   if(!DB.currentUser) return renderAuth();
-  const child = window.FIREBASE_ENABLED && DB.linkedChild ? DB.linkedChild : DB.demoChild;
-  const childResults = DB.results;
-  const avg = childResults.length ? Math.round(childResults.reduce((a,r)=>a+r.pct,0)/childResults.length) : null;
+
+  if(!window.FIREBASE_ENABLED){
+    const child = DB.demoChild;
+    const childResults = DB.results;
+    const avg = childResults.length ? Math.round(childResults.reduce((a,r)=>a+r.pct,0)/childResults.length) : null;
+    return `
+    <div class="app-shell">
+      ${sidebar('overview')}
+      <div class="main">
+        <div class="main-head"><div><h2>Tracking ${child.name}</h2><p>Read-only view · Class 11 · ${child.email}</p></div></div>
+        <div class="stat-row">
+          <div class="card stat-box"><b>${childResults.length}</b><span>Tests attempted</span></div>
+          <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
+          <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters available</span></div>
+          <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects enrolled</span></div>
+        </div>
+        <div class="card" style="padding:20px">
+          <h3 style="font-size:15px;margin-bottom:14px">Test history</h3>
+          ${childResults.length===0 ? `<div class="empty"><div class="ic">📭</div>No attempts yet.</div>` : `
+          <table class="table-simple"><thead><tr><th>Test</th><th>Score</th><th>Accuracy</th><th>When</th></tr></thead><tbody>
+          ${childResults.slice().reverse().map(r=>`<tr><td>${r.subject}${r.chapter?' · Ch.'+r.chapter:''} · ${r.section}</td><td>${r.score}/${r.max}</td><td>${r.pct}%</td><td>${formatWhen(r.when)}</td></tr>`).join('')}
+          </tbody></table>`}
+        </div>
+        <div class="demo-note" style="margin-top:16px">👪 Demo Mode shows a sample child. In Live Mode, a parent requests a link to their child's email and the student must approve it before any data is shared.</div>
+      </div>
+    </div>`;
+  }
+
+  if(!DB._parentLinksCache){
+    loadParentLinks().then(rows=>{ DB._parentLinksCache = rows; if(ROUTE.view==='parent') render(); });
+    return `<div class="app-shell">${sidebar('overview')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading your linked children…</div></div></div>`;
+  }
+
+  const links = DB._parentLinksCache;
+  const approved = links.filter(l=>l.status==='approved');
+  const pending = links.filter(l=>l.status==='pending');
+  const rejected = links.filter(l=>l.status==='rejected');
+  const activeEmail = ROUTE.params.child || (approved[0] && approved[0].childEmail);
+
+  if(approved.length===0){
+    return `
+    <div class="app-shell">
+      ${sidebar('overview')}
+      <div class="main" style="max-width:600px">
+        <div class="main-head"><div><h2>👪 Link your child's account</h2><p>Your child approves the request before you see anything</p></div></div>
+        ${pending.length>0 ? pending.map(l=>`<div class="card" style="padding:16px 18px;margin-bottom:12px"><span class="pill pill-gold">⏳ Pending</span> <span style="font-size:13.5px;margin-left:8px">${l.childEmail}</span><p style="font-size:12.5px;color:var(--muted);margin-top:8px">Waiting for this student to approve your request.</p></div>`).join('') : ''}
+        ${rejected.length>0 ? rejected.map(l=>`<div class="card" style="padding:16px 18px;margin-bottom:12px"><span class="pill pill-red">✗ Declined</span> <span style="font-size:13.5px;margin-left:8px">${l.childEmail}</span></div>`).join('') : ''}
+        <div class="card" style="padding:22px">
+          <h3 style="font-size:15px;margin-bottom:12px">Request a link</h3>
+          <form onsubmit="return addChildLink(event)">
+            <div class="field"><label>Child's registered email</label><input required id="newChildEmail" placeholder="child@dsa.academy"></div>
+            <button class="btn btn-primary btn-block" type="submit">Send request →</button>
+          </form>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  if(!DB._activeChildData || DB._activeChildData.childEmail !== activeEmail){
+    DB._activeChildData = null;
+    loadChildData(activeEmail).then(data=>{ DB._activeChildData = data; if(ROUTE.view==='parent') render(); });
+    return `<div class="app-shell">${sidebar('overview')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading your child's data…</div></div></div>`;
+  }
+
+  const data = DB._activeChildData;
+  const profile = data.profile || {};
+  const results = data.results || [];
+  const doubts = data.doubts || [];
+  const avg = results.length ? Math.round(results.reduce((a,r)=>a+r.pct,0)/results.length) : null;
+  const due = Math.max(0, (profile.feeTotal||0) - (profile.feePaid||0));
+  const bySubject = {};
+  SUBJECTS.forEach(s=>{
+    const rs = results.filter(r=>r.subject===s);
+    bySubject[s] = rs.length ? Math.round(rs.reduce((a,r)=>a+r.pct,0)/rs.length) : null;
+  });
+
   return `
   <div class="app-shell">
     ${sidebar('overview')}
     <div class="main">
-      <div class="main-head"><div><h2>Tracking ${child.name}</h2><p>Read-only view · Class 11 · ${child.email}</p></div></div>
-      <div class="stat-row">
-        <div class="card stat-box"><b>${childResults.length}</b><span>Tests attempted</span></div>
-        <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
-        <div class="card stat-box"><b>${totalPlatformChapters()}</b><span>Chapters available</span></div>
-        <div class="card stat-box"><b>${SUBJECTS.length}</b><span>Subjects enrolled</span></div>
+      <div class="main-head">
+        <div><h2>Tracking ${profile.name || activeEmail}</h2><p>Read-only view · ${profile.cls?('Class '+profile.cls+' · '):''}${activeEmail}</p></div>
       </div>
-      <div class="card" style="padding:20px">
+      ${renderAnnouncementBanner()}
+      ${approved.length>1 ? `<div style="display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap">
+        ${approved.map(l=>`<button class="btn ${l.childEmail===activeEmail?'btn-primary':'btn-outline'} btn-sm" onclick="go('parent',{child:'${l.childEmail}'})">${l.childEmail}</button>`).join('')}
+      </div>` : ''}
+      <div class="stat-row">
+        <div class="card stat-box"><b>${results.length}</b><span>Tests attempted</span></div>
+        <div class="card stat-box"><b>${avg===null?'—':avg+'%'}</b><span>Average score</span></div>
+        <div class="card stat-box"><b>${doubts.length}</b><span>Doubts posted</span></div>
+        <div class="card stat-box"><b style="color:${due>0?'var(--red-600)':'var(--green-600)'}">₹${due}</b><span>Fees due</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Subject-wise performance</h3>
+        <div class="result-stats" style="margin:0">
+          ${SUBJECTS.map(s=>`<div class="card"><b>${bySubject[s]===null?'—':bySubject[s]+'%'}</b><span>${s}</span></div>`).join('')}
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">💳 Fees</h3>
+        <div class="stat-row">
+          <div class="card stat-box"><b>₹${profile.feeTotal||0}</b><span>Total</span></div>
+          <div class="card stat-box"><b>₹${profile.feePaid||0}</b><span>Paid</span></div>
+          <div class="card stat-box"><b style="color:${due>0?'var(--red-600)':'var(--green-600)'}">₹${due}</b><span>Remaining</span></div>
+          <div class="card stat-box"><b>${profile.feeDueDate||'—'}</b><span>Due date</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
         <h3 style="font-size:15px;margin-bottom:14px">Test history</h3>
-        ${childResults.length===0 ? `<div class="empty"><div class="ic">📭</div>No attempts yet.</div>` : `
+        ${results.length===0 ? `<div class="empty"><div class="ic">📭</div>No attempts yet.</div>` : `
         <table class="table-simple"><thead><tr><th>Test</th><th>Score</th><th>Accuracy</th><th>When</th></tr></thead><tbody>
-        ${childResults.slice().reverse().map(r=>`<tr><td>${r.subject}${r.chapter?' · Ch.'+r.chapter:''} · ${r.section}</td><td>${r.score}/${r.max}</td><td>${r.pct}%</td><td>${formatWhen(r.when)}</td></tr>`).join('')}
+        ${results.slice().reverse().map(r=>`<tr><td>${r.subject}${r.chapter?' · Ch.'+r.chapter:''} · ${r.section}</td><td>${r.score}/${r.max}</td><td>${r.pct}%</td><td>${formatWhen(r.when)}</td></tr>`).join('')}
         </tbody></table>`}
       </div>
-      <div class="demo-note" style="margin-top:16px">👪 A parent account is linked to their child's UID in Firestore, so this table reads live from the same <code>testResults</code> collection the student dashboard uses.</div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Doubts posted</h3>
+        ${doubts.length===0 ? `<p style="font-size:13px;color:var(--muted)">No doubts posted yet.</p>` : doubts.map(d=>`
+          <div style="padding:12px 0;border-bottom:1px solid var(--border)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span class="pill pill-navy">${d.subject} · Ch.${d.chapter}</span>
+              <span class="pill ${d.status==='answered'?'pill-green':'pill-gold'}">${d.status==='answered'?'Answered':'Pending'}</span>
+            </div>
+            <p style="font-size:13.5px">${d.question}</p>
+          </div>`).join('')}
+      </div>
+
+      <button class="btn btn-outline btn-sm" onclick="go('parentaddchild')">+ Link another child</button>
+    </div>
+  </div>`;
+}
+
+function renderParentAddChild(){
+  if(!DB.currentUser) return renderAuth();
+  return `
+  <div class="app-shell">
+    ${sidebar('overview')}
+    <div class="main" style="max-width:500px">
+      <div class="main-head"><div><h2>Link another child</h2></div></div>
+      <div class="card" style="padding:22px">
+        <form onsubmit="return addChildLink(event)">
+          <div class="field"><label>Child's registered email</label><input required id="newChildEmail" placeholder="child@dsa.academy"></div>
+          <button class="btn btn-primary btn-block" type="submit">Send request →</button>
+        </form>
+      </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="go('parent')">← Back</button>
     </div>
   </div>`;
 }
@@ -2019,6 +2446,15 @@ function renderAdminDashboard(){
         <div class="card stat-box"><b style="color:var(--green-600)">₹${totalCollected}</b><span>Fees collected</span></div>
         <div class="card stat-box"><b style="color:${totalDue>0?'var(--red-600)':'var(--green-600)'}">₹${totalDue}</b><span>Fees pending</span></div>
         <div class="card stat-box"><b>${DB._pendingFacultyCache?DB._pendingFacultyCache.length:0}</b><span>Faculty awaiting approval</span></div>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">📣 Site-wide announcement</h3>
+        ${DB._latestAnnouncement === undefined ? (function(){ DB._latestAnnouncement=null; loadLatestAnnouncement().then(a=>{DB._latestAnnouncement=a; if(ROUTE.view==='admin') render();}); return '<p style="font-size:13px;color:var(--muted)">Loading…</p>'; })() :
+          DB._latestAnnouncement ? `<div style="background:var(--paper-2);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:13.5px">${DB._latestAnnouncement.message}<div style="margin-top:8px"><button class="btn btn-ghost btn-sm" style="color:var(--red-600)" onclick="clearAnnouncement('${DB._latestAnnouncement.id}')">Clear announcement</button></div></div>` :
+          `<p style="font-size:13px;color:var(--muted);margin-bottom:14px">Nothing posted right now — this shows on every student, parent and faculty dashboard.</p>`}
+        <textarea id="announceText" rows="2" style="width:100%;padding:11px 13px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;margin-bottom:10px" placeholder="e.g. Chapter Test schedule for next week is out — check your dashboard."></textarea>
+        <button class="btn btn-primary btn-sm" onclick="postAnnouncement()">Post to everyone</button>
       </div>
 
       <div class="card" style="padding:20px;margin-bottom:20px">
