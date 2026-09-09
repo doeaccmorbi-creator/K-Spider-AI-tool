@@ -78,7 +78,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-function _ksDoRedirect() { _ksShowDoctorLogin(); }
+function _ksDoRedirect(errMsg) { _ksShowDoctorLogin(errMsg); }
 
 function _ksShowDoctorLogin(errorMsg, mode) {
   mode = mode || 'login';
@@ -188,15 +188,16 @@ function _ksDrGoogleSignIn() {
   if (!_ksAuth || !_ksDb) { alert('Could not connect to Firebase — check your internet connection and reload the page.'); return; }
   var btn = document.getElementById('ks-dr-google-btn');
   var label = document.getElementById('ks-dr-google-label');
-  if (btn) { btn.disabled = true; if (label) label.textContent = 'Connecting...'; }
+  if (btn) { btn.disabled = true; if (label) label.textContent = 'Redirecting to Google...'; }
+  // Redirect-based sign-in (not a popup): far more reliable on mobile
+  // browsers, where popups are often blocked or lose their connection back
+  // to the opener page. The result is picked up by getRedirectResult()
+  // below when Google sends the browser back to this page.
   var provider = new firebase.auth.GoogleAuthProvider();
-  _ksAuth.signInWithPopup(provider)
-    .then(function(result) { return _ksEnsureDoctorRecord(result.user, { authProvider: 'google' }); })
-    .then(function() { window.location.reload(); })
-    .catch(function(err) {
-      if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
-      _ksShowDoctorLogin(_ksDecodeGoogleAuthError(err));
-    });
+  _ksAuth.signInWithRedirect(provider).catch(function(err) {
+    if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
+    _ksShowDoctorLogin(_ksDecodeGoogleAuthError(err));
+  });
 }
 
 // Shared Firestore doctor-record provisioning — used by both the main
@@ -241,10 +242,27 @@ function showBlockScreen(type, plan) {
 }
 
 if (_ksAuth && _ksDb) {
+(async function() {
+  // Handle the return trip from a Google redirect sign-in (see
+  // _ksDrGoogleSignIn / ksGoogleSignIn) BEFORE setting up the normal auth
+  // listener below. This guarantees a brand-new Google doctor's Firestore
+  // record is created first, so the listener's "does a doctor record
+  // exist?" check never has a chance to run against a not-yet-created
+  // record and wrongly show a "contact support" error.
+  var _ksRedirectError = null;
+  try {
+    const redirectResult = await _ksAuth.getRedirectResult();
+    if (redirectResult && redirectResult.user) {
+      await _ksEnsureDoctorRecord(redirectResult.user, { authProvider: 'google' });
+    }
+  } catch (e) {
+    _ksRedirectError = _ksDecodeGoogleAuthError(e);
+  }
+
 var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
   _ksUnsubAuth();
   if (!user) {
-    _ksDoRedirect();
+    _ksDoRedirect(_ksRedirectError);
     return;
   }
   try {
@@ -346,6 +364,7 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
   }
 });
 
+})(); // end async IIFE
 }
 
 function updateTopbar() {
@@ -2299,6 +2318,87 @@ body.saas-mode > #pwa-banner {
   #saas-sidebar, #saas-topbar, #saas-hamburger, #ks-sidebar-overlay { display: none !important; }
   #saas-main { width: 100% !important; }
   .section:not(.active) { display: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   COMPREHENSIVE MOBILE FIX (additive — appended last so it wins the
+   cascade for any conflicting rule above, without deleting/touching
+   any existing rule or feature). This targets the many inline
+   multi-column grid layouts used across individual feature sections
+   (OPD forms, billing, analytics, appointments, lab reports, etc.)
+   that the earlier, narrower mobile rules didn't catch, plus a few
+   general small-screen safety nets.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Prevent any residual horizontal scroll/bleed on small screens,
+   site-wide (not just inside the logged-in app shell). */
+html, body { max-width: 100%; overflow-x: hidden; }
+
+@media (max-width: 767px) {
+  /* Collapse the many inline two/three/four-equal-column grids used
+     throughout individual sections (forms, KPI cards, billing,
+     analytics, appointments, etc.) to a single column. Auto-fit /
+     auto-fill grids are left untouched — they already collapse
+     naturally as the viewport narrows. */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"],
+  [style*="1fr 1fr 1fr"],
+  [style*="repeat(2,1fr)"],
+  [style*="repeat(2, 1fr)"],
+  [style*="repeat(3,1fr)"],
+  [style*="repeat(3, 1fr)"],
+  [style*="repeat(4,1fr)"],
+  [style*="repeat(4, 1fr)"],
+  [style*="1fr 1.5fr"],
+  [style*="1.5fr 1fr"],
+  [style*="2fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* A handful of very wide fixed multi-column row layouts (e.g. queue
+     table-style rows) — collapse these too rather than letting them
+     squeeze into unreadably narrow columns. */
+  [style*="2fr 80px"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Scale down the largest fixed display fonts (big stat numbers,
+     token displays, hero icons) so they don't dominate a small
+     screen or force horizontal scrolling. */
+  [style*="font-size:52px"], [style*="font-size: 52px"],
+  [style*="font-size:48px"], [style*="font-size: 48px"],
+  [style*="font-size:44px"], [style*="font-size: 44px"] {
+    font-size: 34px !important;
+  }
+  [style*="font-size:40px"], [style*="font-size: 40px"],
+  [style*="font-size:36px"], [style*="font-size: 36px"] {
+    font-size: 26px !important;
+  }
+  [style*="font-size:32px"], [style*="font-size: 32px"],
+  [style*="font-size:28px"], [style*="font-size: 28px"] {
+    font-size: 22px !important;
+  }
+
+  /* Generic safety net for any modal box not already covered above:
+     keep it comfortably within the viewport instead of overflowing
+     or getting clipped. */
+  [id$="-modal"] > div, [id$="-panel"] > div {
+    max-width: 96vw !important;
+    max-height: 92vh !important;
+    overflow-y: auto;
+  }
+
+  /* Comfortable tap targets and no accidental text overflow on small
+     buttons/labels used throughout feature sections. */
+  button, .btn, select, input, textarea { max-width: 100%; }
+}
+
+@media (max-width: 400px) {
+  /* Extra-narrow phones: also collapse three/four-column KPI/stat
+     rows that a 767px-width tablet-sized phone could still fit. */
+  [style*="repeat(auto-fit"], [style*="repeat(auto-fill"] {
+    grid-template-columns: 1fr !important;
+  }
 }
 </style>
 <meta name="theme-color" content="#2563eb">
@@ -22737,12 +22837,14 @@ window.ksGoogleSignIn = async function() {
   if (!_ksAuth) { alert('Could not connect to the server. Please check your internet connection.'); return; }
   var btn = document.getElementById('ks-google-signin-btn');
   var label = document.getElementById('ks-google-btn-label');
-  if (btn) { btn.disabled = true; if (label) label.textContent = 'Connecting...'; }
+  if (btn) { btn.disabled = true; if (label) label.textContent = 'Redirecting to Google...'; }
+  // Redirect-based sign-in — far more reliable than a popup on mobile
+  // browsers. The page will navigate to Google and back; the top-level
+  // auth guard (near the very top of this file) picks up the result via
+  // getRedirectResult() and finishes creating the doctor record.
   try {
     const provider = new firebase.auth.GoogleAuthProvider();
-    const result = await _ksAuth.signInWithPopup(provider);
-    await _ksEnsureDoctorRecord(result.user, { authProvider: 'google' });
-    window.location.reload();
+    await _ksAuth.signInWithRedirect(provider);
   } catch (e) {
     if (btn) { btn.disabled = false; if (label) label.textContent = 'Continue with Google'; }
     var msgEl = document.getElementById('ks-auth-msg') || document.getElementById('ks-reg-msg');
