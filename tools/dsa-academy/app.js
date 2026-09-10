@@ -8,6 +8,13 @@
    ========================================================================= */
 
 const DATA = window.DSA_DATA;
+/* Only these emails may ever hold the 'admin' role — enforced here AND in
+   firestore.rules (server-side), so this can't be bypassed by editing the
+   client JS or calling Firestore directly. Add more emails if needed. */
+const ADMIN_EMAILS = ['kspider221206@gmail.com'];
+function isAllowedAdminEmail(email){
+  return ADMIN_EMAILS.includes((email||'').trim().toLowerCase());
+}
 const SUBJECTS = ['Physics','Chemistry','Biology'];
 const SUBJECT_META = {
   Physics:  {icon:'⚛️', color:'var(--navy-700)', bg:'var(--paper-2)'},
@@ -123,6 +130,25 @@ function render(){
     completeProfile: renderCompleteProfile,
     myprofile: renderMyProfile,
   };
+
+  /* Role-route guard: a signed-in user can only reach views meant for their
+     own role — this mirrors the same rule Firestore enforces on the data
+     itself, so the UI never even shows a screen that belongs to someone
+     else's role (matches standard large-platform RBAC navigation). */
+  const ROLE_FOR_VIEW = {
+    student:'student', subject:'student', chapter:'student', test:'student', result:'student',
+    mock:'student', leaderboard:'student', progress:'student', doubts:'student', bookmarks:'student',
+    plans:'student', myfees:'student',
+    parent:'parent', parentaddchild:'parent',
+    admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
+    adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
+    facultydoubts:'faculty', facultypending:'faculty', facultyperformance:'faculty',
+  };
+  if(DB.currentUser && ROLE_FOR_VIEW[ROUTE.view] && ROLE_FOR_VIEW[ROUTE.view] !== DB.currentUser.role){
+    const home = {student:'student', parent:'parent', admin:'admin', faculty:'facultydoubts'}[DB.currentUser.role] || 'landing';
+    ROUTE = {view: home, params:{}};
+  }
+
   app.innerHTML = (routes[ROUTE.view] || renderLanding)();
   afterRender();
 }
@@ -327,6 +353,7 @@ function renderAuth(){
         ${mode==='signup' && role==='student'?`<div class="field"><label>Class</label><select id="authClass"><option>11th</option><option>12th</option><option>Dropper</option></select></div>`:''}
         ${mode==='signup' && role==='parent'?`<div class="field"><label>Child's registered email</label><input required id="authChildEmail" placeholder="child@dsa.academy"></div>`:''}
         ${mode==='signup' && role==='faculty'?`<div class="field"><label>Subject you teach</label><select id="authSubject">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>`:''}
+        ${role==='admin'?`<div class="demo-note" style="margin-bottom:14px">🔒 Admin access is restricted to one authorized account — this isn't a general signup tier.</div>`:''}
         <div class="field"><label>Email</label><input required type="email" id="authEmail" placeholder="you@example.com" value="${ROUTE.params.prefillEmail || ''}"></div>
         <div class="field"><label>Password</label><input required type="password" id="authPass" placeholder="••••••••" minlength="6"></div>
         ${mode==='login' ? `<div style="text-align:right;margin:-6px 0 4px"><a onclick="sendPasswordReset()" style="font-size:12.5px;color:var(--green-600);font-weight:700;cursor:pointer">Forgot password?</a></div>` : ''}
@@ -376,6 +403,11 @@ function handleAuth(e, role){
   const subjectField = document.getElementById('authSubject');
   const facultySubject = subjectField ? subjectField.value : null;
 
+  if(role==='admin' && !isAllowedAdminEmail(email)){
+    toast('Admin access is restricted to an authorized account only.', '🚫');
+    return false;
+  }
+
   if(!window.FIREBASE_ENABLED){
     DB.currentUser = {role, name: name || 'Student', email, uid: null, plan: 'free', bookmarks: [], subject: facultySubject, approved:true};
     toast(`Signed in as ${role} (demo)`);
@@ -420,6 +452,11 @@ function handleAuth(e, role){
         toast('This account has been suspended — contact your admin.', '🚫');
         return;
       }
+      if(profile.role==='admin' && !isAllowedAdminEmail(profile.email)){
+        fbAuth.signOut();
+        toast('Admin access is restricted to an authorized account only.', '🚫');
+        return;
+      }
       DB.currentUser = {
         role: profile.role || role, name: profile.name || name, email,
         uid: profile.uid, plan: profile.plan || 'free', bookmarks: profile.bookmarks || [],
@@ -448,6 +485,11 @@ function signInWithGoogle(role){
   const provider = new firebase.auth.GoogleAuthProvider();
   fbAuth.signInWithPopup(provider).then(result=>{
     const user = result.user;
+    if(role==='admin' && !isAllowedAdminEmail(user.email)){
+      fbAuth.signOut();
+      toast('Admin access is restricted to an authorized account only.', '🚫');
+      return Promise.reject(new Error('__handled__'));
+    }
     const uid = user.uid;
     return fbDb.collection('users').doc(uid).get().then(doc=>{
       if(doc.exists) return {profile: doc.data(), isNew:false};
@@ -458,8 +500,11 @@ function signInWithGoogle(role){
       if(role==='faculty') profile.approved = false;
       return fbDb.collection('users').doc(uid).set(profile).then(()=>({profile, isNew:true}));
     });
-  }).then(({profile, isNew})=>{
+  }).then((result)=>{
+    if(!result) return;
+    const {profile, isNew} = result;
     if(profile.banned){ fbAuth.signOut(); toast('This account has been suspended — contact your admin.', '🚫'); return; }
+    if(profile.role==='admin' && !isAllowedAdminEmail(profile.email)){ fbAuth.signOut(); toast('Admin access is restricted to an authorized account only.', '🚫'); return; }
     DB.currentUser = {
       role: profile.role || role, name: profile.name, email: profile.email,
       uid: fbAuth.currentUser.uid, plan: profile.plan||'free', bookmarks: profile.bookmarks||[],
@@ -475,7 +520,7 @@ function signInWithGoogle(role){
     else if(DB.currentUser.role==='parent'){ enterDashboard(DB.currentUser.role); }
     else if(DB.currentUser.role==='faculty' && !DB.currentUser.approved) go('facultypending');
     else enterDashboard(DB.currentUser.role);
-  }).catch(err=>{ if(err.code!=='auth/popup-closed-by-user') toast(err.message,'⚠️'); });
+  }).catch(err=>{ if(err.code!=='auth/popup-closed-by-user' && err.message!=='__handled__') toast(err.message,'⚠️'); });
 }
 
 function renderCompleteProfile(){
