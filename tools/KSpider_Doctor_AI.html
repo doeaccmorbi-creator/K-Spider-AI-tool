@@ -16866,6 +16866,7 @@ function opdQueueAdd() {
   if (typeof _showToast === 'function') _showToast(`Patient registered: ${name} [${uhid}] — Token #${_opdState.tokenCounter}`, 'success');
   else alert(`Patient registered!\nRegistration No: ${uhid}\nToken #: ${_opdState.tokenCounter}`);
   _saasAddActivity && _saasAddActivity(`Patient "${name}" (${uhid}, Token #${_opdState.tokenCounter}) added to OPD queue`, 'blue');
+  if (typeof ksSaveDoctorData === 'function') ksSaveDoctorData(); // keep this doctor's backup in sync for shared-device switching
 }
 
 function opdQueueRender() {
@@ -16880,8 +16881,10 @@ function opdQueueRender() {
     const typeCls = p.type === 'Walk-in' ? 'opd-type-walkin' : p.type === 'Online' ? 'opd-type-online' : p.type === 'Emergency' ? 'opd-type-emergency' : p.type === 'Follow-Up' ? 'opd-type-followup' : 'opd-type-referral';
     const statusCls = p.status === 'waiting' ? 'opd-q-waiting' : p.status === 'in-room' ? 'opd-q-in-room' : p.status === 'done' ? 'opd-q-done' : 'opd-q-emergency';
     const statusLabel = p.status === 'waiting' ? '⏳ Waiting' : p.status === 'in-room' ? '🏥 In Room' : p.status === 'done' ? '✅ Done' : p.status;
-    return `<tr style="opacity:${p.status === 'done' ? '0.55' : '1'}">
-      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">${i + 1}</td>
+    const activePt = typeof ksGetActivePatient === 'function' ? ksGetActivePatient() : null;
+    const isActive = activePt && p.uhid && activePt.uhid === p.uhid && p.status === 'in-room';
+    return `<tr style="opacity:${p.status === 'done' ? '0.55' : '1'};${isActive ? 'background:#eff6ff;' : ''}">
+      <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">${i + 1}${isActive ? ' <span title="Currently active patient">🟢</span>' : ''}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><span style="background:linear-gradient(135deg,#0b3c5d,#1a7bbf);color:white;padding:4px 10px;border-radius:8px;font-weight:800;font-size:13px;">#${p.token}</span></td>
       <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><strong>${p.name}</strong>${p.uhid ? '<br><span style="font-size:10px;color:#2563eb;font-weight:700;">'+p.uhid+'</span>' : ''}${p.phone ? '<br><span style="font-size:10px;color:#94a3b8;">'+p.phone+'</span>' : ''}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">${p.age} / ${p.gender}</td>
@@ -16890,6 +16893,7 @@ function opdQueueRender() {
       <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;font-size:12px;">${p.time}</td>
       <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;"><span class="opd-q-badge ${statusCls}">${statusLabel}</span></td>
       <td style="padding:10px 12px;border-bottom:1px solid #f1f5f9;">
+        ${p.status === 'waiting' ? `<button onclick="opdStartConsultation(${p.id})" style="background:#dbeafe;color:#1d4ed8;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;">▶ See</button>` : ''}
         ${p.status !== 'done' ? `<button onclick="opdMarkDone(${p.id})" style="background:#dcfce7;color:#166534;border:none;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer;margin-right:4px;">✓ Done</button>` : ''}
         <button onclick="opdRemove(${p.id})" style="background:#fee2e2;color:#991b1b;border:none;border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">✕</button>
       </td>
@@ -16908,6 +16912,22 @@ function opdCallNext() {
   (document.getElementById('opd-current-name')||{})['textContent']= next.name + ' · ' + next.complaint;
   opdQueueRender();
   _opdUpdateStats();
+  ksSetActivePatient({ uhid: next.uhid, name: next.name, age: next.age, gender: next.gender, phone: next.phone, complaint: next.complaint, source: 'opd-queue' });
+}
+
+// Bring a specific queued patient (not necessarily first-in-line) into the
+// active workflow — e.g. an emergency or follow-up seen out of turn.
+function opdStartConsultation(id) {
+  const p = _opdState.queue.find(q => q.id === id);
+  if (!p) return;
+  p.status = 'in-room';
+  _opdState.currentToken = p;
+  _opdSave();
+  (document.getElementById('opd-current-token')||{})['textContent'] = '#' + p.token;
+  (document.getElementById('opd-current-name')||{})['textContent'] = p.name + ' · ' + p.complaint;
+  opdQueueRender();
+  _opdUpdateStats();
+  ksSetActivePatient({ uhid: p.uhid, name: p.name, age: p.age, gender: p.gender, phone: p.phone, complaint: p.complaint, source: 'opd-queue' });
 }
 
 function opdCompleteCurrent() {
@@ -16924,7 +16944,13 @@ function opdCompleteCurrent() {
 
 function opdMarkDone(id) {
   const p = _opdState.queue.find(q => q.id === id);
-  if (p) { p.status = 'done'; _opdSave(); opdQueueRender(); _opdUpdateStats(); }
+  if (p) {
+    p.status = 'done'; _opdSave(); opdQueueRender(); _opdUpdateStats();
+    // If this was the doctor's current active patient, end their visit
+    // in the workflow context too — the next patient starts with a clean slate.
+    const active = typeof ksGetActivePatient === 'function' ? ksGetActivePatient() : null;
+    if (active && p.uhid && active.uhid === p.uhid) ksClearActivePatient();
+  }
 }
 
 function opdRemove(id) {
@@ -17170,6 +17196,7 @@ function apptBook() {
   const appt = { id: Date.now(), name, age, phone, date, time, type, notes, status: 'Pending', createdAt: new Date().toISOString() };
   _apptAdvState.appointments.push(appt);
   _apptAdvSave();
+  if (typeof ksSaveDoctorData === 'function') ksSaveDoctorData(); // keep this doctor's backup in sync for shared-device switching
   apptClearForm();
   apptMsg(`✅ Appointment booked for ${name} on ${new Date(date).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})} at ${time}`, 'success');
   apptRenderList();
@@ -20840,6 +20867,10 @@ function ksPtLoadToRx() {
   // Store UHID for linking
   sessionStorage.setItem('ks_active_uhid', pt.uhid);
   sessionStorage.setItem('ks_active_patient_name', pt.name);
+  // Also start this patient's active workflow session, so the same
+  // patient now follows the doctor to AI Diagnosis / Billing / OPD Queue
+  // too, with the Active Patient banner visible everywhere.
+  if (typeof ksSetActivePatient === 'function') ksSetActivePatient({ uhid: pt.uhid, name: pt.name, age: pt.age, gender: pt.gender, phone: pt.phone, source: 'patient-db' });
   ksPtCloseDetailModal();
   if (typeof saasSwitchSection==='function') saasSwitchSection('create-rx','📝 OPD / Create Rx','Patient visit & prescription',null);
   if (typeof _showToast==='function') _showToast('Patient loaded: ' + pt.name + ' [' + pt.uhid + ']', 'success');
@@ -20854,6 +20885,7 @@ function ksPtLoadToBill() {
   const uhidField = document.getElementById('adv-bill-uhid');
   if (uhidField) uhidField.value = pt.uhid;
   sessionStorage.setItem('ks_active_uhid', pt.uhid);
+  if (typeof ksSetActivePatient === 'function') ksSetActivePatient({ uhid: pt.uhid, name: pt.name, age: pt.age, gender: pt.gender, phone: pt.phone, source: 'patient-db' });
   ksPtCloseDetailModal();
   if (typeof saasSwitchSection==='function') saasSwitchSection('saas-billing','💰 Billing','Invoice & payment management',null);
   if (typeof _showToast==='function') _showToast('Patient loaded for billing: ' + pt.name, 'success');
@@ -22691,13 +22723,33 @@ window.ksApplyDoctorProfile = function(doc) {
 window.ksLoadDoctorData = function(doc) {
   if (!doc) return;
   var docKey = 'doc_' + doc.id + '_';
+  // Guard against wiping live data on a simple page reload: the per-doctor
+  // backup below is only refreshed at logout (see ksSaveDoctorData), so if
+  // we restored from it on every load, anything added since the last
+  // logout (new patients, new appointments) would be silently erased the
+  // moment the page refreshes. Only actually restore-and-overwrite when
+  // this is a genuine switch to a DIFFERENT doctor's data on this device.
+  var liveOwner = localStorage.getItem('ks_live_data_owner');
+  if (liveOwner === doc.id) {
+    if (typeof ksPtRender==='function') ksPtRender();
+    if (typeof apptRenderList==='function') apptRenderList();
+    if (typeof apptUpdateCounts==='function') apptUpdateCounts();
+    return;
+  }
   // Patient DB scoped to this doctor
   var docPts = JSON.parse(localStorage.getItem(docKey + 'patients') || '[]');
   localStorage.setItem('ks_patient_db_v1', JSON.stringify(docPts));
-  // Appointments scoped to this doctor
+  // Appointments scoped to this doctor — 'adv_appointments' is the real,
+  // live key the booking system (_apptAdvState / apptBook) actually reads
+  // and writes, so doctor-switching must load/save that same key or
+  // appointments silently disappear / leak between doctor accounts.
   var docAppts = JSON.parse(localStorage.getItem(docKey + 'appointments') || '[]');
-  localStorage.setItem('ks_appointments_v1', JSON.stringify(docAppts));
+  localStorage.setItem('adv_appointments', JSON.stringify(docAppts));
+  if (typeof _apptAdvState !== 'undefined') _apptAdvState.appointments = docAppts;
+  localStorage.setItem('ks_live_data_owner', doc.id);
   if (typeof ksPtRender==='function') ksPtRender();
+  if (typeof apptRenderList==='function') apptRenderList();
+  if (typeof apptUpdateCounts==='function') apptUpdateCounts();
 };
 
 // Save doctor data before switching/logout
@@ -22707,7 +22759,7 @@ window.ksSaveDoctorData = function() {
   var docKey = 'doc_' + doc.id + '_';
   var pts = JSON.parse(localStorage.getItem('ks_patient_db_v1') || '[]');
   localStorage.setItem(docKey + 'patients', JSON.stringify(pts));
-  var appts = JSON.parse(localStorage.getItem('ks_appointments_v1') || '[]');
+  var appts = JSON.parse(localStorage.getItem('adv_appointments') || '[]');
   localStorage.setItem(docKey + 'appointments', JSON.stringify(appts));
 };
 
@@ -23617,6 +23669,127 @@ function ksRunAllInjectionsV61() {
   if (_ksTipsFetchedAndRendered && _ksHealthTipsCache && _ksHealthTipsCache.length) {
     ksRenderHealthTipsPanel(_ksHealthTipsCache);
   }
+  // Keep the Active Patient banner (and auto-filled fields) in sync with
+  // whichever workflow section the doctor just switched into.
+  if (typeof ksRenderActivePatientBanner === 'function') ksRenderActivePatientBanner();
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   🔗 ACTIVE PATIENT WORKFLOW CONTEXT
+   A single "currently being seen" patient that follows the doctor across
+   OPD Queue → AI Diagnosis → E-Prescription → Billing, the way a patient's
+   chart would move between departments in a multi-speciality hospital.
+   Session-scoped (sessionStorage): persists while this tab stays open,
+   clears when the doctor explicitly switches/ends the patient or closes
+   the tab, so it never leaks into a completely new day/session.
+   ══════════════════════════════════════════════════════════════════════ */
+
+var KS_ACTIVE_PATIENT_KEY = 'ks_active_patient';
+
+function ksSetActivePatient(p) {
+  if (!p || !p.name) return;
+  var record = {
+    uhid: p.uhid || '', name: p.name, age: p.age || '', gender: p.gender || '',
+    phone: p.phone || '', complaint: p.complaint || '', source: p.source || '',
+    setAt: new Date().toISOString()
+  };
+  sessionStorage.setItem(KS_ACTIVE_PATIENT_KEY, JSON.stringify(record));
+  if (typeof ksRenderActivePatientBanner === 'function') ksRenderActivePatientBanner(true);
+}
+
+function ksGetActivePatient() {
+  try { return JSON.parse(sessionStorage.getItem(KS_ACTIVE_PATIENT_KEY) || 'null'); } catch (e) { return null; }
+}
+
+function ksClearActivePatient() {
+  sessionStorage.removeItem(KS_ACTIVE_PATIENT_KEY);
+  if (typeof ksRenderActivePatientBanner === 'function') ksRenderActivePatientBanner();
+}
+
+// Sections that participate in the active-patient workflow, and — for
+// each — which input fields to auto-fill (only ever filled in when
+// currently EMPTY, so a doctor's own in-progress typing for a different
+// patient is never overwritten).
+var KS_ACTIVE_PATIENT_SECTIONS = {
+  'adv-opd-queue':     { name: null },
+  'adv-ai-diagnosis':  { name: null },
+  'create-rx':         { name:'patient_name', age:'patient_age', gender:'patient_gender', phone:'patient_phone', uhid:'patient_uhid' },
+  'adv-eprescription': { name:'erx-pt-name', age:'erx-pt-age' },
+  'saas-billing':      { name:'saas-bill-patient' }
+};
+
+function ksApplyActivePatientToFields(p, sectionId) {
+  var map = KS_ACTIVE_PATIENT_SECTIONS[sectionId];
+  if (!map) return;
+  Object.keys(map).forEach(function(key) {
+    var fieldId = map[key];
+    if (!fieldId) return;
+    var el = document.getElementById(fieldId);
+    if (!el || el.value) return; // never clobber something already filled in
+    var val = p[key];
+    if (!val) return;
+    if (el.tagName === 'SELECT') {
+      var opt = Array.from(el.options).find(function(o){ return o.value === val || o.text === val || (val && o.text[0] === val[0]); });
+      if (opt) el.value = opt.value;
+    } else {
+      el.value = val;
+    }
+  });
+}
+
+function ksFindActiveSectionId() {
+  var activeEl = document.querySelector('.section.active');
+  return activeEl ? activeEl.id : null;
+}
+
+function ksRenderActivePatientBanner(justSet) {
+  var sectionId = ksFindActiveSectionId();
+  if (!sectionId || !KS_ACTIVE_PATIENT_SECTIONS[sectionId]) return;
+  var sectionEl = document.getElementById(sectionId);
+  if (!sectionEl) return;
+  var p = ksGetActivePatient();
+
+  var banner = sectionEl.querySelector('#ks-active-pt-banner');
+  if (!p) {
+    if (banner) banner.remove();
+    return;
+  }
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'ks-active-pt-banner';
+    banner.style.cssText = 'background:linear-gradient(135deg,#eff6ff,#f0fdf4);border:1.5px solid #93c5fd;border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;';
+    sectionEl.insertBefore(banner, sectionEl.firstChild);
+  }
+  var initials = (p.name || '?').trim().split(/\s+/).map(function(w){return w[0];}).slice(0,2).join('').toUpperCase();
+  banner.innerHTML =
+    '<div style="width:34px;height:34px;border-radius:50%;background:#2563eb;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex-shrink:0;">' + initials + '</div>' +
+    '<div style="flex:1;min-width:120px;">' +
+      '<div style="font-size:12px;color:#1e40af;font-weight:700;">▶ Currently seeing: ' + p.name + '</div>' +
+      '<div style="font-size:11px;color:#64748b;">' + (p.uhid ? p.uhid + ' &middot; ' : '') + (p.age ? p.age + 'yr &middot; ' : '') + (p.gender || '') + (p.phone ? ' &middot; ' + p.phone : '') + '</div>' +
+    '</div>' +
+    '<div style="display:flex;gap:6px;flex-wrap:wrap;">' +
+      Object.keys(KS_ACTIVE_PATIENT_SECTIONS).filter(function(s){return s!==sectionId;}).map(function(s) {
+        var labels = {'adv-opd-queue':'🎫 Queue','adv-ai-diagnosis':'🧠 Diagnosis','create-rx':'📝 Rx (Basic)','adv-eprescription':'📋 E-Prescription','saas-billing':'💰 Billing'};
+        return '<button onclick="ksJumpToSectionForActivePatient(\'' + s + '\')" style="background:#fff;color:#1e40af;border:1px solid #93c5fd;border-radius:7px;padding:5px 10px;font-size:10.5px;font-weight:700;cursor:pointer;white-space:nowrap;">' + (labels[s]||s) + ' →</button>';
+      }).join('') +
+      '<button onclick="ksClearActivePatient()" style="background:#fef2f2;color:#991b1b;border:1px solid #fecaca;border-radius:7px;padding:5px 10px;font-size:10.5px;font-weight:700;cursor:pointer;">✕ End Visit</button>' +
+    '</div>';
+
+  // Auto-fill this section's fields from the active patient (empty fields only).
+  ksApplyActivePatientToFields(p, sectionId);
+  if (justSet) { /* freshly set — fields for the section we're currently on (if any) already applied above */ }
+}
+
+function ksJumpToSectionForActivePatient(sectionId) {
+  var titles = {
+    'adv-opd-queue': ['🎫 OPD Queue', 'Smart patient queue with tokens'],
+    'adv-ai-diagnosis': ['🤖 AI Diagnosis', 'DDx engine + BMI tools'],
+    'create-rx': ['📝 OPD / Create Rx', 'Patient visit & prescription'],
+    'adv-eprescription': ['📋 E-Prescription', 'VoiceRx + SmartSync builder'],
+    'saas-billing': ['💰 Billing', 'Invoice & payment management']
+  };
+  var t = titles[sectionId] || [sectionId, ''];
+  if (typeof saasSwitchSection === 'function') saasSwitchSection(sectionId, t[0], t[1], null);
 }
 
 document.addEventListener('DOMContentLoaded', function() {
