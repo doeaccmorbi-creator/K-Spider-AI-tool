@@ -513,6 +513,8 @@
       <a href="https://www.kspiderai.in" class="flex items-center gap-1.5 hover:text-emerald-400 transition-colors" style="font-weight:700;color:#10b981;background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.2);padding:4px 12px;border-radius:8px;" data-translate="nav-home">← K Spider AI</a>
       <a href="#chart-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-charts">Charts</a>
       <a href="#analysis-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-analysis">Analysis</a>
+      <a href="#ipo-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-ipo">IPO Watch</a>
+      <a href="#calculators-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-calc">Calculators</a>
       <a href="#knowledge-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-guide">Guide</a>
       <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank" rel="noopener noreferrer"
          class="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors">
@@ -1903,6 +1905,338 @@
       </div>
     </div>
 
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       🚀 IPO WATCH — LIVE GMP, OPEN/UPCOMING IPOs + AI COMPANY REVIEW
+  ══════════════════════════════════════════════════════════════ -->
+  <style>
+    .ipo-tab-btn {
+      padding:7px 16px;border-radius:8px;font-size:.75rem;
+      font-family:var(--font-display);font-weight:700;
+      border:1px solid var(--border);background:transparent;
+      color:var(--text-muted);cursor:pointer;transition:all .2s;white-space:nowrap;
+    }
+    .ipo-tab-btn:hover { border-color:#a78bfa;color:#a78bfa; }
+    .ipo-tab-btn.active { background:rgba(124,58,237,.12);border-color:#a78bfa;color:#a78bfa; }
+    .ipo-cat-btn {
+      padding:5px 12px;border-radius:7px;font-size:.68rem;
+      font-family:var(--font-mono);font-weight:700;
+      border:1px solid var(--border);background:transparent;
+      color:var(--text-muted);cursor:pointer;transition:all .2s;
+    }
+    .ipo-cat-btn.active { background:rgba(16,185,129,.1);border-color:#10b981;color:#10b981; }
+
+    .ipo-table { width:100%;border-collapse:collapse;font-size:.74rem; }
+    .ipo-table thead tr { background:rgba(15,23,42,.9);border-bottom:1px solid var(--border); }
+    .ipo-table th {
+      padding:9px 10px;text-align:left;font-family:var(--font-display);
+      font-size:.62rem;font-weight:700;color:var(--text-muted);
+      text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;
+    }
+    .ipo-table tbody tr { border-bottom:1px solid rgba(148,163,184,.05);transition:background .15s; }
+    .ipo-table tbody tr:hover { background:rgba(30,41,59,.6); }
+    .ipo-table td { padding:8px 10px;white-space:nowrap;vertical-align:middle; }
+    .ipo-name-cell { font-family:var(--font-display);font-weight:700;color:var(--text-primary);font-size:.76rem; }
+    .ipo-sub-cell  { font-size:.6rem;color:var(--text-muted);font-weight:400; }
+
+    .ipo-status-badge {
+      font-size:.6rem;font-weight:800;padding:3px 9px;border-radius:9px;
+      border:1px solid;white-space:nowrap;display:inline-block;letter-spacing:.03em;
+    }
+    .ipo-status-open      { color:#10b981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.1); }
+    .ipo-status-upcoming  { color:#fbbf24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.1); }
+    .ipo-status-closed    { color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.08); }
+    .ipo-status-listed    { color:#22d3ee;border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.1); }
+
+    .ipo-gmp-pos { color:#10b981;font-weight:800;font-family:var(--font-mono); }
+    .ipo-gmp-neg { color:#f43f5e;font-weight:800;font-family:var(--font-mono); }
+    .ipo-gmp-flat{ color:#94a3b8;font-weight:800;font-family:var(--font-mono); }
+
+    .ipo-ai-btn {
+      background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3);
+      color:#a78bfa;border-radius:6px;padding:5px 10px;font-size:.63rem;
+      font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;
+    }
+    .ipo-ai-btn:hover { background:rgba(124,58,237,.2);border-color:#a78bfa; }
+    .ipo-apply-btn {
+      background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.25);
+      color:#10b981;border-radius:6px;padding:5px 10px;font-size:.63rem;
+      font-weight:700;text-decoration:none;white-space:nowrap;display:inline-block;
+    }
+
+    /* ── AI Review Modal ── */
+    .ipo-modal-overlay {
+      display:none;position:fixed;inset:0;background:rgba(2,6,23,.82);
+      backdrop-filter:blur(4px);z-index:9000;align-items:center;justify-content:center;padding:16px;
+    }
+    .ipo-modal-overlay.open { display:flex; }
+    .ipo-modal-box {
+      background:var(--bg-base);border:1px solid var(--border);border-radius:14px;
+      max-width:640px;width:100%;max-height:86vh;overflow-y:auto;
+      box-shadow:0 20px 60px rgba(0,0,0,.5);
+    }
+    .ipo-modal-head {
+      padding:16px 20px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;justify-content:space-between;
+      position:sticky;top:0;background:var(--bg-base);z-index:2;
+    }
+    .ipo-modal-close {
+      background:transparent;border:1px solid var(--border);color:var(--text-muted);
+      border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:.9rem;
+    }
+    .ipo-modal-body { padding:18px 20px; }
+    .ipo-verdict-chip {
+      display:inline-flex;align-items:center;gap:6px;font-family:var(--font-display);
+      font-weight:800;font-size:.85rem;padding:7px 16px;border-radius:10px;border:1px solid;margin-bottom:12px;
+    }
+    .ipo-verdict-apply  { color:#10b981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.1); }
+    .ipo-verdict-avoid  { color:#f43f5e;border-color:rgba(244,63,94,.4);background:rgba(244,63,94,.1); }
+    .ipo-verdict-neutral{ color:#fbbf24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.1); }
+    .ipo-sw-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0; }
+    @media(max-width:560px){ .ipo-sw-grid{ grid-template-columns:1fr; } }
+    .ipo-sw-box { background:rgba(15,23,42,.7);border:1px solid var(--border);border-radius:10px;padding:12px; }
+    .ipo-sw-title { font-family:var(--font-display);font-weight:700;font-size:.75rem;margin-bottom:8px; }
+    .ipo-disclaimer-box {
+      margin-top:16px;padding:12px 14px;border-radius:10px;
+      background:rgba(244,63,94,.06);border:1px solid rgba(244,63,94,.2);
+      font-size:.66rem;line-height:1.6;color:#fca5a5;
+    }
+  </style>
+
+  <section id="ipo-section" style="margin-bottom:18px">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="section-label">🚀 IPO Watch — GMP, Open &amp; Upcoming IPOs</div>
+      <div class="flex-1 h-px bg-slate-800"></div>
+      <span class="live-badge-sm"><span class="live-dot"></span>Live GMP Tracking</span>
+      <button onclick="loadIpoData()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:4px 12px;font-size:.7rem;cursor:pointer;" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">🔄 Refresh</button>
+    </div>
+
+    <div class="glass" style="padding:0;overflow:hidden;border-radius:12px;">
+      <!-- Filters -->
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--text-primary)">Live IPO Grey Market Premium — India</div>
+          <div style="font-size:.68rem;color:var(--text-muted);margin-top:2px">Mainboard &amp; SME IPOs — GMP, price band, dates, subscription &amp; AI-generated company review</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="ipo-cat-btn active" id="ipo-cat-all" onclick="setIpoCategory('all',this)">All</button>
+          <button class="ipo-cat-btn" id="ipo-cat-mainboard" onclick="setIpoCategory('mainboard',this)">Mainboard</button>
+          <button class="ipo-cat-btn" id="ipo-cat-sme" onclick="setIpoCategory('sme',this)">SME</button>
+        </div>
+      </div>
+
+      <!-- Status tabs -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px 0">
+        <button class="ipo-tab-btn active" id="ipo-status-all" onclick="setIpoStatus('all',this)">📋 All</button>
+        <button class="ipo-tab-btn" id="ipo-status-open" onclick="setIpoStatus('open',this)">🟢 Open Now</button>
+        <button class="ipo-tab-btn" id="ipo-status-upcoming" onclick="setIpoStatus('upcoming',this)">🟡 Upcoming</button>
+        <button class="ipo-tab-btn" id="ipo-status-closed" onclick="setIpoStatus('closed',this)">⚪ Closed / Listed</button>
+      </div>
+
+      <!-- Summary strip -->
+      <div id="ipo-summary-strip" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:1px;background:var(--border);margin-top:12px">
+        <div style="background:var(--bg-card);padding:12px 14px;text-align:center">
+          <div style="font-size:.62rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Open IPOs</div>
+          <div id="ipo-count-open" style="font-size:1.15rem;font-weight:800;color:#10b981;font-family:var(--font-mono)">—</div>
+        </div>
+        <div style="background:var(--bg-card);padding:12px 14px;text-align:center">
+          <div style="font-size:.62rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Upcoming</div>
+          <div id="ipo-count-upcoming" style="font-size:1.15rem;font-weight:800;color:#fbbf24;font-family:var(--font-mono)">—</div>
+        </div>
+        <div style="background:var(--bg-card);padding:12px 14px;text-align:center">
+          <div style="font-size:.62rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Highest GMP</div>
+          <div id="ipo-count-highgmp" style="font-size:1.15rem;font-weight:800;color:#22d3ee;font-family:var(--font-mono)">—</div>
+        </div>
+        <div style="background:var(--bg-card);padding:12px 14px;text-align:center">
+          <div style="font-size:.62rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.08em">Last Updated</div>
+          <div id="ipo-count-updated" style="font-size:.85rem;font-weight:700;color:var(--text-primary);font-family:var(--font-mono)">—</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div style="overflow-x:auto;max-height:520px;overflow-y:auto;margin-top:2px">
+        <table class="ipo-table">
+          <thead><tr>
+            <th>Company</th><th>Price Band</th><th>Open – Close</th>
+            <th>GMP</th><th>Est. Listing (Gain%)</th><th>Status</th><th>AI Review</th>
+          </tr></thead>
+          <tbody id="ipo-tbody">
+            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--text-muted);font-size:.8rem">
+              <span style="display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Loading live IPO GMP data...
+            </td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="data-refresh-note">
+        GMP figures are sourced live where possible from <a href="https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/" target="_blank" style="color:#22d3ee">IPO Watch</a>. Grey market premium is an unofficial, unregulated indicator — it is not a guarantee of listing performance. This tool never fabricates a GMP figure; if live data can't be fetched, an honest empty state with official links is shown instead.
+      </div>
+
+      <!-- ── Subscription Status sub-panel ── -->
+      <div style="border-top:1px solid var(--border);margin-top:4px">
+        <div style="padding:12px 16px 8px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-primary)">📊 IPO Subscription Status — Open IPOs</div>
+            <div style="font-size:.66rem;color:var(--text-muted);margin-top:2px">QIB / NII / Retail / Total subscription (times oversubscribed), day-wise</div>
+          </div>
+          <button onclick="loadIpoSubscription()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:4px 12px;font-size:.68rem;cursor:pointer;" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">🔄 Refresh</button>
+        </div>
+        <div style="overflow-x:auto;max-height:320px;overflow-y:auto">
+          <table class="ipo-table">
+            <thead><tr>
+              <th>Company</th><th>QIB</th><th>NII</th><th>Retail</th><th>Total</th><th>Day</th>
+            </tr></thead>
+            <tbody id="ipo-sub-tbody">
+              <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);font-size:.78rem">
+                <span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Loading subscription data...
+              </td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="data-refresh-note">Subscription data sourced live where possible from BSE/NSE-aggregated public bidding reports. Times-subscribed figures are unofficial estimates during the bidding window and finalise only after IPO close.</div>
+      </div>
+
+      <!-- Master disclaimer -->
+      <div class="ipo-disclaimer-box" style="margin:12px 16px 16px">
+        ⚠️ <strong>Disclaimer:</strong> IPO GMP, subscription figures, company strength/weakness notes and the AI opinion shown in this tool are for educational and informational purposes only and do NOT constitute investment advice, a recommendation, or a solicitation to buy/sell any security. Grey market trading is unofficial and unregulated in India. Past GMP or listing performance does not guarantee future results. Please read the company's RHP/DRHP, consult a SEBI-registered investment advisor, and invest only after your own due diligence — stock market investments are subject to market risk.
+      </div>
+    </div>
+  </section>
+
+  <!-- ── IPO AI Company Review Modal ── -->
+  <div class="ipo-modal-overlay" id="ipo-modal-overlay" onclick="if(event.target===this) closeIpoModal()">
+    <div class="ipo-modal-box">
+      <div class="ipo-modal-head">
+        <div>
+          <div id="ipo-modal-title" style="font-family:var(--font-display);font-weight:800;font-size:1rem;color:var(--text-primary)">Company Review</div>
+          <div id="ipo-modal-sub" style="font-size:.68rem;color:var(--text-muted);margin-top:2px">AI-generated analysis</div>
+        </div>
+        <button class="ipo-modal-close" onclick="closeIpoModal()">✕</button>
+      </div>
+      <div class="ipo-modal-body" id="ipo-modal-body">
+        <div style="text-align:center;padding:30px;color:var(--text-muted)">
+          <span style="display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Generating AI review...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       🧮 FINANCIAL CALCULATORS HUB — SIP, Lumpsum, CAGR, IPO P&L, Brokerage
+  ══════════════════════════════════════════════════════════════ -->
+  <style>
+    .calc-tab-btn {
+      padding:7px 14px;border-radius:8px;font-size:.72rem;
+      font-family:var(--font-display);font-weight:700;
+      border:1px solid var(--border);background:transparent;
+      color:var(--text-muted);cursor:pointer;transition:all .2s;white-space:nowrap;
+    }
+    .calc-tab-btn:hover { border-color:#fbbf24;color:#fbbf24; }
+    .calc-tab-btn.active { background:rgba(251,191,36,.1);border-color:#fbbf24;color:#fbbf24; }
+    .calc-section { display:none; }
+    .calc-section.active { display:block; }
+    .calc-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }
+    @media(max-width:640px){ .calc-grid{ grid-template-columns:1fr; } }
+    .calc-field { display:flex;flex-direction:column;gap:5px; }
+    .calc-field label { font-size:.68rem;color:var(--text-muted);font-weight:700; }
+    .calc-field input, .calc-field select {
+      background:var(--bg-card);border:1px solid var(--border);color:var(--text-primary);
+      font-family:var(--font-mono);font-size:.82rem;border-radius:7px;padding:8px 10px;outline:none;
+    }
+    .calc-field input:focus, .calc-field select:focus { border-color:#fbbf24; }
+    .calc-btn {
+      background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#1c1207;border:none;
+      border-radius:8px;padding:10px 18px;font-family:var(--font-display);font-weight:800;
+      font-size:.78rem;cursor:pointer;margin-top:4px;
+    }
+    .calc-btn:hover { filter:brightness(1.08); }
+    .calc-result-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);margin-top:14px;border-radius:10px;overflow:hidden; }
+    .calc-result-cell { background:var(--bg-card);padding:14px;text-align:center; }
+    .calc-result-label { font-size:.62rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px; }
+    .calc-result-val { font-size:1.15rem;font-weight:800;font-family:var(--font-mono);color:var(--text-primary); }
+  </style>
+
+  <section id="calculators-section" style="margin-bottom:18px">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="section-label">🧮 Financial Calculators — SIP, Lumpsum, CAGR, IPO P&amp;L, Brokerage</div>
+      <div class="flex-1 h-px bg-slate-800"></div>
+    </div>
+
+    <div class="glass" style="padding:0;overflow:hidden;border-radius:12px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 0">
+        <button class="calc-tab-btn active" id="calctab-sip" onclick="setCalcTab('sip',this)">📈 SIP</button>
+        <button class="calc-tab-btn" id="calctab-lumpsum" onclick="setCalcTab('lumpsum',this)">💰 Lumpsum</button>
+        <button class="calc-tab-btn" id="calctab-cagr" onclick="setCalcTab('cagr',this)">📊 CAGR</button>
+        <button class="calc-tab-btn" id="calctab-ipopl" onclick="setCalcTab('ipopl',this)">🚀 IPO P&amp;L</button>
+        <button class="calc-tab-btn" id="calctab-brokerage" onclick="setCalcTab('brokerage',this)">🧾 Brokerage &amp; Breakeven</button>
+      </div>
+
+      <!-- SIP Calculator -->
+      <div id="calc-sip" class="calc-section active" style="padding:18px 16px">
+        <div class="calc-grid">
+          <div class="calc-field"><label>Monthly Investment (₹)</label><input type="number" id="sip-amount" value="10000" min="100"></div>
+          <div class="calc-field"><label>Expected Annual Return (%)</label><input type="number" id="sip-return" value="12" step="0.1"></div>
+          <div class="calc-field"><label>Investment Period (Years)</label><input type="number" id="sip-years" value="10" min="1"></div>
+        </div>
+        <button class="calc-btn" onclick="calcSIP()">Calculate SIP Returns</button>
+        <div id="sip-result" class="calc-result-grid" style="display:none"></div>
+      </div>
+
+      <!-- Lumpsum Calculator -->
+      <div id="calc-lumpsum" class="calc-section" style="padding:18px 16px">
+        <div class="calc-grid">
+          <div class="calc-field"><label>Lumpsum Amount (₹)</label><input type="number" id="ls-amount" value="100000" min="100"></div>
+          <div class="calc-field"><label>Expected Annual Return (%)</label><input type="number" id="ls-return" value="12" step="0.1"></div>
+          <div class="calc-field"><label>Investment Period (Years)</label><input type="number" id="ls-years" value="10" min="1"></div>
+        </div>
+        <button class="calc-btn" onclick="calcLumpsum()">Calculate Maturity Value</button>
+        <div id="ls-result" class="calc-result-grid" style="display:none"></div>
+      </div>
+
+      <!-- CAGR Calculator -->
+      <div id="calc-cagr" class="calc-section" style="padding:18px 16px">
+        <div class="calc-grid">
+          <div class="calc-field"><label>Initial Value (₹)</label><input type="number" id="cagr-initial" value="100000" min="1"></div>
+          <div class="calc-field"><label>Final Value (₹)</label><input type="number" id="cagr-final" value="200000" min="1"></div>
+          <div class="calc-field"><label>Duration (Years)</label><input type="number" id="cagr-years" value="5" min="0.1" step="0.1"></div>
+        </div>
+        <button class="calc-btn" onclick="calcCAGR()">Calculate CAGR</button>
+        <div id="cagr-result" class="calc-result-grid" style="display:none"></div>
+      </div>
+
+      <!-- IPO Profit/Loss Estimator -->
+      <div id="calc-ipopl" class="calc-section" style="padding:18px 16px">
+        <div class="calc-grid">
+          <div class="calc-field"><label>IPO Price (Upper Band, ₹)</label><input type="number" id="ipl-price" value="140" min="1"></div>
+          <div class="calc-field"><label>Lot Size (Shares)</label><input type="number" id="ipl-lot" value="100" min="1"></div>
+          <div class="calc-field"><label>No. of Lots Applied</label><input type="number" id="ipl-lots" value="1" min="1"></div>
+          <div class="calc-field"><label>Current GMP (₹ per share)</label><input type="number" id="ipl-gmp" value="24" step="0.1"></div>
+        </div>
+        <button class="calc-btn" onclick="calcIpoPL()">Estimate Listing Profit/Loss</button>
+        <div id="ipl-result" class="calc-result-grid" style="display:none"></div>
+        <div class="data-refresh-note" style="margin-top:10px">Estimate only — based on the current GMP you enter, which can change anytime before listing. See the 🚀 IPO Watch section above for live GMP.</div>
+      </div>
+
+      <!-- Brokerage & Breakeven Calculator -->
+      <div id="calc-brokerage" class="calc-section" style="padding:18px 16px">
+        <div class="calc-grid">
+          <div class="calc-field"><label>Trade Type</label>
+            <select id="bk-type"><option value="delivery">Delivery (Equity)</option><option value="intraday">Intraday (Equity)</option></select>
+          </div>
+          <div class="calc-field"><label>Buy Price (₹)</label><input type="number" id="bk-buy" value="100" min="0.05" step="0.05"></div>
+          <div class="calc-field"><label>Sell Price (₹)</label><input type="number" id="bk-sell" value="105" min="0.05" step="0.05"></div>
+          <div class="calc-field"><label>Quantity</label><input type="number" id="bk-qty" value="100" min="1"></div>
+        </div>
+        <button class="calc-btn" onclick="calcBrokerage()">Calculate Net P&amp;L &amp; Breakeven</button>
+        <div id="bk-result" class="calc-result-grid" style="display:none"></div>
+        <div class="data-refresh-note" style="margin-top:10px">Illustrative discount-broker style charges (brokerage, STT, exchange charges, SEBI charges, stamp duty, GST). Actual charges vary by broker — check your broker's official tariff sheet for exact figures.</div>
+      </div>
+
+      <div class="ipo-disclaimer-box" style="margin:0 16px 16px">
+        ⚠️ These calculators are for educational, illustrative purposes only. They assume constant returns / standard charge rates and do NOT account for taxes (other than illustrative STT/stamp duty), fund expense ratios, market volatility, or your broker's specific tariff. Actual results will differ. Not investment advice — please consult a SEBI-registered investment advisor.
+      </div>
+    </div>
   </section>
 
   <!-- ══════════════════════════════════════════════════════════════
@@ -6949,8 +7283,569 @@ window.addEventListener('load', function(){
     loadFiiDiiData();
     loadMfData();
     loadOiData();
+    loadIpoData();
+    loadIpoSubscription();
   }, 3500);
 });
+
+/* ═══════════════════════════════════════════════════════════════
+   🚀 IPO WATCH — Live GMP + AI Company Review
+   ─────────────────────────────────────────────────────────────
+   Scrapes the public IPO Watch GMP page (Mainboard + SME tables)
+   for real IPO name, price band, GMP, est. listing gain%, open-
+   close dates and status. Same "never fabricate" discipline used
+   for FII/DII above: only strictly-validated real rows are shown;
+   if live data can't be confidently parsed, an honest empty state
+   with links to official sources is shown instead of guessing.
+   AI Review uses the same admin/user AI key pipeline as the rest
+   of the terminal, with a strict output format + hard disclaimer.
+═══════════════════════════════════════════════════════════════ */
+var _ipoData        = { mainboard: [], sme: [] };
+var _ipoCategory     = 'all';
+var _ipoStatus       = 'all';
+var _ipoLastUpdated  = null;
+
+function setIpoCategory(cat, btn) {
+  _ipoCategory = cat;
+  document.querySelectorAll('.ipo-cat-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  _renderIpoTable();
+}
+function setIpoStatus(st, btn) {
+  _ipoStatus = st;
+  document.querySelectorAll('.ipo-tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  _renderIpoTable();
+}
+
+function loadIpoData() {
+  var tbody = document.getElementById('ipo-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching live IPO GMP...</td></tr>';
+
+  _corsFetchText('https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/?_=' + Date.now(),
+    function(html){
+      var parsed = _parseIpoWatchHtml(html);
+      if(!parsed || (!parsed.mainboard.length && !parsed.sme.length)) { _renderIpoHonestEmpty(); return; }
+      _ipoData = parsed;
+      _ipoLastUpdated = new Date();
+      _renderIpoTable();
+    },
+    function(){ _renderIpoHonestEmpty(); }
+  );
+}
+
+/* Best-effort, strictly-validated scrape of IPO Watch's public GMP
+   tables. Only tables whose header row confidently contains Name +
+   GMP + Status columns are accepted — this rejects unrelated tables
+   (e.g. the historic "GMP Performance" table) rather than risk
+   mis-parsed rows. Mainboard vs SME is decided from the nearest
+   preceding heading. */
+function _parseIpoWatchHtml(html) {
+  try {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var tables = doc.querySelectorAll('table');
+    if(!tables || !tables.length) return null;
+
+    var result = { mainboard: [], sme: [] };
+
+    tables.forEach(function(table){
+      var label = 'mainboard';
+      var el = table.previousElementSibling, hops = 0;
+      while(el && hops < 10) {
+        if(/^H[1-4]$/.test(el.tagName)) {
+          var t = (el.textContent||'').toLowerCase();
+          if(t.indexOf('sme') !== -1) label = 'sme';
+          else if(t.indexOf('mainboard') !== -1) label = 'mainboard';
+          break;
+        }
+        el = el.previousElementSibling; hops++;
+      }
+
+      var headCells = table.querySelectorAll('thead th');
+      if(!headCells.length) return;
+      var cols = [];
+      headCells.forEach(function(th){
+        var t = (th.textContent||'').toLowerCase();
+        if(t.indexOf('name') !== -1) cols.push('name');
+        else if(t.indexOf('gmp') !== -1) cols.push('gmp');
+        else if(t.indexOf('trend') !== -1) cols.push('trend');
+        else if(t.indexOf('price') !== -1) cols.push('price');
+        else if(t.indexOf('listing') !== -1) cols.push('listing');
+        else if(t.indexOf('date') !== -1) cols.push('date');
+        else if(t.indexOf('status') !== -1) cols.push('status');
+        else if(t.indexOf('updated') !== -1) cols.push('updated');
+        else cols.push('other');
+      });
+      if(cols.indexOf('name')===-1 || cols.indexOf('gmp')===-1 || cols.indexOf('status')===-1) return;
+
+      var rows = table.querySelectorAll('tbody tr');
+      rows.forEach(function(tr){
+        var tds = tr.querySelectorAll('td');
+        if(!tds.length) return;
+        var rec = {};
+        tds.forEach(function(td, i){
+          var key = cols[i] || 'other';
+          var txt = (td.textContent||'').replace(/\s+/g,' ').trim();
+          if(key==='name') {
+            var link = td.querySelector('a');
+            rec.name = (link ? link.textContent : txt).replace(/\s+/g,' ').trim();
+            rec.url  = link ? link.getAttribute('href') : null;
+          }
+          else if(key==='gmp') rec.gmpRaw = txt;
+          else if(key==='price') rec.priceBand = txt;
+          else if(key==='listing') rec.listingRaw = txt;
+          else if(key==='date') rec.dateRaw = txt;
+          else if(key==='status') rec.statusRaw = txt;
+          else if(key==='updated') rec.updatedRaw = txt;
+        });
+        if(!rec.name) return;
+
+        var gmpMatch = (rec.gmpRaw||'').match(/-?[\d,]+(\.\d+)?/);
+        rec.gmp = gmpMatch ? parseFloat(gmpMatch[0].replace(/,/g,'')) : null;
+
+        var lm = (rec.listingRaw||'').match(/([\d,]+(?:\.\d+)?)\s*\(([\-\d.]+)%\)/);
+        rec.estListingPrice = lm ? parseFloat(lm[1].replace(/,/g,'')) : null;
+        rec.estGainPct      = lm ? parseFloat(lm[2]) : null;
+
+        var s = (rec.statusRaw||'').toLowerCase();
+        if(s.indexOf('open') !== -1) rec.status = 'open';
+        else if(s.indexOf('upcoming') !== -1) rec.status = 'upcoming';
+        else if(s.indexOf('closed') !== -1) rec.status = 'closed';
+        else if(s.indexOf('listed') !== -1) rec.status = 'listed';
+        else rec.status = 'closed';
+
+        result[label].push(rec);
+      });
+    });
+
+    return (result.mainboard.length || result.sme.length) ? result : null;
+  } catch(e) { return null; }
+}
+
+function _renderIpoTable() {
+  var tbody = document.getElementById('ipo-tbody');
+  if(!tbody) return;
+
+  var all = [];
+  if(_ipoCategory==='all' || _ipoCategory==='mainboard') all = all.concat(_ipoData.mainboard.map(function(r){ r._cat='mainboard'; return r; }));
+  if(_ipoCategory==='all' || _ipoCategory==='sme')       all = all.concat(_ipoData.sme.map(function(r){ r._cat='sme'; return r; }));
+
+  if(_ipoStatus !== 'all') {
+    all = all.filter(function(r){
+      if(_ipoStatus==='closed') return r.status==='closed' || r.status==='listed';
+      return r.status === _ipoStatus;
+    });
+  }
+
+  if(!all.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted);font-size:.78rem">No IPOs match this filter right now.</td></tr>';
+    _updateIpoSummary([]);
+    return;
+  }
+
+  var order = { open:0, upcoming:1, closed:2, listed:3 };
+  all.sort(function(a,b){ return (order[a.status]!==undefined?order[a.status]:9) - (order[b.status]!==undefined?order[b.status]:9); });
+
+  var html = all.map(function(r){
+    var gmpCls = (r.gmp>0) ? 'ipo-gmp-pos' : (r.gmp<0) ? 'ipo-gmp-neg' : 'ipo-gmp-flat';
+    var gmpTxt = (r.gmp===null||isNaN(r.gmp)) ? '—' : ((r.gmp>0?'+':'') + '₹' + r.gmp);
+    var estTxt = r.estListingPrice ? ('₹'+r.estListingPrice+' <span style="color:var(--text-muted);font-size:.62rem">('+(r.estGainPct>=0?'+':'')+r.estGainPct+'%)</span>') : '—';
+    var badgeCls  = 'ipo-status-' + (r.status||'closed');
+    var badgeTxt  = r.status==='open' ? 'OPEN' : r.status==='upcoming' ? 'UPCOMING' : r.status==='listed' ? 'LISTED' : 'CLOSED';
+    var nameHtml  = r.url ? ('<a href="'+r.url+'" target="_blank" rel="noopener" style="color:inherit;text-decoration:none">'+_ipoEsc(r.name)+'</a>') : _ipoEsc(r.name);
+    var safeName  = String(r.name||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var safeBand  = String(r.priceBand||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+    var gmpArg    = (r.gmp===null||isNaN(r.gmp)) ? 0 : r.gmp;
+    var gainArg   = (r.estGainPct===null||isNaN(r.estGainPct)) ? 0 : r.estGainPct;
+    return '<tr>' +
+      '<td><div class="ipo-name-cell">'+nameHtml+'</div><div class="ipo-sub-cell">'+(r._cat==='sme'?'SME IPO':'Mainboard IPO')+'</div></td>' +
+      '<td style="font-family:var(--font-mono);color:var(--text-primary)">'+_ipoEsc(r.priceBand||'—')+'</td>' +
+      '<td style="font-size:.68rem;color:var(--text-muted)">'+_ipoEsc(r.dateRaw||'—')+'</td>' +
+      '<td class="'+gmpCls+'">'+gmpTxt+'</td>' +
+      '<td style="font-family:var(--font-mono)">'+estTxt+'</td>' +
+      '<td><span class="ipo-status-badge '+badgeCls+'">'+badgeTxt+'</span></td>' +
+      '<td><button class="ipo-ai-btn" onclick="getAiIpoReview(\''+safeName+'\',\''+safeBand+'\','+gmpArg+','+gainArg+',\''+r.status+'\')">🧠 AI Review</button></td>' +
+    '</tr>';
+  }).join('');
+  tbody.innerHTML = html;
+  _updateIpoSummary(all);
+}
+
+function _ipoEsc(s) {
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(s||''));
+  return d.innerHTML;
+}
+
+function _updateIpoSummary(list) {
+  var openC = list.filter(function(r){ return r.status==='open'; }).length;
+  var upC   = list.filter(function(r){ return r.status==='upcoming'; }).length;
+  var maxGmp = list.reduce(function(m,r){ return (r.gmp!==null && !isNaN(r.gmp) && r.gmp>m.val) ? {val:r.gmp} : m; }, {val:-Infinity});
+  _setEl2('ipo-count-open', String(openC));
+  _setEl2('ipo-count-upcoming', String(upC));
+  _setEl2('ipo-count-highgmp', maxGmp.val>-Infinity ? ('₹'+maxGmp.val) : '—');
+  _setEl2('ipo-count-updated', _ipoLastUpdated ? _ipoLastUpdated.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}) : '—');
+}
+
+/* Live data genuinely unavailable — we NEVER fabricate GMP figures.
+   Show a clean, honest state pointing to official/trusted sources. */
+function _renderIpoHonestEmpty() {
+  var tbody = document.getElementById('ipo-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="padding:18px;text-align:center">' +
+    '<div style="color:#fbbf24;font-weight:700;font-size:.8rem;margin-bottom:6px">⚠️ Live IPO GMP data अभी उपलब्ध नहीं / temporarily unavailable</div>' +
+    '<div style="font-size:.72rem;color:var(--text-muted);line-height:1.7;max-width:560px;margin:0 auto">' +
+    'यह टूल कभी भी अनुमानित/fake GMP आंकड़े नहीं दिखाता। सटीक और सबसे ताज़ा IPO GMP के लिए देखें: ' +
+    '<a href="https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/" target="_blank" style="color:#22d3ee">IPO Watch</a>, ' +
+    '<a href="https://www.chittorgarh.com/report/ipo_gmp_ipo_grey_market_premium/9/" target="_blank" style="color:#22d3ee">Chittorgarh</a> या ' +
+    '<a href="https://www.nseindia.com/market-data/all-upcoming-issues-ipo" target="_blank" style="color:#22d3ee">NSE IPO Page</a></div>' +
+    '</td></tr>';
+  _updateIpoSummary([]);
+}
+
+/* ── AI Review Modal ── */
+function openIpoModal(title, sub) {
+  var t = document.getElementById('ipo-modal-title');
+  var s = document.getElementById('ipo-modal-sub');
+  var b = document.getElementById('ipo-modal-body');
+  if(t) t.textContent = title || 'Company Review';
+  if(s) s.textContent = sub || 'AI-generated analysis';
+  if(b) b.innerHTML = '<div style="text-align:center;padding:30px;color:var(--text-muted)"><span style="display:inline-block;width:18px;height:18px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Generating AI review...</div>';
+  var ov = document.getElementById('ipo-modal-overlay');
+  if(ov) ov.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeIpoModal() {
+  var ov = document.getElementById('ipo-modal-overlay');
+  if(ov) ov.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('keydown', function(e){
+  if(e.key === 'Escape') closeIpoModal();
+});
+
+function getAiIpoReview(name, priceBand, gmp, gainPct, status) {
+  openIpoModal(name, (priceBand?('Price Band '+priceBand+' • '):'') + 'GMP ₹'+gmp+(gainPct?(' • Est. Gain '+gainPct+'%'):''));
+  _loadAdminKey(function(apiKey, provider) {
+    var key  = _userKey || apiKey;
+    var prov = _userKey ? (_userProvider||'groq') : (provider||'groq');
+    if(!key) { _renderIpoModalError('AI key not configured. Please contact admin, or check the official RHP/DRHP and independent broker reviews for ' + name + ' manually.'); return; }
+
+    var prompt = 'You are a neutral Indian stock-market IPO research assistant. Give an EDUCATIONAL, balanced review of the IPO of "' + name + '" (India, current status: ' + status + ', price band ' + (priceBand||'not disclosed') + ', current grey market premium \u20B9' + gmp + ', estimated listing gain ' + gainPct + '%). ' +
+      'Respond ONLY in this exact plain-text format, nothing else, no markdown:\n' +
+      'OVERVIEW: <2-3 sentence neutral company/business overview and sector>\n' +
+      'STRENGTHS: <3 short points separated by " | ", covering business/financial strengths typically relevant to this kind of IPO>\n' +
+      'WEAKNESSES: <3 short points separated by " | ", covering typical risks/concerns e.g. valuation, sector risk, financial history, promoter background, use of funds>\n' +
+      'VERDICT: <one word only: APPLY or AVOID or NEUTRAL>\n' +
+      'REASON: <2-3 sentence reasoning for the verdict, explicitly noting this is educational only, not personalised investment advice, and that GMP is an unofficial grey-market indicator>';
+
+    _callAiWithKey(key, prov, prompt, function(text) {
+      _renderIpoModalResult(text);
+    }, function(err) {
+      _renderIpoModalError('AI analysis unavailable right now (' + String(err).substring(0,60) + '). Please check the company\'s RHP/DRHP and independent broker reviews before deciding, e.g. on IPO Watch or Chittorgarh.');
+    });
+  });
+}
+
+function _renderIpoModalResult(text) {
+  var body = document.getElementById('ipo-modal-body');
+  if(!body) return;
+
+  var get = function(label, stopLabels) {
+    var re = new RegExp(label + ':\\s*([\\s\\S]*?)(?=' + stopLabels.join('|') + '|$)', 'i');
+    var m = text.match(re);
+    return m ? m[1].trim() : '';
+  };
+  var overview   = get('OVERVIEW',   ['STRENGTHS:','WEAKNESSES:','VERDICT:','REASON:']);
+  var strengths  = get('STRENGTHS',  ['WEAKNESSES:','VERDICT:','REASON:']);
+  var weaknesses = get('WEAKNESSES', ['VERDICT:','REASON:']);
+  var verdictRaw = get('VERDICT',    ['REASON:']).toUpperCase();
+  var reason     = get('REASON',     ['$']);
+
+  if(!overview && !strengths && !weaknesses && !verdictRaw) {
+    body.innerHTML = '<div style="font-size:.78rem;line-height:1.7;white-space:pre-wrap;color:var(--text-primary)">' + _ipoEsc(text) + '</div>' + _ipoDisclaimerHtml();
+    return;
+  }
+
+  var verdictCls   = verdictRaw.indexOf('APPLY')!==-1 ? 'ipo-verdict-apply' : verdictRaw.indexOf('AVOID')!==-1 ? 'ipo-verdict-avoid' : 'ipo-verdict-neutral';
+  var verdictIcon  = verdictRaw.indexOf('APPLY')!==-1 ? '✅' : verdictRaw.indexOf('AVOID')!==-1 ? '⛔' : '🟡';
+  var verdictLabel = verdictRaw.indexOf('APPLY')!==-1 ? 'AI Opinion: Consider Applying' : verdictRaw.indexOf('AVOID')!==-1 ? 'AI Opinion: Consider Avoiding' : 'AI Opinion: Neutral / Mixed';
+
+  var sList = strengths.split('|').map(function(s){ return s.trim(); }).filter(Boolean);
+  var wList = weaknesses.split('|').map(function(s){ return s.trim(); }).filter(Boolean);
+
+  body.innerHTML =
+    '<div class="ipo-verdict-chip ' + verdictCls + '">' + verdictIcon + ' ' + verdictLabel + '</div>' +
+    (overview ? '<div style="font-size:.78rem;line-height:1.6;color:var(--text-primary);margin-bottom:6px">' + _ipoEsc(overview) + '</div>' : '') +
+    '<div class="ipo-sw-grid">' +
+      '<div class="ipo-sw-box"><div class="ipo-sw-title" style="color:#10b981">💪 Strengths</div>' + (sList.length ? '<ul style="margin:0;padding-left:18px;font-size:.74rem;line-height:1.8;color:var(--text-primary)">' + sList.map(function(s){ return '<li>'+_ipoEsc(s)+'</li>'; }).join('') + '</ul>' : '<div style="font-size:.72rem;color:var(--text-muted)">—</div>') + '</div>' +
+      '<div class="ipo-sw-box"><div class="ipo-sw-title" style="color:#f43f5e">⚠️ Weaknesses</div>' + (wList.length ? '<ul style="margin:0;padding-left:18px;font-size:.74rem;line-height:1.8;color:var(--text-primary)">' + wList.map(function(s){ return '<li>'+_ipoEsc(s)+'</li>'; }).join('') + '</ul>' : '<div style="font-size:.72rem;color:var(--text-muted)">—</div>') + '</div>' +
+    '</div>' +
+    (reason ? '<div style="font-size:.75rem;line-height:1.7;color:var(--text-muted);margin-top:4px"><strong style="color:var(--text-primary)">Why:</strong> ' + _ipoEsc(reason) + '</div>' : '') +
+    _ipoDisclaimerHtml();
+}
+
+function _renderIpoModalError(msg) {
+  var body = document.getElementById('ipo-modal-body');
+  if(!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:10px;color:#fbbf24;font-size:.8rem;margin-bottom:10px">⚠️ ' + _ipoEsc(msg) + '</div>' + _ipoDisclaimerHtml();
+}
+
+function _ipoDisclaimerHtml() {
+  return '<div class="ipo-disclaimer-box">⚠️ This AI-generated review is for educational purposes only — it is NOT investment advice, a recommendation, or a guarantee of listing performance. GMP is an unofficial, unregulated grey-market indicator. Always read the company\'s RHP/DRHP, check subscription numbers, and consult a SEBI-registered investment advisor before applying. Invest only what you can afford to lose; stock market investments are subject to market risk.</div>';
+}
+
+/* ── IPO Subscription Status (QIB / NII / Retail / Total) ──
+   Same discipline as GMP: strict table parsing, only accepted if
+   real numeric subscription figures are confidently found; never
+   fabricated. Falls back to an honest empty state with official
+   links if live data can't be parsed. */
+function loadIpoSubscription() {
+  var tbody = document.getElementById('ipo-sub-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching subscription data...</td></tr>';
+
+  _corsFetchText('https://ipowatch.in/ipo-subscription-status-today/?_=' + Date.now(),
+    function(html){
+      var rows = _parseIpoSubscriptionHtml(html);
+      if(!rows || !rows.length) { _renderIpoSubHonestEmpty(); return; }
+      _renderIpoSubTable(rows);
+    },
+    function(){ _renderIpoSubHonestEmpty(); }
+  );
+}
+
+function _parseIpoSubscriptionHtml(html) {
+  try {
+    var doc = new DOMParser().parseFromString(html, 'text/html');
+    var tables = doc.querySelectorAll('table');
+    if(!tables || !tables.length) return null;
+    var out = [];
+
+    tables.forEach(function(table){
+      var headCells = table.querySelectorAll('thead th');
+      if(!headCells.length) return;
+      var cols = [];
+      headCells.forEach(function(th){
+        var t = (th.textContent||'').toLowerCase();
+        if(t.indexOf('name') !== -1 || t.indexOf('ipo') !== -1 && t.indexOf('name') === -1 && cols.indexOf('name')===-1 && /company|ipo name/.test(t)) cols.push('name');
+        else if(t.indexOf('qib') !== -1) cols.push('qib');
+        else if(t.indexOf('nii') !== -1 || t.indexOf('hni') !== -1) cols.push('nii');
+        else if(t.indexOf('retail') !== -1) cols.push('retail');
+        else if(t.indexOf('total') !== -1) cols.push('total');
+        else if(t.indexOf('day') !== -1 || t.indexOf('date') !== -1) cols.push('day');
+        else if(t.indexOf('name')!==-1) cols.push('name');
+        else cols.push('other');
+      });
+      /* Require at minimum a name-like first column + total/retail/qib subscription column */
+      if(cols.indexOf('total')===-1 && cols.indexOf('qib')===-1 && cols.indexOf('retail')===-1) return;
+
+      var rows = table.querySelectorAll('tbody tr');
+      rows.forEach(function(tr){
+        var tds = tr.querySelectorAll('td');
+        if(!tds.length) return;
+        var rec = {};
+        tds.forEach(function(td, i){
+          var key = cols[i] || 'other';
+          var txt = (td.textContent||'').replace(/\s+/g,' ').trim();
+          if(key==='name') {
+            var link = td.querySelector('a');
+            rec.name = (link ? link.textContent : txt).replace(/\s+/g,' ').trim();
+          }
+          else if(key==='qib')    rec.qib = txt;
+          else if(key==='nii')    rec.nii = txt;
+          else if(key==='retail') rec.retail = txt;
+          else if(key==='total')  rec.total = txt;
+          else if(key==='day')    rec.day = txt;
+        });
+        if(!rec.name) { var first = tds[0] && (tds[0].textContent||'').trim(); if(first) rec.name = first; }
+        if(!rec.name) return;
+        /* Only accept if at least one numeric-looking subscription figure was found */
+        var hasNum = [rec.qib, rec.nii, rec.retail, rec.total].some(function(v){ return v && /[\d.]/.test(v); });
+        if(!hasNum) return;
+        out.push(rec);
+      });
+    });
+
+    return out.length ? out : null;
+  } catch(e) { return null; }
+}
+
+function _renderIpoSubTable(rows) {
+  var tbody = document.getElementById('ipo-sub-tbody');
+  if(!tbody) return;
+  var fmt = function(v){
+    if(!v) return '—';
+    var n = parseFloat(String(v).replace(/[^\d.\-]/g,''));
+    if(isNaN(n)) return _ipoEsc(v);
+    var cls = n>=1 ? 'ipo-gmp-pos' : 'ipo-gmp-flat';
+    return '<span class="'+cls+'">'+n.toFixed(2)+'x</span>';
+  };
+  tbody.innerHTML = rows.map(function(r){
+    return '<tr>' +
+      '<td class="ipo-name-cell">'+_ipoEsc(r.name)+'</td>' +
+      '<td>'+fmt(r.qib)+'</td>' +
+      '<td>'+fmt(r.nii)+'</td>' +
+      '<td>'+fmt(r.retail)+'</td>' +
+      '<td>'+fmt(r.total)+'</td>' +
+      '<td style="font-size:.68rem;color:var(--text-muted)">'+_ipoEsc(r.day||'—')+'</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function _renderIpoSubHonestEmpty() {
+  var tbody = document.getElementById('ipo-sub-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="padding:16px;text-align:center">' +
+    '<div style="color:#fbbf24;font-weight:700;font-size:.76rem;margin-bottom:6px">⚠️ Live subscription data अभी उपलब्ध नहीं</div>' +
+    '<div style="font-size:.7rem;color:var(--text-muted);line-height:1.7;max-width:520px;margin:0 auto">' +
+    'हम कभी भी अनुमानित subscription आंकड़े नहीं दिखाते। सटीक real-time data के लिए देखें: ' +
+    '<a href="https://ipowatch.in/ipo-subscription-status-today/" target="_blank" style="color:#22d3ee">IPO Watch Subscription</a> या ' +
+    '<a href="https://www.nseindia.com/market-data/issue-information" target="_blank" style="color:#22d3ee">NSE Bidding Data</a></div>' +
+    '</td></tr>';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🧮 FINANCIAL CALCULATORS — SIP, Lumpsum, CAGR, IPO P&L, Brokerage
+   ─────────────────────────────────────────────────────────────
+   Pure client-side math — no external data, so these always work
+   with zero fabrication risk. Standard, widely-used formulas.
+═══════════════════════════════════════════════════════════════ */
+function setCalcTab(name, btn) {
+  document.querySelectorAll('.calc-tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.calc-section').forEach(function(s){ s.classList.remove('active'); });
+  if(btn) btn.classList.add('active');
+  var sec = document.getElementById('calc-' + name);
+  if(sec) sec.classList.add('active');
+}
+
+function _calcFmtINR(n) {
+  if(n===null || n===undefined || isNaN(n)) return '—';
+  var neg = n < 0; n = Math.abs(n);
+  var s = n.toLocaleString('en-IN', {maximumFractionDigits:0});
+  return (neg?'-':'') + '₹' + s;
+}
+
+function _calcResultCell(label, val, color) {
+  return '<div class="calc-result-cell"><div class="calc-result-label">'+label+'</div><div class="calc-result-val" style="'+(color?('color:'+color):'')+'">'+val+'</div></div>';
+}
+
+/* ── SIP Calculator ── */
+function calcSIP() {
+  var M = parseFloat(document.getElementById('sip-amount').value) || 0;
+  var r = parseFloat(document.getElementById('sip-return').value) || 0;
+  var yrs = parseFloat(document.getElementById('sip-years').value) || 0;
+  var n = Math.round(yrs * 12);
+  var i = (r/100)/12;
+  var fv = (i===0) ? (M*n) : (M * ((Math.pow(1+i,n)-1)/i) * (1+i));
+  var invested = M * n;
+  var gain = fv - invested;
+  var box = document.getElementById('sip-result');
+  box.style.display = 'grid';
+  box.innerHTML =
+    _calcResultCell('Invested Amount', _calcFmtINR(invested)) +
+    _calcResultCell('Est. Returns', _calcFmtINR(gain), '#10b981') +
+    _calcResultCell('Maturity Value', _calcFmtINR(fv), '#fbbf24') +
+    _calcResultCell('Wealth Gain Ratio', invested>0 ? ((fv/invested).toFixed(2)+'x') : '—');
+}
+
+/* ── Lumpsum Calculator ── */
+function calcLumpsum() {
+  var P = parseFloat(document.getElementById('ls-amount').value) || 0;
+  var r = parseFloat(document.getElementById('ls-return').value) || 0;
+  var yrs = parseFloat(document.getElementById('ls-years').value) || 0;
+  var fv = P * Math.pow(1 + r/100, yrs);
+  var gain = fv - P;
+  var box = document.getElementById('ls-result');
+  box.style.display = 'grid';
+  box.innerHTML =
+    _calcResultCell('Invested Amount', _calcFmtINR(P)) +
+    _calcResultCell('Est. Returns', _calcFmtINR(gain), '#10b981') +
+    _calcResultCell('Maturity Value', _calcFmtINR(fv), '#fbbf24') +
+    _calcResultCell('Growth Multiple', P>0 ? ((fv/P).toFixed(2)+'x') : '—');
+}
+
+/* ── CAGR Calculator ── */
+function calcCAGR() {
+  var initial = parseFloat(document.getElementById('cagr-initial').value) || 0;
+  var final   = parseFloat(document.getElementById('cagr-final').value) || 0;
+  var yrs     = parseFloat(document.getElementById('cagr-years').value) || 0;
+  var cagr = (initial>0 && yrs>0) ? ((Math.pow(final/initial, 1/yrs) - 1) * 100) : null;
+  var absReturn = initial>0 ? (((final-initial)/initial)*100) : null;
+  var box = document.getElementById('cagr-result');
+  box.style.display = 'grid';
+  box.innerHTML =
+    _calcResultCell('CAGR', cagr!==null ? (cagr.toFixed(2)+'%') : '—', cagr>=0?'#10b981':'#f43f5e') +
+    _calcResultCell('Absolute Return', absReturn!==null ? (absReturn.toFixed(2)+'%') : '—') +
+    _calcResultCell('Total Gain', _calcFmtINR(final-initial), (final-initial)>=0?'#10b981':'#f43f5e') +
+    _calcResultCell('Duration', yrs + ' yrs');
+}
+
+/* ── IPO Profit/Loss Estimator ── */
+function calcIpoPL() {
+  var price = parseFloat(document.getElementById('ipl-price').value) || 0;
+  var lot   = parseFloat(document.getElementById('ipl-lot').value) || 0;
+  var lots  = parseFloat(document.getElementById('ipl-lots').value) || 0;
+  var gmp   = parseFloat(document.getElementById('ipl-gmp').value) || 0;
+  var shares = lot * lots;
+  var investment = price * shares;
+  var estListingPrice = price + gmp;
+  var estProfit = gmp * shares;
+  var estProfitPct = price>0 ? ((gmp/price)*100) : 0;
+  var box = document.getElementById('ipl-result');
+  box.style.display = 'grid';
+  box.innerHTML =
+    _calcResultCell('Investment Amount', _calcFmtINR(investment)) +
+    _calcResultCell('Est. Listing Price', _calcFmtINR(estListingPrice)) +
+    _calcResultCell('Est. Profit/Loss', _calcFmtINR(estProfit), estProfit>=0?'#10b981':'#f43f5e') +
+    _calcResultCell('Est. Gain %', estProfitPct.toFixed(2)+'%', estProfitPct>=0?'#10b981':'#f43f5e');
+}
+
+/* ── Brokerage & Breakeven Calculator (illustrative discount-broker charges) ── */
+function calcBrokerage() {
+  var type = document.getElementById('bk-type').value;
+  var buy  = parseFloat(document.getElementById('bk-buy').value) || 0;
+  var sell = parseFloat(document.getElementById('bk-sell').value) || 0;
+  var qty  = parseFloat(document.getElementById('bk-qty').value) || 0;
+
+  var buyTurnover  = buy * qty;
+  var sellTurnover = sell * qty;
+  var totalTurnover = buyTurnover + sellTurnover;
+
+  /* Brokerage: ₹20 flat or 0.03% of turnover per leg, whichever lower (discount-broker style) */
+  var brokBuy  = Math.min(20, buyTurnover * 0.0003);
+  var brokSell = Math.min(20, sellTurnover * 0.0003);
+  var brokerage = brokBuy + brokSell;
+
+  /* STT: delivery 0.1% both legs; intraday 0.025% sell leg only */
+  var stt = (type==='delivery') ? (totalTurnover * 0.001) : (sellTurnover * 0.00025);
+
+  /* Exchange transaction charges (NSE, approx) ~0.00297% of turnover */
+  var exch = totalTurnover * 0.0000297;
+
+  /* SEBI charges ₹10 per crore = 0.0001% */
+  var sebi = totalTurnover * 0.000001;
+
+  /* Stamp duty (buy side only): delivery 0.015%, intraday 0.003% */
+  var stamp = (type==='delivery') ? (buyTurnover * 0.00015) : (buyTurnover * 0.00003);
+
+  /* GST 18% on (brokerage + exchange charges + SEBI charges) */
+  var gst = (brokerage + exch + sebi) * 0.18;
+
+  var totalCharges = brokerage + stt + exch + sebi + stamp + gst;
+  var grossPL = (sell - buy) * qty;
+  var netPL = grossPL - totalCharges;
+  var breakeven = buy + (totalCharges / qty);
+
+  var box = document.getElementById('bk-result');
+  box.style.display = 'grid';
+  box.innerHTML =
+    _calcResultCell('Gross P&L', _calcFmtINR(grossPL), grossPL>=0?'#10b981':'#f43f5e') +
+    _calcResultCell('Total Charges', _calcFmtINR(totalCharges), '#f59e0b') +
+    _calcResultCell('Net P&L', _calcFmtINR(netPL), netPL>=0?'#10b981':'#f43f5e') +
+    _calcResultCell('Breakeven Price', '₹' + breakeven.toFixed(2));
+}
 
 /* ═══════════════════════════════════════════════════════════════
    📰 STOCK NEWS SYSTEM
