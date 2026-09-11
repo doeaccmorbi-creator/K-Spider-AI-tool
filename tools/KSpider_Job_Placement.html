@@ -89,14 +89,14 @@
 <script type="module">
 import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,GoogleAuthProvider,signInWithPopup}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint,getCountFromServer}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,deleteDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint,getCountFromServer}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import{getStorage}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 // ── REPLACE with your Firebase config ──
 const firebaseConfig={apiKey:"AIzaSyDnDSRVyZ65-2mZw0FBWXrvWzuQk5ojot4",authDomain:"jobplacementsocial.firebaseapp.com",projectId:"jobplacementsocial",storageBucket:"jobplacementsocial.firebasestorage.app",messagingSenderId:"599809081818",appId:"1:599809081818:web:acc0cc88c4a51fe7ef80e3"};
 try{
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);const db=getFirestore(app);const storage=getStorage(app);const gp=new GoogleAuthProvider();
-window._fb={auth,db,storage,googleProvider:gp,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint,getCountFromServer};
+window._fb={auth,db,storage,googleProvider:gp,createUserWithEmailAndPassword,signInWithEmailAndPassword,signOut,onAuthStateChanged,updateProfile,signInWithPopup,collection,addDoc,getDocs,query,orderBy,limit,startAfter,onSnapshot,doc,updateDoc,deleteDoc,arrayUnion,arrayRemove,getDoc,setDoc,serverTimestamp,where,increment,GeoPoint,getCountFromServer};
 onAuthStateChanged(auth,user=>{window._currentUser=user;if(user){document.getElementById('authScreen').style.display='none';window.initApp(user);}else{document.getElementById('authScreen').style.display='flex';document.getElementById('appScreen').style.display='none';document.getElementById('onboardingScreen').style.display='none';}});
 }catch(err){
   console.warn('Firebase init failed — Demo mode active:',err.message);
@@ -2833,6 +2833,7 @@ img{max-width:100%;display:block;}
                 <div class="pps2"><div class="n" id="ppp">0</div><div class="l">Posts</div></div>
                 <div class="pps2"><div class="n" id="ppj">0</div><div class="l">Jobs</div></div>
                 <div class="pps2"><div class="n">💎</div><div class="l">Free</div></div>
+                <div class="pps2"><div class="n" id="ppviews" style="color:#7C3AED;">👁 0</div><div class="l">Profile Views</div></div>
               </div>
             </div>
           </div>
@@ -2848,11 +2849,25 @@ img{max-width:100%;display:block;}
                 <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);cursor:pointer;font-weight:600;" title="Show Immediate Joiners at the top">
                   <input type="checkbox" id="prioritizeImmediateChk" onchange="loadMyApplications()" style="cursor:pointer;">⚡ Immediate first
                 </label>
+                <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--t2);cursor:pointer;font-weight:600;" title="Show only candidates with a Verified Skill badge">
+                  <input type="checkbox" id="verifiedOnlyChk" onchange="loadMyApplications()" style="cursor:pointer;">🏆 Verified only
+                </label>
                 <button onclick="loadMyApplications()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
               </div>
             </div>
             <div id="recruiterAppsBox" style="display:flex;flex-direction:column;gap:8px;">
               <div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">Click Refresh to load applications</div>
+            </div>
+          </div>
+
+          <!-- ── RECRUITER: Talent Pool (saved candidates) ── -->
+          <div class="ppc" style="padding:14px;" id="talentPoolPanel">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+              <div style="font-weight:700;font-size:13px;">💾 Talent Pool <span style="font-size:10px;color:var(--t3);font-weight:500;">— candidates you saved for later</span></div>
+              <button onclick="loadTalentPool()" style="padding:5px 12px;border-radius:var(--rs);background:var(--pl);color:var(--primary);border:1.5px solid var(--primary);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🔄 Refresh</button>
+            </div>
+            <div id="talentPoolBox" style="display:flex;flex-direction:column;gap:8px;">
+              <div style="text-align:center;padding:16px;color:var(--t3);font-size:12px;">Click Refresh to load your saved candidates</div>
             </div>
           </div>
 
@@ -3262,6 +3277,15 @@ Frontend Intern | TechNova | June–Aug 2023
         <div class="jtgs"><span class="jtg ts" id="ajsal">💰 Salary</span><span class="jtg te" id="ajex">⭐ Exp</span><span class="jtg tt" id="ajty">🕐 Type</span></div>
       </div>
 
+      <!-- Resume Score Reminder — non-blocking nudge toward an existing free tool -->
+      <div style="display:flex;align-items:center;gap:8px;background:var(--pl);border:1px solid var(--primary);border-radius:var(--rs);padding:8px 10px;margin-bottom:12px;font-size:11px;color:var(--primary);">
+        <span style="font-size:16px;">💡</span>
+        <div style="flex:1;">Not sure how strong your resume is? <span onclick="closeModal('applyModal');showPage('aitools',null)" style="text-decoration:underline;cursor:pointer;font-weight:700;">Check your free ATS Score →</span></div>
+      </div>
+
+      <!-- Similar Jobs Recommendation -->
+      <div id="similarJobsBox" style="display:none;margin-bottom:12px;"></div>
+
       <!-- Section: Personal Info -->
       <div style="font-size:11px;font-weight:800;color:var(--primary);letter-spacing:.5px;margin-bottom:8px;">👤 PERSONAL INFORMATION</div>
       <div class="fr2">
@@ -3511,6 +3535,24 @@ Frontend Intern | TechNova | June–Aug 2023
 </div>
 
 <!-- PRODUCT DETAIL / BUY MODAL -->
+<div class="mo" id="reviewModal">
+  <div class="md" style="max-width:420px;">
+    <div class="mhd"><div class="mht" id="reviewModalTitle">Rate Your Experience</div><button class="mcl" onclick="closeModal('reviewModal')">✕</button></div>
+    <div class="mbd">
+      <div style="text-align:center;margin-bottom:14px;" id="reviewStarsPicker">
+        ${[1,2,3,4,5].map(n=>`<span onclick="setReviewRating(${n})" id="star${n}" style="font-size:28px;cursor:pointer;color:var(--border);">★</span>`).join('')}
+      </div>
+      <div class="fg"><label class="fl">Comment (optional)</label><textarea class="fc" id="reviewComment" rows="3" placeholder="Share your honest experience…" maxlength="500"></textarea></div>
+      <div class="fg" id="salaryReportWrap" style="display:none;">
+        <label class="fl">What was the offered CTC? <span style="color:var(--t3);font-weight:400;">(optional, anonymous, helps others)</span></label>
+        <input type="text" class="fc" id="salaryReportLPA" placeholder="e.g. 6.5 (in LPA)">
+      </div>
+      <button class="bprim" onclick="submitReview()" style="width:100%;">✅ Submit Review</button>
+      <div style="font-size:10px;color:var(--t3);text-align:center;margin-top:8px;">Reviews are permanent and public — keep it honest &amp; respectful.</div>
+    </div>
+  </div>
+</div>
+
 <div class="mo" id="searchResultsModal">
   <div class="md" style="max-width:480px;max-height:80vh;overflow-y:auto;">
     <div class="mhd"><div class="mht" id="searchResultsTitle">Search Results</div><button class="mcl" onclick="closeModal('searchResultsModal')">✕</button></div>
@@ -4149,6 +4191,7 @@ function updateUI(){
   // Profile
   $('ppav').src=ph;$('ppname').textContent=nm;$('pprole').textContent=hl;
   $('ppp').textContent=_up.posts||0;$('ppj').textContent=_up.jobs||0;
+  const ppv=$('ppviews');if(ppv)ppv.textContent='👁 '+(_up.profileViews||0);
   if(_up.about)$('ppabout').textContent=_up.about;
   if(_up.skills){$('ppskills').innerHTML=_up.skills.split(',').map(s=>`<span class="sk">${s.trim()}</span>`).join('');}
   renderProfileBadges();
@@ -5751,6 +5794,7 @@ function openApply(title,company,salary,exp,type,jobId,recruiterId,waNumber){
   modal.dataset.jobCompany=company||'';
   modal.dataset.jobLocation=$('aloc')?$('aloc').value:'';
   modal.dataset.whatsappApply=waNumber||'';  // v13: WhatsApp Direct Apply number
+  trackJobView(jobId); // Job Post Health Check — real view counter for the recruiter
   // v13: show "Submit & Apply via WhatsApp" only if recruiter set a number
   var waBtn=$('submitAppWaBtn');
   if(waBtn) waBtn.style.display=waNumber?'block':'none';
@@ -5769,7 +5813,45 @@ function openApply(title,company,salary,exp,type,jobId,recruiterId,waNumber){
   ['resumeUploadError','photoUploadError'].forEach(function(id){var el=$(id);if(el)el.style.display='none';});
   ['aresumeFile','aphotoFile'].forEach(function(id){var el=$(id);if(el)el.value='';});
   showModal('applyModal');
+  loadSimilarJobs(jobId,title);
 }
+
+// Job Post Health Check — real view counter (session-deduped so repeat
+// clicks by the same visitor don't inflate the number).
+var _jobViewedThisSession=new Set();
+async function trackJobView(jobId){
+  if(!window._fb||!jobId||_jobViewedThisSession.has(jobId))return;
+  _jobViewedThisSession.add(jobId);
+  try{await window._fb.updateDoc(window._fb.doc(window._fb.db,'jobs',jobId),{views:window._fb.increment(1)});}catch(e){}
+}
+
+// Similar Jobs Recommendation — same skill-overlap idea used for the
+// recruiter's AI Applicant Ranking, run in reverse for job seekers.
+async function loadSimilarJobs(jobId,title){
+  const box=$('similarJobsBox');
+  if(!box||!window._fb)return;
+  box.innerHTML='';
+  box.style.display='none';
+  try{
+    const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'jobs'),window._fb.limit(30)));
+    const titleWords=(title||'').toLowerCase().split(/\s+/).filter(w=>w.length>3);
+    const matches=[];
+    snap.forEach(d=>{
+      if(d.id===jobId)return;
+      const j=d.data();
+      const jTitle=(j.title||'').toLowerCase();
+      const overlap=titleWords.filter(w=>jTitle.indexOf(w)!==-1).length;
+      if(overlap>0)matches.push({id:d.id,...j,score:overlap});
+    });
+    matches.sort((a,b)=>b.score-a.score);
+    const top=matches.slice(0,3);
+    if(!top.length)return;
+    box.style.display='block';
+    box.innerHTML='<div style="font-size:11px;font-weight:800;color:var(--t2);margin:10px 0 6px;">🔎 Similar Jobs</div>'
+      +top.map(j=>`<div class="mit" style="cursor:pointer;" onclick="openApply('${escJs(j.title)}','${escJs(j.company)}','${escJs(j.salary||'')}','${escJs(j.experience||'')}','${escJs(j.type||'')}','${j.id}','${j.recruiterId||''}','${escJs(j.whatsappApply||'')}')"><div class="mlog">${validateInput((j.company||'?').charAt(0).toUpperCase())}</div><div class="mi2"><div class="mt2">${validateInput(j.title||'')}</div><div class="mc2">${validateInput(j.company||'')} · ${validateInput(j.location||'')}</div></div></div>`).join('');
+  }catch(e){console.warn('loadSimilarJobs:',e);}
+}
+
 
 async function submitApp(mode){
   const nm=$('aname').value.trim();
@@ -5814,6 +5896,8 @@ async function submitApp(mode){
     status:'Applied',
     statusHistory:[{status:'Applied',at:nowMs}],
     appliedAt:nowMs,
+    recruiterId:$('applyModal')?$('applyModal').dataset.recruiterId||'':'',
+    jobId:$('applyModal')?$('applyModal').dataset.jobId||'':'',
     createdAt:{toDate:()=>new Date(nowMs),seconds:Math.floor(nowMs/1000)},
     // Seeker profile snapshot
     seekerHeadline:_up?.headline||'',
@@ -6036,12 +6120,21 @@ async function loadMyApplications(){
         return bImm-aImm; // immediate joiners bubble to top, recency preserved within each group
       });
     }
+    // Verified-Skills-Only filter — reuses the badge system, no new data needed.
+    const verifiedOnly=document.getElementById('verifiedOnlyChk')&&document.getElementById('verifiedOnlyChk').checked;
+    const filteredDocs=verifiedOnly?notifDocs.filter(function(d){const v=d.data().applicantVerifiedSkills;return v&&v.length>0;}):notifDocs;
+    if(verifiedOnly&&!filteredDocs.length){
+      box.innerHTML='<div style="text-align:center;padding:20px;color:var(--t3);font-size:12px;">No applicants with Verified Skill badges yet. Uncheck the filter to see all applications.</div>';
+      const badge=$('appCountBadge');if(badge){badge.textContent=notifDocs.length;badge.style.display='inline';}
+      return;
+    }
     box.innerHTML='';
     let unread=0;
-    notifDocs.forEach(d=>{
+    filteredDocs.forEach(d=>{
       const n=d.data();
       if(!n.read) unread++;
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,n,false));
+      if(n.applicantId)trackProfileView(n.applicantId); // "Who Viewed Your Profile"
     });
     // Update badge
     const badge=$('appCountBadge');
@@ -6052,6 +6145,217 @@ async function loadMyApplications(){
     box.innerHTML='<div style="padding:12px;font-size:12px;color:var(--red);">⚠️ Error: '+validateInput(e.message)+'</div>';
     console.warn('loadMyApplications error:',e);
   }
+}
+
+// Visual step-by-step application timeline — replaces the old plain
+// status text with something that shows real progress (or a clear
+// rejection point) so applicants don't feel stuck in a "black hole".
+// Talent Pool — recruiters save promising candidates privately for
+// future roles, even if they weren't right for the job they applied to.
+// Turns one-off applications into a reusable hiring asset.
+async function saveToTalentPool(candidateId,candidateName,jobTitle,skills){
+  if(!window._fb||!_user)return showToast('⚠️ Login required.');
+  if(!candidateId)return showToast('⚠️ Could not identify this candidate.');
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'talent_pool'),{
+      recruiterId:_user.uid,
+      candidateId:candidateId,
+      candidateName:candidateName||'Candidate',
+      appliedFor:jobTitle||'',
+      skills:skills||'',
+      savedAt:window._fb.serverTimestamp()
+    });
+    showToast('💾 Saved to your Talent Pool!');
+  }catch(e){showToast('⚠️ '+e.message);}
+}
+
+async function loadTalentPool(){
+  const box=$('talentPoolBox');
+  if(!box||!window._fb||!_user)return;
+  box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Loading…</div>';
+  try{
+    const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'talent_pool'),window._fb.where('recruiterId','==',_user.uid),window._fb.limit(50)));
+    if(snap.empty){
+      box.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);font-size:12px;">No candidates saved yet. Click 💾 Save on any application to build your pool.</div>';
+      return;
+    }
+    const docs=snap.docs.slice().sort((a,b)=>{
+      const at=a.data().savedAt?.toMillis?a.data().savedAt.toMillis():0;
+      const bt=b.data().savedAt?.toMillis?b.data().savedAt.toMillis():0;
+      return bt-at;
+    });
+    box.innerHTML=docs.map(d=>{
+      const t=d.data();
+      return '<div style="display:flex;align-items:center;gap:10px;background:var(--s2);border:1.5px solid var(--border);border-radius:var(--rs);padding:10px;">'
+        +'<div style="width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7C3AED,#0A84FF);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;flex-shrink:0;">'+validateInput((t.candidateName||'?')[0].toUpperCase())+'</div>'
+        +'<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:700;">'+validateInput(t.candidateName||'')+'</div><div style="font-size:10px;color:var(--t3);">Applied for '+validateInput(t.appliedFor||'a role')+(t.skills?' · '+validateInput(t.skills):'')+'</div></div>'
+        +'<button onclick="openChatWithUser(\''+t.candidateId+'\',\''+escJs(t.candidateName)+'\')" style="padding:6px 10px;background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED30;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;">💬 Message</button>'
+        +'<button onclick="removeFromTalentPool(\''+d.id+'\')" style="padding:6px 8px;background:#EF444418;color:#EF4444;border:1px solid #EF444430;border-radius:6px;font-size:10px;font-weight:700;cursor:pointer;font-family:inherit;">✕</button>'
+        +'</div>';
+    }).join('');
+  }catch(e){box.innerHTML='<div style="text-align:center;padding:16px;color:var(--red);font-size:12px;">'+validateInput(e.message)+'</div>';}
+}
+async function removeFromTalentPool(entryId){
+  if(!window._fb)return;
+  try{
+    await window._fb.deleteDoc(window._fb.doc(window._fb.db,'talent_pool',entryId));
+  }catch(e){showToast('⚠️ '+e.message);}
+  loadTalentPool();
+}
+
+// Who Viewed Your Profile — a lightweight, honest engagement signal.
+// Counts once per candidate per browser session (not on every refresh),
+// incremented via a Firestore rule that permits only the `profileViews`
+// field to be touched by someone other than the profile owner.
+var _profileViewedThisSession=new Set();
+async function trackProfileView(uid){
+  if(!window._fb||!_user||!uid||uid===_user.uid)return;
+  if(_profileViewedThisSession.has(uid))return;
+  _profileViewedThisSession.add(uid);
+  try{await window._fb.updateDoc(window._fb.doc(window._fb.db,'users',uid),{profileViews:window._fb.increment(1)});}catch(e){}
+}
+
+// Quick-Reply Templates — one-click responses so candidates don't get
+// silently ghosted (a common, painful problem in Indian hiring).
+const QUICK_REPLY_TEMPLATES={
+  notSelected:"Thank you for applying! After careful review, we've decided to move forward with other candidates for this role. We'll keep your profile on file for future opportunities.",
+  updateSoon:"Thanks for your patience — we're still reviewing applications and will get back to you with an update within 3 business days.",
+  scheduleInterview:"Good news! We'd like to schedule an interview with you. Could you share your availability for this week?"
+};
+async function sendQuickReply(uid,name,key){
+  if(!uid)return showToast('⚠️ Could not identify this candidate.');
+  const text=QUICK_REPLY_TEMPLATES[key];
+  if(!text)return;
+  if(!window._fb||!_user)return showToast('⚠️ Login required.');
+  try{
+    const cid=[_user.uid,uid].sort().join('_');
+    const now=window._fb.serverTimestamp();
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'messages'),{conversationId:cid,senderId:_user.uid,senderName:_up?.name||'User',text:text,createdAt:now});
+    const convRef=window._fb.doc(window._fb.db,'conversations',cid);
+    const names={};names[_user.uid]=_up?.name||'User';names[uid]=name||'Candidate';
+    await window._fb.setDoc(convRef,{participants:[_user.uid,uid],participantNames:names,lastMessage:text.slice(0,60),lastMessageAt:now,lastSenderId:_user.uid},{merge:true});
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'notifications'),{toUid:uid,type:'system',title:'💬 New message from '+validateInput(_up?.name||'Someone'),body:text.slice(0,80),read:false,createdAt:now});
+    showToast('✅ Quick reply sent!');
+  }catch(e){showToast('⚠️ '+e.message);}
+}
+function toggleQuickReplyMenu(btn,uid,name){
+  const existingId='qrMenu_'+uid;
+  const existing=document.getElementById(existingId);
+  document.querySelectorAll('[id^="qrMenu_"]').forEach(m=>{if(m.id!==existingId)m.remove();});
+  if(existing){existing.remove();return;}
+  const menu=document.createElement('div');
+  menu.id=existingId;
+  menu.style.cssText='display:flex;flex-direction:column;gap:4px;margin-top:6px;padding:8px;background:var(--s2);border:1px solid var(--border);border-radius:var(--rs);width:100%;';
+  menu.innerHTML=
+    '<div onclick="sendQuickReply(\''+uid+'\',\''+escJs(name)+'\',\'scheduleInterview\')" style="cursor:pointer;font-size:11px;padding:5px 7px;border-radius:5px;background:#10B98115;color:#10B981;font-weight:600;">📅 Schedule Interview</div>'
+    +'<div onclick="sendQuickReply(\''+uid+'\',\''+escJs(name)+'\',\'updateSoon\')" style="cursor:pointer;font-size:11px;padding:5px 7px;border-radius:5px;background:#F59E0B15;color:#F59E0B;font-weight:600;">⏳ Will Update Soon</div>'
+    +'<div onclick="sendQuickReply(\''+uid+'\',\''+escJs(name)+'\',\'notSelected\')" style="cursor:pointer;font-size:11px;padding:5px 7px;border-radius:5px;background:#EF444415;color:#EF4444;font-weight:600;">✕ Not Selected</div>';
+  btn.closest('div').parentElement.appendChild(menu);
+}
+
+function renderAppTimeline(status){
+  if(status==='Rejected'){
+    return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+      <div style="flex:1;height:4px;background:#EF444440;border-radius:2px;"></div>
+      <span style="font-size:10px;color:#EF4444;font-weight:700;white-space:nowrap;">Application closed</span>
+    </div>`;
+  }
+  const stages=['Applied','Shortlisted','Interview','Offered','Hired'];
+  const idx=Math.max(0,stages.indexOf(status));
+  return `<div style="display:flex;align-items:center;margin-top:6px;">
+    ${stages.map((s,i)=>{
+      const reached=i<=idx;
+      const dotColor=reached?'#10B981':'var(--border)';
+      const lineColor=i<idx?'#10B981':'var(--border)';
+      return `<div style="display:flex;align-items:center;${i<stages.length-1?'flex:1;':''}">
+        <div title="${s}" style="width:9px;height:9px;border-radius:50%;background:${dotColor};flex-shrink:0;"></div>
+        ${i<stages.length-1?`<div style="flex:1;height:2px;background:${lineColor};"></div>`:''}
+      </div>`;
+    }).join('')}
+  </div>
+  <div style="display:flex;justify-content:space-between;font-size:8px;color:var(--t3);margin-top:2px;">
+    ${stages.map(s=>`<span style="flex:1;text-align:center;">${s}</span>`).join('')}
+  </div>`;
+}
+
+// Real Post-Hire Reviews — a genuine, permanent trust signal (replaces
+// the fake testimonials/leaderboards removed earlier). Triggered when an
+// application reaches "Hired" — candidate rates the company; recruiter
+// (separately, from updateAppStatus) rates the candidate.
+var _reviewCtx={type:'',targetName:'',rating:0,applicationId:''};
+function openReviewPrompt(applicationId,companyName){
+  _reviewCtx={type:'company',targetName:companyName||'',rating:0,applicationId:applicationId};
+  $('reviewModalTitle').textContent='Rate your experience at '+(companyName||'this company');
+  $('reviewComment').value='';
+  $('salaryReportWrap').style.display='block';
+  $('salaryReportLPA').value='';
+  setReviewRating(0);
+  showModal('reviewModal');
+}
+function openCandidateReviewPrompt(candidateId,candidateName){
+  _reviewCtx={type:'candidate',targetName:candidateName||'',rating:0,applicationId:'',targetId:candidateId};
+  $('reviewModalTitle').textContent='Rate '+(candidateName||'this candidate');
+  $('reviewComment').value='';
+  $('salaryReportWrap').style.display='none';
+  setReviewRating(0);
+  showModal('reviewModal');
+}
+function setReviewRating(n){
+  _reviewCtx.rating=n;
+  for(let i=1;i<=5;i++){
+    const el=document.getElementById('star'+i);
+    if(el)el.style.color=i<=n?'#F59E0B':'var(--border)';
+  }
+}
+async function submitReview(){
+  if(!_reviewCtx.rating)return showToast('⚠️ Select a star rating first!');
+  if(!window._fb||!_user)return showToast('⚠️ Login required.');
+  try{
+    await window._fb.addDoc(window._fb.collection(window._fb.db,'reviews'),{
+      type:_reviewCtx.type,
+      targetName:_reviewCtx.targetName,
+      targetId:_reviewCtx.targetId||'',
+      raterId:_user.uid,
+      raterName:_up?.name||'',
+      rating:_reviewCtx.rating,
+      comment:($('reviewComment').value||'').trim(),
+      createdAt:window._fb.serverTimestamp()
+    });
+    // Optional crowd-sourced salary data point (Salary Transparency)
+    const lpaVal=$('salaryReportLPA')?parseFloat($('salaryReportLPA').value):NaN;
+    if(_reviewCtx.type==='company'&&!isNaN(lpaVal)&&lpaVal>0){
+      try{
+        await window._fb.addDoc(window._fb.collection(window._fb.db,'salary_reports'),{
+          role:(_up&&_up.headline)||'',
+          city:(_userGeo&&_userGeo.city)||'',
+          experience:(_up&&_up.experience)||'',
+          salaryLPA:lpaVal,
+          reporterId:_user.uid,
+          createdAt:window._fb.serverTimestamp()
+        });
+      }catch(e){console.warn('salary report save:',e);}
+    }
+    closeModal('reviewModal');
+    showToast('🎉 Thank you for your honest review!');
+  }catch(e){showToast('⚠️ '+e.message);}
+}
+
+// Average rating lookup for a company/candidate name — used to show a
+// real "⭐ 4.5 (12 reviews)" badge instead of any fabricated numbers.
+var _ratingCache={};
+async function getEntityRating(targetName){
+  if(!targetName||!window._fb)return null;
+  const key=targetName.toLowerCase().trim();
+  if(_ratingCache[key])return _ratingCache[key];
+  try{
+    const snap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'reviews'),window._fb.where('targetName','==',targetName),window._fb.limit(100)));
+    if(snap.empty){_ratingCache[key]=null;return null;}
+    let total=0;
+    snap.forEach(d=>{total+=d.data().rating||0;});
+    const result={avg:(total/snap.size).toFixed(1),count:snap.size};
+    _ratingCache[key]=result;
+    return result;
+  }catch(e){return null;}
 }
 
 function renderApplicationCard(id, n, isSeeker){
@@ -6066,8 +6370,10 @@ function renderApplicationCard(id, n, isSeeker){
         <div style="font-size:12px;font-weight:700;color:var(--text);">${validateInput(n.jobTitle||'')} @ ${validateInput(n.company||'')}</div>
         <span style="font-size:10px;font-weight:700;color:${sc};background:${sc}18;border:1px solid ${sc}30;padding:2px 8px;border-radius:99px;">${st}</span>
       </div>
-      <div style="font-size:11px;color:var(--t3);">Applied ${tm}</div>
+      ${renderAppTimeline(st)}
+      <div style="font-size:11px;color:var(--t3);margin-top:6px;">Applied ${tm}</div>
       ${n.noticePeriod?`<div style="font-size:11px;color:var(--t2);margin-top:3px;">Notice: ${validateInput(n.noticePeriod)}</div>`:''}
+      ${st==='Hired'?`<button onclick="openReviewPrompt('${id}','${escJs(n.company)}')" style="margin-top:8px;width:100%;padding:7px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">🎉 Congrats! Rate your experience at ${validateInput(n.company||'this company')}</button>`:''}
     </div>`;
   }
   // Recruiter view — full application card
@@ -6094,6 +6400,8 @@ function renderApplicationCard(id, n, isSeeker){
     ${n.hasResume?`<div style="font-size:11px;color:#10B981;background:#10B98112;border:1px solid #10B98130;border-radius:6px;padding:5px 10px;margin-bottom:8px;">📎 Resume attached</div>`:''}
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <button onclick="openChatWithUser('${n.applicantId||''}','${(n.applicantName||'Applicant').replace(/'/g,"\\'")}')" style="flex:1;padding:7px;background:#7C3AED;color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;min-width:80px;font-family:inherit;">💬 Message</button>
+      <button onclick="toggleQuickReplyMenu(this,'${n.applicantId||''}','${(n.applicantName||'').replace(/'/g,"\\'")}')" style="padding:7px 10px;background:#0A84FF18;color:#0A84FF;border:1px solid #0A84FF30;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">⚡ Quick Reply</button>
+      <button onclick="saveToTalentPool('${n.applicantId||''}','${(n.applicantName||'').replace(/'/g,"\\'")}','${(n.jobTitle||'').replace(/'/g,"\\'")}','${(n.skills||'').replace(/'/g,"\\'")}')" style="padding:7px 10px;background:#7C3AED18;color:#7C3AED;border:1px solid #7C3AED30;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">💾 Save</button>
       ${n.applicantEmail?`<a href="mailto:${validateInput(n.applicantEmail)}?subject=Re: Your application for ${encodeURIComponent(n.jobTitle||'')}" style="flex:1;padding:7px;background:var(--primary);color:#fff;border:none;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;text-decoration:none;min-width:80px;">✉️ Email</a>`:''}
       ${n.applicantPhone?`<a href="https://wa.me/91${validateInput(n.applicantPhone).replace(/\D/g,'').slice(-10)}?text=${encodeURIComponent('Hi '+(n.applicantName||'')+', regarding your application for '+(n.jobTitle||'the role')+' — ')}" target="_blank" style="padding:7px 10px;background:#25D36618;color:#128C7E;border:1px solid #25D36640;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">📲 WhatsApp</a>`:''}
       ${n.applicantPhone?`<a href="tel:${validateInput(n.applicantPhone)}" style="padding:7px 12px;background:#10B98118;color:#10B981;border:1px solid #10B98130;border-radius:6px;font-size:11px;font-weight:700;cursor:pointer;text-decoration:none;">📞 Call</a>`:''}
@@ -6115,6 +6423,18 @@ async function updateAppStatus(notifId, status){
       window._fb.doc(window._fb.db,'notifications',notifId),
       {status:status, read:true, updatedAt:window._fb.serverTimestamp()}
     );
+
+    // Sync status to the actual applications doc too (Visual Timeline +
+    // My Applications + Application Tracker all read from here — without
+    // this, the applicant's own view never reflected the real status).
+    if(notifData.applicationId){
+      try{
+        await window._fb.updateDoc(
+          window._fb.doc(window._fb.db,'applications',notifData.applicationId),
+          {status:status, statusHistory:window._fb.arrayUnion({status:status,at:Date.now()})}
+        );
+      }catch(e){console.warn('applications status sync:',e);}
+    }
 
     // ── SEND STATUS NOTIFICATION TO APPLICANT ──
     if(notifData.applicantId||notifData.applicantEmail){
@@ -6143,6 +6463,9 @@ async function updateAppStatus(notifId, status){
     }
 
     showToast('✅ Marked as '+status+' · Applicant notified 📬');
+    if(status==='Hired'&&notifData.applicantName){
+      setTimeout(()=>openCandidateReviewPrompt(notifData.applicantId,notifData.applicantName),600);
+    }
     loadMyApplications();
   }catch(e){showToast('⚠️ '+e.message);}
 }
@@ -6183,6 +6506,7 @@ async function loadMySubmittedApps(){
       box.insertAdjacentHTML('beforeend',renderApplicationCard(d.id,{
         jobTitle:a.jobTitle,company:a.company,
         status:a.status||'Applied',
+        statusHistory:a.statusHistory||[{status:'Applied',at:a.appliedAt||Date.now()}],
         createdAt:a.createdAt,
         noticePeriod:a.noticePeriod
       },true));
@@ -7073,6 +7397,20 @@ async function predictSalary(){
   if(!role)return showToast('Enter job role first!');
   if(!rb)return;
   rb.innerHTML='<div style="text-align:center;padding:16px;color:var(--t3);"><div class="spinner2" style="margin:0 auto 8px;width:18px;height:18px;border-width:2px;"></div>Predicting salary...</div>';
+  // Salary Transparency — check for real, crowd-sourced reports first
+  // (from actual hire confirmations) before falling back to the estimate.
+  var realReports=[];
+  if(window._fb){
+    try{
+      var repSnap=await window._fb.getDocs(window._fb.query(window._fb.collection(window._fb.db,'salary_reports'),window._fb.limit(200)));
+      var roleL=role.toLowerCase();
+      repSnap.forEach(function(d){
+        var rep=d.data();
+        var repRole=(rep.role||'').toLowerCase();
+        if(repRole&&(repRole.indexOf(roleL)!==-1||roleL.indexOf(repRole)!==-1))realReports.push(rep);
+      });
+    }catch(e){}
+  }
   setTimeout(function(){
   try{
     var r=role.toLowerCase();
@@ -7117,7 +7455,14 @@ async function predictSalary(){
     var breakdownHtml=levels.map(function(l,i){return l+': ₹'+ranges[i]+' LPA';}).join('<br>');
     var topCities=tier1.slice(0,3).map(function(c){return c.charAt(0).toUpperCase()+c.slice(1);}).join(', ');
     var skillNote=skillHits.length?('Your skills ('+skillHits.slice(0,4).join(', ')+') can boost pay by up to '+Math.round((skillMult-1)*100)+'%.'):'Adding in-demand skills (Cloud, DevOps, React, Python, ML) can boost salary by 10-25%.';
-    var resultHtml='1. <strong>Expected Range:</strong> ₹'+expectedLow+' - ₹'+expectedHigh+' LPA<br><br>'
+    var realDataHtml='';
+    if(realReports.length){
+      var realAvg=(realReports.reduce(function(s,r){return s+(parseFloat(r.salaryLPA)||0);},0)/realReports.length).toFixed(1);
+      realDataHtml='<div style="background:#10B98115;border:1.5px solid #10B981;border-radius:var(--rs);padding:10px;margin-bottom:10px;">'
+        +'<div style="font-size:12px;font-weight:800;color:#10B981;">✅ Real Reported Salary: ₹'+realAvg+' LPA avg</div>'
+        +'<div style="font-size:10px;color:var(--t3);">Based on '+realReports.length+' real KSpider hire'+(realReports.length>1?'s':'')+' — not an estimate!</div></div>';
+    }
+    var resultHtml=realDataHtml+'1. <strong>Expected Range:</strong> ₹'+expectedLow+' - ₹'+expectedHigh+' LPA<br><br>'
       +'2. <strong>Level Breakdown:</strong><br>'+breakdownHtml+'<br><br>'
       +'3. <strong>Top Hiring Cities:</strong> '+topCities+'<br><br>'
       +'4. <strong>Skills that boost pay:</strong> '+skillNote+'<br><br>'
@@ -7754,11 +8099,22 @@ async function loadAnalytics(){
         if(j.sponsored) boosted++;
         var appsForJob=0;
         appsSnap.forEach(function(a){if(a.data().jobTitle===j.title) appsForJob++;});
+        var views=j.views||0;
+        var convRate=views>0?Math.round((appsForJob/views)*100):null;
+        var ageMs=j.createdAtMs?(Date.now()-j.createdAtMs):0;
+        var isStale=ageMs>15*24*60*60*1000; // 15+ days old
         var row=document.createElement('div');
-        row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--s2);border-radius:var(--rs);font-size:12px;';
-        row.innerHTML='<div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">'+validateInput(j.title||'Job')+
-          (j.sponsored?'<span style="font-size:9px;color:var(--gold);margin-left:4px;">⭐ Boosted</span>':'')+
-          '</div><div style="font-size:11px;font-weight:700;color:var(--primary);margin-left:8px;">'+appsForJob+' apps</div>';
+        row.style.cssText='padding:8px 10px;background:var(--s2);border-radius:var(--rs);font-size:12px;margin-bottom:6px;';
+        row.innerHTML='<div style="display:flex;align-items:center;justify-content:space-between;">'
+          +'<div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text);">'+validateInput(j.title||'Job')
+          +(j.sponsored?'<span style="font-size:9px;color:var(--gold);margin-left:4px;">⭐ Boosted</span>':'')
+          +'</div><div style="font-size:11px;font-weight:700;color:var(--primary);margin-left:8px;white-space:nowrap;">'+appsForJob+' apps</div></div>'
+          +'<div style="display:flex;align-items:center;gap:10px;margin-top:4px;font-size:10px;color:var(--t3);">'
+          +'<span>👁 '+views+' views</span>'
+          +(convRate!==null?'<span>📊 '+convRate+'% conversion</span>':'')
+          +'</div>'
+          +(convRate!==null&&convRate<3&&views>=20?'<div style="margin-top:5px;font-size:10px;color:#F59E0B;background:#F59E0B15;border:1px solid #F59E0B30;border-radius:5px;padding:4px 7px;">💡 Low conversion — try adding a clear salary range to attract more applicants.</div>':'')
+          +(isStale?'<div style="margin-top:5px;font-size:10px;color:#EF4444;background:#EF444415;border:1px solid #EF444430;border-radius:5px;padding:4px 7px;">⏰ Posted 15+ days ago — consider refreshing or closing this listing to stay credible.</div>':'');
         perfBox.appendChild(row);
       });
       if($('anBoosted')) $('anBoosted').textContent=boosted;
