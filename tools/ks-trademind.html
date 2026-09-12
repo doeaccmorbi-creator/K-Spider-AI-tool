@@ -515,6 +515,8 @@
       <a href="#analysis-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-analysis">Analysis</a>
       <a href="#ipo-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-ipo">IPO Watch</a>
       <a href="#calculators-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-calc">Calculators</a>
+      <a href="#market-calendar-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-calendar">Calendar</a>
+      <a href="#watchlist-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-watchlist">Watchlist</a>
       <a href="#knowledge-section" class="hover:text-emerald-400 transition-colors" data-translate="nav-guide">Guide</a>
       <a href="https://www.youtube.com/@KSpider4Kreation" target="_blank" rel="noopener noreferrer"
          class="flex items-center gap-1.5 text-red-400 hover:text-red-300 transition-colors">
@@ -2097,6 +2099,40 @@
         <div class="data-refresh-note">Subscription data sourced live where possible from BSE/NSE-aggregated public bidding reports. Times-subscribed figures are unofficial estimates during the bidding window and finalise only after IPO close.</div>
       </div>
 
+      <!-- ── IPO Allotment Status Checker ── -->
+      <div style="border-top:1px solid var(--border);padding:14px 16px">
+        <div style="font-family:var(--font-display);font-weight:700;font-size:.85rem;color:var(--text-primary);margin-bottom:2px">🔍 IPO Allotment Status Checker</div>
+        <div style="font-size:.66rem;color:var(--text-muted);margin-bottom:10px">Registrar ke official portal par ek click mein jaaye — apna PAN / Application No. / Demat No. wahi par safely fill karein. Yeh tool koi bhi PAN ya personal detail collect ya store nahi karta.</div>
+
+        <div class="calc-grid" style="margin-bottom:10px">
+          <div class="calc-field"><label>IPO / Company Name (optional)</label><input type="text" id="allot-company" placeholder="e.g. Tata Capital" list="allot-ipo-list"><datalist id="allot-ipo-list"></datalist></div>
+          <div class="calc-field"><label>Select Registrar</label>
+            <select id="allot-registrar">
+              <option value="kfintech">KFin Technologies</option>
+              <option value="linkintime">Link Intime India (MUFG)</option>
+              <option value="bigshare">Bigshare Services</option>
+              <option value="cameo">Cameo Corporate Services</option>
+              <option value="skyline">Skyline Financial Services</option>
+              <option value="maashitla">Maashitla Securities</option>
+              <option value="purva">Purva Sharegistry</option>
+              <option value="nse">NSE — Verify Trades / IPO Bids</option>
+              <option value="bse">BSE — Allotment Status</option>
+            </select>
+          </div>
+        </div>
+        <button class="calc-btn" style="background:linear-gradient(135deg,#a78bfa,#7c3aed);color:#fff" onclick="openAllotmentCheck()">🔗 Check on Official Site</button>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <span style="font-size:.65rem;color:var(--text-muted);align-self:center">Quick links:</span>
+          <a href="https://www.kfintech.com/investor-services/ipostatus" target="_blank" style="font-size:.66rem;color:#22d3ee">KFin</a>
+          <a href="https://www.linkintime.co.in/initial_offer/public-issues.html" target="_blank" style="font-size:.66rem;color:#22d3ee">Link Intime</a>
+          <a href="https://ipo.bigshareonline.com/ipo_status.html" target="_blank" style="font-size:.66rem;color:#22d3ee">Bigshare</a>
+          <a href="https://www.cameoindia.com/ipo-status" target="_blank" style="font-size:.66rem;color:#22d3ee">Cameo</a>
+          <a href="https://www.nseindia.com/static/invest/verify-trades-ipo-bids" target="_blank" style="font-size:.66rem;color:#22d3ee">NSE</a>
+          <a href="https://www.bseindia.com/investors/appli_check.aspx" target="_blank" style="font-size:.66rem;color:#22d3ee">BSE</a>
+        </div>
+      </div>
+
       <!-- Master disclaimer -->
       <div class="ipo-disclaimer-box" style="margin:12px 16px 16px">
         ⚠️ <strong>Disclaimer:</strong> IPO GMP, subscription figures, company strength/weakness notes and the AI opinion shown in this tool are for educational and informational purposes only and do NOT constitute investment advice, a recommendation, or a solicitation to buy/sell any security. Grey market trading is unofficial and unregulated in India. Past GMP or listing performance does not guarantee future results. Please read the company's RHP/DRHP, consult a SEBI-registered investment advisor, and invest only after your own due diligence — stock market investments are subject to market risk.
@@ -2236,6 +2272,114 @@
       <div class="ipo-disclaimer-box" style="margin:0 16px 16px">
         ⚠️ These calculators are for educational, illustrative purposes only. They assume constant returns / standard charge rates and do NOT account for taxes (other than illustrative STT/stamp duty), fund expense ratios, market volatility, or your broker's specific tariff. Actual results will differ. Not investment advice — please consult a SEBI-registered investment advisor.
       </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       📅 MARKET CALENDAR — Trading Holidays 2026 + Corporate Actions
+  ══════════════════════════════════════════════════════════════ -->
+  <style>
+    .holiday-table { width:100%;border-collapse:collapse;font-size:.76rem; }
+    .holiday-table thead tr { background:rgba(15,23,42,.9);border-bottom:1px solid var(--border); }
+    .holiday-table th { padding:8px 10px;text-align:left;font-family:var(--font-display);font-size:.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em; }
+    .holiday-table tbody tr { border-bottom:1px solid rgba(148,163,184,.05); }
+    .holiday-table tbody tr:hover { background:rgba(30,41,59,.6); }
+    .holiday-table td { padding:8px 10px; }
+    .holiday-past { opacity:.45; }
+    .holiday-next-chip { font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:8px;background:rgba(16,185,129,.12);color:#10b981;border:1px solid rgba(16,185,129,.35);margin-left:8px; }
+    .ca-type-badge { font-size:.6rem;font-weight:800;padding:2px 8px;border-radius:8px;border:1px solid; }
+    .ca-type-dividend { color:#10b981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.1); }
+    .ca-type-bonus    { color:#fbbf24;border-color:rgba(251,191,36,.4);background:rgba(251,191,36,.1); }
+    .ca-type-split    { color:#22d3ee;border-color:rgba(34,211,238,.4);background:rgba(34,211,238,.1); }
+    .ca-type-other    { color:#94a3b8;border-color:rgba(148,163,184,.3);background:rgba(148,163,184,.08); }
+  </style>
+
+  <section id="market-calendar-section" style="margin-bottom:18px">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="section-label">📅 Market Calendar — Trading Holidays &amp; Corporate Actions</div>
+      <div class="flex-1 h-px bg-slate-800"></div>
+    </div>
+
+    <div class="glass" style="padding:0;overflow:hidden;border-radius:12px;margin-bottom:12px">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+        <div style="font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--text-primary)">🗓️ NSE &amp; BSE Trading Holidays 2026</div>
+        <div style="font-size:.68rem;color:var(--text-muted);margin-top:2px">Full-day trading holidays for the equity cash segment. Both exchanges follow the same calendar.</div>
+      </div>
+      <div style="overflow-x:auto;max-height:360px;overflow-y:auto">
+        <table class="holiday-table" id="holiday-table">
+          <thead><tr><th>Date</th><th>Day</th><th>Occasion</th><th>Segments</th></tr></thead>
+          <tbody id="holiday-tbody"></tbody>
+        </table>
+      </div>
+      <div class="data-refresh-note">
+        Plus a special one-hour <strong>Muhurat Trading</strong> session on Sunday, 08 Nov 2026 (Diwali–Laxmi Pujan) — markets otherwise closed that day. Always verify the latest list on <a href="https://www.nseindia.com/resources/exchange-communication-holidays" target="_blank" style="color:#22d3ee">NSE's official holiday page</a> before planning trades, as exchanges can add/notify holidays through the year.
+      </div>
+    </div>
+
+    <div class="glass" style="padding:0;overflow:hidden;border-radius:12px;">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-family:var(--font-display);font-weight:700;font-size:.9rem;color:var(--text-primary)">📢 Corporate Actions — Dividends, Bonus &amp; Splits</div>
+          <div style="font-size:.68rem;color:var(--text-muted);margin-top:2px">Recently announced ex-date corporate actions for NSE/BSE-listed companies</div>
+        </div>
+        <button onclick="loadCorporateActions()" style="background:transparent;border:1px solid var(--border);color:var(--text-muted);border-radius:7px;padding:4px 12px;font-size:.7rem;cursor:pointer;" onmouseover="this.style.borderColor='var(--cyan)'" onmouseout="this.style.borderColor='var(--border)'">🔄 Refresh</button>
+      </div>
+      <div style="overflow-x:auto;max-height:380px;overflow-y:auto">
+        <table class="ipo-table">
+          <thead><tr><th>Company</th><th>Type</th><th>Details</th><th>Ex-Date</th><th>Record Date</th></tr></thead>
+          <tbody id="ca-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching corporate actions...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="data-refresh-note">Sourced live where possible from NSE's public corporate-actions feed. This tool never fabricates announcement details — if live data can't be fetched, an honest empty state with official links is shown instead.</div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════
+       ⭐ MY WATCHLIST & PRICE ALERTS (saved in your browser)
+  ══════════════════════════════════════════════════════════════ -->
+  <style>
+    .wl-table { width:100%;border-collapse:collapse;font-size:.78rem; }
+    .wl-table thead tr { background:rgba(15,23,42,.9);border-bottom:1px solid var(--border); }
+    .wl-table th { padding:8px 10px;text-align:left;font-family:var(--font-display);font-size:.62rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em; }
+    .wl-table tbody tr { border-bottom:1px solid rgba(148,163,184,.05); }
+    .wl-table tbody tr:hover { background:rgba(30,41,59,.6); }
+    .wl-table td { padding:8px 10px; }
+    .wl-table tr.wl-triggered { background:rgba(251,191,36,.08); }
+    .wl-remove-btn { background:rgba(244,63,94,.1);border:1px solid rgba(244,63,94,.3);color:#f43f5e;border-radius:6px;padding:4px 9px;font-size:.65rem;font-weight:700;cursor:pointer; }
+    .wl-remove-btn:hover { background:rgba(244,63,94,.2); }
+  </style>
+
+  <section id="watchlist-section" style="margin-bottom:18px">
+    <div class="flex items-center gap-3 mb-3">
+      <div class="section-label">⭐ My Watchlist &amp; Price Alerts</div>
+      <div class="flex-1 h-px bg-slate-800"></div>
+      <span style="font-size:.62rem;color:var(--text-muted)">Saved in this browser only</span>
+    </div>
+
+    <div class="glass" style="padding:16px;border-radius:12px">
+      <div class="calc-grid" style="grid-template-columns:1.2fr 1fr .8fr;margin-bottom:10px">
+        <div class="calc-field"><label>NSE Symbol (e.g. RELIANCE, TCS)</label><input type="text" id="wl-symbol" placeholder="SYMBOL" style="text-transform:uppercase"></div>
+        <div class="calc-field"><label>Alert Target Price (₹, optional)</label><input type="number" id="wl-target" placeholder="e.g. 2500" step="0.05"></div>
+        <div class="calc-field"><label>Alert When</label>
+          <select id="wl-direction"><option value="above">Price ≥ Target</option><option value="below">Price ≤ Target</option></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="calc-btn" onclick="addWatchlistItem()">➕ Add to Watchlist</button>
+        <button class="calc-btn" style="background:linear-gradient(135deg,#22d3ee,#0891b2)" onclick="refreshWatchlistPrices()">🔄 Refresh Prices</button>
+      </div>
+
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;margin-top:14px">
+        <table class="wl-table">
+          <thead><tr><th>Symbol</th><th>Last Price</th><th>Alert Target</th><th>Status</th><th></th></tr></thead>
+          <tbody id="wl-tbody">
+            <tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-muted);font-size:.78rem">Your watchlist is empty — add a symbol above.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="data-refresh-note" style="margin-top:10px">Watchlist and alert targets are stored only in this browser (not on any server) and are never sent anywhere except when fetching that symbol's live price from NSE's public quote feed. Live price fetch is best-effort — if NSE's feed can't be reached, the last known price (or "—") is shown honestly instead of a guess.</div>
     </div>
   </section>
 
@@ -7285,6 +7429,10 @@ window.addEventListener('load', function(){
     loadOiData();
     loadIpoData();
     loadIpoSubscription();
+    renderHolidayTable();
+    loadCorporateActions();
+    renderWatchlist();
+    setTimeout(_refreshAllotmentSuggestions, 2500);
   }, 3500);
 });
 
@@ -7845,6 +7993,233 @@ function calcBrokerage() {
     _calcResultCell('Total Charges', _calcFmtINR(totalCharges), '#f59e0b') +
     _calcResultCell('Net P&L', _calcFmtINR(netPL), netPL>=0?'#10b981':'#f43f5e') +
     _calcResultCell('Breakeven Price', '₹' + breakeven.toFixed(2));
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   🔍 IPO ALLOTMENT STATUS CHECKER — safe redirect helper
+   No PAN/personal data is collected or stored by this tool; the
+   user fills their PAN/Application/Demat number on the registrar's
+   own official page after being redirected there.
+═══════════════════════════════════════════════════════════════ */
+var _ALLOT_REGISTRAR_URLS = {
+  kfintech:   'https://www.kfintech.com/investor-services/ipostatus',
+  linkintime: 'https://www.linkintime.co.in/initial_offer/public-issues.html',
+  bigshare:   'https://ipo.bigshareonline.com/ipo_status.html',
+  cameo:      'https://www.cameoindia.com/ipo-status',
+  skyline:    'https://www.skylinerta.com/ipo.php',
+  maashitla:  'https://www.maashitla.com/',
+  purva:      'https://www.purvashare.com/',
+  nse:        'https://www.nseindia.com/static/invest/verify-trades-ipo-bids',
+  bse:        'https://www.bseindia.com/investors/appli_check.aspx'
+};
+function openAllotmentCheck() {
+  var reg = document.getElementById('allot-registrar').value;
+  var url = _ALLOT_REGISTRAR_URLS[reg] || _ALLOT_REGISTRAR_URLS.nse;
+  window.open(url, '_blank', 'noopener');
+}
+/* Keeps the allotment-checker's IPO name suggestions in sync with
+   whatever live IPO Watch data is currently loaded */
+function _refreshAllotmentSuggestions() {
+  var dl = document.getElementById('allot-ipo-list');
+  if(!dl) return;
+  var names = []
+    .concat((_ipoData.mainboard||[]).map(function(r){ return r.name; }))
+    .concat((_ipoData.sme||[]).map(function(r){ return r.name; }));
+  dl.innerHTML = names.map(function(n){ return '<option value="'+_ipoEsc(n)+'">'; }).join('');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   📅 MARKET CALENDAR — Trading Holidays 2026 + Corporate Actions
+═══════════════════════════════════════════════════════════════ */
+/* Verified NSE/BSE equity-segment trading holidays for 2026
+   (weekday holidays only — both exchanges follow the same list).
+   Source: NSE/BSE exchange holiday circulars. Always double-check
+   nseindia.com/resources/exchange-communication-holidays for the
+   latest, as exchanges can add holidays through the year. */
+var NSE_BSE_HOLIDAYS_2026 = [
+  { date:'2026-01-15', day:'Thursday',  name:'Municipal Corporation Elections (Maharashtra)', seg:'NSE, BSE' },
+  { date:'2026-01-26', day:'Monday',    name:'Republic Day', seg:'NSE, BSE, MCX' },
+  { date:'2026-03-03', day:'Tuesday',   name:'Holi', seg:'NSE, BSE' },
+  { date:'2026-03-26', day:'Thursday',  name:'Shri Ram Navami', seg:'NSE, BSE' },
+  { date:'2026-03-31', day:'Tuesday',   name:'Shri Mahavir Jayanti', seg:'NSE, BSE' },
+  { date:'2026-04-03', day:'Friday',    name:'Good Friday', seg:'NSE, BSE, MCX' },
+  { date:'2026-04-14', day:'Tuesday',   name:'Dr. Baba Saheb Ambedkar Jayanti', seg:'NSE, BSE' },
+  { date:'2026-05-01', day:'Friday',    name:'Maharashtra Day', seg:'NSE, BSE' },
+  { date:'2026-05-28', day:'Thursday',  name:'Bakri Eid', seg:'NSE, BSE' },
+  { date:'2026-06-26', day:'Friday',    name:'Moharram', seg:'NSE, BSE' },
+  { date:'2026-09-14', day:'Monday',    name:'Ganesh Chaturthi', seg:'NSE, BSE' },
+  { date:'2026-10-02', day:'Friday',    name:'Mahatma Gandhi Jayanti', seg:'NSE, BSE, MCX' },
+  { date:'2026-10-20', day:'Tuesday',   name:'Dussehra', seg:'NSE, BSE' },
+  { date:'2026-11-10', day:'Tuesday',   name:'Diwali – Balipratipada', seg:'NSE, BSE' },
+  { date:'2026-11-24', day:'Tuesday',   name:'Prakash Gurpurb Sri Guru Nanak Dev', seg:'NSE, BSE' },
+  { date:'2026-12-25', day:'Friday',    name:'Christmas', seg:'NSE, BSE, MCX' }
+];
+
+function renderHolidayTable() {
+  var tbody = document.getElementById('holiday-tbody');
+  if(!tbody) return;
+  var today = new Date(); today.setHours(0,0,0,0);
+  var nextFound = false;
+  tbody.innerHTML = NSE_BSE_HOLIDAYS_2026.map(function(h){
+    var d = new Date(h.date + 'T00:00:00');
+    var isPast = d < today;
+    var chip = '';
+    if(!isPast && !nextFound) { chip = '<span class="holiday-next-chip">NEXT</span>'; nextFound = true; }
+    var dispDate = d.toLocaleDateString('en-IN', {day:'2-digit', month:'short', year:'numeric'});
+    return '<tr class="'+(isPast?'holiday-past':'')+'">' +
+      '<td style="font-family:var(--font-mono)">'+dispDate+'</td>' +
+      '<td>'+h.day+'</td>' +
+      '<td>'+_ipoEsc(h.name)+chip+'</td>' +
+      '<td style="font-size:.68rem;color:var(--text-muted)">'+h.seg+'</td>' +
+    '</tr>';
+  }).join('');
+}
+
+/* Corporate Actions — same never-fabricate discipline. Attempts a
+   live pull from NSE's public corporate-actions feed; on any
+   failure or unparseable response, shows an honest empty state
+   with official links rather than a guessed number. */
+function loadCorporateActions() {
+  var tbody = document.getElementById('ca-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching corporate actions...</td></tr>';
+
+  _corsFetchJSON('https://www.nseindia.com/api/corporates-corporateActions?index=equities&_=' + Date.now(),
+    function(data){
+      var rows = _parseCorporateActionsJSON(data);
+      if(!rows || !rows.length) { _renderCaHonestEmpty(); return; }
+      _renderCaTable(rows);
+    },
+    function(){ _renderCaHonestEmpty(); }
+  );
+}
+
+function _parseCorporateActionsJSON(data) {
+  try {
+    var list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
+    if(!list || !list.length) return null;
+    var out = [];
+    list.forEach(function(item){
+      var company = item.comp || item.company || item.symbol;
+      var subject = item.subject || item.purpose || item.subject_ || '';
+      var exDate  = item.exDate || item.ex_date || item.exdate;
+      var recDate = item.recDate || item.rd || item.recorddate;
+      if(!company || !subject) return;
+      var typeText = String(subject).toLowerCase();
+      var type = typeText.indexOf('dividend') !== -1 ? 'dividend' :
+                 typeText.indexOf('bonus') !== -1 ? 'bonus' :
+                 typeText.indexOf('split') !== -1 || typeText.indexOf('sub-division') !== -1 || typeText.indexOf('subdivision') !== -1 ? 'split' : 'other';
+      out.push({ company: String(company).trim(), subject: String(subject).trim(), type: type, exDate: exDate||'—', recDate: recDate||'—' });
+    });
+    return out.length ? out : null;
+  } catch(e) { return null; }
+}
+
+function _renderCaTable(rows) {
+  var tbody = document.getElementById('ca-tbody');
+  if(!tbody) return;
+  var labels = { dividend:'DIVIDEND', bonus:'BONUS', split:'SPLIT', other:'OTHER' };
+  tbody.innerHTML = rows.slice(0, 60).map(function(r){
+    return '<tr>' +
+      '<td class="ipo-name-cell">'+_ipoEsc(r.company)+'</td>' +
+      '<td><span class="ca-type-badge ca-type-'+r.type+'">'+labels[r.type]+'</span></td>' +
+      '<td style="font-size:.72rem">'+_ipoEsc(r.subject)+'</td>' +
+      '<td style="font-size:.7rem;color:var(--text-muted)">'+_ipoEsc(String(r.exDate))+'</td>' +
+      '<td style="font-size:.7rem;color:var(--text-muted)">'+_ipoEsc(String(r.recDate))+'</td>' +
+    '</tr>';
+  }).join('');
+}
+
+function _renderCaHonestEmpty() {
+  var tbody = document.getElementById('ca-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="5" style="padding:18px;text-align:center">' +
+    '<div style="color:#fbbf24;font-weight:700;font-size:.78rem;margin-bottom:6px">⚠️ Live corporate actions data अभी उपलब्ध नहीं</div>' +
+    '<div style="font-size:.7rem;color:var(--text-muted);line-height:1.7;max-width:540px;margin:0 auto">' +
+    'हम कभी भी अनुमानित corporate action details नहीं दिखाते। सटीक जानकारी के लिए देखें: ' +
+    '<a href="https://www.nseindia.com/companies-listing/corporate-filings-actions" target="_blank" style="color:#22d3ee">NSE Corporate Actions</a>, ' +
+    '<a href="https://www.bseindia.com/corporates/corporate_act.aspx" target="_blank" style="color:#22d3ee">BSE Corporate Actions</a> या ' +
+    '<a href="https://www.moneycontrol.com/markets/action_corp/" target="_blank" style="color:#22d3ee">Moneycontrol</a></div>' +
+    '</td></tr>';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ⭐ WATCHLIST & PRICE ALERTS (browser-local, via localStorage)
+═══════════════════════════════════════════════════════════════ */
+var WL_KEY = 'ksWatchlistV1';
+
+function _wlLoad() {
+  try { return JSON.parse(localStorage.getItem(WL_KEY) || '[]'); } catch(e) { return []; }
+}
+function _wlSave(list) {
+  try { localStorage.setItem(WL_KEY, JSON.stringify(list)); } catch(e) {}
+}
+
+function addWatchlistItem() {
+  var symEl = document.getElementById('wl-symbol');
+  var tgtEl = document.getElementById('wl-target');
+  var dirEl = document.getElementById('wl-direction');
+  var sym = (symEl.value || '').trim().toUpperCase();
+  if(!sym) { showToast('Enter a valid NSE symbol'); return; }
+  var target = tgtEl.value ? parseFloat(tgtEl.value) : null;
+  var dir = dirEl.value;
+
+  var list = _wlLoad();
+  if(list.some(function(i){ return i.symbol === sym; })) { showToast(sym + ' is already in your watchlist'); return; }
+  list.push({ symbol: sym, target: target, direction: dir, lastPrice: null, updatedAt: null });
+  _wlSave(list);
+  symEl.value = ''; tgtEl.value = '';
+  renderWatchlist();
+  showToast(sym + ' added to watchlist');
+}
+
+function removeWatchlistItem(sym) {
+  var list = _wlLoad().filter(function(i){ return i.symbol !== sym; });
+  _wlSave(list);
+  renderWatchlist();
+}
+
+function renderWatchlist() {
+  var tbody = document.getElementById('wl-tbody');
+  if(!tbody) return;
+  var list = _wlLoad();
+  if(!list.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:18px;color:var(--text-muted);font-size:.78rem">Your watchlist is empty — add a symbol above.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(function(item){
+    var triggered = (item.lastPrice!==null) && item.target!==null && !isNaN(item.target) && (
+      (item.direction==='above' && item.lastPrice >= item.target) ||
+      (item.direction==='below' && item.lastPrice <= item.target)
+    );
+    var priceTxt = item.lastPrice!==null ? ('₹'+item.lastPrice) : '—';
+    var targetTxt = (item.target!==null && !isNaN(item.target)) ? ('₹'+item.target+' ('+(item.direction==='above'?'≥':'≤')+')') : '—';
+    var statusTxt = triggered ? '🔔 Alert Triggered' : (item.target!==null ? 'Watching' : '—');
+    return '<tr class="'+(triggered?'wl-triggered':'')+'">' +
+      '<td class="ipo-name-cell">'+_ipoEsc(item.symbol)+'</td>' +
+      '<td style="font-family:var(--font-mono)">'+priceTxt+'</td>' +
+      '<td style="font-family:var(--font-mono)">'+targetTxt+'</td>' +
+      '<td style="font-size:.72rem;'+(triggered?'color:#fbbf24;font-weight:700':'color:var(--text-muted)')+'">'+statusTxt+'</td>' +
+      '<td><button class="wl-remove-btn" onclick="removeWatchlistItem(\''+item.symbol.replace(/'/g,"\\'")+'\')">Remove</button></td>' +
+    '</tr>';
+  }).join('');
+}
+
+function refreshWatchlistPrices() {
+  var list = _wlLoad();
+  if(!list.length) { showToast('Watchlist is empty'); return; }
+  showToast('Fetching live prices...');
+  var pending = list.length;
+  list.forEach(function(item){
+    _corsFetchJSON('https://www.nseindia.com/api/quote-equity?symbol=' + encodeURIComponent(item.symbol) + '&_=' + Date.now(),
+      function(data){
+        var lp = data && data.priceInfo && data.priceInfo.lastPrice;
+        if(typeof lp === 'number' && !isNaN(lp)) { item.lastPrice = lp; item.updatedAt = Date.now(); }
+        pending--; if(pending===0) { _wlSave(list); renderWatchlist(); }
+      },
+      function(){ pending--; if(pending===0) { _wlSave(list); renderWatchlist(); } }
+    );
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
