@@ -2074,6 +2074,7 @@
       <div class="data-refresh-note">
         GMP figures are sourced live where possible from <a href="https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/" target="_blank" style="color:#22d3ee">IPO Watch</a>. Grey market premium is an unofficial, unregulated indicator — it is not a guarantee of listing performance. This tool never fabricates a GMP figure; if live data can't be fetched, an honest empty state with official links is shown instead.
       </div>
+      <div id="ipo-debug-log" style="display:none;margin:0 16px 10px;padding:8px 10px;background:rgba(15,23,42,.6);border:1px dashed var(--border);border-radius:8px;font-family:var(--font-mono);font-size:.62rem;color:var(--text-muted);line-height:1.7;white-space:pre-wrap"></div>
 
       <!-- ── Subscription Status sub-panel ── -->
       <div style="border-top:1px solid var(--border);margin-top:4px">
@@ -2097,6 +2098,7 @@
           </table>
         </div>
         <div class="data-refresh-note">Subscription data sourced live where possible from BSE/NSE-aggregated public bidding reports. Times-subscribed figures are unofficial estimates during the bidding window and finalise only after IPO close.</div>
+        <div id="ipo-sub-debug-log" style="display:none;margin:0 16px 10px;padding:8px 10px;background:rgba(15,23,42,.6);border:1px dashed var(--border);border-radius:8px;font-family:var(--font-mono);font-size:.62rem;color:var(--text-muted);line-height:1.7;white-space:pre-wrap"></div>
       </div>
 
       <!-- ── IPO Allotment Status Checker ── -->
@@ -4525,25 +4527,32 @@ function _corsFetchJSON(url, onSuccess, onFail) {
     });
 }
 
-/* Same 3-attempt cascade but returns raw text — used for scraping
-   plain HTML pages (e.g. Moneycontrol) that don't need a login/session,
-   as an additional real-data source for FII/DII when NSE's API is
-   blocked. */
-function _corsFetchText(url, onSuccess, onFail) {
-  fetch(url, { cache:'no-store' })
-    .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
-    .then(onSuccess)
-    .catch(function(){
-      fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { cache:'no-store' })
-        .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
-        .then(onSuccess)
-        .catch(function(){
-          fetch('https://corsproxy.io/?url=' + encodeURIComponent(url), { cache:'no-store' })
-            .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
-            .then(onSuccess)
-            .catch(onFail);
-        });
+/* Same cascade but returns raw text — used for scraping plain HTML
+   pages (e.g. Moneycontrol, IPO Watch) that don't need a login/
+   session. Tries direct fetch, then THREE independent free CORS
+   relays before giving up. An optional debugSink(label, message)
+   callback receives a one-line human-readable result for each
+   attempt — used to show on-page diagnostics when every attempt
+   fails, since most users can't open browser DevTools. */
+function _corsFetchText(url, onSuccess, onFail, debugSink) {
+  var log = function(label, msg){ if(typeof debugSink === 'function') debugSink(label, msg); };
+  var attempt = function(label, fetchUrl, next) {
+    fetch(fetchUrl, { cache:'no-store' })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+      .then(function(t){
+        if(!t || t.length < 50) throw new Error('empty response');
+        log(label, 'OK (' + t.length + ' chars)');
+        onSuccess(t);
+      })
+      .catch(function(e){ log(label, 'failed — ' + (e && e.message ? e.message : 'network/CORS error')); next(); });
+  };
+  attempt('direct', url, function(){
+    attempt('allorigins.win', 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url), function(){
+      attempt('corsproxy.io', 'https://corsproxy.io/?url=' + encodeURIComponent(url), function(){
+        attempt('codetabs', 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(url), onFail);
+      });
     });
+  });
 }
 
 /* Best-effort scrape of Moneycontrol's public FII/DII activity page as
@@ -7490,21 +7499,32 @@ function loadIpoData() {
   var tbody = document.getElementById('ipo-tbody');
   if(!tbody) return;
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching live IPO GMP...</td></tr>';
+  var dbg = document.getElementById('ipo-debug-log');
+  if(dbg) { dbg.style.display = 'none'; dbg.textContent = ''; }
+  _ipoGmpDebugLog = [];
   _tryIpoGmpSources(0);
 }
 
+var _ipoGmpDebugLog = [];
+function _ipoGmpLog(source, label, msg) {
+  _ipoGmpDebugLog.push(source + ' → ' + label + ': ' + msg);
+}
+
 function _tryIpoGmpSources(srcIdx) {
-  if(srcIdx >= IPO_GMP_SOURCES.length) { _renderIpoHonestEmpty(); return; }
+  if(srcIdx >= IPO_GMP_SOURCES.length) { _renderIpoHonestEmpty(); _showIpoDebugLog('ipo-debug-log', _ipoGmpDebugLog); return; }
   var url = IPO_GMP_SOURCES[srcIdx];
+  var srcName = url.indexOf('ipowatch') !== -1 ? 'IPO Watch' : 'Chittorgarh';
 
   var tryJina = function() {
     _jinaFetchText(url,
       function(md){
         var parsed = _parseIpoMarkdownTables(md);
         if(parsed && (parsed.mainboard.length || parsed.sme.length)) { _applyIpoData(parsed); return; }
+        _ipoGmpLog(srcName, 'jina', 'fetched OK but no matching table found in content');
         _tryIpoGmpSources(srcIdx + 1);
       },
-      function(){ _tryIpoGmpSources(srcIdx + 1); }
+      function(){ _tryIpoGmpSources(srcIdx + 1); },
+      function(label, msg){ _ipoGmpLog(srcName, label, msg); }
     );
   };
 
@@ -7512,11 +7532,21 @@ function _tryIpoGmpSources(srcIdx) {
     function(html){
       var parsed = _parseIpoTablesGeneric(html);
       if(parsed && (parsed.mainboard.length || parsed.sme.length)) { _applyIpoData(parsed); return; }
+      _ipoGmpLog(srcName, 'html-fetch', 'fetched OK but no matching table found in content');
       tryJina();
     },
-    tryJina
+    tryJina,
+    function(label, msg){ _ipoGmpLog(srcName, label, msg); }
   );
 }
+
+function _showIpoDebugLog(elId, log) {
+  var el = document.getElementById(elId);
+  if(!el || !log.length) return;
+  el.style.display = 'block';
+  el.textContent = '🔧 Diagnostics (why live data didn\'t load):\n' + log.join('\n');
+}
+
 
 function _applyIpoData(parsed) {
   _ipoData = parsed;
@@ -7529,12 +7559,18 @@ function _applyIpoData(parsed) {
    a real rendering pipeline (so it sees JS-built content too) and
    returns clean markdown. Used here as a second, independent path
    to real data when a plain HTML fetch/CORS-relay can't see a
-   client-rendered table. No API key required for light use. */
-function _jinaFetchText(url, onSuccess, onFail) {
+   client-rendered table. No API key required for light use
+   (rate-limited to ~20 req/min per IP). */
+function _jinaFetchText(url, onSuccess, onFail, debugSink) {
+  var log = function(msg){ if(typeof debugSink === 'function') debugSink('r.jina.ai', msg); };
   fetch('https://r.jina.ai/' + url, { cache:'no-store' })
-    .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
-    .then(function(t){ if(t && t.length > 200) onSuccess(t); else throw new Error('empty'); })
-    .catch(onFail);
+    .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
+    .then(function(t){
+      if(!t || t.length < 200) throw new Error('empty/short response');
+      log('OK (' + t.length + ' chars)');
+      onSuccess(t);
+    })
+    .catch(function(e){ log('failed — ' + (e && e.message ? e.message : 'network/CORS error')); onFail(); });
 }
 
 /* ── Column mapping shared by both the DOM and markdown parsers ── */
@@ -7904,21 +7940,32 @@ function loadIpoSubscription() {
   var tbody = document.getElementById('ipo-sub-tbody');
   if(!tbody) return;
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching subscription data...</td></tr>';
+  var dbg = document.getElementById('ipo-sub-debug-log');
+  if(dbg) { dbg.style.display = 'none'; dbg.textContent = ''; }
+  _ipoSubDebugLog = [];
   _tryIpoSubSources(0);
 }
 
+var _ipoSubDebugLog = [];
+function _ipoSubLog(source, label, msg) {
+  _ipoSubDebugLog.push(source + ' → ' + label + ': ' + msg);
+}
+
 function _tryIpoSubSources(srcIdx) {
-  if(srcIdx >= IPO_SUB_SOURCES.length) { _renderIpoSubHonestEmpty(); return; }
+  if(srcIdx >= IPO_SUB_SOURCES.length) { _renderIpoSubHonestEmpty(); _showIpoDebugLog('ipo-sub-debug-log', _ipoSubDebugLog); return; }
   var url = IPO_SUB_SOURCES[srcIdx];
+  var srcName = url.indexOf('ipowatch') !== -1 ? 'IPO Watch' : 'Chittorgarh';
 
   var tryJina = function() {
     _jinaFetchText(url,
       function(md){
         var rows = _parseIpoSubMarkdown(md);
         if(rows && rows.length) { _renderIpoSubTable(rows); return; }
+        _ipoSubLog(srcName, 'jina', 'fetched OK but no matching table found in content');
         _tryIpoSubSources(srcIdx + 1);
       },
-      function(){ _tryIpoSubSources(srcIdx + 1); }
+      function(){ _tryIpoSubSources(srcIdx + 1); },
+      function(label, msg){ _ipoSubLog(srcName, label, msg); }
     );
   };
 
@@ -7926,11 +7973,14 @@ function _tryIpoSubSources(srcIdx) {
     function(html){
       var rows = _parseIpoSubscriptionHtml(html);
       if(rows && rows.length) { _renderIpoSubTable(rows); return; }
+      _ipoSubLog(srcName, 'html-fetch', 'fetched OK but no matching table found in content');
       tryJina();
     },
-    tryJina
+    tryJina,
+    function(label, msg){ _ipoSubLog(srcName, label, msg); }
   );
 }
+
 
 function _mapIpoSubColumns(headCells) {
   var cols = [], seenName = false;
