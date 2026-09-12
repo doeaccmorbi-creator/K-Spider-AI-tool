@@ -7466,41 +7466,151 @@ function setIpoStatus(st, btn) {
   _renderIpoTable();
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   IPO GMP — multi-source, multi-strategy live fetch
+   ─────────────────────────────────────────────────────────────
+   Tries several independent strategies, in order, before giving
+   up and showing an honest empty state:
+     1. CORS-relay fetch of the raw HTML + DOM table parse (works
+        when the source renders its table server-side)
+     2. r.jina.ai "reader" fetch — renders the page (so client-side
+        built tables are visible too) and returns clean markdown,
+        parsed with a markdown-table reader
+     3. A second independent source (Chittorgarh), tried the same
+        two ways, if the first source yields nothing
+   Only strictly-validated rows (real company name + a numeric GMP
+   figure) are ever shown — nothing is ever guessed or fabricated.
+═══════════════════════════════════════════════════════════════ */
+var IPO_GMP_SOURCES = [
+  'https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/',
+  'https://www.chittorgarh.com/report/ipo_gmp_ipo_grey_market_premium/9/'
+];
+
 function loadIpoData() {
   var tbody = document.getElementById('ipo-tbody');
   if(!tbody) return;
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching live IPO GMP...</td></tr>';
+  _tryIpoGmpSources(0);
+}
 
-  _corsFetchText('https://ipowatch.in/ipo-grey-market-premium-latest-ipo-gmp/?_=' + Date.now(),
+function _tryIpoGmpSources(srcIdx) {
+  if(srcIdx >= IPO_GMP_SOURCES.length) { _renderIpoHonestEmpty(); return; }
+  var url = IPO_GMP_SOURCES[srcIdx];
+
+  var tryJina = function() {
+    _jinaFetchText(url,
+      function(md){
+        var parsed = _parseIpoMarkdownTables(md);
+        if(parsed && (parsed.mainboard.length || parsed.sme.length)) { _applyIpoData(parsed); return; }
+        _tryIpoGmpSources(srcIdx + 1);
+      },
+      function(){ _tryIpoGmpSources(srcIdx + 1); }
+    );
+  };
+
+  _corsFetchText(url + '?_=' + Date.now(),
     function(html){
-      var parsed = _parseIpoWatchHtml(html);
-      if(!parsed || (!parsed.mainboard.length && !parsed.sme.length)) { _renderIpoHonestEmpty(); return; }
-      _ipoData = parsed;
-      _ipoLastUpdated = new Date();
-      _renderIpoTable();
+      var parsed = _parseIpoTablesGeneric(html);
+      if(parsed && (parsed.mainboard.length || parsed.sme.length)) { _applyIpoData(parsed); return; }
+      tryJina();
     },
-    function(){ _renderIpoHonestEmpty(); }
+    tryJina
   );
 }
 
-/* Best-effort, strictly-validated scrape of IPO Watch's public GMP
-   tables. Only tables whose header row confidently contains Name +
-   GMP + Status columns are accepted — this rejects unrelated tables
-   (e.g. the historic "GMP Performance" table) rather than risk
-   mis-parsed rows. Mainboard vs SME is decided from the nearest
-   preceding heading. */
-function _parseIpoWatchHtml(html) {
+function _applyIpoData(parsed) {
+  _ipoData = parsed;
+  _ipoLastUpdated = new Date();
+  _renderIpoTable();
+  setTimeout(_refreshAllotmentSuggestions, 300);
+}
+
+/* r.jina.ai is a free "reader" service — it fetches a page through
+   a real rendering pipeline (so it sees JS-built content too) and
+   returns clean markdown. Used here as a second, independent path
+   to real data when a plain HTML fetch/CORS-relay can't see a
+   client-rendered table. No API key required for light use. */
+function _jinaFetchText(url, onSuccess, onFail) {
+  fetch('https://r.jina.ai/' + url, { cache:'no-store' })
+    .then(function(r){ if(!r.ok) throw new Error('status ' + r.status); return r.text(); })
+    .then(function(t){ if(t && t.length > 200) onSuccess(t); else throw new Error('empty'); })
+    .catch(onFail);
+}
+
+/* ── Column mapping shared by both the DOM and markdown parsers ── */
+function _mapIpoColumns(headCells) {
+  var cols = [], seenName = false;
+  headCells.forEach(function(th){
+    var t = (th.textContent||'').toLowerCase();
+    var c;
+    if(!seenName && (t.indexOf('name') !== -1 || t.indexOf('ipo') !== -1 || t.indexOf('company') !== -1)) { c = 'name'; seenName = true; }
+    else if(t.indexOf('gmp') !== -1) c = 'gmp';
+    else if(t.indexOf('price') !== -1) c = 'price';
+    else if(t.indexOf('listing') !== -1 || t.indexOf('est') !== -1) c = 'listing';
+    else if(t.indexOf('date') !== -1) c = 'date';
+    else if(t.indexOf('status') !== -1 || t.indexOf('open') !== -1) c = 'status';
+    else c = 'other';
+    cols.push(c);
+  });
+  return cols;
+}
+
+/* Status: prefer an explicit status word if the source gives one;
+   otherwise read it off the open/close dates already shown for that
+   row against today's date — still never guessed, just computed
+   from real numbers on the page. */
+function _deriveIpoStatus(statusRaw, dateRaw) {
+  var s = (statusRaw||'').toLowerCase();
+  if(s.indexOf('open') !== -1) return 'open';
+  if(s.indexOf('upcoming') !== -1) return 'upcoming';
+  if(s.indexOf('listed') !== -1) return 'listed';
+  if(s.indexOf('closed') !== -1) return 'closed';
+
+  if(dateRaw) {
+    var months = {jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+    var re = /(\d{1,2})[\s\-]*([A-Za-z]{3})/g, m, dates = [];
+    while((m = re.exec(dateRaw))) {
+      var mon = months[m[2].toLowerCase().substring(0,3)];
+      if(mon !== undefined) dates.push(new Date(new Date().getFullYear(), mon, parseInt(m[1],10)));
+    }
+    if(dates.length >= 2) {
+      var today = new Date(); today.setHours(0,0,0,0);
+      if(today < dates[0]) return 'upcoming';
+      if(today >= dates[0] && today <= dates[1]) return 'open';
+      return 'closed';
+    }
+  }
+  return 'closed';
+}
+
+function _finishIpoRecord(rec) {
+  if(!rec.name) return null;
+  var gmpMatch = (rec.gmpRaw||'').match(/-?[\d,]+(\.\d+)?/);
+  rec.gmp = gmpMatch ? parseFloat(gmpMatch[0].replace(/,/g,'')) : null;
+  if(rec.gmp === null) return null; /* GMP is the whole point of this table */
+  var lm = (rec.listingRaw||'').match(/([\d,]+(?:\.\d+)?)\s*\(?([\-\d.]+)?%?\)?/);
+  rec.estListingPrice = lm && lm[1] ? parseFloat(lm[1].replace(/,/g,'')) : null;
+  rec.estGainPct      = lm && lm[2] ? parseFloat(lm[2]) : null;
+  rec.status = _deriveIpoStatus(rec.statusRaw, rec.dateRaw);
+  return rec;
+}
+
+/* ── STRATEGY 1: DOM table parse. Works with an explicit
+   <thead><th> header OR a plain first <tr> as header (many
+   WordPress/TablePress tables skip <thead> entirely). Only needs
+   Name + GMP columns to accept a table — status/dates are used
+   opportunistically when present. */
+function _parseIpoTablesGeneric(html) {
   try {
     var doc = new DOMParser().parseFromString(html, 'text/html');
     var tables = doc.querySelectorAll('table');
     if(!tables || !tables.length) return null;
-
     var result = { mainboard: [], sme: [] };
 
     tables.forEach(function(table){
       var label = 'mainboard';
       var el = table.previousElementSibling, hops = 0;
-      while(el && hops < 10) {
+      while(el && hops < 12) {
         if(/^H[1-4]$/.test(el.tagName)) {
           var t = (el.textContent||'').toLowerCase();
           if(t.indexOf('sme') !== -1) label = 'sme';
@@ -7510,25 +7620,22 @@ function _parseIpoWatchHtml(html) {
         el = el.previousElementSibling; hops++;
       }
 
-      var headCells = table.querySelectorAll('thead th');
+      var headRow = table.querySelector('thead tr');
+      var bodyRows;
+      if(headRow) {
+        bodyRows = table.querySelectorAll('tbody tr');
+      } else {
+        var allRows = table.querySelectorAll('tr');
+        if(!allRows.length) return;
+        headRow = allRows[0];
+        bodyRows = Array.prototype.slice.call(allRows, 1);
+      }
+      var headCells = headRow.querySelectorAll('th,td');
       if(!headCells.length) return;
-      var cols = [];
-      headCells.forEach(function(th){
-        var t = (th.textContent||'').toLowerCase();
-        if(t.indexOf('name') !== -1) cols.push('name');
-        else if(t.indexOf('gmp') !== -1) cols.push('gmp');
-        else if(t.indexOf('trend') !== -1) cols.push('trend');
-        else if(t.indexOf('price') !== -1) cols.push('price');
-        else if(t.indexOf('listing') !== -1) cols.push('listing');
-        else if(t.indexOf('date') !== -1) cols.push('date');
-        else if(t.indexOf('status') !== -1) cols.push('status');
-        else if(t.indexOf('updated') !== -1) cols.push('updated');
-        else cols.push('other');
-      });
-      if(cols.indexOf('name')===-1 || cols.indexOf('gmp')===-1 || cols.indexOf('status')===-1) return;
+      var cols = _mapIpoColumns(headCells);
+      if(cols.indexOf('name')===-1 || cols.indexOf('gmp')===-1) return;
 
-      var rows = table.querySelectorAll('tbody tr');
-      rows.forEach(function(tr){
+      bodyRows.forEach(function(tr){
         var tds = tr.querySelectorAll('td');
         if(!tds.length) return;
         var rec = {};
@@ -7540,33 +7647,72 @@ function _parseIpoWatchHtml(html) {
             rec.name = (link ? link.textContent : txt).replace(/\s+/g,' ').trim();
             rec.url  = link ? link.getAttribute('href') : null;
           }
-          else if(key==='gmp') rec.gmpRaw = txt;
-          else if(key==='price') rec.priceBand = txt;
+          else if(key==='gmp')     rec.gmpRaw = txt;
+          else if(key==='price')   rec.priceBand = txt;
           else if(key==='listing') rec.listingRaw = txt;
-          else if(key==='date') rec.dateRaw = txt;
-          else if(key==='status') rec.statusRaw = txt;
-          else if(key==='updated') rec.updatedRaw = txt;
+          else if(key==='date')    rec.dateRaw = txt;
+          else if(key==='status')  rec.statusRaw = txt;
         });
-        if(!rec.name) return;
-
-        var gmpMatch = (rec.gmpRaw||'').match(/-?[\d,]+(\.\d+)?/);
-        rec.gmp = gmpMatch ? parseFloat(gmpMatch[0].replace(/,/g,'')) : null;
-
-        var lm = (rec.listingRaw||'').match(/([\d,]+(?:\.\d+)?)\s*\(([\-\d.]+)%\)/);
-        rec.estListingPrice = lm ? parseFloat(lm[1].replace(/,/g,'')) : null;
-        rec.estGainPct      = lm ? parseFloat(lm[2]) : null;
-
-        var s = (rec.statusRaw||'').toLowerCase();
-        if(s.indexOf('open') !== -1) rec.status = 'open';
-        else if(s.indexOf('upcoming') !== -1) rec.status = 'upcoming';
-        else if(s.indexOf('closed') !== -1) rec.status = 'closed';
-        else if(s.indexOf('listed') !== -1) rec.status = 'listed';
-        else rec.status = 'closed';
-
-        result[label].push(rec);
+        var finished = _finishIpoRecord(rec);
+        if(finished) result[label].push(finished);
       });
     });
 
+    return (result.mainboard.length || result.sme.length) ? result : null;
+  } catch(e) { return null; }
+}
+
+/* ── STRATEGY 2: markdown pipe-table parse, for r.jina.ai output.
+   r.jina.ai renders the page first (so JS-built tables are visible)
+   and returns GitHub-style "| a | b |" tables — parsed here with
+   the same column-mapping + row logic, just fed from split cells
+   instead of <td> elements. */
+function _parseIpoMarkdownTables(md) {
+  try {
+    var lines = md.split('\n');
+    var result = { mainboard: [], sme: [] };
+    var currentLabel = 'mainboard';
+    var splitRow = function(line){
+      return line.split('|').map(function(c){ return c.trim(); })
+        .filter(function(c,idx,arr){ return !(idx===0 && c==='') && !(idx===arr.length-1 && c===''); });
+    };
+    var i = 0;
+    while(i < lines.length) {
+      var line = lines[i];
+      var lower = line.toLowerCase();
+      if(/^#{1,4}\s/.test(line) || /^\*\*/.test(line)) {
+        if(lower.indexOf('sme') !== -1) currentLabel = 'sme';
+        else if(lower.indexOf('mainboard') !== -1) currentLabel = 'mainboard';
+      }
+      var isSeparator = lines[i+1] && /^\|?[\s:|\-]+\|?$/.test(lines[i+1]) && lines[i+1].indexOf('-') !== -1;
+      if(line.indexOf('|') !== -1 && isSeparator) {
+        var headerCells = splitRow(line);
+        var cols = _mapIpoColumns(headerCells.map(function(txt){ return { textContent: txt }; }));
+        if(cols.indexOf('name') !== -1 && cols.indexOf('gmp') !== -1) {
+          var j = i + 2;
+          while(j < lines.length && lines[j].indexOf('|') !== -1 && lines[j].trim() !== '') {
+            var cells = splitRow(lines[j]);
+            var rec = {};
+            cells.forEach(function(txt, ci){
+              var key = cols[ci] || 'other';
+              txt = (txt||'').replace(/\[|\]/g,'').replace(/\(https?:[^)]*\)/g,'').trim();
+              if(key==='name')      rec.name = txt;
+              else if(key==='gmp')     rec.gmpRaw = txt;
+              else if(key==='price')   rec.priceBand = txt;
+              else if(key==='listing') rec.listingRaw = txt;
+              else if(key==='date')    rec.dateRaw = txt;
+              else if(key==='status')  rec.statusRaw = txt;
+            });
+            rec.url = null;
+            var finished = _finishIpoRecord(rec);
+            if(finished) result[currentLabel].push(finished);
+            j++;
+          }
+          i = j; continue;
+        }
+      }
+      i++;
+    }
     return (result.mainboard.length || result.sme.length) ? result : null;
   } catch(e) { return null; }
 }
@@ -7749,21 +7895,70 @@ function _ipoDisclaimerHtml() {
    real numeric subscription figures are confidently found; never
    fabricated. Falls back to an honest empty state with official
    links if live data can't be parsed. */
+var IPO_SUB_SOURCES = [
+  'https://ipowatch.in/ipo-subscription-status-today/',
+  'https://www.chittorgarh.com/report/ipo-subscription-status-live-bidding-data-bse-nse/21/'
+];
+
 function loadIpoSubscription() {
   var tbody = document.getElementById('ipo-sub-tbody');
   if(!tbody) return;
   tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:18px;color:var(--text-muted)"><span style="display:inline-block;width:14px;height:14px;border:2px solid var(--border);border-top-color:#a78bfa;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:8px"></span>Fetching subscription data...</td></tr>';
+  _tryIpoSubSources(0);
+}
 
-  _corsFetchText('https://ipowatch.in/ipo-subscription-status-today/?_=' + Date.now(),
+function _tryIpoSubSources(srcIdx) {
+  if(srcIdx >= IPO_SUB_SOURCES.length) { _renderIpoSubHonestEmpty(); return; }
+  var url = IPO_SUB_SOURCES[srcIdx];
+
+  var tryJina = function() {
+    _jinaFetchText(url,
+      function(md){
+        var rows = _parseIpoSubMarkdown(md);
+        if(rows && rows.length) { _renderIpoSubTable(rows); return; }
+        _tryIpoSubSources(srcIdx + 1);
+      },
+      function(){ _tryIpoSubSources(srcIdx + 1); }
+    );
+  };
+
+  _corsFetchText(url + '?_=' + Date.now(),
     function(html){
       var rows = _parseIpoSubscriptionHtml(html);
-      if(!rows || !rows.length) { _renderIpoSubHonestEmpty(); return; }
-      _renderIpoSubTable(rows);
+      if(rows && rows.length) { _renderIpoSubTable(rows); return; }
+      tryJina();
     },
-    function(){ _renderIpoSubHonestEmpty(); }
+    tryJina
   );
 }
 
+function _mapIpoSubColumns(headCells) {
+  var cols = [], seenName = false;
+  headCells.forEach(function(th){
+    var t = (th.textContent||'').toLowerCase();
+    var c;
+    if(!seenName && (t.indexOf('name') !== -1 || t.indexOf('ipo') !== -1 || t.indexOf('company') !== -1)) { c = 'name'; seenName = true; }
+    else if(t.indexOf('qib') !== -1) c = 'qib';
+    else if(t.indexOf('nii') !== -1 || t.indexOf('hni') !== -1) c = 'nii';
+    else if(t.indexOf('retail') !== -1) c = 'retail';
+    else if(t.indexOf('total') !== -1) c = 'total';
+    else if(t.indexOf('day') !== -1 || t.indexOf('date') !== -1) c = 'day';
+    else c = 'other';
+    cols.push(c);
+  });
+  return cols;
+}
+
+function _finishIpoSubRow(rec) {
+  if(!rec.name) return null;
+  var hasNum = [rec.qib, rec.nii, rec.retail, rec.total].some(function(v){ return v && /[\d.]/.test(v); });
+  if(!hasNum) return null;
+  return rec;
+}
+
+/* Thead-independent — falls back to the table's first row as the
+   header when there's no explicit <thead> (common on WordPress/
+   TablePress-style tables). */
 function _parseIpoSubscriptionHtml(html) {
   try {
     var doc = new DOMParser().parseFromString(html, 'text/html');
@@ -7772,35 +7967,28 @@ function _parseIpoSubscriptionHtml(html) {
     var out = [];
 
     tables.forEach(function(table){
-      var headCells = table.querySelectorAll('thead th');
+      var headRow = table.querySelector('thead tr');
+      var bodyRows;
+      if(headRow) { bodyRows = table.querySelectorAll('tbody tr'); }
+      else {
+        var allRows = table.querySelectorAll('tr');
+        if(!allRows.length) return;
+        headRow = allRows[0];
+        bodyRows = Array.prototype.slice.call(allRows, 1);
+      }
+      var headCells = headRow.querySelectorAll('th,td');
       if(!headCells.length) return;
-      var cols = [];
-      headCells.forEach(function(th){
-        var t = (th.textContent||'').toLowerCase();
-        if(t.indexOf('name') !== -1 || t.indexOf('ipo') !== -1 && t.indexOf('name') === -1 && cols.indexOf('name')===-1 && /company|ipo name/.test(t)) cols.push('name');
-        else if(t.indexOf('qib') !== -1) cols.push('qib');
-        else if(t.indexOf('nii') !== -1 || t.indexOf('hni') !== -1) cols.push('nii');
-        else if(t.indexOf('retail') !== -1) cols.push('retail');
-        else if(t.indexOf('total') !== -1) cols.push('total');
-        else if(t.indexOf('day') !== -1 || t.indexOf('date') !== -1) cols.push('day');
-        else if(t.indexOf('name')!==-1) cols.push('name');
-        else cols.push('other');
-      });
-      /* Require at minimum a name-like first column + total/retail/qib subscription column */
+      var cols = _mapIpoSubColumns(headCells);
       if(cols.indexOf('total')===-1 && cols.indexOf('qib')===-1 && cols.indexOf('retail')===-1) return;
 
-      var rows = table.querySelectorAll('tbody tr');
-      rows.forEach(function(tr){
+      bodyRows.forEach(function(tr){
         var tds = tr.querySelectorAll('td');
         if(!tds.length) return;
         var rec = {};
         tds.forEach(function(td, i){
           var key = cols[i] || 'other';
           var txt = (td.textContent||'').replace(/\s+/g,' ').trim();
-          if(key==='name') {
-            var link = td.querySelector('a');
-            rec.name = (link ? link.textContent : txt).replace(/\s+/g,' ').trim();
-          }
+          if(key==='name') { var link = td.querySelector('a'); rec.name = (link ? link.textContent : txt).replace(/\s+/g,' ').trim(); }
           else if(key==='qib')    rec.qib = txt;
           else if(key==='nii')    rec.nii = txt;
           else if(key==='retail') rec.retail = txt;
@@ -7808,14 +7996,56 @@ function _parseIpoSubscriptionHtml(html) {
           else if(key==='day')    rec.day = txt;
         });
         if(!rec.name) { var first = tds[0] && (tds[0].textContent||'').trim(); if(first) rec.name = first; }
-        if(!rec.name) return;
-        /* Only accept if at least one numeric-looking subscription figure was found */
-        var hasNum = [rec.qib, rec.nii, rec.retail, rec.total].some(function(v){ return v && /[\d.]/.test(v); });
-        if(!hasNum) return;
-        out.push(rec);
+        var finished = _finishIpoSubRow(rec);
+        if(finished) out.push(finished);
       });
     });
 
+    return out.length ? out : null;
+  } catch(e) { return null; }
+}
+
+/* Markdown pipe-table parse for r.jina.ai output — same schema as
+   the DOM parser above, fed from split cells instead of <td>s. */
+function _parseIpoSubMarkdown(md) {
+  try {
+    var lines = md.split('\n');
+    var out = [];
+    var splitRow = function(line){
+      return line.split('|').map(function(c){ return c.trim(); })
+        .filter(function(c,idx,arr){ return !(idx===0 && c==='') && !(idx===arr.length-1 && c===''); });
+    };
+    var i = 0;
+    while(i < lines.length) {
+      var line = lines[i];
+      var isSeparator = lines[i+1] && /^\|?[\s:|\-]+\|?$/.test(lines[i+1]) && lines[i+1].indexOf('-') !== -1;
+      if(line.indexOf('|') !== -1 && isSeparator) {
+        var headerCells = splitRow(line);
+        var cols = _mapIpoSubColumns(headerCells.map(function(txt){ return { textContent: txt }; }));
+        if(cols.indexOf('total') !== -1 || cols.indexOf('qib') !== -1 || cols.indexOf('retail') !== -1) {
+          var j = i + 2;
+          while(j < lines.length && lines[j].indexOf('|') !== -1 && lines[j].trim() !== '') {
+            var cells = splitRow(lines[j]);
+            var rec = {};
+            cells.forEach(function(txt, ci){
+              var key = cols[ci] || 'other';
+              txt = (txt||'').replace(/\[|\]/g,'').replace(/\(https?:[^)]*\)/g,'').trim();
+              if(key==='name')      rec.name = txt;
+              else if(key==='qib')     rec.qib = txt;
+              else if(key==='nii')     rec.nii = txt;
+              else if(key==='retail')  rec.retail = txt;
+              else if(key==='total')   rec.total = txt;
+              else if(key==='day')     rec.day = txt;
+            });
+            var finished = _finishIpoSubRow(rec);
+            if(finished) out.push(finished);
+            j++;
+          }
+          i = j; continue;
+        }
+      }
+      i++;
+    }
     return out.length ? out : null;
   } catch(e) { return null; }
 }
