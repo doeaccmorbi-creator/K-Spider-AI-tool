@@ -18348,6 +18348,10 @@ function aiAnalyseSymptoms() {
     return;
   }
 
+  // Cache results so the "Use This Diagnosis" button (below) can pull the
+  // full diagnosis/drugs/tests text without re-running the analysis.
+  window._aiLastResults = results;
+
   // Render DDx output
   const ddxEl = document.getElementById('ai-ddx-output');
   if (ddxEl) {
@@ -18368,6 +18372,7 @@ function aiAnalyseSymptoms() {
           </div>
           <div class="ddx-reason">${r.reasons}</div>
           <div class="ddx-drugs">💊 Suggested: ${r.drugs.substring(0, 100)}${r.drugs.length > 100 ? '…' : ''}</div>
+          <button onclick="aiTransferToRx(${i})" style="margin-top:8px;background:#0b3c5d;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:11px;font-weight:700;cursor:pointer;">📋 Use This Diagnosis → Build Prescription</button>
         </div>
       `).join('')}
       <div style="background:#fef9c3;border:1px solid #fef08a;border-radius:8px;padding:10px;margin-top:10px;font-size:11px;color:#854d0e;">
@@ -18434,7 +18439,16 @@ function aiClearChat() {
 }
 
 function aiSendToRx() {
-  // Send top DDx to create-rx section
+  // Send the top-ranked diagnosis — with its full suggested drugs & tests,
+  // not just the name — to the E-Prescription builder. Reuses the same
+  // richer transfer used by the per-diagnosis "Use This Diagnosis" buttons
+  // above, so both paths behave consistently.
+  if (window._aiLastResults && window._aiLastResults.length) {
+    aiTransferToRx(0);
+    return;
+  }
+  // Fallback (only if analysis hasn't been run in this session yet): carry
+  // just the visible top diagnosis name, as before.
   const topDdx = document.querySelector('.ddx-name');
   if (topDdx) {
     const diag = document.getElementById('chief_complaint');
@@ -18442,6 +18456,39 @@ function aiSendToRx() {
     saasSwitchSection('create-rx', '📝 OPD / Create Rx', 'Patient visit & prescription', null);
     alert('✅ Top diagnosis sent to Create Rx section!');
   }
+}
+
+// Carry a specific differential-diagnosis result (name, reasoning, suggested
+// drugs, suggested tests) over to the E-Prescription builder — the missing
+// link between "Step 4: AI Diagnosis" and "Step 5: E-Prescription" in the
+// patient workflow, so the doctor never has to retype what the AI already
+// worked out.
+function aiTransferToRx(index) {
+  var results = window._aiLastResults || [];
+  var r = results[index];
+  if (!r) return;
+  var diagText = r.name + (r.reasons ? ' — ' + r.reasons : '');
+
+  if (typeof saasSwitchSection === 'function') {
+    saasSwitchSection('adv-eprescription', '📋 E-Prescription', 'VoiceRx + SmartSync builder', null);
+  }
+  setTimeout(function() {
+    var diagEl = document.getElementById('erx-diagnosis');
+    if (diagEl) diagEl.value = diagText;
+    var rawEl = document.getElementById('erx-raw-input');
+    if (rawEl && r.drugs) rawEl.value = r.drugs;
+    var invEl = document.getElementById('erx-investigations');
+    if (invEl && r.tests) invEl.value = r.tests;
+    // Carry over the active patient too, if one is set, so the doctor
+    // doesn't have to re-enter name/age again.
+    var active = typeof ksGetActivePatient === 'function' ? ksGetActivePatient() : null;
+    if (active) {
+      var nameEl = document.getElementById('erx-pt-name'); if (nameEl && !nameEl.value) nameEl.value = active.name;
+      var ageEl = document.getElementById('erx-pt-age'); if (ageEl && !ageEl.value) ageEl.value = active.age;
+    }
+    if (typeof _showToast === 'function') _showToast('Diagnosis "' + r.name + '" transferred — click SmartSync to format the suggested medicines.', 'success');
+    else alert('Diagnosis transferred to E-Prescription.\nClick "SmartSync — Auto Format" to format the suggested medicines into rows.');
+  }, 200);
 }
 
 // ── BMI Calculator ──
@@ -23712,7 +23759,7 @@ function ksClearActivePatient() {
 // patient is never overwritten).
 var KS_ACTIVE_PATIENT_SECTIONS = {
   'adv-opd-queue':     { name: null },
-  'adv-ai-diagnosis':  { name: null },
+  'adv-ai-diagnosis':  { name: null, age:'ai-pt-age', gender:'ai-pt-gender' },
   'create-rx':         { name:'patient_name', age:'patient_age', gender:'patient_gender', phone:'patient_phone', uhid:'patient_uhid' },
   'adv-eprescription': { name:'erx-pt-name', age:'erx-pt-age' },
   'saas-billing':      { name:'saas-bill-patient' }
