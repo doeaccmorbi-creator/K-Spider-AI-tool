@@ -209,7 +209,28 @@ async function _ksEnsureDoctorRecord(user, extra) {
   if (!_ksDb) throw new Error('Database not available.');
   const ref = _ksDb.collection('doctors').doc(user.uid);
   const snap = await ref.get();
-  if (snap.exists) return snap.data();
+  if (snap.exists) {
+    const existing = snap.data() || {};
+    // Accounts created before the approval system existed have no
+    // approvalStatus field. Treat them as pending and write that in
+    // explicitly, plus raise a signup-queue entry, so the admin actually
+    // SEES them waiting instead of them sitting invisibly in limbo.
+    if (!existing.approvalStatus) {
+      try {
+        await ref.update({ approvalStatus: 'pending' });
+        existing.approvalStatus = 'pending';
+        await _ksDb.collection('doctorSignupRequests').doc(user.uid).set({
+          name: existing.name || user.displayName || 'Doctor',
+          email: existing.email || user.email || '',
+          phone: existing.phone || '',
+          authProvider: existing.authProvider || 'password',
+          handled: false, legacyBackfill: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
+      } catch (e) { console.warn('Approval backfill skipped:', e && e.message); }
+    }
+    return existing;
+  }
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 14);
   const record = {
@@ -292,8 +313,43 @@ function ksCloudDocRef(key) {
 // Pull this doctor's cloud data down into localStorage. Runs once at login,
 // before the UI renders, so the doctor immediately sees their own data on
 // whatever device they just signed in from.
+function ksCloudWipeLocal() {
+  // Remove every synced clinic key from this browser. Used when a DIFFERENT
+  // doctor signs in on the same device, so nothing from the previous doctor
+  // can be shown to — or uploaded into — the new doctor's account.
+  _ksCloudSuspend = true;
+  try {
+    KS_CLOUD_KEYS.forEach(function(key){ localStorage.removeItem(key); });
+    try {
+      if (typeof _apptAdvState !== 'undefined') _apptAdvState.appointments = [];
+      if (typeof _opdState !== 'undefined') { _opdState.queue = []; _opdState.tokenCounter = 0; _opdState.currentToken = null; }
+    } catch (e) {}
+    try { sessionStorage.removeItem('ks_active_patient'); } catch (e) {}
+  } finally {
+    _ksCloudSuspend = false;
+  }
+}
+
+// Pull this doctor's cloud data down into localStorage. Runs once at login,
+// before the UI renders, so the doctor immediately sees their own data on
+// whatever device they just signed in from.
+//
+// Returns true on success. Returns FALSE if the cloud copy could not be
+// read — the caller must then refuse to start the app rather than fall
+// back to whatever happens to be sitting in this browser, because that
+// leftover data may belong to a different doctor.
 async function ksCloudPull(uid) {
-  if (!_ksDb || !uid) return;
+  if (!_ksDb || !uid) return false;
+
+  // Is the data currently in this browser owned by somebody else?
+  var previousOwner = localStorage.getItem('ks_live_data_owner');
+  var sameOwner = (previousOwner === uid);
+
+  // Different doctor (or unknown origin) on this device: wipe first, always.
+  // This is what stops Doctor B from seeing Doctor A's patient list after
+  // A signs out on a shared clinic computer.
+  if (!sameOwner) ksCloudWipeLocal();
+
   _ksCloudUid = uid;
   _ksCloudSuspend = true;
   try {
@@ -308,17 +364,19 @@ async function ksCloudPull(uid) {
       }
     });
 
-    // A doctor signing in on a brand-new device has no cloud copy yet but
-    // may have useful data sitting in this browser from before cloud sync
-    // existed. Seed the cloud from it once, rather than silently losing it.
-    KS_CLOUD_KEYS.forEach(function(key){
-      if (!found[key]) {
-        const local = localStorage.getItem(key);
-        if (local && local !== '[]' && local !== '{}' && local !== '0') {
-          ksCloudPushNow(key, local);
+    // Seed the cloud from this browser ONLY when the local data provably
+    // belongs to this same doctor already (they worked here before cloud
+    // sync existed). Never upload data left behind by another account.
+    if (sameOwner) {
+      KS_CLOUD_KEYS.forEach(function(key){
+        if (!found[key]) {
+          const local = localStorage.getItem(key);
+          if (local && local !== '[]' && local !== '{}' && local !== '0') {
+            ksCloudPushNow(key, local);
+          }
         }
-      }
-    });
+      });
+    }
 
     // Refresh in-memory state that was loaded from localStorage at page load,
     // so the freshly pulled data actually appears on screen.
@@ -336,11 +394,18 @@ async function ksCloudPull(uid) {
     // older per-device backup logic never restores another doctor's copy
     // over what we just pulled.
     localStorage.setItem('ks_live_data_owner', uid);
-  } catch (e) {
-    console.error('Cloud pull failed:', e);
-  } finally {
     _ksCloudSuspend = false;
     _ksCloudReady = true;
+    return true;
+  } catch (e) {
+    console.error('Cloud pull failed:', e);
+    // Fail CLOSED: clear anything local so no other doctor's data can be
+    // displayed, and tell the caller to stop.
+    ksCloudWipeLocal();
+    localStorage.removeItem('ks_live_data_owner');
+    _ksCloudSuspend = false;
+    _ksCloudReady = false;
+    return false;
   }
 }
 
@@ -421,7 +486,7 @@ function showApprovalScreen(status, name, email) {
 }
 
 function showBlockScreen(type, plan) {
-  var msgs = { suspended:{icon:'⛔',title:'Account Suspended',body:'Contact kspider221206@gmail.com'}, expired:{icon:'⏰',title:'Plan Expired',body:'Your '+(plan||'')+' plan has expired. Please renew.'} };
+  var msgs = { suspended:{icon:'⛔',title:'Account Suspended',body:'Contact kspider221206@gmail.com'}, expired:{icon:'⏰',title:'Plan Expired',body:'Your '+(plan||'')+' plan has expired. Please renew.'}, cloud:{icon:'☁️',title:'Could Not Load Your Data',body:'Aapka clinic data server se load nahi ho paya. Apna internet check karke dobara try karein. Agar problem bani rahe to kspider221206@gmail.com pe sampark karein.'} };
   var m = msgs[type]||{icon:'⚠️',title:'Access Denied',body:'No access.'};
   var html = '<div style="position:fixed;inset:0;z-index:999999;background:#0b2545;display:flex;align-items:center;justify-content:center;font-family:DM Sans,sans-serif;padding:20px;"><div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:40px;text-align:center;max-width:400px;"><div style="font-size:48px;">'+m.icon+'</div><div style="font-size:20px;font-weight:800;color:white;margin:12px 0;">'+m.title+'</div><div style="font-size:14px;color:rgba(255,255,255,0.6);margin-bottom:24px;">'+m.body+'</div><a href="https://kspiderai.in" style="background:#00c9a7;color:white;padding:12px 28px;border-radius:10px;text-decoration:none;font-weight:700;">Go to Main Site</a></div></div>';
   var ldr = document.getElementById('ks-auth-loader');
@@ -492,7 +557,14 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
     // patients, appointments and queue for THIS doctor's UID are fetched
     // from Firestore into the local working store first, so the UI that
     // follows is populated with their own data (and nobody else's).
-    await ksCloudPull(user.uid);
+    const cloudOK = await ksCloudPull(user.uid);
+    if (!cloudOK) {
+      // We could not read this doctor's own cloud data. Rather than fall
+      // back to whatever is in this browser (which may belong to a
+      // different doctor on a shared clinic PC), refuse to start.
+      showBlockScreen('cloud');
+      return;
+    }
 
     // Bridge to the legacy doctor-record helpers (ksSetCurrentDoctor,
     // ksApplyDoctorProfile, ksLoadDoctorData) so per-doctor local data
@@ -732,6 +804,12 @@ function ksShowUpgrade() {
 
 async function ksSignOut() {
   if (confirm('Sign out of K Spider Doctor AI?')) {
+    // Clear this doctor's clinic data out of the browser before leaving.
+    // Their data is safe in the cloud under their own account; wiping the
+    // local copy means the next person to use this shared clinic computer
+    // cannot see the previous doctor's patients.
+    try { if (typeof ksCloudWipeLocal === 'function') ksCloudWipeLocal(); } catch (e) {}
+    try { localStorage.removeItem('ks_live_data_owner'); } catch (e) {}
     if (_ksAuth) await _ksAuth.signOut();
     localStorage.removeItem('ks_user');
     window.location.reload(); // Show doctor login screen again
