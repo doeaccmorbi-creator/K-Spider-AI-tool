@@ -4308,19 +4308,55 @@ function docaiSetStatus(uid, status) {
   });
 }
 
-// Keep the sidebar "pending doctors" badge live without opening the panel.
+// Keep the sidebar "pending doctors" badge live WITHOUT opening the panel.
+// Uses a realtime listener so a brand-new doctor signup lights up the badge
+// within a second or two, the way a hospital admin console should behave --
+// no refresh needed.
+var _docaiUnsub = null;
 function docaiRefreshBadge() {
-  if (!db) return;
-  db.collection('doctors').get().then(function(snap){
-    var p = 0;
-    snap.forEach(function(d){
-      var s = ((d.data()||{}).approvalStatus || 'pending').toLowerCase();
-      if (s === 'pending') p++;
+  if (!db || _docaiUnsub) return;
+  try {
+    _docaiUnsub = db.collection('doctors').onSnapshot(function(snap){
+      var p = 0, pendingNames = [];
+      snap.forEach(function(d){
+        var v = d.data() || {};
+        var s = (v.approvalStatus || 'pending').toLowerCase();
+        if (s === 'pending') { p++; pendingNames.push(v.name || v.email || d.id); }
+      });
+      var badge = document.getElementById('docai-badge');
+      if (badge) { badge.textContent = p; badge.style.display = p > 0 ? '' : 'none'; }
+
+      // Surface it on the top alert bar too, so it's noticed even when the
+      // admin is working in another section.
+      var bar = document.getElementById('alert-bar');
+      var txt = document.getElementById('alert-txt');
+      if (bar && txt && p > 0 && !_docaiAlertShown) {
+        _docaiAlertShown = true;
+        txt.textContent = p + ' naye doctor approval ka intezaar kar rahe hain — Doctor AI section kholein';
+        bar.style.display = '';
+        bar.onclick = function(){ show('doctorai', document.getElementById('n-doctorai')); };
+      }
+
+      // If the panel is currently open, keep the list itself live too.
+      var panel = document.getElementById('panel-doctorai');
+      if (panel && panel.classList.contains('on')) {
+        _docaiAll = [];
+        snap.forEach(function(d){ var v = d.data()||{}; v._id = d.id; _docaiAll.push(v); });
+        _docaiAll.sort(function(a,b){
+          var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+          var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+          return tb - ta;
+        });
+        docaiUpdateStats();
+        renderDoctorAI();
+      }
+    }, function(err){
+      console.warn('[Doctor AI] badge listener stopped:', err && err.message);
+      _docaiUnsub = null;
     });
-    var badge = document.getElementById('docai-badge');
-    if (badge) { badge.textContent = p; badge.style.display = p > 0 ? '' : 'none'; }
-  }).catch(function(){ /* not admin yet, or rules not published — ignore */ });
+  } catch (e) { /* not admin yet, or rules not published -- ignore */ }
 }
+var _docaiAlertShown = false;
 
 // ══════════════════════════════════════════════════════
 // DSA ADMIN — connects to Dr. Shreyansh Academy's own
