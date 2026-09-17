@@ -223,6 +223,10 @@ async function _ksEnsureDoctorRecord(user, extra) {
     reg: '',
     plan: 'trial',
     status: 'trial',
+    // Every new signup starts locked behind admin approval. The security
+    // rules enforce this too (a create is only accepted as 'pending'), so
+    // this cannot be bypassed by editing the page in a browser.
+    approvalStatus: 'pending',
     trialEndsAt: firebase.firestore.Timestamp.fromDate(trialEnd),
     rxCount: 0,
     rxLimit: KS_PLANS.trial.rxLimit,
@@ -230,7 +234,190 @@ async function _ksEnsureDoctorRecord(user, extra) {
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   await ref.set(record);
+  // Mirror the signup into an admin-readable queue so the K Spider admin
+  // panel can show "a new doctor is waiting for approval" without needing
+  // broad read access on /doctors. Best-effort: if this write fails the
+  // account still exists and is still pending, so never block signup on it.
+  try {
+    await _ksDb.collection('doctorSignupRequests').doc(user.uid).set({
+      name: record.name, email: record.email, phone: record.phone,
+      authProvider: record.authProvider, handled: false,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (e) { console.warn('Signup queue mirror skipped:', e && e.message); }
   return record;
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   ☁️ PER-DOCTOR CLOUD SYNC
+   Why this exists: all clinic data (patients, appointments, OPD queue)
+   used to live ONLY in this browser's localStorage. That meant two
+   doctors sharing a device saw each other's data, and the same doctor
+   logging in from a different device/location saw nothing at all.
+
+   This module keeps those same localStorage keys as the app's working
+   store — so every existing feature keeps reading/writing exactly as
+   before — but mirrors them into Firestore under the signed-in doctor's
+   own UID:  doctors/{uid}/appData/{key}
+   Security rules make that path readable/writable ONLY by that doctor,
+   so isolation is enforced by the database, not just the UI.
+
+   On login we PULL the cloud copy down; on every local write we PUSH a
+   debounced copy up. No existing save path had to be modified.
+   ══════════════════════════════════════════════════════════════════════ */
+
+// The localStorage keys that hold real clinic data worth syncing.
+var KS_CLOUD_KEYS = [
+  'ks_patient_db_v1',      // Patient database
+  'adv_appointments',      // Appointments
+  'adv_opd_queue',         // OPD queue
+  'adv_opd_token_counter', // Queue token counter
+  'doctor_profile',        // Clinic/doctor letterhead details
+  'saas_invoices',         // Billing invoices
+  'ks_prescriptions',      // Saved prescriptions
+  'rx_history'             // Prescription history
+];
+
+var _ksCloudReady    = false;  // true once the initial pull has finished
+var _ksCloudSuspend  = false;  // true while we're writing pulled data locally
+var _ksCloudTimers   = {};
+var _ksCloudUid      = null;
+
+function ksCloudDocRef(key) {
+  if (!_ksDb || !_ksCloudUid) return null;
+  return _ksDb.collection('doctors').doc(_ksCloudUid).collection('appData').doc(key);
+}
+
+// Pull this doctor's cloud data down into localStorage. Runs once at login,
+// before the UI renders, so the doctor immediately sees their own data on
+// whatever device they just signed in from.
+async function ksCloudPull(uid) {
+  if (!_ksDb || !uid) return;
+  _ksCloudUid = uid;
+  _ksCloudSuspend = true;
+  try {
+    const snap = await _ksDb.collection('doctors').doc(uid).collection('appData').get();
+    const found = {};
+    snap.forEach(function(d){ found[d.id] = d.data(); });
+
+    KS_CLOUD_KEYS.forEach(function(key){
+      const rec = found[key];
+      if (rec && typeof rec.value === 'string') {
+        localStorage.setItem(key, rec.value);
+      }
+    });
+
+    // A doctor signing in on a brand-new device has no cloud copy yet but
+    // may have useful data sitting in this browser from before cloud sync
+    // existed. Seed the cloud from it once, rather than silently losing it.
+    KS_CLOUD_KEYS.forEach(function(key){
+      if (!found[key]) {
+        const local = localStorage.getItem(key);
+        if (local && local !== '[]' && local !== '{}' && local !== '0') {
+          ksCloudPushNow(key, local);
+        }
+      }
+    });
+
+    // Refresh in-memory state that was loaded from localStorage at page load,
+    // so the freshly pulled data actually appears on screen.
+    try {
+      if (typeof _apptAdvState !== 'undefined') {
+        _apptAdvState.appointments = JSON.parse(localStorage.getItem('adv_appointments') || '[]');
+      }
+      if (typeof _opdState !== 'undefined') {
+        _opdState.queue = JSON.parse(localStorage.getItem('adv_opd_queue') || '[]');
+        _opdState.tokenCounter = parseInt(localStorage.getItem('adv_opd_token_counter') || '0');
+      }
+    } catch (e) {}
+
+    // Mark this browser's live data as belonging to this doctor, so the
+    // older per-device backup logic never restores another doctor's copy
+    // over what we just pulled.
+    localStorage.setItem('ks_live_data_owner', uid);
+  } catch (e) {
+    console.error('Cloud pull failed:', e);
+  } finally {
+    _ksCloudSuspend = false;
+    _ksCloudReady = true;
+  }
+}
+
+function ksCloudPushNow(key, value) {
+  const ref = ksCloudDocRef(key);
+  if (!ref) return;
+  ref.set({
+    value: value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(function(e){ console.warn('Cloud push failed for ' + key + ':', e && e.message); });
+}
+
+// Debounced push — the app writes to localStorage very frequently (every
+// keystroke in some forms), so batch those into one write per key.
+function ksCloudPush(key) {
+  if (!_ksCloudReady || _ksCloudSuspend || !_ksCloudUid) return;
+  if (KS_CLOUD_KEYS.indexOf(key) === -1) return;
+  clearTimeout(_ksCloudTimers[key]);
+  _ksCloudTimers[key] = setTimeout(function(){
+    ksCloudPushNow(key, localStorage.getItem(key) || '');
+  }, 1200);
+}
+
+// Intercept localStorage writes instead of editing every save function in
+// the app. This is deliberately transparent: the original behaviour runs
+// untouched and we only add the cloud mirror on top, so no existing
+// feature changes.
+(function installCloudSyncHook(){
+  if (window._ksCloudHookInstalled) return;
+  const origSetItem = localStorage.setItem.bind(localStorage);
+  localStorage.setItem = function(key, value) {
+    origSetItem(key, value);
+    try { ksCloudPush(key); } catch (e) {}
+  };
+  const origRemoveItem = localStorage.removeItem.bind(localStorage);
+  localStorage.removeItem = function(key) {
+    origRemoveItem(key);
+    try { if (KS_CLOUD_KEYS.indexOf(key) !== -1) ksCloudPush(key); } catch (e) {}
+  };
+  window._ksCloudHookInstalled = true;
+})();
+
+// Re-render whatever is currently on screen once cloud data has landed.
+function ksCloudRefreshUI() {
+  try { if (typeof ksPtRender === 'function') ksPtRender(); } catch(e){}
+  try { if (typeof apptRenderList === 'function') apptRenderList(); } catch(e){}
+  try { if (typeof apptUpdateCounts === 'function') apptUpdateCounts(); } catch(e){}
+  try { if (typeof opdQueueRender === 'function') opdQueueRender(); } catch(e){}
+  try { if (typeof _opdUpdateStats === 'function') _opdUpdateStats(); } catch(e){}
+  try { if (typeof opdApptListRender === 'function') opdApptListRender(); } catch(e){}
+  try { if (typeof loadInvoices === 'function') loadInvoices(); } catch(e){}
+}
+
+function showApprovalScreen(status, name, email) {
+  var isRejected = (status === 'rejected');
+  var icon  = isRejected ? '\u26D4' : '\u23F3';
+  var title = isRejected ? 'Application Not Approved' : 'Approval Pending';
+  var body  = isRejected
+    ? 'Aapki application approve nahi hui. Agar aapko lagta hai ye galti se hua hai, to hamein email karein.'
+    : 'Aapka account ban gaya hai \u2705 — lekin abhi admin approval ka intezaar hai. Approve hote hi aap is tool ko use kar paayenge. Ye aam taur par 24 ghante me ho jata hai.';
+  var html = '<div id="ks-approval-screen" style="position:fixed;inset:0;z-index:999999;background:#0b2545;display:flex;align-items:center;justify-content:center;font-family:DM Sans,sans-serif;padding:20px;overflow-y:auto;">'
+    + '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:20px;padding:40px 32px;text-align:center;max-width:420px;width:100%;">'
+    + '<div style="font-size:48px;">' + icon + '</div>'
+    + '<div style="font-size:21px;font-weight:800;color:white;margin:12px 0 6px;">' + title + '</div>'
+    + (name ? '<div style="font-size:14px;color:#00c9a7;font-weight:700;margin-bottom:4px;">Dr. ' + name + '</div>' : '')
+    + (email ? '<div style="font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:16px;font-family:monospace;">' + email + '</div>' : '')
+    + '<div style="font-size:14px;color:rgba(255,255,255,0.65);line-height:1.7;margin-bottom:24px;">' + body + '</div>'
+    + '<div style="background:rgba(0,201,167,0.08);border:1px solid rgba(0,201,167,0.25);border-radius:12px;padding:14px;margin-bottom:22px;font-size:12.5px;color:rgba(255,255,255,0.7);line-height:1.7;text-align:left;">'
+    +   '<b style="color:#00c9a7;">Jaldi approval chahiye?</b><br>Apna naam, clinic aur registration number email karein:<br>'
+    +   '<a href="mailto:kspider221206@gmail.com" style="color:#00c9a7;font-weight:700;">kspider221206@gmail.com</a>'
+    + '</div>'
+    + '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">'
+    +   '<button onclick="window.location.reload()" style="background:#00c9a7;color:white;border:none;padding:12px 24px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">\uD83D\uDD04 Check Again</button>'
+    +   '<button onclick="ksSignOut()" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.8);border:1px solid rgba(255,255,255,0.15);padding:12px 24px;border-radius:10px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px;">Sign Out</button>'
+    + '</div></div></div>';
+  var ldr = document.getElementById('ks-auth-loader');
+  if (ldr) { ldr.outerHTML = html; } else { document.body.insertAdjacentHTML('afterbegin', html); }
 }
 
 function showBlockScreen(type, plan) {
@@ -270,6 +457,17 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
     if (!snap.exists) { _ksShowDoctorLogin('Your account was not found in our doctor database. Please contact support at kspider221206@gmail.com'); return; }
     const data = snap.data();
 
+    // ── ADMIN APPROVAL GATE ──────────────────────────────────────────
+    // A doctor can sign up freely, but cannot use the tool until the K
+    // Spider admin approves their email from the admin panel. Firestore
+    // rules stop a doctor from editing this field themselves, so this
+    // check cannot be bypassed from the browser.
+    const approval = (data.approvalStatus || 'pending').toLowerCase();
+    if (approval !== 'approved') {
+      showApprovalScreen(approval, data.name || '', user.email || '');
+      return;
+    }
+
     // Check status
     if (data.status === 'suspended') {
       showBlockScreen('suspended');
@@ -288,6 +486,13 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
         return;
       }
     }
+
+    // ── Pull this doctor's own cloud data BEFORE anything renders ──
+    // This is what makes the tool work from any device/location: the
+    // patients, appointments and queue for THIS doctor's UID are fetched
+    // from Firestore into the local working store first, so the UI that
+    // follows is populated with their own data (and nobody else's).
+    await ksCloudPull(user.uid);
 
     // Bridge to the legacy doctor-record helpers (ksSetCurrentDoctor,
     // ksApplyDoctorProfile, ksLoadDoctorData) so per-doctor local data
@@ -357,6 +562,11 @@ var _ksUnsubAuth = _ksAuth.onAuthStateChanged(async (user) => {
 
     // Update Rx count display
     updateRxCounter();
+
+    // Cloud data landed before render, but several lists build themselves
+    // from their own DOMContentLoaded hooks — repaint them once now so the
+    // doctor sees their synced data immediately without a manual refresh.
+    setTimeout(function(){ try { ksCloudRefreshUI(); } catch(e){} }, 600);
 
   } catch(e) {
     console.error('Auth check error:', e);
