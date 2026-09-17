@@ -303,6 +303,10 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
         <span class="ic">🩺</span> DSA Admin
         <span class="nbadge red" id="dsa-doubts-badge" style="display:none">0</span>
       </a>
+      <a class="ni" id="n-doctorai" onclick="show('doctorai',this)" href="#">
+        <span class="ic">👨‍⚕️</span> Doctor AI
+        <span class="nbadge red" id="docai-badge" style="display:none">0</span>
+      </a>
     </div>
     <div class="s-foot">
       <a class="ni" href="index.html" target="_blank"><span class="ic">🌐</span> View Website</a>
@@ -2705,6 +2709,40 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
       </div>
     </div><!-- /panel-wa-referrals -->
 
+    <!-- ═══════════════ K SPIDER DOCTOR AI — Doctor Approvals ═══════════════ -->
+    <div class="panel" id="panel-doctorai">
+
+      <!-- Stat strip -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:18px">
+        <div class="card" style="padding:14px"><div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">⏳ Pending Approval</div><div id="docai-st-pending" style="font-size:1.6rem;font-weight:800;color:#fbbf24">0</div></div>
+        <div class="card" style="padding:14px"><div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">✅ Approved</div><div id="docai-st-approved" style="font-size:1.6rem;font-weight:800;color:#34d399">0</div></div>
+        <div class="card" style="padding:14px"><div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">⛔ Rejected / Suspended</div><div id="docai-st-blocked" style="font-size:1.6rem;font-weight:800;color:#f87171">0</div></div>
+        <div class="card" style="padding:14px"><div style="font-size:.72rem;color:var(--t4);margin-bottom:4px">👨‍⚕️ Total Doctors</div><div id="docai-st-total" style="font-size:1.6rem;font-weight:800;color:#60a5fa">0</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">👨‍⚕️ Doctor Accounts — K Spider Doctor AI</div>
+        <p style="color:var(--t3);font-size:.82rem;margin-bottom:14px">
+          Jab koi naya doctor <b>K Spider Doctor AI</b> tool me register karta hai, uska account yahan
+          <b>Pending</b> me aata hai. Jab tak aap <b>Approve</b> nahi karte, wo doctor tool me login nahi kar paayega.
+          Har doctor ko sirf apna khud ka data dikhta hai — koi doctor dusre ka data nahi dekh sakta.
+        </p>
+
+        <!-- Filter tabs -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="docai-tab on" id="docai-tab-pending"  onclick="loadDoctorAI('pending')"  style="background:var(--bg3);color:var(--t1);border:1px solid var(--br);padding:7px 15px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:600">⏳ Pending</button>
+          <button class="docai-tab"    id="docai-tab-approved" onclick="loadDoctorAI('approved')" style="background:var(--bg3);color:var(--t1);border:1px solid var(--br);padding:7px 15px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:600">✅ Approved</button>
+          <button class="docai-tab"    id="docai-tab-blocked"  onclick="loadDoctorAI('blocked')"  style="background:var(--bg3);color:var(--t1);border:1px solid var(--br);padding:7px 15px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:600">⛔ Rejected / Suspended</button>
+          <button class="docai-tab"    id="docai-tab-all"      onclick="loadDoctorAI('all')"      style="background:var(--bg3);color:var(--t1);border:1px solid var(--br);padding:7px 15px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:600">📋 All</button>
+          <input id="docai-search" oninput="renderDoctorAI()" placeholder="🔍 Search name / email / mobile / clinic..."
+                 style="flex:1;min-width:200px;background:var(--bg1);border:1px solid var(--br);border-radius:7px;padding:7px 12px;color:var(--t1);font-size:.82rem">
+          <button onclick="loadDoctorAI(_docaiFilter)" style="background:#1d4ed8;color:#fff;border:none;padding:7px 15px;border-radius:7px;cursor:pointer;font-size:.82rem;font-weight:600">🔄 Refresh</button>
+        </div>
+
+        <div id="docai-list"><div style="text-align:center;padding:30px;color:var(--t4);font-size:.85rem">Loading doctors…</div></div>
+      </div>
+    </div>
+
     <div class="panel" id="panel-apikeys">
       <div class="card" style="margin-bottom:20px">
         <div class="card-head">🔑 API Keys Manager</div>
@@ -4091,7 +4129,7 @@ function show(name, el) {
   if (panel) panel.classList.add('on');
   document.querySelectorAll('.ni').forEach(function(n){ n.classList.remove('on'); });
   if (el) el.classList.add('on');
-  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📢 Announcements',ads:'📢 Ads Manager','adv-requests':'📬 Advertiser Requests','rto-agents':'🚗 RTO Agents',apikeys:'🔑 API Keys Manager','wa-referrals':'🔗 WA Promo Links Approval','brahminconnect':'🔗 BrahminConnect Manager','vivaah-only':'💍 Brahmin Vivaah Manager','dsa-admin':'🩺 DSA Admin'};
+  var titles = {dash:'📊 Dashboard',users:'👥 Users',access:'🔐 Access Control',pay:'💳 Payments',franchise:'🏢 Franchise',tools:'🔧 Tools',reminders:'🔔 Reminders',pricing:'💰 Pricing Settings',analytics:'📊 Analytics',blog:'📢 Announcements',ads:'📢 Ads Manager','adv-requests':'📬 Advertiser Requests','rto-agents':'🚗 RTO Agents',apikeys:'🔑 API Keys Manager','wa-referrals':'🔗 WA Promo Links Approval','brahminconnect':'🔗 BrahminConnect Manager','vivaah-only':'💍 Brahmin Vivaah Manager','dsa-admin':'🩺 DSA Admin','doctorai':'👨‍⚕️ K Spider Doctor AI — Doctor Approvals'};
   document.getElementById('page-title').textContent = titles[name]||name;
   if (name==='users')       loadUsers();
   if (name==='access')      loadAccess();
@@ -4112,7 +4150,176 @@ function show(name, el) {
   if (name==='brahminconnect') { try{ loadBrahminVivaah('profiles'); }catch(e){ console.error('[BrahminConnect]', e); alert('BrahminConnect panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
   if (name==='vivaah-only') { try{ vvLoad('profiles'); }catch(e){ console.error('[Brahmin Vivaah]', e); alert('Brahmin Vivaah panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
   if (name==='dsa-admin')      { loadDsaAdmin(); }
+  if (name==='doctorai')      { loadDoctorAI(); }
   closeMobMenu(); // Close sidebar on mobile after nav click
+}
+
+
+// ══════════════════════════════════════════════════════════════════════
+// K SPIDER DOCTOR AI — Doctor Approval Manager
+//
+// Reads /doctors/{uid} from this same Firestore project. Each doctor
+// document is keyed by their Firebase Auth UID, and the security rules
+// let ONLY the admin list them all — a doctor can read nothing but their
+// own record (which is also what keeps their patient data private).
+//
+// Approve / reject / suspend here writes approvalStatus back onto the
+// doctor's record. The tool checks that field at login, so nothing can
+// be unlocked from the browser side.
+// ══════════════════════════════════════════════════════════════════════
+var _docaiAll = [], _docaiFilter = 'pending';
+
+function loadDoctorAI(filter) {
+  if (filter) _docaiFilter = filter;
+  ['pending','approved','blocked','all'].forEach(function(f){
+    var b = document.getElementById('docai-tab-'+f);
+    if (b) { b.style.background = (f === _docaiFilter) ? '#1d4ed8' : 'var(--bg3)'; b.style.color = '#fff'; }
+  });
+  var list = document.getElementById('docai-list');
+  if (list) list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4);font-size:.85rem">Loading doctors…</div>';
+
+  db.collection('doctors').get().then(function(snap){
+    _docaiAll = [];
+    snap.forEach(function(d){
+      var v = d.data() || {};
+      v._id = d.id;
+      _docaiAll.push(v);
+    });
+    // Newest signups first
+    _docaiAll.sort(function(a,b){
+      var ta = a.createdAt && a.createdAt.seconds ? a.createdAt.seconds : 0;
+      var tb = b.createdAt && b.createdAt.seconds ? b.createdAt.seconds : 0;
+      return tb - ta;
+    });
+    docaiUpdateStats();
+    renderDoctorAI();
+  }).catch(function(e){
+    console.error('[Doctor AI]', e);
+    if (list) list.innerHTML = '<div style="padding:20px;color:#f87171;font-size:.85rem">❌ Could not load doctors: '
+      + (e.message || e) + '<br><br><span style="color:var(--t4)">Agar "permission denied" aa raha hai to Firestore Rules v8.9 publish karna baaki hai.</span></div>';
+  });
+}
+
+function docaiStatusOf(d) {
+  var s = (d.approvalStatus || '').toLowerCase();
+  if (!s) return 'pending';            // legacy doc with no field yet
+  return s;
+}
+
+function docaiUpdateStats() {
+  var p=0, a=0, b=0;
+  _docaiAll.forEach(function(d){
+    var s = docaiStatusOf(d);
+    if (s === 'approved') a++;
+    else if (s === 'rejected' || s === 'suspended') b++;
+    else p++;
+  });
+  var set = function(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; };
+  set('docai-st-pending', p); set('docai-st-approved', a);
+  set('docai-st-blocked', b); set('docai-st-total', _docaiAll.length);
+  // Sidebar badge = pending count
+  var badge = document.getElementById('docai-badge');
+  if (badge) { badge.textContent = p; badge.style.display = p > 0 ? '' : 'none'; }
+}
+
+function renderDoctorAI() {
+  var list = document.getElementById('docai-list');
+  if (!list) return;
+  var q = ((document.getElementById('docai-search')||{}).value||'').trim().toLowerCase();
+
+  var rows = _docaiAll.filter(function(d){
+    var s = docaiStatusOf(d);
+    if (_docaiFilter === 'pending'  && s !== 'pending') return false;
+    if (_docaiFilter === 'approved' && s !== 'approved') return false;
+    if (_docaiFilter === 'blocked'  && s !== 'rejected' && s !== 'suspended') return false;
+    if (!q) return true;
+    return [d.name,d.email,d.phone,d.clinic,d._id].some(function(f){
+      return f && String(f).toLowerCase().indexOf(q) !== -1;
+    });
+  });
+
+  if (!rows.length) {
+    list.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t4);font-size:.85rem">'
+      + (q ? 'Koi doctor match nahi hua.' : 'Is category me abhi koi doctor nahi hai.') + '</div>';
+    return;
+  }
+
+  list.innerHTML = rows.map(function(d){
+    var s = docaiStatusOf(d);
+    var badge = s === 'approved' ? '<span style="background:#05966922;color:#34d399;border:1px solid #05966944;padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700">✅ APPROVED</span>'
+              : s === 'rejected' ? '<span style="background:#dc262622;color:#f87171;border:1px solid #dc262644;padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700">⛔ REJECTED</span>'
+              : s === 'suspended' ? '<span style="background:#dc262622;color:#f87171;border:1px solid #dc262644;padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700">⏸ SUSPENDED</span>'
+              : '<span style="background:#d9770622;color:#fbbf24;border:1px solid #d9770644;padding:2px 9px;border-radius:20px;font-size:.68rem;font-weight:700">⏳ PENDING</span>';
+
+    var when = '';
+    if (d.createdAt && d.createdAt.seconds) {
+      try { when = new Date(d.createdAt.seconds*1000).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}); } catch(e){}
+    }
+
+    var btns = '';
+    if (s !== 'approved') btns += '<button onclick="docaiSetStatus(\'' + d._id + '\',\'approved\')" style="background:#059669;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.76rem;font-weight:700">✅ Approve</button>';
+    if (s === 'approved')  btns += '<button onclick="docaiSetStatus(\'' + d._id + '\',\'suspended\')" style="background:#b45309;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.76rem;font-weight:700">⏸ Suspend</button>';
+    if (s !== 'rejected')  btns += '<button onclick="docaiSetStatus(\'' + d._id + '\',\'rejected\')" style="background:#991b1b;color:#fff;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:.76rem;font-weight:700">⛔ Reject</button>';
+
+    return '<div style="background:var(--bg3);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px;margin-bottom:10px">'
+      + '<div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">'
+      +   '<div style="flex:1;min-width:200px">'
+      +     '<div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:5px">'
+      +       '<span style="font-weight:700;font-size:.95rem;color:var(--t1)">' + (d.name || 'Unnamed Doctor') + '</span>' + badge
+      +     '</div>'
+      +     '<div style="font-size:.78rem;color:var(--t3);line-height:1.7">'
+      +       '📧 ' + (d.email || '—')
+      +       (d.phone  ? ' &nbsp;·&nbsp; 📱 ' + d.phone  : '')
+      +       (d.clinic ? '<br>🏥 ' + d.clinic : '')
+      +       (d.spec   ? ' &nbsp;·&nbsp; ' + d.spec : '')
+      +       (when ? '<br><span style="color:var(--t4);font-size:.72rem">Registered: ' + when + '</span>' : '')
+      +       '<br><span style="color:var(--t4);font-size:.68rem;font-family:monospace">UID: ' + d._id + '</span>'
+      +     '</div>'
+      +   '</div>'
+      +   '<div style="display:flex;gap:7px;flex-wrap:wrap;align-items:flex-start">' + btns + '</div>'
+      + '</div></div>';
+  }).join('');
+}
+
+function docaiSetStatus(uid, status) {
+  var label = status === 'approved' ? 'APPROVE' : status === 'rejected' ? 'REJECT' : 'SUSPEND';
+  var msg = status === 'approved'
+    ? 'Is doctor ko approve karna hai? Approve hone ke baad wo tool me login kar paayega.'
+    : 'Is doctor ka access ' + label + ' karna hai? Wo tool me login nahi kar paayega.';
+  if (!confirm(msg)) return;
+
+  var payload = { approvalStatus: status, approvalUpdatedAt: firebase.firestore.FieldValue.serverTimestamp() };
+  if (status === 'approved') payload.approvedAt = firebase.firestore.FieldValue.serverTimestamp();
+
+  db.collection('doctors').doc(uid).update(payload).then(function(){
+    // Best-effort: clear the signup-queue mirror once actioned. Failure here
+    // is harmless (the doctor record is the source of truth), so it must not
+    // block or error the approval itself.
+    db.collection('doctorSignupRequests').doc(uid)
+      .update({ handled: true, handledStatus: status }).catch(function(){});
+    var i = _docaiAll.findIndex(function(d){ return d._id === uid; });
+    if (i >= 0) _docaiAll[i].approvalStatus = status;
+    docaiUpdateStats();
+    renderDoctorAI();
+    alert('✅ Done — doctor ka status "' + status + '" set ho gaya.');
+  }).catch(function(e){
+    console.error('[Doctor AI] status update failed', e);
+    alert('❌ Update nahi ho paya: ' + (e.message || e));
+  });
+}
+
+// Keep the sidebar "pending doctors" badge live without opening the panel.
+function docaiRefreshBadge() {
+  if (!db) return;
+  db.collection('doctors').get().then(function(snap){
+    var p = 0;
+    snap.forEach(function(d){
+      var s = ((d.data()||{}).approvalStatus || 'pending').toLowerCase();
+      if (s === 'pending') p++;
+    });
+    var badge = document.getElementById('docai-badge');
+    if (badge) { badge.textContent = p; badge.style.display = p > 0 ? '' : 'none'; }
+  }).catch(function(){ /* not admin yet, or rules not published — ignore */ });
 }
 
 // ══════════════════════════════════════════════════════
@@ -4201,6 +4408,7 @@ function initAll() {
   checkExpiringAlert();
   checkBrahminVivaahAlerts();
   vvCheckAlerts();
+  docaiRefreshBadge();   // Doctor AI: show pending-approval count on the sidebar
 }
 
 // ── REAL-TIME LISTENERS ──
