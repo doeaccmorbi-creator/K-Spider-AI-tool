@@ -148,6 +148,7 @@ tr:hover td{background:rgba(255,255,255,.015)}
 #toast{position:fixed;bottom:22px;right:22px;z-index:9999;background:var(--bg2);border:1px solid var(--br2);border-radius:var(--r8);padding:11px 18px;font-size:.83rem;box-shadow:0 8px 30px rgba(0,0,0,.4);display:none}
 /* ALERT BAR */
 #alert-bar{display:none;font-size:.73rem;color:#fbbf24;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);padding:4px 12px;border-radius:20px;cursor:pointer}
+@keyframes docaiPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.15);opacity:.75}}
 /* ══ MOBILE HAMBURGER ══ */
 #mob-menu-btn{display:none;position:fixed;top:12px;left:12px;z-index:200;width:38px;height:38px;background:var(--bg2);border:1px solid var(--br2);border-radius:8px;cursor:pointer;align-items:center;justify-content:center;font-size:1.1rem}
 #mob-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99}
@@ -4150,7 +4151,7 @@ function show(name, el) {
   if (name==='brahminconnect') { try{ loadBrahminVivaah('profiles'); }catch(e){ console.error('[BrahminConnect]', e); alert('BrahminConnect panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
   if (name==='vivaah-only') { try{ vvLoad('profiles'); }catch(e){ console.error('[Brahmin Vivaah]', e); alert('Brahmin Vivaah panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
   if (name==='dsa-admin')      { loadDsaAdmin(); }
-  if (name==='doctorai')      { loadDoctorAI(); }
+  if (name==='doctorai')      { loadDoctorAI(); docaiRequestNotifyPermission(); }
   closeMobMenu(); // Close sidebar on mobile after nav click
 }
 
@@ -4312,30 +4313,57 @@ function docaiSetStatus(uid, status) {
 // Uses a realtime listener so a brand-new doctor signup lights up the badge
 // within a second or two, the way a hospital admin console should behave --
 // no refresh needed.
+//
+// IMPORTANT: this deliberately does NOT touch #alert-bar / #alert-txt.
+// Those are shared by checkExpiringAlert(), checkBrahminVivaahAlerts() and
+// vvCheckAlerts() with no coordination between them -- whichever one last
+// writes to that one shared element wins, silently erasing whatever an
+// earlier one had shown. Doctor AI gets its own independent, un-stompable
+// notification instead: a pulsing sidebar badge plus a browser tab-title
+// counter, so it's visible no matter what the other alert checks are doing.
 var _docaiUnsub = null;
+var _docaiKnownPendingIds = null; // null = first snapshot not seen yet
+var _docaiBaseTitle = document.title;
+
 function docaiRefreshBadge() {
   if (!db || _docaiUnsub) return;
   try {
     _docaiUnsub = db.collection('doctors').onSnapshot(function(snap){
-      var p = 0, pendingNames = [];
+      var p = 0;
+      var pendingIds = [];
       snap.forEach(function(d){
         var v = d.data() || {};
         var s = (v.approvalStatus || 'pending').toLowerCase();
-        if (s === 'pending') { p++; pendingNames.push(v.name || v.email || d.id); }
+        if (s === 'pending') { p++; pendingIds.push(d.id); }
       });
-      var badge = document.getElementById('docai-badge');
-      if (badge) { badge.textContent = p; badge.style.display = p > 0 ? '' : 'none'; }
 
-      // Surface it on the top alert bar too, so it's noticed even when the
-      // admin is working in another section.
-      var bar = document.getElementById('alert-bar');
-      var txt = document.getElementById('alert-txt');
-      if (bar && txt && p > 0 && !_docaiAlertShown) {
-        _docaiAlertShown = true;
-        txt.textContent = p + ' naye doctor approval ka intezaar kar rahe hain — Doctor AI section kholein';
-        bar.style.display = '';
-        bar.onclick = function(){ show('doctorai', document.getElementById('n-doctorai')); };
+      var badge = document.getElementById('docai-badge');
+      if (badge) {
+        badge.textContent = p;
+        badge.style.display = p > 0 ? '' : 'none';
+        badge.style.animation = p > 0 ? 'docaiPulse 1.5s ease-in-out infinite' : 'none';
       }
+
+      // Browser tab title counter -- visible even when the admin has this
+      // tab in the background, and completely independent of the shared
+      // alert-bar other checks use.
+      document.title = p > 0 ? ('(' + p + ') ' + _docaiBaseTitle) : _docaiBaseTitle;
+
+      // Detect a genuinely NEW pending doctor (not just "still pending from
+      // before") and fire a native browser notification for it, if the
+      // admin has granted permission.
+      if (_docaiKnownPendingIds !== null) {
+        var newlyPending = pendingIds.filter(function(id){ return _docaiKnownPendingIds.indexOf(id) === -1; });
+        if (newlyPending.length && typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          try {
+            new Notification('K Spider Doctor AI', {
+              body: newlyPending.length + ' new doctor signup waiting for approval',
+              icon: '🩺'
+            });
+          } catch (e) {}
+        }
+      }
+      _docaiKnownPendingIds = pendingIds;
 
       // If the panel is currently open, keep the list itself live too.
       var panel = document.getElementById('panel-doctorai');
@@ -4351,12 +4379,25 @@ function docaiRefreshBadge() {
         renderDoctorAI();
       }
     }, function(err){
-      console.warn('[Doctor AI] badge listener stopped:', err && err.message);
+      // Surface this loudly instead of only in the console -- a silent
+      // failure here (e.g. Firestore rules not published yet, so this read
+      // is denied) is exactly what looked like "no notification ever
+      // arrives" with no visible clue why.
+      console.error('[Doctor AI] badge listener error:', err);
       _docaiUnsub = null;
+      var badge = document.getElementById('docai-badge');
+      if (badge) { badge.textContent = '!'; badge.title = 'Doctor AI data could not load: ' + (err && err.message); badge.style.display = ''; badge.style.background = '#dc2626'; }
     });
-  } catch (e) { /* not admin yet, or rules not published -- ignore */ }
+  } catch (e) { console.error('[Doctor AI] could not start badge listener:', e); }
 }
-var _docaiAlertShown = false;
+
+// Ask the browser for notification permission once, the first time the
+// admin opens the Doctor AI section -- not on page load, so it doesn't
+// throw an unexpected permission popup at login time.
+function docaiRequestNotifyPermission() {
+  if (typeof Notification === 'undefined') return;
+  if (Notification.permission === 'default') Notification.requestPermission();
+}
 
 // ══════════════════════════════════════════════════════
 // DSA ADMIN — connects to Dr. Shreyansh Academy's own
