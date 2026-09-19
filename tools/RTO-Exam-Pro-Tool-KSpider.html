@@ -1446,6 +1446,7 @@ gtag('config', 'G-PLBHWMHEC1');
             <span>Powered by</span>
             <a href="https://www.kspiderai.in" target="_blank" rel="noopener">www.kspiderai.in</a>
           </div>
+          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-19 · r2</div>
         </div>
         <div class="footer-col">
           <h4>Quick Links</h4>
@@ -2972,12 +2973,41 @@ const CATEGORIES = [...new Set(QUESTIONS.map(q => q.category))];
 const PASS_SCORE = 70;
 const TEST_DURATION = 1200; // 20 min in seconds
 
+/* ── Storage guard: kspiderai.in shares ONE localStorage across all tools. When it is full,
+      setItem() throws QuotaExceededError and used to freeze the app (e.g. Submit → no result).
+      Now: free the translation/analytics caches and retry; if still full, skip silently. ── */
+(function () {
+  try {
+    var _set = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (k, v) {
+      try { return _set.call(this, k, v); }
+      catch (e) {
+        try {
+          var key = String(k);
+          if (key.indexOf('rto_trcache_') !== 0 && key !== 'rto_analytics') {
+            var del = [];
+            for (var i = 0; i < this.length; i++) {
+              var n = this.key(i);
+              if (n && (n.indexOf('rto_trcache_') === 0 || n === 'rto_analytics')) del.push(n);
+            }
+            del.forEach(function (n) { try { Storage.prototype.removeItem.call(localStorage, n); } catch (x) {} });
+            try { return _set.call(this, k, v); } catch (e2) {}
+          }
+        } catch (e3) {}
+        console.warn('[RTO] storage full — skipped saving', k);
+      }
+    };
+  } catch (e) {}
+})();
+var KS_BUILD = '2026-09-19 · r2';
+var _ksErrs = [];
+
 /* ════════════════════════════════════════════════════════════
    KS PATCH v2 — Result/Report reliability, Practice report,
    Cloud (Firestore) bridge for RTO Agent registration + links
    (additive — no existing feature removed)
 ════════════════════════════════════════════════════════════ */
-function ksTry(fn) { try { fn(); } catch (e) { console.warn('[RTO]', e && e.message ? e.message : e); } }
+function ksTry(fn) { try { fn(); } catch (e) { var m = e && e.message ? e.message : String(e); _ksErrs.push(m); console.warn('[RTO]', m); } }
 function ksSafeJSON(key, fallback) {
   try { var v = JSON.parse(localStorage.getItem(key)); return (v === null || v === undefined) ? fallback : v; }
   catch (e) { return fallback; }
@@ -3163,6 +3193,7 @@ function ksRenderResult(o) {
     }).join('');
   });
   showPage('result');
+  if (_ksErrs.length) { showToast('⚠️ Report ka ek hissa load nahi hua: ' + _ksErrs[0].slice(0, 70), 'error'); _ksErrs.length = 0; }
 }
 
 /* ── Practice: session tracking + End Practice report ── */
@@ -3662,6 +3693,15 @@ function confirmEnd() {
 }
 
 function submitTest() {
+  try { ksSubmitCore(); }
+  catch (e) {
+    console.error('[RTO] submit failed:', e);
+    try { closeModal(); document.body.classList.remove('exam-mode'); showPage('result'); } catch (e2) {}
+    try { showToast('⚠️ Result load me dikkat: ' + (e && e.message ? e.message : e), 'error'); } catch (e3) {}
+  }
+}
+
+function ksSubmitCore() {
   /* ── Exit exam mode: restore header + banners ── */
   document.body.classList.remove('exam-mode');
   clearInterval(appState.timerInterval);
@@ -3867,7 +3907,7 @@ function shareApp() {
 function showModal(title, msg, onConfirm) {
   document.getElementById('modal-title').textContent = title;
   document.getElementById('modal-msg').textContent = msg;
-  document.getElementById('modal-confirm').onclick = () => { onConfirm(); closeModal(); };
+  document.getElementById('modal-confirm').onclick = () => { closeModal(); try { onConfirm(); } catch (e) { console.error(e); showToast('⚠️ ' + (e && e.message ? e.message : 'Action failed'), 'error'); } };
   document.getElementById('modal').classList.add('open');
 }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
