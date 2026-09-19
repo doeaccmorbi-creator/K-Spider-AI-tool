@@ -10360,6 +10360,11 @@ function deleteAgent(refId) {
   if (!confirm('Permanently DELETE ' + agent.name + ' (' + agent.company + ')?\n\nNOTE: Old links they shared will now open the original tool without any banner.\n\nThis cannot be undone.')) return;
   allAgentData = allAgentData.filter(function(a){ return a.refId !== refId; });
   saveAgentsToStorage();
+  try {
+    if (db) db.collection('rto_agent_requests').doc(refId).delete().catch(function(e) {
+      console.warn('[RTO Agents] Firestore delete failed for ' + refId + ':', e.message);
+    });
+  } catch(eDel) {}
   filterAgents();
   updateAgentStats(allAgentData);
   showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
@@ -10376,7 +10381,7 @@ function _syncAgentsToFirestore() {
   if (!db) return;
   allAgentData.forEach(function(agent) {
     if (!agent.refId) return;
-    db.collection('rto_agent_requests').doc(agent.refId).set({
+    var upd = {
       status:       agent.status       || 'pending',
       approvedAt:   agent.approvedAt   || null,
       rejectedAt:   agent.rejectedAt   || null,
@@ -10384,11 +10389,18 @@ function _syncAgentsToFirestore() {
       _suspended:   agent._suspended   || false,
       _expired:     agent._expired     || false,
       _expireDate:  agent._expireDate  || null,
-      _shortCode:   agent._shortCode   || '',
       updatedAt:    new Date().toISOString(),
       updatedBy:    'admin'
-    }, { merge: true }).catch(function(e) {
+    };
+    /* keep the agent's short code — never overwrite it with an empty value */
+    if (agent._shortCode) upd._shortCode = agent._shortCode;
+    db.collection('rto_agent_requests').doc(agent.refId).set(upd, { merge: true }).catch(function(e) {
       console.warn('[RTO Agents] Firestore sync failed for ' + agent.refId + ':', e.message);
+      var now = Date.now();
+      if (!window._rtoSyncWarnAt || now - window._rtoSyncWarnAt > 8000) {
+        window._rtoSyncWarnAt = now;
+        showAdminToast('\u26A0\uFE0F Cloud sync failed — agent ko approval/expiry nahi pahunchega. Firestore rules check karo (rto_agent_requests): ' + e.message, 'error');
+      }
     });
   });
 }
