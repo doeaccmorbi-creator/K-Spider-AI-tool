@@ -31,7 +31,7 @@
   <meta property="og:url" content="https://www.kspiderai.in/tools/RTO-Exam-Pro-Tool-KSpider.html">
   <meta property="og:type" content="website">
   <!-- Google AdSense: Apna approved ca-pub ID aane ke baad niche ki line uncomment karein -->
-  <!-- <!-- AdSense disabled — using KSpider Admin Ad Manager --> -->
+  <!-- AdSense disabled — using KSpider Admin Ad Manager -->
   <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta name="keywords" content="RTO exam 2026 free, driving licence test India 2026, RTO mock test free India, learner licence test online free, DL exam practice India, traffic rules India 2026, road signs India test, motor vehicle act 2019 questions, RTO exam Hindi, RTO exam Gujarati, RTO exam Marathi, driving test questions India free, free RTO practice app India, RTO exam preparation 2026, learner driving licence India free, RTO question bank India, driving licence mock test free India, RTO exam 9 languages, K Spider AI, kspiderai.in, Gaurang Raval, Khush Raval, free RTO PWA app India">
   <meta name="author" content="K Spider AI — Gaurang Raval & Khush Raval">
@@ -1362,6 +1362,7 @@ gtag('config', 'G-PLBHWMHEC1');
               <p style="margin-top:8px;font-weight:600;font-size:.78rem;color:#fbbf24;" id="home-pending-ref-id"></p>
             </div>
           </div>
+          <button class="btn btn-sm" onclick="ksCheckStatusNow()" style="margin-top:12px;margin-right:8px;background:#f59e0b;color:#1e293b;border:none;font-weight:700;">🔄 Check Status Now</button>
           <button class="btn btn-sm" onclick="resetAgentReg()" style="margin-top:12px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);border:1px solid rgba(255,255,255,.2);">✕ Cancel Registration</button>
         </div>
 
@@ -1500,6 +1501,11 @@ gtag('config', 'G-PLBHWMHEC1');
   <div class="practice-body">
     <div class="cat-grid" id="cat-grid"></div>
     <div id="practice-container"></div>
+    <!-- End Practice → Report -->
+    <div id="practice-end-bar" style="position:sticky;bottom:8px;z-index:50;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:12px;padding:10px 14px;margin-top:14px;box-shadow:0 4px 18px rgba(0,0,0,.10)">
+      <span id="practice-session-info" style="font-size:.8rem;color:var(--muted,#64748b)">Answer some questions, then tap “End Practice” to see your report</span>
+      <button class="btn btn-primary btn-sm" onclick="endPractice()">🏁 End Practice &amp; View Report</button>
+    </div>
   </div>
 </div>
 
@@ -1594,6 +1600,8 @@ gtag('config', 'G-PLBHWMHEC1');
     </div>
     <!-- Donut Chart -->
     <div class="chart-wrap"><canvas id="donut-chart" width="200" height="200"></canvas></div>
+    <!-- Performance Report (filled by ksRenderPerfReport) -->
+    <div id="perf-report"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:24px">
       <button class="btn btn-primary" onclick="showPage('test-setup')">🔄 Retake Test</button>
       <button class="btn btn-outline" id="wa-result-btn">📤 Share on WhatsApp</button>
@@ -1628,6 +1636,11 @@ gtag('config', 'G-PLBHWMHEC1');
     <div class="section-card">
       <h3>📚 Questions by Category</h3>
       <div class="bar-chart" id="cat-chart"></div>
+    </div>
+    <!-- Your accuracy by category (mock + practice) -->
+    <div class="section-card">
+      <h3>🎯 Your Accuracy by Category</h3>
+      <div class="bar-chart" id="ks-cat-acc"></div>
     </div>
     <!-- Test History -->
     <div class="section-card">
@@ -1712,6 +1725,7 @@ gtag('config', 'G-PLBHWMHEC1');
             <p style="margin-top:6px;font-weight:600;font-size:.78rem" id="pending-ref-id"></p>
           </div>
         </div>
+        <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="ksCheckStatusNow()">&#128260; Check Status Now</button>
         <button class="btn btn-outline btn-sm" style="margin-top:10px" onclick="resetAgentReg()">&#x2715; Cancel Registration</button>
       </div>
 
@@ -2944,8 +2958,8 @@ const appState = {
   currentCat: 'All',
   practiceIndex: 0,
   selectedAnswers: {},
-  bookmarks: JSON.parse(localStorage.getItem('rto_bookmarks') || '[]'),
-  history: JSON.parse(localStorage.getItem('rto_history') || '[]'),
+  bookmarks: (function(){ try { var b = JSON.parse(localStorage.getItem('rto_bookmarks') || '[]'); return Array.isArray(b) ? b : []; } catch(e) { return []; } })(),
+  history: (function(){ try { var h = JSON.parse(localStorage.getItem('rto_history') || '[]'); return Array.isArray(h) ? h : []; } catch(e) { return []; } })(),
   testQuestions: [],
   testAnswers: {},
   testIndex: 0,
@@ -2959,6 +2973,347 @@ const PASS_SCORE = 70;
 const TEST_DURATION = 1200; // 20 min in seconds
 
 /* ════════════════════════════════════════════════════════════
+   KS PATCH v2 — Result/Report reliability, Practice report,
+   Cloud (Firestore) bridge for RTO Agent registration + links
+   (additive — no existing feature removed)
+════════════════════════════════════════════════════════════ */
+function ksTry(fn) { try { fn(); } catch (e) { console.warn('[RTO]', e && e.message ? e.message : e); } }
+function ksSafeJSON(key, fallback) {
+  try { var v = JSON.parse(localStorage.getItem(key)); return (v === null || v === undefined) ? fallback : v; }
+  catch (e) { return fallback; }
+}
+/* Old / corrupted history records can never break the result page again */
+function ksNormRec(r) {
+  r = (r && typeof r === 'object') ? r : {};
+  var pct = Number(r.pct); if (!isFinite(pct)) pct = 0;
+  return {
+    date: (typeof r.date === 'string' && r.date) ? r.date : '—',
+    pct: pct, correct: Number(r.correct) || 0, wrong: Number(r.wrong) || 0,
+    skipped: Number(r.skipped) || 0, total: Number(r.total) || 0,
+    time: (typeof r.time === 'string' && r.time) ? r.time : '--:--',
+    passed: (typeof r.passed === 'boolean') ? r.passed : pct >= PASS_SCORE
+  };
+}
+appState.history = (Array.isArray(appState.history) ? appState.history : []).map(ksNormRec);
+if (!Array.isArray(appState.bookmarks)) appState.bookmarks = [];
+appState.practiceSession = {};
+appState.practiceStart = 0;
+
+function ksTally(items) {
+  var correct = 0, wrong = 0, skipped = 0, catMap = {};
+  items.forEach(function (it) {
+    var c = it.q.category || 'General';
+    var m = catMap[c] || (catMap[c] = { c: 0, w: 0, s: 0 });
+    if (it.userAns === undefined) { skipped++; m.s++; }
+    else if (it.userAns === it.q.answer) { correct++; m.c++; }
+    else { wrong++; m.w++; }
+  });
+  var total = items.length;
+  var pct = total ? Math.round((correct / total) * 100) : 0;
+  return { correct: correct, wrong: wrong, skipped: skipped, total: total, pct: pct, passed: pct >= PASS_SCORE, catMap: catMap };
+}
+
+function ksSaveCatStats(items) {
+  var st = ksSafeJSON('rto_cat_stats', {});
+  items.forEach(function (it) {
+    if (it.userAns === undefined) return;
+    var c = it.q.category || 'General';
+    var s = st[c] || { c: 0, t: 0 };
+    s.t++; if (it.userAns === it.q.answer) s.c++;
+    st[c] = s;
+  });
+  try { localStorage.setItem('rto_cat_stats', JSON.stringify(st)); } catch (e) {}
+}
+
+function ksRenderCatAccuracy() {
+  var el = document.getElementById('ks-cat-acc'); if (!el) return;
+  var lang = appState.lang;
+  var st = ksSafeJSON('rto_cat_stats', {});
+  var keys = Object.keys(st).filter(function (k) { return st[k] && st[k].t > 0; });
+  if (!keys.length) {
+    el.innerHTML = '<div class="empty"><div class="icon">🎯</div><p>Take a Mock Test or finish a Practice session to see your accuracy by category.</p></div>';
+    return;
+  }
+  keys.sort(function (a, b) { return (st[a].c / st[a].t) - (st[b].c / st[b].t); });
+  el.innerHTML = keys.map(function (k) {
+    var a = Math.round(st[k].c / st[k].t * 100);
+    var col = a >= PASS_SCORE ? '#22c55e' : (a >= 50 ? '#f59e0b' : '#ef4444');
+    var lbl = tCat(k, lang); if (lbl.length > 14) lbl = lbl.slice(0, 12) + '…';
+    return '<div class="bar-row"><div class="bar-label">' + lbl + '</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + a + '%;background:' + col + '"></div></div>' +
+      '<div class="bar-val">' + a + '%</div></div>';
+  }).join('');
+}
+
+function ksPracticeCat(i) {
+  var c = (window._ksWeakCats || [])[i];
+  if (!c) { showPage('practice'); return; }
+  filterCat(c); showPage('practice');
+}
+
+/* ── Performance report (works for Mock Test AND Practice) ── */
+function ksRenderPerfReport(o, T) {
+  var el = document.getElementById('perf-report'); if (!el) return;
+  var lang = appState.lang;
+  var attempted = T.correct + T.wrong;
+  var accuracy = attempted ? Math.round(T.correct / attempted * 100) : 0;
+  var need = Math.max(0, Math.ceil(PASS_SCORE * T.total / 100) - T.correct);
+  var avg = (o.secs && attempted) ? Math.round(o.secs / attempted) : 0;
+  var cats = Object.keys(T.catMap).map(function (c) {
+    var m = T.catMap[c], n = m.c + m.w + m.s;
+    return { name: c, n: n, c: m.c, acc: n ? Math.round(m.c / n * 100) : 0 };
+  }).sort(function (a, b) { return a.acc - b.acc; });
+  var weak = cats.filter(function (c) { return c.acc < PASS_SCORE; }).slice(0, 4);
+  var strong = cats.filter(function (c) { return c.acc >= PASS_SCORE; });
+  window._ksWeakCats = weak.map(function (c) { return c.name; });
+
+  function tile(v, l, col) {
+    return '<div style="background:var(--card,#fff);border:1px solid var(--border,#e2e8f0);border-radius:10px;padding:10px 8px;text-align:center">' +
+      '<div style="font-weight:800;font-size:1.15rem;color:' + (col || 'inherit') + '">' + v + '</div>' +
+      '<div style="font-size:.7rem;color:var(--muted,#64748b);margin-top:2px">' + l + '</div></div>';
+  }
+  var verdict;
+  if (o.kind === 'mock') {
+    verdict = T.passed
+      ? '✅ You cleared the ' + PASS_SCORE + '% pass mark. Keep taking mock tests to stay consistent.'
+      : '🎯 You need ' + need + ' more correct answer' + (need === 1 ? '' : 's') + ' (out of ' + T.total + ') to reach the ' + PASS_SCORE + '% pass mark.';
+  } else {
+    verdict = T.passed
+      ? '✅ Great accuracy in this practice session! Try a full Mock Test next.'
+      : '📖 Review the answers below, then practice your weak categories again.';
+  }
+  var html = '<div class="bar-chart-section" style="margin:16px 0">' +
+    '<h4>📊 Performance Report</h4>' +
+    '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(105px,1fr));gap:8px;margin-bottom:12px">' +
+      tile(T.pct + '%', 'Score', T.passed ? 'var(--success,#22c55e)' : 'var(--danger,#ef4444)') +
+      tile(attempted + '/' + T.total, 'Attempted') +
+      tile(T.skipped, 'Skipped', T.skipped ? '#f59e0b' : 'inherit') +
+      tile(accuracy + '%', 'Accuracy (attempted)') +
+      (avg ? tile(avg + 's', 'Avg time / question') : '') +
+    '</div>' +
+    '<div style="font-size:.84rem;font-weight:600;margin-bottom:12px">' + verdict + '</div>';
+  if (T.skipped > 0) {
+    html += '<div style="font-size:.78rem;color:var(--muted,#64748b);margin-bottom:12px">⏭️ ' + T.skipped + ' question' + (T.skipped === 1 ? ' was' : 's were') + ' skipped — skipped questions count against your score, so try to attempt every question.</div>';
+  }
+  html += '<div style="font-weight:700;font-size:.82rem;margin-bottom:8px">📚 Category-wise performance</div>';
+  html += cats.map(function (c) {
+    var col = c.acc >= PASS_SCORE ? '#22c55e' : (c.acc >= 50 ? '#f59e0b' : '#ef4444');
+    var lbl = tCat(c.name, lang); if (lbl.length > 14) lbl = lbl.slice(0, 12) + '…';
+    return '<div class="bar-row"><div class="bar-label">' + lbl + '</div>' +
+      '<div class="bar-track"><div class="bar-fill" style="width:' + c.acc + '%;background:' + col + '"></div></div>' +
+      '<div class="bar-val">' + c.c + '/' + c.n + '</div></div>';
+  }).join('');
+  if (weak.length) {
+    html += '<div style="font-weight:700;font-size:.82rem;margin:14px 0 8px">⚠️ Focus areas (below ' + PASS_SCORE + '%)</div><div style="display:flex;gap:8px;flex-wrap:wrap">' +
+      weak.map(function (c, i) {
+        return '<button class="btn btn-outline btn-sm" onclick="ksPracticeCat(' + i + ')">📚 ' + tCat(c.name, lang) + ' · ' + c.acc + '%</button>';
+      }).join('') + '</div>';
+  }
+  if (strong.length) {
+    html += '<div style="font-size:.78rem;color:var(--muted,#64748b);margin-top:12px">💪 Strong areas: ' +
+      strong.map(function (c) { return tCat(c.name, lang); }).join(', ') + '</div>';
+  }
+  html += '<div style="margin-top:14px"><button class="btn btn-primary btn-sm" onclick="showPage(\'practice\')">📚 Back to Practice</button></div></div>';
+  el.innerHTML = html;
+}
+
+/* ── Renders the result page. Every block is isolated, so one failure can never block the report ── */
+function ksRenderResult(o) {
+  var T = o.tally, lang = appState.lang;
+  appState.lastResult = { correct: T.correct, wrong: T.wrong, skipped: T.skipped, total: T.total, pct: T.pct, passed: T.passed };
+  ksTry(function () {
+    document.getElementById('result-hero').className = 'result-hero ' + (T.passed ? 'pass' : 'fail');
+    document.getElementById('result-score').textContent = T.pct + '%';
+    if (o.kind === 'mock') {
+      document.getElementById('result-label').textContent = T.passed ? t('result.passed', lang) : t('result.failed', lang);
+      document.getElementById('result-sub').textContent = T.passed
+        ? 'Congratulations! You scored ' + T.pct + '%. You are ready for the RTO exam!'
+        : 'You scored ' + T.pct + '%. Pass mark is ' + PASS_SCORE + '%. Keep practicing!';
+    } else {
+      document.getElementById('result-label').textContent = '📚 Practice Report';
+      document.getElementById('result-sub').textContent = 'You answered ' + T.total + ' question' + (T.total === 1 ? '' : 's') + ' — ' + T.correct + ' correct, ' + T.wrong + ' wrong.';
+    }
+    document.getElementById('r-correct').textContent = T.correct;
+    document.getElementById('r-wrong').textContent = T.wrong;
+    document.getElementById('r-time').textContent = o.timeStr || '--:--';
+  });
+  ksTry(function () {
+    document.getElementById('wa-result-btn').onclick = function () { shareResult(T.pct, T.correct, T.wrong, T.skipped); };
+  });
+  ksTry(function () { drawDonut('donut-chart', { correct: T.correct, wrong: T.wrong, skipped: T.skipped }); });
+  ksTry(function () {
+    var wrap = document.getElementById('history-bar-wrap');
+    if (appState.history.length > 1) {
+      wrap.style.display = 'block';
+      drawBarChart('bar-chart', appState.history.slice(0, 5).reverse());
+    } else { wrap.style.display = 'none'; }
+  });
+  ksTry(function () { ksRenderPerfReport(o, T); });
+  ksTry(function () {
+    var letters = ['A', 'B', 'C', 'D'];
+    document.getElementById('review-list').innerHTML = o.items.map(function (it, i) {
+      var q = it.q, userAns = it.userAns;
+      var isRight = userAns === q.answer, isSkipped = userAns === undefined;
+      return '<div class="review-item"><div class="r-q">' + (i + 1) + '. ' + q.question + '</div><div class="r-ans">' +
+        '<span class="badge ' + (isSkipped ? 'badge-skip' : isRight ? 'badge-correct' : 'badge-wrong') + '">' +
+        (isSkipped ? '⏭️ Skipped' : isRight ? '✅ Correct' : '❌ Wrong') + '</span>' +
+        '<span style="font-size:0.78rem;color:var(--muted)">' +
+        (isSkipped ? '' : 'Your: ' + letters[userAns] + '. ' + q.options[userAns] + ' | ') +
+        '✅ Correct: ' + letters[q.answer] + '. ' + q.options[q.answer] + '</span></div></div>';
+    }).join('');
+  });
+  showPage('result');
+}
+
+/* ── Practice: session tracking + End Practice report ── */
+function ksUpdatePracticeBar() {
+  var n = Object.keys(appState.practiceSession || {}).length;
+  var el = document.getElementById('practice-session-info');
+  if (el) el.textContent = n ? ('✅ ' + n + ' answered in this session') : 'Answer some questions, then tap “End Practice” to see your report';
+}
+function endPractice() {
+  var sess = appState.practiceSession || {};
+  var items = [];
+  Object.keys(sess).forEach(function (id) {
+    var q = QUESTIONS.find(function (x) { return String(x.id) === String(id); });
+    if (q) items.push({ q: q, userAns: sess[id] });
+  });
+  if (!items.length) { showToast('Pehle kuch questions solve karo, phir report dekho 🙂', 'info'); return; }
+  var secs = appState.practiceStart ? Math.round((Date.now() - appState.practiceStart) / 1000) : 0;
+  var timeStr = String(Math.floor(secs / 60)).padStart(2, '0') + ':' + String(secs % 60).padStart(2, '0');
+  var T = ksTally(items);
+  ksTry(function () { ksSaveCatStats(items); });
+  appState.practiceSession = {}; appState.selectedAnswers = {}; appState.practiceStart = 0;
+  ksRenderResult({ kind: 'practice', items: items, timeStr: timeStr, secs: secs, tally: T });
+}
+
+/* ════════════════════════════════════════════════════════════
+   CLOUD BRIDGE — RTO Agent ↔ Admin (Firestore: rto_agent_requests)
+   Registration → admin panel | Approval → agent link | Link → banner
+════════════════════════════════════════════════════════════ */
+var _ksFBCfg = {
+  apiKey: "AIzaSyBHNEgIT6lIZNAWcd5Ssbr4BpBHKzqETk8", authDomain: "kspideraimain.firebaseapp.com",
+  projectId: "kspideraimain", storageBucket: "kspideraimain.firebasestorage.app",
+  messagingSenderId: "940003391760", appId: "1:940003391760:web:8617000465b6991d348d95"
+};
+var KS_AGENT_COL = 'rto_agent_requests';
+var KS_AGENT_FIELDS = ['name','company','mobile','email','city','address','website','logo','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps','services'];
+var _ksCloudAgent;          /* undefined = no cloud verdict yet | null = blocked | object = verified agent */
+var _ksPubTried = {};
+
+function ksDB() {
+  try {
+    if (typeof firebase === 'undefined' || !firebase.firestore) return null;
+    if (!firebase.apps.length) firebase.initializeApp(_ksFBCfg);
+    return firebase.firestore();
+  } catch (e) { return null; }
+}
+function ksCloudWarn() {
+  showToast('⚠️ Registration is device par save hui, par admin tak nahi pahunchi. Internet check karo — auto retry hoga.', 'error');
+}
+
+/* Registration → Firestore (admin panel listens to this collection) */
+function ksSyncAgentToCloud(showFeedback) {
+  if (!agentData || !agentData.refId || agentData._cloud) return;
+  var db = ksDB();
+  if (!db) { if (showFeedback) ksCloudWarn(); return; }
+  var ref = db.collection(KS_AGENT_COL).doc(agentData.refId);
+  var reg = { refId: agentData.refId, submittedAt: agentData.submittedAt || new Date().toISOString(), source: 'rto-tool' };
+  KS_AGENT_FIELDS.forEach(function (f) { reg[f] = agentData[f] || ''; });
+  ref.get().then(function (snap) {
+    var d = (snap && snap.exists && snap.data()) || {};
+    if (!d.status) reg.status = 'pending';       /* never overwrite an admin decision */
+    return ref.set(reg, { merge: true });
+  }, function () {
+    if (agentData.status === 'pending') reg.status = 'pending';
+    return ref.set(reg, { merge: true });
+  }).then(function () {
+    agentData._cloud = true; saveAgentState();
+  }).catch(function (e) {
+    console.warn('[RTO Agent] cloud sync failed:', e && e.message);
+    if (showFeedback) ksCloudWarn();
+  });
+}
+
+/* After approval: remember the short code on the cloud record (best effort) */
+function ksPublishAgentLink(code) {
+  if (!agentData || !agentData.refId || !code) return;
+  if (agentData._cloudCode === code || _ksPubTried[code]) return;
+  _ksPubTried[code] = true;
+  var db = ksDB(); if (!db) return;
+  db.collection(KS_AGENT_COL).doc(agentData.refId)
+    .set({ _shortCode: code, linkGeneratedAt: new Date().toISOString() }, { merge: true })
+    .then(function () { agentData._cloudCode = code; saveAgentState(); })
+    .catch(function () {});
+}
+
+function ksCheckStatusNow() {
+  showToast('Status check ho raha hai…', 'info');
+  pollForApproval();
+  setTimeout(function () {
+    if (agentData && agentData.status === 'pending') showToast('Abhi admin approval pending hai ⏳', 'info');
+  }, 2500);
+}
+
+/* Receiver side: cloud record decides whether the banner is shown */
+function ksAgentAllowed(d) {
+  if (!d || d.status !== 'approved') return false;
+  if (d._suspended || d._expired) return false;
+  if (d._expireDate && new Date() > new Date(d._expireDate)) return false;
+  return true;
+}
+function ksAgentPayload(d, fallback) {
+  var src = (d && d.name) ? d : (fallback || null);
+  if (!src) return null;
+  var p = {};
+  KS_AGENT_FIELDS.forEach(function (f) { p[f] = src[f] || ''; });
+  p.refId = d.refId || src.refId || '';
+  p._expireDate = d._expireDate || null; p._suspended = false; p._expired = false;
+  return p;
+}
+function ksHideAgentBanners() {
+  ['apb-top-banner','apb-inline-banner','apb-inline-practice','apb-inline-test','apb-bottom-banner'].forEach(function (id) {
+    var el = document.getElementById(id); if (el) el.style.display = 'none';
+  });
+  document.body.classList.remove('has-agent-bottom');
+}
+function ksVerifyLinkAgent() {
+  var params; try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
+  var k = (params.get('k') || '').toUpperCase().trim();
+  var r = (params.get('r') || '').trim();
+  if (!k && !r) return;
+  var db = ksDB(); if (!db) return;
+  var col = db.collection(KS_AGENT_COL), req;
+  if (r) {
+    req = col.doc(r).get().then(function (s) { var d = s.exists ? s.data() : null; if (d && !d.refId) d.refId = s.id; return { found: !!d, d: d }; });
+  } else {
+    req = col.where('_shortCode', '==', k).limit(1).get().then(function (q) {
+      var d = null; q.forEach(function (s) { d = s.data(); if (d && !d.refId) d.refId = s.id; });
+      return { found: !!d, d: d, legacy: true };
+    });
+  }
+  req.then(function (res) {
+    if (!res.found) {
+      if (res.legacy) return;                      /* old link, no cloud record — keep local behaviour */
+      _ksCloudAgent = null; ksHideAgentBanners();  /* record deleted by admin */
+      try { var db0 = ksSafeJSON('rto_agents_db', {}); delete db0[k]; localStorage.setItem('rto_agents_db', JSON.stringify(db0)); } catch (e) {}
+      return;
+    }
+    if (!ksAgentAllowed(res.d)) { _ksCloudAgent = null; ksHideAgentBanners(); return; }
+    var p = ksAgentPayload(res.d, _ksLocalAgentFromURL());
+    if (!p) return;
+    _ksCloudAgent = p;
+    try { var c = ksSafeJSON('rto_agents_db', {}); if (k) { c[k] = p; localStorage.setItem('rto_agents_db', JSON.stringify(c)); } } catch (e) {}
+    initAgentBanner();
+  }).catch(function (e) { console.warn('[RTO Agent] banner lookup failed:', e && e.message); });
+}
+function getAgentFromURL() {
+  if (_ksCloudAgent !== undefined) return _ksCloudAgent;
+  return _ksLocalAgentFromURL();
+}
+
+
+/* ════════════════════════════════════════════════════════════
    PAGE NAVIGATION
 ════════════════════════════════════════════════════════════ */
 function showPage(id) {
@@ -2969,8 +3324,8 @@ function showPage(id) {
   if (page) page.classList.add('active');
   document.querySelectorAll(`[data-page="${id}"]`).forEach(el => el.classList.add('active'));
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  if (id === 'practice') renderPractice();
-  if (id === 'dashboard') renderDashboard();
+  if (id === 'practice') { renderPractice(); ksTry(ksUpdatePracticeBar); }
+  if (id === 'dashboard') { renderDashboard(); ksTry(ksRenderCatAccuracy); }
 
   /* ── Hide top agent banner during exam/practice — inline banner is shown instead ── */
   if (id === 'test-active') {
@@ -3126,6 +3481,10 @@ function renderPractice() {
 
 function answerPractice(qId, optIdx) {
   appState.selectedAnswers[qId] = optIdx;
+  if (!appState.practiceSession) appState.practiceSession = {};
+  if (appState.practiceSession[qId] === undefined) appState.practiceSession[qId] = optIdx;
+  if (!appState.practiceStart) appState.practiceStart = Date.now();
+  ksTry(ksUpdatePracticeBar);
   renderPractice();
 }
 
@@ -3306,76 +3665,31 @@ function submitTest() {
   /* ── Exit exam mode: restore header + banners ── */
   document.body.classList.remove('exam-mode');
   clearInterval(appState.timerInterval);
-  /* Use dynamic start time stored in appState — fallback to TEST_DURATION for old sessions */
-  const startSecs = appState.testStartSecs || TEST_DURATION;
-  const timeTaken = startSecs - appState.timeLeft;
-  const m = Math.floor(timeTaken / 60), s = timeTaken % 60;
-  const timeStr = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  closeModal();
+  var qs = appState.testQuestions || [];
+  if (!qs.length) { showPage('test-setup'); return; }
+  /* Double-submit guard (timer end + manual submit) */
+  if (appState._submittedRef === qs) { showPage('result'); return; }
+  appState._submittedRef = qs;
 
-  let correct = 0, wrong = 0, skipped = 0;
-  appState.testQuestions.forEach((q, i) => {
-    if (appState.testAnswers[i] === undefined) skipped++;
-    else if (appState.testAnswers[i] === q.answer) correct++;
-    else wrong++;
-  });
+  var startSecs = appState.testStartSecs || TEST_DURATION;
+  var timeTaken = Math.max(0, startSecs - (appState.timeLeft || 0));
+  var m = Math.floor(timeTaken / 60), sec = timeTaken % 60;
+  var timeStr = String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');
 
-  const total = appState.testQuestions.length;
-  const pct = Math.round((correct / total) * 100);
-  const passed = pct >= PASS_SCORE;
-  const lang = appState.lang;
+  var items = qs.map(function (q, i) { return { q: q, userAns: appState.testAnswers[i] }; });
+  var T = ksTally(items);
 
-  appState.lastResult = { correct, wrong, skipped, total, pct, passed };
+  /* Save history — storage errors must never block the result screen */
+  try {
+    var rec = { date: new Date().toLocaleDateString('en-IN'), pct: T.pct, correct: T.correct, wrong: T.wrong, skipped: T.skipped, total: T.total, time: timeStr, passed: T.passed };
+    appState.history.unshift(rec);
+    if (appState.history.length > 20) appState.history = appState.history.slice(0, 20);
+    localStorage.setItem('rto_history', JSON.stringify(appState.history));
+  } catch (e) { console.warn('[RTO] history save failed:', e && e.message); }
+  ksTry(function () { ksSaveCatStats(items); });
 
-  // Save history
-  const rec = { date: new Date().toLocaleDateString('en-IN'), pct, correct, wrong, skipped, total, time: timeStr, passed };
-  appState.history.unshift(rec);
-  if (appState.history.length > 20) appState.history = appState.history.slice(0, 20);
-  localStorage.setItem('rto_history', JSON.stringify(appState.history));
-
-  // Render result
-  document.getElementById('result-hero').className = 'result-hero ' + (passed ? 'pass' : 'fail');
-  document.getElementById('result-score').textContent = pct + '%';
-  document.getElementById('result-label').textContent = passed ? t('result.passed', lang) : t('result.failed', lang);
-  document.getElementById('result-sub').textContent = passed
-    ? `Congratulations! You scored ${pct}%. You are ready for the RTO exam!`
-    : `You scored ${pct}%. Pass mark is ${PASS_SCORE}%. Keep practicing!`;
-  document.getElementById('r-correct').textContent = correct;
-  document.getElementById('r-wrong').textContent = wrong;
-  document.getElementById('r-time').textContent = timeStr;
-
-  // WhatsApp result share
-  document.getElementById('wa-result-btn').onclick = () => shareResult(pct, correct, wrong, skipped);
-
-  // Draw donut chart
-  drawDonut('donut-chart', { correct, wrong, skipped });
-
-  // Draw bar chart if history
-  if (appState.history.length > 1) {
-    document.getElementById('history-bar-wrap').style.display = 'block';
-    drawBarChart('bar-chart', appState.history.slice(0, 5).reverse());
-  }
-
-  // Review list
-  const letters = ['A','B','C','D'];
-  document.getElementById('review-list').innerHTML = appState.testQuestions.map((q, i) => {
-    const userAns = appState.testAnswers[i];
-    const isRight = userAns === q.answer;
-    const isSkipped = userAns === undefined;
-    return `<div class="review-item">
-      <div class="r-q">${i+1}. ${q.question}</div>
-      <div class="r-ans">
-        <span class="badge ${isSkipped ? 'badge-skip' : isRight ? 'badge-correct' : 'badge-wrong'}">
-          ${isSkipped ? '⏭️ Skipped' : isRight ? '✅ Correct' : '❌ Wrong'}
-        </span>
-        <span style="font-size:0.78rem;color:var(--muted)">
-          ${isSkipped ? '' : `Your: ${letters[userAns]}. ${q.options[userAns]} | `}
-          ✅ Correct: ${letters[q.answer]}. ${q.options[q.answer]}
-        </span>
-      </div>
-    </div>`;
-  }).join('');
-
-  showPage('result');
+  ksRenderResult({ kind: 'mock', items: items, timeStr: timeStr, secs: timeTaken, tally: T });
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -3433,7 +3747,7 @@ function drawBarChart(canvasId, history) {
     ctx.fillStyle = '#64748b'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
     ctx.fillText(`${rec.pct}%`, x + barW/2, H - barH - 24);
     ctx.fillStyle = '#94a3b8'; ctx.font = '9px sans-serif';
-    const d = rec.date.split('/'); ctx.fillText(d[0]+'/'+d[1], x + barW/2, H - 5);
+    const d = String(rec.date || '').split('/'); ctx.fillText(d.length > 1 ? d[0]+'/'+d[1] : (d[0] || ''), x + barW/2, H - 5);
   });
 }
 
@@ -3877,7 +4191,7 @@ function saveAgentState() {
 }
 
 /* Read URL parameters for agent branding — works on ALL browsers/devices (cross-browser) */
-function getAgentFromURL() {
+function _ksLocalAgentFromURL() {
   /* ══════════════════════════════════════════════════════════════
      UNIVERSAL CROSS-BROWSER AGENT LINK SYSTEM v2
      ── Works on Chrome, Firefox, Edge, Safari, Opera, Mobile ──
@@ -4260,15 +4574,34 @@ function submitAgentReg() {
     filtered.push(data);
     localStorage.setItem('rto_admin_pending', JSON.stringify(filtered));
   } catch(e) {}
+  /* Send to admin panel (Firestore) so it works across devices/browsers */
+  ksSyncAgentToCloud(true);
 }
 
 /* ── Poll for admin approval every 30s ───────────────────── */
 function pollForApproval() {
   if (!agentData) return;
+  ksSyncAgentToCloud(false);   /* retry cloud registration if it failed earlier */
+  var localMatch = null;
   try {
-    const pending = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
-    const match = pending.find(function(p){ return p.refId === agentData.refId; });
-    if (!match) return;
+    var pendingL = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
+    localMatch = pendingL.find(function(p){ return p.refId === agentData.refId; }) || null;
+  } catch(e) {}
+  var db = ksDB();
+  if (db && agentData.refId) {
+    db.collection(KS_AGENT_COL).doc(agentData.refId).get().then(function(snap) {
+      var d = snap && snap.exists ? snap.data() : null;
+      if (d && d.status) { d.refId = agentData.refId; ksApplyApproval(d); }
+      else ksApplyApproval(localMatch);
+    }).catch(function() { ksApplyApproval(localMatch); });
+  } else {
+    ksApplyApproval(localMatch);
+  }
+}
+
+function ksApplyApproval(match) {
+  if (!agentData || !match) return;
+  try {
 
     if (match.status === 'approved') {
       /* Detect RE-APPROVAL: admin edited data or changed expiry and re-approved.
@@ -4328,6 +4661,8 @@ function pollForApproval() {
   } catch(e) {}
 }
 setInterval(pollForApproval, 30000);
+setTimeout(pollForApproval, 1500);   /* check immediately after page load */
+document.addEventListener('visibilitychange', function() { if (!document.hidden) pollForApproval(); });
 
 function resetAgentReg() {
   if (!confirm('Cancel your registration? This will delete your agent data.')) return;
@@ -4480,8 +4815,10 @@ function generateAgentLink() {
     localStorage.setItem('rto_agents_db', JSON.stringify(db2));
   } catch(e) {}
 
-  /* Return SHORT clean link — no &d= — looks professional when shared */
-  return baseURL + '?k=' + code;
+  /* Publish short code to cloud (best effort) */
+  ksPublishAgentLink(code);
+  /* Short link + refId → receiver's device looks the agent up in the cloud (works on ANY browser/device) */
+  return baseURL + '?k=' + code + (agentData.refId ? '&r=' + encodeURIComponent(agentData.refId) : '');
 }
 
 /* Primary shareable link — same as generateAgentLink */
@@ -4692,6 +5029,7 @@ document.getElementById('reg-modal').addEventListener('click', function(e) {
 loadAgentState();
 initAgentBanner();
 renderAgentSection();
+ksVerifyLinkAgent();   /* receiver: verify agent from cloud → banner on ANY device */
 
 // Auto-cycle messages every 7s if approved
 setInterval(function() {
