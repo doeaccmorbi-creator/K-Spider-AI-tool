@@ -1413,6 +1413,7 @@ gtag('config', 'G-PLBHWMHEC1');
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn btn-sm" onclick="openRegModal()" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);">✏️ Edit Profile</button>
             <button class="btn btn-sm" onclick="ksPreviewSplash()" style="background:#f59e0b;color:#1e293b;border:none;font-weight:700;">🎨 Preview Ad Popup</button>
+            <button class="btn btn-sm" onclick="ksTestLink()" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.85);border:1px solid rgba(255,255,255,.25);">🔍 Test My Link</button>
           </div>
           <p style="font-size:.7rem;color:rgba(255,255,255,.35);margin-top:10px;text-align:center;">Your link shows your ad popup first on any browser or device — then the receiver can use the full tool</p>
         </div>
@@ -1433,7 +1434,7 @@ gtag('config', 'G-PLBHWMHEC1');
             <span>Powered by</span>
             <a href="https://www.kspiderai.in" target="_blank" rel="noopener">www.kspiderai.in</a>
           </div>
-          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r4</div>
+          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r5</div>
         </div>
         <div class="footer-col">
           <h4>Quick Links</h4>
@@ -1786,6 +1787,7 @@ gtag('config', 'G-PLBHWMHEC1');
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openRegModal()">✏️ Edit Profile</button>
           <button class="btn btn-primary btn-sm" onclick="ksPreviewSplash()">🎨 Preview Ad Popup</button>
+          <button class="btn btn-outline btn-sm" onclick="ksTestLink()">🔍 Test My Link</button>
         </div>
       </div>
     </div>
@@ -2986,7 +2988,7 @@ const TEST_DURATION = 1200; // 20 min in seconds
     };
   } catch (e) {}
 })();
-var KS_BUILD = '2026-09-20 · r4';
+var KS_BUILD = '2026-09-20 · r5';
 var _ksErrs = [];
 
 /* ════════════════════════════════════════════════════════════
@@ -3260,7 +3262,7 @@ function ksPublishAgentLink(code) {
   _ksPubTried[code] = true;
   var db = ksDB(); if (!db) return;
   db.collection(KS_AGENT_COL).doc(agentData.refId)
-    .set({ _shortCode: code, linkGeneratedAt: new Date().toISOString() }, { merge: true })
+    .update({ _shortCode: code, linkGeneratedAt: new Date().toISOString() })   /* update (not set) so it can never create a bare record */
     .then(function () { agentData._cloudCode = code; saveAgentState(); })
     .catch(function () {});
 }
@@ -3516,6 +3518,25 @@ function ksPreviewSplash() {
   p.refId = agentData.refId || '';
   ksCloseAgentSplash();
   ksAgentSplash(p, true);
+}
+
+/* Agent-side self check: tells the agent exactly whether their link will show the ad popup on OTHER devices */
+function ksTestLink() {
+  if (!agentData || !agentData.refId) { showToast('Pehle registration complete karein', 'error'); return; }
+  var db = ksDB();
+  if (!db) { alert('❌ Cloud (Firestore) load nahi hua — internet check karke dobara try karein.'); return; }
+  db.collection(KS_AGENT_COL).doc(agentData.refId).get().then(function (s) {
+    var d = s.exists ? (s.data() || {}) : null;
+    var msg;
+    if (!d) msg = '❌ Cloud me aapka record nahi mila.\nAdmin panel (admin.html) kholke "RTO Agents" section kholein, phir yahan dobara Test Link dabayein.';
+    else if (!d.name) msg = '⚠️ Cloud record adhura hai (details missing), isliye doosre device par popup nahi dikhega.\nAdmin ko latest admin.html kholke "RTO Agents" section kholna hoga — record apne aap poora ho jayega. Phir dobara Test Link dabayein.';
+    else if (d.status !== 'approved') msg = '⏳ Status: ' + (d.status || 'pending') + ' — admin approval abhi baaki hai.';
+    else if (d._suspended || d._expired || (d._expireDate && new Date() > new Date(d._expireDate))) msg = '⛔ Aapki link admin ne suspend kiya hai ya expire ho gayi hai.';
+    else msg = '✅ Sab theek hai! Is link ko kholne wale ko pehle aapka ad popup dikhega, phir poora tool.';
+    alert(msg);
+  }).catch(function (e) {
+    alert('❌ Cloud read error: ' + (e && e.message ? e.message : e) + '\n(Firestore rules check karein: rto_agent_requests par public read allow hona chahiye.)');
+  });
 }
 
 
