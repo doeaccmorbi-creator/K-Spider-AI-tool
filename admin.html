@@ -4649,6 +4649,7 @@ function startRealtimeListeners() {
         var map = {};
         localAgents.forEach(function(a) { if (a.refId) map[a.refId] = a; });
         fsAgents.forEach(function(a)    { if (a.refId) map[a.refId] = a; });
+        try { _rtoRepairPartialRecords(fsAgents, localAgents); } catch(eRep) {}
         allAgentData = Object.values(map);
         try { localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData)); } catch(e2) {}
         var pendingCount = allAgentData.filter(function(a) { return a.status === 'pending'; }).length;
@@ -9261,6 +9262,7 @@ function loadAgentRequests() {
         var map = {};
         localAgents.forEach(function(a){ if (a.refId) map[a.refId] = a; });
         fsAgents.forEach(function(a)   { if (a.refId) map[a.refId] = a; });
+        try { _rtoRepairPartialRecords(fsAgents, localAgents); } catch(eRep) {}
         allAgentData = Object.values(map);
         try { localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData)); } catch(e2) {}
         renderAgentsTable(allAgentData);
@@ -10370,6 +10372,52 @@ function deleteAgent(refId) {
   showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
 }
 
+var _RTO_REG_FIELDS = ['name','company','mobile','email','city','address','website','logo','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps','services'];
+/* What the RTO tool + receivers read from Firestore: admin decision + the agent's full details.
+   (Details are included so the promo link works on ANY device, even for agents that
+    were first approved from this browser only.) */
+function _rtoCloudPayload(agent) {
+  var p = {
+    refId:        agent.refId,
+    status:       agent.status       || 'pending',
+    approvedAt:   agent.approvedAt   || null,
+    rejectedAt:   agent.rejectedAt   || null,
+    rejectReason: agent.rejectReason || '',
+    _suspended:   agent._suspended   || false,
+    _expired:     agent._expired     || false,
+    _expireDate:  agent._expireDate  || null,
+    updatedAt:    new Date().toISOString(),
+    updatedBy:    'admin'
+  };
+  if (agent._shortCode) p._shortCode = agent._shortCode;   /* never overwrite the code with an empty value */
+  if (agent.name) {
+    _RTO_REG_FIELDS.forEach(function(f) { p[f] = agent[f] || ''; });
+    p.submittedAt = agent.submittedAt || new Date().toISOString();
+  }
+  return p;
+}
+
+/* Cloud record exists but has no agent details (created earlier by a status-only sync)
+   -> complete it from the full copy this browser holds, so receivers see the ad popup. */
+var _rtoRepairDone = {};
+function _rtoRepairPartialRecords(fsAgents, localAgents) {
+  if (!db) return;
+  var have = {};
+  (fsAgents || []).forEach(function(a) { if (a && a.refId) have[a.refId] = true; });
+  (localAgents || []).forEach(function(a) {
+    if (!a || !a.refId || !a.name || have[a.refId] || _rtoRepairDone[a.refId]) return;
+    _rtoRepairDone[a.refId] = true;
+    var ref = db.collection('rto_agent_requests').doc(a.refId);
+    ref.get().then(function(s) {
+      if (s.exists && !((s.data() || {}).name)) {
+        return ref.set(_rtoCloudPayload(a), { merge: true }).then(function() {
+          console.info('[RTO Agents] completed cloud record for ' + a.refId);
+        });
+      }
+    }).catch(function(e) { console.warn('[RTO Agents] repair skipped for ' + a.refId + ':', e.message); });
+  });
+}
+
 function saveAgentsToStorage() {
   localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData));
   // Sync admin actions (approve/reject/suspend/delete) to Firestore
@@ -10381,20 +10429,7 @@ function _syncAgentsToFirestore() {
   if (!db) return;
   allAgentData.forEach(function(agent) {
     if (!agent.refId) return;
-    var upd = {
-      status:       agent.status       || 'pending',
-      approvedAt:   agent.approvedAt   || null,
-      rejectedAt:   agent.rejectedAt   || null,
-      rejectReason: agent.rejectReason || '',
-      _suspended:   agent._suspended   || false,
-      _expired:     agent._expired     || false,
-      _expireDate:  agent._expireDate  || null,
-      updatedAt:    new Date().toISOString(),
-      updatedBy:    'admin'
-    };
-    /* keep the agent's short code — never overwrite it with an empty value */
-    if (agent._shortCode) upd._shortCode = agent._shortCode;
-    db.collection('rto_agent_requests').doc(agent.refId).set(upd, { merge: true }).catch(function(e) {
+    db.collection('rto_agent_requests').doc(agent.refId).set(_rtoCloudPayload(agent), { merge: true }).catch(function(e) {
       console.warn('[RTO Agents] Firestore sync failed for ' + agent.refId + ':', e.message);
       var now = Date.now();
       if (!window._rtoSyncWarnAt || now - window._rtoSyncWarnAt > 8000) {
