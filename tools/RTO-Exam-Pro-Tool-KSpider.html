@@ -1426,6 +1426,7 @@ gtag('config', 'G-PLBHWMHEC1');
           <div style="display:flex;gap:10px;flex-wrap:wrap;">
             <button class="btn btn-sm" onclick="openRegModal()" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);">✏️ Edit Profile</button>
             <button class="btn btn-sm" onclick="previewAgentLink()" style="background:rgba(255,255,255,.12);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.2);">👁️ Preview My Link</button>
+            <button class="btn btn-sm" onclick="ksPreviewSplash()" style="background:#f59e0b;color:#1e293b;border:none;font-weight:700;">🎨 Preview Ad Popup</button>
           </div>
           <p style="font-size:.7rem;color:rgba(255,255,255,.35);margin-top:10px;text-align:center;">Your link contains all your details encoded — works on ANY browser, device, or platform</p>
         </div>
@@ -1446,7 +1447,7 @@ gtag('config', 'G-PLBHWMHEC1');
             <span>Powered by</span>
             <a href="https://www.kspiderai.in" target="_blank" rel="noopener">www.kspiderai.in</a>
           </div>
-          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-19 · r2</div>
+          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r3</div>
         </div>
         <div class="footer-col">
           <h4>Quick Links</h4>
@@ -1799,6 +1800,7 @@ gtag('config', 'G-PLBHWMHEC1');
         <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="openRegModal()">✏️ Edit Profile</button>
           <button class="btn btn-outline btn-sm" onclick="previewAgentLink()">👁️ Preview My Link</button>
+          <button class="btn btn-primary btn-sm" onclick="ksPreviewSplash()">🎨 Preview Ad Popup</button>
         </div>
       </div>
     </div>
@@ -2999,7 +3001,7 @@ const TEST_DURATION = 1200; // 20 min in seconds
     };
   } catch (e) {}
 })();
-var KS_BUILD = '2026-09-19 · r2';
+var KS_BUILD = '2026-09-20 · r3';
 var _ksErrs = [];
 
 /* ════════════════════════════════════════════════════════════
@@ -3307,6 +3309,7 @@ function ksHideAgentBanners() {
     var el = document.getElementById(id); if (el) el.style.display = 'none';
   });
   document.body.classList.remove('has-agent-bottom');
+  ksCloseAgentSplash();
 }
 function ksVerifyLinkAgent() {
   var params; try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
@@ -3341,6 +3344,151 @@ function ksVerifyLinkAgent() {
 function getAgentFromURL() {
   if (_ksCloudAgent !== undefined) return _ksCloudAgent;
   return _ksLocalAgentFromURL();
+}
+
+/* ════════════════════════════════════════════════════════════
+   AGENT AD POPUP (splash) — shown FIRST when someone opens an
+   RTO Agent's promo link. Receiver closes it → full tool access.
+════════════════════════════════════════════════════════════ */
+var _ksSplashDone = false;
+
+function ksInjectSplashCSS() {
+  if (document.getElementById('ksp-css')) return;
+  var st = document.createElement('style'); st.id = 'ksp-css';
+  st.textContent =
+    'html.ksp-lock,html.ksp-lock body{overflow:hidden!important}' +
+    '.ksp-ov{position:fixed;inset:0;z-index:100000;display:flex;align-items:center;justify-content:center;padding:14px;background:rgba(7,12,30,.82);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);overflow-y:auto;font-family:inherit}' +
+    '.ksp-card{position:relative;width:100%;max-width:470px;max-height:94vh;overflow-y:auto;border-radius:22px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.55);animation:kspPop .35s cubic-bezier(.2,.9,.3,1.2)}' +
+    '@keyframes kspPop{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}' +
+    '@media (prefers-reduced-motion:reduce){.ksp-card{animation:none}}' +
+    '.ksp-top{position:relative;padding:26px 20px 22px;color:#fff;text-align:center;background:linear-gradient(135deg,#0b1f5c 0%,#1d4ed8 60%,#3b82f6 100%);border-bottom:4px solid #f59e0b}' +
+    '.ksp-ad{position:absolute;top:12px;left:14px;font-size:.62rem;font-weight:800;letter-spacing:.09em;padding:3px 9px;border-radius:99px;background:rgba(255,255,255,.16);color:#fde68a;text-transform:uppercase}' +
+    '.ksp-x{position:absolute;top:8px;right:10px;width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:rgba(255,255,255,.18);color:#fff;font-size:1.05rem;line-height:1;display:flex;align-items:center;justify-content:center}' +
+    '.ksp-x:hover{background:rgba(255,255,255,.32)}' +
+    '.ksp-logo{width:82px;height:82px;margin:10px auto 12px;border-radius:20px;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;overflow:hidden;font-size:2.4rem}' +
+    '.ksp-logo img{width:100%;height:100%;object-fit:contain;background:#fff}' +
+    '.ksp-company{font-size:1.45rem;font-weight:800;line-height:1.2;margin:0 0 4px}' +
+    '.ksp-name{font-size:.9rem;opacity:.9;margin:0 0 10px}' +
+    '.ksp-badge{display:inline-block;font-size:.72rem;font-weight:800;padding:5px 12px;border-radius:99px;background:#f59e0b;color:#1e293b}' +
+    '.ksp-body{padding:16px 18px 6px;color:#0f172a}' +
+    '.ksp-lead{font-size:.86rem;line-height:1.5;color:#334155;text-align:center;margin:0 0 12px}' +
+    '.ksp-chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:0 0 14px}' +
+    '.ksp-chip{font-size:.72rem;font-weight:700;padding:5px 11px;border-radius:99px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe}' +
+    '.ksp-info{display:grid;gap:8px;margin:0 0 14px}' +
+    '.ksp-row{display:flex;gap:10px;align-items:flex-start;font-size:.83rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:9px 12px;word-break:break-word}' +
+    '.ksp-row b{flex:0 0 auto}' +
+    '.ksp-cta{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:0 0 10px}' +
+    '.ksp-btn{display:flex;align-items:center;justify-content:center;gap:6px;padding:12px 10px;border-radius:12px;font-weight:800;font-size:.9rem;text-decoration:none;border:none;cursor:pointer;text-align:center}' +
+    '.ksp-call{background:linear-gradient(135deg,#f59e0b,#f97316);color:#1e293b}' +
+    '.ksp-wa{background:#22c55e;color:#fff}' +
+    '.ksp-more{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:0 0 12px}' +
+    '.ksp-sm{font-size:.74rem;font-weight:700;padding:7px 12px;border-radius:99px;text-decoration:none;background:#f1f5f9;color:#1e293b;border:1px solid #e2e8f0}' +
+    '.ksp-foot{padding:6px 18px 18px;text-align:center}' +
+    '.ksp-go{width:100%;padding:14px;border:none;border-radius:14px;cursor:pointer;font-weight:800;font-size:1rem;color:#fff;background:linear-gradient(135deg,#1d4ed8,#2563eb);box-shadow:0 8px 20px rgba(37,99,235,.35)}' +
+    '.ksp-go:hover{filter:brightness(1.08)}' +
+    '.ksp-note{font-size:.68rem;color:#94a3b8;margin-top:8px}';
+  document.head.appendChild(st);
+}
+
+function ksCloseAgentSplash() {
+  var ov = document.getElementById('ks-agent-splash');
+  if (ov && ov.parentNode) ov.parentNode.removeChild(ov);
+  document.documentElement.classList.remove('ksp-lock');
+  document.removeEventListener('keydown', _ksSplashKey, true);
+}
+function _ksSplashKey(e) { if (e.key === 'Escape') ksCloseAgentSplash(); }
+
+function ksAgentSplash(ua, force) {
+  if (!ua) return;
+  if (!force && _ksSplashDone) return;
+  if (document.getElementById('ks-agent-splash')) return;
+  if (!force && document.body.classList.contains('exam-mode')) return;
+  _ksSplashDone = true;
+  ksInjectSplashCSS();
+
+  function el(tag, cls, txt) { var e = document.createElement(tag); if (cls) e.className = cls; if (txt !== undefined && txt !== null) e.textContent = txt; return e; }
+  function link(href, label, cls) {
+    var a = el('a', cls, label); a.href = href;
+    if (href.indexOf('tel:') !== 0 && href.indexOf('mailto:') !== 0) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+    return a;
+  }
+  var digits = String(ua.mobile || '').replace(/\D/g, '');
+  var pretty = digits.length === 10 ? '+91 ' + digits.slice(0, 5) + ' ' + digits.slice(5) : (ua.mobile || '');
+  var biz = ua.company || ua.name || 'RTO Agent';
+
+  var ov = el('div', 'ksp-ov'); ov.id = 'ks-agent-splash';
+  ov.setAttribute('role', 'dialog'); ov.setAttribute('aria-modal', 'true'); ov.setAttribute('aria-label', biz);
+  var card = el('div', 'ksp-card');
+
+  /* ── Header: brand block ── */
+  var top = el('div', 'ksp-top');
+  top.appendChild(el('span', 'ksp-ad', 'Ad · Official RTO Agent'));
+  var x = el('button', 'ksp-x', '✕'); x.type = 'button'; x.setAttribute('aria-label', 'Close ad');
+  x.onclick = ksCloseAgentSplash; top.appendChild(x);
+  var logo = el('div', 'ksp-logo', '🏢');
+  if (ua.logo && String(ua.logo).indexOf('https://') === 0) {
+    var img = document.createElement('img'); img.alt = biz; img.src = ua.logo;
+    img.onerror = function () { if (img.parentNode) img.parentNode.removeChild(img); logo.textContent = '🏢'; };
+    logo.textContent = ''; logo.appendChild(img);
+  }
+  top.appendChild(logo);
+  top.appendChild(el('h2', 'ksp-company', biz));
+  if (ua.name && ua.company) top.appendChild(el('p', 'ksp-name', ua.name));
+  top.appendChild(el('span', 'ksp-badge', '✅ Verified RTO Agent' + (ua.city ? ' · ' + ua.city : '')));
+  card.appendChild(top);
+
+  /* ── Body: offer + details + actions ── */
+  var body = el('div', 'ksp-body');
+  body.appendChild(el('p', 'ksp-lead', 'Need help with your Driving Licence or RTO work? Contact us today — we are happy to guide you.'));
+  var svc = String(ua.services || '').split(/[,|•\n]+/).map(function (x) { return x.trim(); }).filter(Boolean).slice(0, 6);
+  if (svc.length) {
+    var chips = el('div', 'ksp-chips');
+    svc.forEach(function (s) { chips.appendChild(el('span', 'ksp-chip', '🛠️ ' + s.slice(0, 32))); });
+    body.appendChild(chips);
+  }
+  var info = el('div', 'ksp-info');
+  function row(icon, val) { if (!val) return; var r = el('div', 'ksp-row'); r.appendChild(el('b', '', icon)); r.appendChild(el('span', '', val)); info.appendChild(r); }
+  row('📞', pretty); row('📍', [ua.address, ua.city].filter(Boolean).join(', ')); row('✉️', ua.email);
+  if (info.childNodes.length) body.appendChild(info);
+
+  var cta = el('div', 'ksp-cta');
+  if (digits) cta.appendChild(link('tel:' + digits, '📞 Call Now', 'ksp-btn ksp-call'));
+  var waHref = ua.whatsapp ? sanitizeURL(ua.whatsapp)
+    : (digits.length === 10 ? 'https://wa.me/91' + digits + '?text=' + encodeURIComponent('Hello ' + biz + ', I found you on RTO Exam Pro and need help with my driving licence.') : '');
+  if (waHref && waHref !== '#') cta.appendChild(link(waHref, '💬 WhatsApp', 'ksp-btn ksp-wa'));
+  if (cta.childNodes.length) body.appendChild(cta);
+
+  var more = el('div', 'ksp-more');
+  [['website', '🌐 Website'], ['gmaps', '🗺️ Map'], ['facebook', '📘 Facebook'], ['instagram', '📸 Instagram'], ['youtube', '▶️ YouTube'],
+   ['telegram', '✈️ Telegram'], ['linkedin', '💼 LinkedIn'], ['twitter', '🐦 X']].forEach(function (s) {
+    if (ua[s[0]]) { var h = sanitizeURL(ua[s[0]]); if (h !== '#') more.appendChild(link(h, s[1], 'ksp-sm')); }
+  });
+  if (more.childNodes.length) body.appendChild(more);
+  card.appendChild(body);
+
+  /* ── Footer: continue to the tool ── */
+  var foot = el('div', 'ksp-foot');
+  var go = el('button', 'ksp-go', 'Continue to RTO Exam Pro →'); go.type = 'button'; go.onclick = ksCloseAgentSplash;
+  foot.appendChild(go);
+  foot.appendChild(el('div', 'ksp-note', 'Free RTO exam practice · 300+ questions · 9 languages'));
+  card.appendChild(foot);
+
+  ov.appendChild(card);
+  document.body.appendChild(ov);
+  document.documentElement.classList.add('ksp-lock');
+  document.addEventListener('keydown', _ksSplashKey, true);
+  try { go.focus({ preventScroll: true }); } catch (e) {}
+  ksTry(function () { Analytics.log('agent_splash', { ref: ua.refId || '' }); });
+}
+
+/* Agent-side: instant preview of the ad popup (no new tab needed) */
+function ksPreviewSplash() {
+  if (!agentData) { showToast('Pehle registration complete karein', 'error'); return; }
+  var p = {};
+  KS_AGENT_FIELDS.forEach(function (f) { p[f] = agentData[f] || ''; });
+  p.refId = agentData.refId || '';
+  ksCloseAgentSplash();
+  ksAgentSplash(p, true);
 }
 
 
@@ -4530,6 +4678,8 @@ function initAgentBanner() {
     if (ua.city)   cp.push('📍 ' + ua.city);
     c2.textContent = cp.join('  •  ');
   }
+  /* Ad popup: shown FIRST when a receiver opens the agent's promo link */
+  ksTry(function () { ksAgentSplash(ua); });
 }
 
 /* ── Registration Modal ──────────────────────────────────── */
