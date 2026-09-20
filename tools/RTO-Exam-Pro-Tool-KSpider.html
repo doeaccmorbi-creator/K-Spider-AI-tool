@@ -1434,7 +1434,7 @@ gtag('config', 'G-PLBHWMHEC1');
             <span>Powered by</span>
             <a href="https://www.kspiderai.in" target="_blank" rel="noopener">www.kspiderai.in</a>
           </div>
-          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r5</div>
+          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r6</div>
         </div>
         <div class="footer-col">
           <h4>Quick Links</h4>
@@ -2988,7 +2988,7 @@ const TEST_DURATION = 1200; // 20 min in seconds
     };
   } catch (e) {}
 })();
-var KS_BUILD = '2026-09-20 · r5';
+var KS_BUILD = '2026-09-20 · r6';
 var _ksErrs = [];
 
 /* ════════════════════════════════════════════════════════════
@@ -3303,9 +3303,14 @@ function ksVerifyLinkAgent() {
   var params; try { params = new URLSearchParams(window.location.search); } catch (e) { return; }
   var k = (params.get('k') || '').toUpperCase().trim();
   var r = (params.get('r') || '').trim();
-  if (!k && !r) return;
-  var db = ksDB(); if (!db) return;
-  if (!_ksLocalAgentFromURL()) ksShowSplashLoader();   /* ad popup must come FIRST — hold the screen while the agent loads */
+  var _sa = false; try { _sa = window.matchMedia('(display-mode: standalone)').matches; } catch (e) {}
+  ksDbg('build ' + KS_BUILD + ' | k=' + k + ' | r=' + r + ' | standalone-app-window=' + _sa + ' | size=' + window.innerWidth + 'x' + window.innerHeight);
+  ksDbg('screen: ' + navigator.userAgent.slice(0, 90));
+  if (!k && !r) { ksDbg('no k/r in URL -> no agent link'); return; }
+  var db = ksDB(); if (!db) { ksDbg('FIRESTORE NOT AVAILABLE (firebase scripts blocked / offline)'); return; }
+  ksDbg('firestore: ok');
+  var _loc = _ksLocalAgentFromURL(); ksDbg('local cache: ' + (_loc ? ('HIT ' + _loc.name) : 'none (new device)'));
+  if (!_loc) ksShowSplashLoader();   /* ad popup must come FIRST — hold the screen while the agent loads */
   var col = db.collection(KS_AGENT_COL), req;
   if (r) {
     req = col.doc(r).get().then(function (s) { var d = s.exists ? s.data() : null; if (d && !d.refId) d.refId = s.id; return { found: !!d, d: d }; });
@@ -3317,19 +3322,26 @@ function ksVerifyLinkAgent() {
   }
   req.then(function (res) {
     ksRemoveSplashLoader();
+    ksDbg('cloud reply: found=' + res.found + (res.d ? (' | name=' + (res.d.name || 'MISSING') + ' | status=' + res.d.status + ' | suspended=' + !!res.d._suspended + ' | expired=' + !!res.d._expired + ' | expireDate=' + res.d._expireDate) : ''));
     if (!res.found) {
       if (res.legacy) return;                      /* old link, no cloud record — keep local behaviour */
       _ksCloudAgent = null; ksHideAgentBanners();  /* record deleted by admin */
       try { var db0 = ksSafeJSON('rto_agents_db', {}); delete db0[k]; localStorage.setItem('rto_agents_db', JSON.stringify(db0)); } catch (e) {}
       return;
     }
-    if (!ksAgentAllowed(res.d)) { _ksCloudAgent = null; ksHideAgentBanners(); return; }
+    if (!ksAgentAllowed(res.d)) { ksDbg('VERDICT: blocked (not approved / suspended / expired)'); _ksCloudAgent = null; ksHideAgentBanners(); return; }
     var p = ksAgentPayload(res.d, _ksLocalAgentFromURL());
-    if (!p) return;
+    if (!p) { ksDbg('VERDICT: cloud record has no agent details -> nothing to show'); return; }
+    ksDbg('VERDICT: approved -> building popup + banners');
     _ksCloudAgent = p;
     try { var c = ksSafeJSON('rto_agents_db', {}); if (k) { c[k] = p; localStorage.setItem('rto_agents_db', JSON.stringify(c)); } } catch (e) {}
     initAgentBanner();
-  }).catch(function (e) { ksRemoveSplashLoader(); console.warn('[RTO Agent] banner lookup failed:', e && e.message); });
+    ksDbg('popup in DOM: ' + !!document.getElementById('ks-agent-splash') + ' | top banner display: ' + (document.getElementById('apb-top-banner') ? getComputedStyle(document.getElementById('apb-top-banner')).display : 'n/a'));
+    setTimeout(function () {
+      var sp = document.getElementById('ks-agent-splash');
+      ksDbg('after 1.5s -> popup in DOM: ' + !!sp + (sp ? (' | visible: ' + (getComputedStyle(sp).display !== 'none') + ' | z=' + getComputedStyle(sp).zIndex) : ''));
+    }, 1500);
+  }).catch(function (e) { ksRemoveSplashLoader(); ksDbg('CLOUD ERROR: ' + (e && e.code ? e.code + ' — ' : '') + (e && e.message ? e.message : e)); console.warn('[RTO Agent] banner lookup failed:', e && e.message); });
 }
 function getAgentFromURL() {
   if (_ksCloudAgent !== undefined) return _ksCloudAgent;
@@ -3340,6 +3352,28 @@ function getAgentFromURL() {
    AGENT AD POPUP (splash) — shown FIRST when someone opens an
    RTO Agent's promo link. Receiver closes it → full tool access.
 ════════════════════════════════════════════════════════════ */
+
+/* ── On-screen diagnostics: open the promo link with &debug=1 to see what happens step by step
+      (DevTools are blocked on this site, so results are printed on the page itself) ── */
+var _ksDebugOn = false;
+try { _ksDebugOn = /[?&]debug=1(&|$)/.test(window.location.search); } catch (e) {}
+function ksDbg(m) {
+  if (!_ksDebugOn) return;
+  try {
+    var p = document.getElementById('ks-dbg');
+    if (!p) {
+      p = document.createElement('pre'); p.id = 'ks-dbg';
+      p.style.cssText = 'position:fixed;left:6px;right:6px;bottom:6px;max-height:44vh;overflow:auto;margin:0;padding:8px 10px;background:rgba(0,0,0,.9);color:#86efac;font:11px/1.4 monospace;z-index:2147483000;border-radius:8px;white-space:pre-wrap;word-break:break-all';
+      (document.body || document.documentElement).appendChild(p);
+    }
+    p.textContent += new Date().toISOString().slice(11, 23) + '  ' + m + '\n';
+  } catch (e) {}
+}
+if (_ksDebugOn) {
+  window.addEventListener('error', function (e) { ksDbg('JS ERROR: ' + (e && e.message)); });
+  window.addEventListener('unhandledrejection', function (e) { ksDbg('PROMISE ERROR: ' + (e && e.reason && e.reason.message ? e.reason.message : e.reason)); });
+}
+
 var _ksSplashDone = false;
 
 function ksInjectSplashCSS() {
@@ -3414,6 +3448,7 @@ function ksCloseAgentSplash() {
 function _ksSplashKey(e) { if (e.key === 'Escape') ksCloseAgentSplash(); }
 
 function ksAgentSplash(ua, force) {
+  ksDbg('ksAgentSplash called: ' + (ua ? ua.name : 'no agent') + ' force=' + !!force + ' done=' + _ksSplashDone);
   if (!ua) return;
   if (!force && _ksSplashDone) return;
   if (document.getElementById('ks-agent-splash')) return;
