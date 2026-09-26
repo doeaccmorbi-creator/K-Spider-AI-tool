@@ -335,9 +335,10 @@ function mountDeck(){
 
 /* ============================== AUTH =================================== */
 function renderAuth(){
-  const role = ROUTE.params.role || 'student';
+  let role = ROUTE.params.role || 'student';
+  if(role==='admin') role='student'; // DSA no longer has its own admin login — managed from KSpider admin.html now
   const mode = ROUTE.params.mode || 'login';
-  const roleLabels = {student:'Student', parent:'Parent', admin:'Admin', faculty:'Faculty'};
+  const roleLabels = {student:'Student', parent:'Parent', faculty:'Faculty'};
   return `
   <div class="auth-wrap">
     <div class="card auth-card">
@@ -346,15 +347,14 @@ function renderAuth(){
         <h2 style="font-size:20px">${mode==='signup'?'Create your account':'Welcome back'}</h2>
       </div>
       <div class="role-tabs">
-        ${['student','parent','admin','faculty'].map(r=>`<button class="role-tab ${r===role?'active':''}" onclick="go('auth',{role:'${r}',mode:'${mode}'})">${roleLabels[r]}</button>`).join('')}
+        ${['student','parent','faculty'].map(r=>`<button class="role-tab ${r===role?'active':''}" onclick="go('auth',{role:'${r}',mode:'${mode}'})">${roleLabels[r]}</button>`).join('')}
       </div>
       <form onsubmit="return handleAuth(event,'${role}')">
         ${mode==='signup'?`<div class="field"><label>Full name</label><input required id="authName" placeholder="Your name"></div>`:''}
         ${mode==='signup' && role==='student'?`<div class="field"><label>Class</label><select id="authClass"><option>11th</option><option>12th</option><option>Dropper</option></select></div>`:''}
         ${mode==='signup' && role==='parent'?`<div class="field"><label>Child's registered email</label><input required id="authChildEmail" placeholder="child@dsa.academy"></div>`:''}
         ${mode==='signup' && role==='faculty'?`<div class="field"><label>Subject you teach</label><select id="authSubject">${SUBJECTS.map(s=>`<option>${s}</option>`).join('')}</select></div>`:''}
-        ${role==='admin'?`<div class="demo-note" style="margin-bottom:14px">🔒 Admin access is restricted to one authorized account — this isn't a general signup tier.</div>`:''}
-        <div class="field"><label>Email</label><input required type="email" id="authEmail" placeholder="you@example.com" value="${ROUTE.params.prefillEmail || ''}"></div>
+        <div class="field"><label>Email</label><input required type="email" id="authEmail" placeholder="you@example.com"></div>
         <div class="field"><label>Password</label><input required type="password" id="authPass" placeholder="••••••••" minlength="6"></div>
         ${mode==='login' ? `<div style="text-align:right;margin:-6px 0 4px"><a onclick="sendPasswordReset()" style="font-size:12.5px;color:var(--green-600);font-weight:700;cursor:pointer">Forgot password?</a></div>` : ''}
         <button class="btn btn-primary btn-block" type="submit">${mode==='signup'?'Create account':'Log in'} →</button>
@@ -375,7 +375,7 @@ function renderAuth(){
       <div class="demo-note">${window.FIREBASE_ENABLED
         ? `🟢 <b>Live Mode:</b> Connected to Firebase — real accounts, real saved results.`
         : `⚡ <b>Demo Mode:</b> Firebase isn't connected yet, so any email + password works and takes you straight into the ${roleLabels[role]} dashboard.`}</div>
-      ${ROUTE.params.prefillEmail ? `<div class="demo-note" style="margin-top:8px">🔗 Signed in via K Spider — enter your DSA admin password to continue.</div>` : ''}
+
     </div>
   </div>`;
 }
@@ -2633,21 +2633,6 @@ function tryKspiderSSO(){
   }catch(e){ return false; }
 }
 
-/* Admin arriving from KSpider Admin panel (?ks_admin=1): prefill the email +
-   default to the Admin tab, but a real DSA admin password is still required. */
-function maybePrefillAdminFromKSpider(){
-  try{
-    const params = new URLSearchParams(window.location.search);
-    if(params.get('ks_admin') !== '1') return;
-    const ksUser = getKSpiderUser();
-    if(ksUser && ksUser.email){
-      ROUTE = {view:'auth', params:{role:'admin', prefillEmail: ksUser.email}};
-    } else {
-      ROUTE = {view:'auth', params:{role:'admin'}};
-    }
-  }catch(e){}
-}
-
 /* ============================== INIT ===================================== */
 /* ============================== PWA (INSTALL + OFFLINE SHELL) ============= */
 if('serviceWorker' in navigator){
@@ -2669,7 +2654,6 @@ function installApp(){
 }
 window.addEventListener('appinstalled', ()=>toast('DSA installed — find it on your home screen 🎉'));
 
-maybePrefillAdminFromKSpider();
 render();
 if(ROUTE.view==='landing') setTimeout(mountDeck, 30);
 tryKspiderSSO();
