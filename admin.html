@@ -2644,45 +2644,106 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
     </div><!-- /panel-vivaah-only -->
 
     <!-- ══════════════════════════════════════════════════════
-         DSA ADMIN — Dr. Shreyansh Academy live connection
+         DSA ADMIN — Dr. Shreyansh Academy, fully managed here
          ══════════════════════════════════════════════════════ -->
     <div class="panel" id="panel-dsa-admin">
       <div style="padding:16px 20px 12px;border-bottom:1px solid var(--br);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
         <div>
           <div style="font-size:1rem;font-weight:700;color:var(--t1)">🩺 Dr. Shreyansh Academy — Admin</div>
-          <div style="font-size:.78rem;color:var(--t3);margin-top:3px">Live connection to the DSA platform's own Firebase project</div>
+          <div style="font-size:.78rem;color:var(--t3);margin-top:3px">Full control — students, faculty, doubts, announcements — no separate DSA login</div>
         </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <button class="btn btn-g btn-sm" onclick="loadDsaAdmin()">🔄 Refresh</button>
-          <a class="btn btn-sm" style="background:#0E2148;color:#fff;text-decoration:none" href="https://www.kspiderai.in/tools/dsa-academy/index.html?ks_admin=1" target="_blank">🚀 Open Full DSA Admin Panel →</a>
+        <div id="dsa-gate-status" style="font-size:.78rem;color:var(--t3)"></div>
+      </div>
+
+      <!-- Sign-in gate: shown until connected with the authorized DSA admin Google account -->
+      <div id="dsa-auth-gate" style="padding:40px 20px;text-align:center">
+        <div style="font-size:2rem;margin-bottom:10px">🔒</div>
+        <div style="font-size:.9rem;color:var(--t2);margin-bottom:16px">Connect once with the DSA admin Google account to manage everything below.</div>
+        <button class="btn btn-g" onclick="dsaSignIn()">🔑 Connect DSA Admin (Google)</button>
+      </div>
+
+      <!-- Main content: hidden until signed in -->
+      <div id="dsa-admin-content" style="display:none">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 16px 0">
+          <button class="btn btn-sm" id="dsa-tab-overview" onclick="dsaShowTab('overview')" style="background:#2563eb;color:#fff">📊 Overview</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-students" onclick="dsaShowTab('students')">🎓 Students</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-faculty" onclick="dsaShowTab('faculty')">🧑‍🏫 Faculty</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-doubts" onclick="dsaShowTab('doubts')">💬 Doubts</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-announce" onclick="dsaShowTab('announce')">📣 Announcements</button>
+          <button class="btn btn-sm btn-gh" onclick="dsaRefreshAll()" style="margin-left:auto">🔄 Refresh</button>
+        </div>
+
+        <!-- OVERVIEW -->
+        <div id="dsa-sub-overview" class="dsa-sub">
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:16px">
+            <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.6rem;font-weight:800;color:#2563eb" id="dsa-stat-students">—</div>
+              <div style="font-size:.72rem;color:var(--t3)">Registered Students</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.6rem;font-weight:800;color:#16a34a" id="dsa-stat-attempts">—</div>
+              <div style="font-size:.72rem;color:var(--t3)">Test Attempts</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.6rem;font-weight:800;color:#f59e0b" id="dsa-stat-pending">—</div>
+              <div style="font-size:.72rem;color:var(--t3)">Pending Doubts</div>
+            </div>
+            <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
+              <div style="font-size:1.6rem;font-weight:800;color:#9333ea" id="dsa-stat-revenue">₹0</div>
+              <div style="font-size:.72rem;color:var(--t3)">Fees Collected</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STUDENTS -->
+        <div id="dsa-sub-students" class="dsa-sub" style="display:none">
+          <div style="padding:14px 16px 0">
+            <input type="text" id="dsa-student-search" placeholder="🔍 Search by name or email..."
+                   style="padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);font-size:.8rem;width:100%;max-width:320px"
+                   oninput="dsaFilterStudents()">
+          </div>
+          <div style="overflow-x:auto;padding:14px 16px">
+            <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+              <thead><tr style="text-align:left;color:var(--t3)">
+                <th style="padding:8px">Name</th><th style="padding:8px">Class</th><th style="padding:8px">Plan</th>
+                <th style="padding:8px">Fees due</th><th style="padding:8px">Status</th><th style="padding:8px"></th>
+              </tr></thead>
+              <tbody id="dsa-students-body"><tr><td colspan="6" style="text-align:center;padding:24px;color:var(--t3)">Loading…</td></tr></tbody>
+            </table>
+          </div>
+          <div id="dsa-student-detail" style="display:none;margin:0 16px 16px;padding:16px;background:var(--bg2);border-radius:10px"></div>
+        </div>
+
+        <!-- FACULTY -->
+        <div id="dsa-sub-faculty" class="dsa-sub" style="display:none">
+          <div style="overflow-x:auto;padding:16px">
+            <table style="width:100%;border-collapse:collapse;font-size:.82rem">
+              <thead><tr style="text-align:left;color:var(--t3)">
+                <th style="padding:8px">Name</th><th style="padding:8px">Subject</th><th style="padding:8px">Status</th><th style="padding:8px"></th>
+              </tr></thead>
+              <tbody id="dsa-faculty-body"><tr><td colspan="4" style="text-align:center;padding:24px;color:var(--t3)">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- DOUBTS -->
+        <div id="dsa-sub-doubts" class="dsa-sub" style="display:none">
+          <div id="dsa-doubts-list-full" style="padding:16px;display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+
+        <!-- ANNOUNCEMENTS -->
+        <div id="dsa-sub-announce" class="dsa-sub" style="display:none">
+          <div style="padding:16px;max-width:600px">
+            <div id="dsa-current-announcement" style="margin-bottom:14px"></div>
+            <textarea id="dsa-announce-text" rows="3" placeholder="e.g. Chapter Test schedule for next week is out — check your dashboard."
+                      style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg2);color:var(--t1);font-size:.85rem;margin-bottom:10px"></textarea>
+            <button class="btn btn-g btn-sm" onclick="dsaPostAnnouncement()">Post to everyone</button>
+          </div>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;padding:16px">
-        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:1.6rem;font-weight:800;color:#2563eb" id="dsa-stat-attempts">—</div>
-          <div style="font-size:.72rem;color:var(--t3)">Test Attempts</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:1.6rem;font-weight:800;color:#f59e0b" id="dsa-stat-pending">—</div>
-          <div style="font-size:.72rem;color:var(--t3)">Pending Doubts</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:1.6rem;font-weight:800;color:#16a34a" id="dsa-stat-answered">—</div>
-          <div style="font-size:.72rem;color:var(--t3)">Doubts Answered</div>
-        </div>
-        <div style="background:var(--bg2);border-radius:10px;padding:14px;text-align:center">
-          <div style="font-size:1.6rem;font-weight:800;color:#9333ea" id="dsa-stat-status">—</div>
-          <div style="font-size:.72rem;color:var(--t3)">Connection</div>
-        </div>
-      </div>
-      <div style="padding:0 16px 16px">
-        <div style="font-size:.85rem;font-weight:700;color:var(--t1);margin-bottom:10px;padding:0 4px">Recent doubts</div>
-        <div id="dsa-doubts-list" style="display:flex;flex-direction:column;gap:8px">
-          <div style="font-size:.78rem;color:var(--t3)">Click Refresh, or open this tab, to load.</div>
-        </div>
-      </div>
-      <div style="margin:0 16px 16px;padding:12px 14px;background:var(--bg2);border-radius:10px;font-size:.75rem;color:var(--t3);line-height:1.6">
-        ⚡ This reads directly from the DSA platform's own Firebase project (<code>dsacademy-42f59</code>) — a separate project from KSpider's own. Full student management, content library and replying to doubts happens inside the DSA Admin Panel itself (button above); this view is a live read-only summary. Students who log into K Spider and open this tool get signed straight into their DSA dashboard — no second signup.
+
+      <div style="margin:16px;padding:12px 14px;background:var(--bg2);border-radius:10px;font-size:.75rem;color:var(--t3);line-height:1.6">
+        ⚡ Connects directly to the DSA platform's own Firebase project (<code>dsacademy-42f59</code>) — a separate project from KSpider's. Students who log into K Spider and open the DSA tool get signed straight into their own dashboard — no second signup for them either.
       </div>
     </div><!-- /panel-dsa-admin -->
 
@@ -4150,7 +4211,7 @@ function show(name, el) {
   if (name==='rto-agents')  { loadAgentRequests(); autoMarkExpired(); }
   if (name==='brahminconnect') { try{ loadBrahminVivaah('profiles'); }catch(e){ console.error('[BrahminConnect]', e); alert('BrahminConnect panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
   if (name==='vivaah-only') { try{ vvLoad('profiles'); }catch(e){ console.error('[Brahmin Vivaah]', e); alert('Brahmin Vivaah panel failed to start: ' + e.message + '\n\n(Check the browser console for the full error — this alert means the section never even started loading.)'); } }
-  if (name==='dsa-admin')      { loadDsaAdmin(); }
+  if (name==='dsa-admin')      { if (_dsaSignedIn) dsaRefreshAll(); }
   if (name==='doctorai')      { loadDoctorAI(); docaiRequestNotifyPermission(); }
   closeMobMenu(); // Close sidebar on mobile after nav click
 }
@@ -4400,9 +4461,12 @@ function docaiRequestNotifyPermission() {
 }
 
 // ══════════════════════════════════════════════════════
-// DSA ADMIN — connects to Dr. Shreyansh Academy's own
-// separate Firebase project (dsacademy-42f59) read-only,
-// via a secondary named Firebase app instance.
+// DSA ADMIN — full management console for Dr. Shreyansh
+// Academy, connected directly to its own separate Firebase
+// project (dsacademy-42f59) via a secondary named app
+// instance. Signing in here (once, with the DSA admin's
+// Google account) is the only "login" — there is no
+// separate DSA admin login page anymore.
 // ══════════════════════════════════════════════════════
 var DSA_FB_CFG = {
   apiKey: "AIzaSyA8pFQw65zAOergngSLd9bcYC3r7O7tzyE",
@@ -4412,69 +4476,325 @@ var DSA_FB_CFG = {
   messagingSenderId: "146035233759",
   appId: "1:146035233759:web:8f3e4c6d63625e90342a6a"
 };
-var _dsaDb = null, _dsaAuthReady = false, _dsaInitInFlight = false;
+var _dsaApp = null, _dsaDb = null, _dsaAuth = null, _dsaSignedIn = false;
+var _dsaStudentsCache = null, _dsaFacultyCache = null, _dsaDoubtsCache = null;
 
-function initDsaApp(cb) {
-  if (_dsaAuthReady) { cb(); return; }
-  if (_dsaInitInFlight) { setTimeout(function(){ initDsaApp(cb); }, 400); return; }
-  _dsaInitInFlight = true;
-  try {
-    var dsaApp = firebase.apps.some(function(a){ return a.name === 'dsaApp'; })
-      ? firebase.app('dsaApp')
-      : firebase.initializeApp(DSA_FB_CFG, 'dsaApp');
-    _dsaDb = dsaApp.firestore();
-    dsaApp.auth().signInAnonymously()
-      .then(function(){ _dsaAuthReady = true; _dsaInitInFlight = false; cb(); })
-      .catch(function(err){ _dsaInitInFlight = false; console.warn('[DSA Admin] auth failed', err); cb(err); });
-  } catch(e) { _dsaInitInFlight = false; console.warn('[DSA Admin] init failed', e); cb(e); }
+function dsaGetApp() {
+  if (_dsaApp) return _dsaApp;
+  _dsaApp = firebase.apps.some(function(a){ return a.name === 'dsaApp'; })
+    ? firebase.app('dsaApp')
+    : firebase.initializeApp(DSA_FB_CFG, 'dsaApp');
+  _dsaDb = _dsaApp.firestore();
+  _dsaAuth = _dsaApp.auth();
+  return _dsaApp;
 }
 
-function loadDsaAdmin() {
-  var statusEl = document.getElementById('dsa-stat-status');
-  if (statusEl) statusEl.textContent = '⏳';
-  initDsaApp(function(err){
-    if (err) { if(statusEl) statusEl.textContent = '❌'; return; }
-    if (statusEl) statusEl.textContent = '✅';
-
-    _dsaDb.collection('testResults').get().then(function(snap){
-      var el = document.getElementById('dsa-stat-attempts');
-      if (el) el.textContent = snap.size;
-    }).catch(function(){ var el=document.getElementById('dsa-stat-attempts'); if(el) el.textContent='—'; });
-
-    _dsaDb.collection('doubts').orderBy('when','desc').limit(20).get().then(function(snap){
-      var pending = 0, answered = 0, list = '';
-      snap.forEach(function(doc){
-        var d = doc.data();
-        if (d.status === 'answered') answered++; else pending++;
-        list += '<div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:.78rem">'
-          + '<b>' + (d.name||'Student') + '</b> — ' + (d.subject||'') + ' Ch.' + (d.chapter||'') + '<br>'
-          + '<span style="color:var(--t3)">' + (d.question||'') + '</span>'
-          + (d.status==='answered'
-              ? '<div style="color:#16a34a;margin-top:4px">✅ Answered</div>'
-              : '<div style="color:#f59e0b;margin-top:4px">⏳ Pending</div>')
-          + '</div>';
-      });
-      var pEl = document.getElementById('dsa-stat-pending'); if (pEl) pEl.textContent = pending;
-      var aEl = document.getElementById('dsa-stat-answered'); if (aEl) aEl.textContent = answered;
-      var badge = document.getElementById('dsa-doubts-badge');
-      if (badge) { badge.style.display = pending>0 ? 'inline-block' : 'none'; badge.textContent = pending; }
-      var listEl = document.getElementById('dsa-doubts-list');
-      if (listEl) listEl.innerHTML = list || '<div style="font-size:.78rem;color:var(--t3)">No doubts yet.</div>';
-    }).catch(function(){
-      var listEl = document.getElementById('dsa-doubts-list');
-      if (listEl) listEl.innerHTML = '<div style="font-size:.78rem;color:var(--t4)">Could not load doubts (check Firestore rules).</div>';
+function dsaSignIn() {
+  dsaGetApp();
+  var provider = new firebase.auth.GoogleAuthProvider();
+  _dsaAuth.signInWithPopup(provider).then(function(result) {
+    var user = result.user;
+    return _dsaDb.collection('users').doc(user.uid).get().then(function(doc) {
+      if (!doc.exists || doc.data().role !== 'admin') {
+        _dsaAuth.signOut();
+        toast('❌ This Google account is not the DSA admin account.');
+        return;
+      }
+      dsaOnSignedIn();
     });
+  }).catch(function(err) {
+    console.warn('[DSA Admin] sign-in failed', err);
+    toast('❌ DSA sign-in failed: ' + err.message);
   });
 }
 
-// Show the pending-doubts badge on page load without opening the tab
-initDsaApp(function(err){
-  if (err) return;
-  _dsaDb.collection('doubts').where('status','!=','answered').get().then(function(snap){
-    var badge = document.getElementById('dsa-doubts-badge');
-    if (badge && snap.size>0) { badge.style.display='inline-block'; badge.textContent=snap.size; }
+function dsaOnSignedIn() {
+  _dsaSignedIn = true;
+  var gate = document.getElementById('dsa-auth-gate');
+  var content = document.getElementById('dsa-admin-content');
+  var status = document.getElementById('dsa-gate-status');
+  if (gate) gate.style.display = 'none';
+  if (content) content.style.display = 'block';
+  if (status) status.innerHTML = '🟢 Connected as DSA Admin';
+  dsaRefreshAll();
+}
+
+// Restore session automatically on page load if already signed in from before
+function dsaTryAutoRestore() {
+  dsaGetApp();
+  _dsaAuth.onAuthStateChanged(function(user) {
+    if (user && !_dsaSignedIn) {
+      _dsaDb.collection('users').doc(user.uid).get().then(function(doc) {
+        if (doc.exists && doc.data().role === 'admin') dsaOnSignedIn();
+      }).catch(function(){});
+    }
+  });
+}
+
+function dsaShowTab(name) {
+  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce'];
+  tabs.forEach(function(t) {
+    var sub = document.getElementById('dsa-sub-' + t);
+    var btn = document.getElementById('dsa-tab-' + t);
+    if (sub) sub.style.display = (t === name) ? 'block' : 'none';
+    if (btn) {
+      btn.style.background = (t === name) ? '#2563eb' : '';
+      btn.style.color = (t === name) ? '#fff' : '';
+      btn.className = (t === name) ? 'btn btn-sm' : 'btn btn-sm btn-gh';
+    }
+  });
+}
+
+function dsaRefreshAll() {
+  if (!_dsaSignedIn) return;
+  dsaLoadOverview();
+  dsaLoadStudents();
+  dsaLoadFaculty();
+  dsaLoadDoubtsFull();
+  dsaLoadAnnouncement();
+}
+
+// ── OVERVIEW ──
+function dsaLoadOverview() {
+  _dsaDb.collection('users').where('role', '==', 'student').get().then(function(snap) {
+    var el = document.getElementById('dsa-stat-students');
+    if (el) el.textContent = snap.size;
+    var revenue = 0;
+    snap.forEach(function(doc) { revenue += (doc.data().feePaid || 0); });
+    var revEl = document.getElementById('dsa-stat-revenue');
+    if (revEl) revEl.textContent = '₹' + revenue;
   }).catch(function(){});
-});
+  _dsaDb.collection('testResults').get().then(function(snap) {
+    var el = document.getElementById('dsa-stat-attempts');
+    if (el) el.textContent = snap.size;
+  }).catch(function(){});
+  _dsaDb.collection('doubts').get().then(function(snap) {
+    var pending = 0;
+    snap.forEach(function(doc) { if (doc.data().status !== 'answered') pending++; });
+    var el = document.getElementById('dsa-stat-pending');
+    if (el) el.textContent = pending;
+  }).catch(function(){});
+}
+
+// ── STUDENTS ──
+function dsaLoadStudents() {
+  _dsaDb.collection('users').where('role', '==', 'student').get().then(function(snap) {
+    _dsaStudentsCache = [];
+    snap.forEach(function(doc) { _dsaStudentsCache.push(Object.assign({ uid: doc.id }, doc.data())); });
+    dsaRenderStudents(_dsaStudentsCache);
+  }).catch(function(err) {
+    var body = document.getElementById('dsa-students-body');
+    if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#dc2626">' + err.message + '</td></tr>';
+  });
+}
+function dsaRenderStudents(rows) {
+  var body = document.getElementById('dsa-students-body');
+  if (!body) return;
+  if (rows.length === 0) { body.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--t3)">No students yet.</td></tr>'; return; }
+  var html = '';
+  rows.forEach(function(s) {
+    var due = Math.max(0, (s.feeTotal || 0) - (s.feePaid || 0));
+    html += '<tr style="border-top:1px solid var(--br)">'
+      + '<td style="padding:8px">' + (s.name || '') + '<br><span style="color:var(--t3);font-size:.72rem">' + s.email + '</span></td>'
+      + '<td style="padding:8px">' + (s.cls || '—') + '</td>'
+      + '<td style="padding:8px">' + (s.plan === 'premium' ? '★ Premium' : 'Free') + '</td>'
+      + '<td style="padding:8px' + (due > 0 ? ';color:#dc2626;font-weight:700' : '') + '">₹' + due + '</td>'
+      + '<td style="padding:8px">' + (s.banned ? '🚫 Banned' : '✅ Active') + '</td>'
+      + '<td style="padding:8px"><button class="btn btn-sm btn-gh" onclick="dsaOpenStudentDetail(\'' + s.uid + '\')">View →</button></td>'
+      + '</tr>';
+  });
+  body.innerHTML = html;
+}
+function dsaFilterStudents() {
+  var q = (document.getElementById('dsa-student-search').value || '').toLowerCase();
+  if (!_dsaStudentsCache) return;
+  var filtered = _dsaStudentsCache.filter(function(s) {
+    return (s.name || '').toLowerCase().indexOf(q) >= 0 || (s.email || '').toLowerCase().indexOf(q) >= 0;
+  });
+  dsaRenderStudents(filtered);
+}
+function dsaOpenStudentDetail(uid) {
+  var s = _dsaStudentsCache.filter(function(x){ return x.uid === uid; })[0];
+  if (!s) return;
+  Promise.all([
+    _dsaDb.collection('testResults').where('email', '==', s.email).get(),
+    _dsaDb.collection('doubts').where('email', '==', s.email).get()
+  ]).then(function(results) {
+    var tests = results[0].size, doubts = results[1].size;
+    var due = Math.max(0, (s.feeTotal || 0) - (s.feePaid || 0));
+    var box = document.getElementById('dsa-student-detail');
+    box.style.display = 'block';
+    box.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      + '<b style="font-size:.95rem">' + s.name + ' <span style="color:var(--t3);font-weight:400">(' + s.email + ')</span></b>'
+      + '<button class="btn btn-sm btn-gh" onclick="document.getElementById(\'dsa-student-detail\').style.display=\'none\'">✕ Close</button>'
+      + '</div>'
+      + '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:.8rem">'
+      + '<span>📝 Tests: <b>' + tests + '</b></span>'
+      + '<span>💬 Doubts: <b>' + doubts + '</b></span>'
+      + '<span>💳 Due: <b style="color:' + (due>0?'#dc2626':'#16a34a') + '">₹' + due + '</b></span>'
+      + '</div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:14px">'
+      + (s.banned
+          ? '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="dsaBanStudent(\'' + uid + '\',false)">Restore access</button>'
+          : '<button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="dsaBanStudent(\'' + uid + '\',true)">Ban student</button>')
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      + '<input id="dsa-fee-total" type="number" placeholder="Total fees ₹" value="' + (s.feeTotal||'') + '" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">'
+      + '<input id="dsa-fee-due-date" type="date" value="' + (s.feeDueDate||'') + '" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">'
+      + '</div>'
+      + '<button class="btn btn-sm btn-gh" onclick="dsaSaveFeePlan(\'' + uid + '\')" style="margin-bottom:14px">Save fee plan</button>'
+      + '<div style="display:flex;gap:8px;margin-bottom:14px">'
+      + '<input id="dsa-pay-amount" type="number" placeholder="Amount ₹" style="width:110px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">'
+      + '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="dsaRecordPayment(\'' + uid + '\')">Record payment</button>'
+      + '</div>'
+      + '<textarea id="dsa-admin-note" rows="2" placeholder="Direct instruction / message to this student..." style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1);margin-bottom:8px">' + (s.adminNote||'') + '</textarea>'
+      + '<button class="btn btn-sm btn-gh" onclick="dsaSaveAdminNote(\'' + uid + '\')">Send message</button>';
+  });
+}
+function dsaBanStudent(uid, banned) {
+  _dsaDb.collection('users').doc(uid).update({ banned: banned }).then(function() {
+    toast(banned ? '🚫 Student banned' : '✅ Access restored');
+    dsaLoadStudents();
+    document.getElementById('dsa-student-detail').style.display = 'none';
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+function dsaSaveFeePlan(uid) {
+  var total = Number(document.getElementById('dsa-fee-total').value) || 0;
+  var dueDate = document.getElementById('dsa-fee-due-date').value || null;
+  _dsaDb.collection('users').doc(uid).update({ feeTotal: total, feeDueDate: dueDate }).then(function() {
+    toast('✅ Fee plan saved');
+    dsaLoadStudents();
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+function dsaRecordPayment(uid) {
+  var amount = Number(document.getElementById('dsa-pay-amount').value);
+  if (!amount || amount <= 0) { toast('Enter a valid amount'); return; }
+  var s = _dsaStudentsCache.filter(function(x){ return x.uid === uid; })[0];
+  var newPaid = (s.feePaid || 0) + amount;
+  var entry = { amount: amount, method: 'Admin entry', note: '', when: new Date().toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'}) };
+  var newHistory = (s.feeHistory || []).concat([entry]);
+  _dsaDb.collection('users').doc(uid).update({ feePaid: newPaid, feeHistory: newHistory }).then(function() {
+    toast('✅ Payment recorded');
+    dsaLoadStudents();
+    document.getElementById('dsa-student-detail').style.display = 'none';
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+function dsaSaveAdminNote(uid) {
+  var note = document.getElementById('dsa-admin-note').value.trim();
+  _dsaDb.collection('users').doc(uid).update({ adminNote: note }).then(function() {
+    toast('✅ Message sent');
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+
+// ── FACULTY ──
+function dsaLoadFaculty() {
+  _dsaDb.collection('users').where('role', '==', 'faculty').get().then(function(snap) {
+    _dsaFacultyCache = [];
+    snap.forEach(function(doc) { _dsaFacultyCache.push(Object.assign({ uid: doc.id }, doc.data())); });
+    dsaRenderFaculty();
+  }).catch(function(err) {
+    var body = document.getElementById('dsa-faculty-body');
+    if (body) body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:#dc2626">' + err.message + '</td></tr>';
+  });
+}
+function dsaRenderFaculty() {
+  var body = document.getElementById('dsa-faculty-body');
+  if (!body) return;
+  if (_dsaFacultyCache.length === 0) { body.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:20px;color:var(--t3)">No faculty yet.</td></tr>'; return; }
+  var html = '';
+  _dsaFacultyCache.forEach(function(f) {
+    html += '<tr style="border-top:1px solid var(--br)">'
+      + '<td style="padding:8px">' + f.name + '<br><span style="color:var(--t3);font-size:.72rem">' + f.email + '</span></td>'
+      + '<td style="padding:8px">' + (f.subject || '—') + '</td>'
+      + '<td style="padding:8px">' + (f.approved ? '✅ Active' : '⏳ Pending/Deactivated') + '</td>'
+      + '<td style="padding:8px">' + (f.approved
+          ? '<button class="btn btn-sm btn-gh" style="color:#dc2626" onclick="dsaSetFacultyApproved(\'' + f.uid + '\',false)">Deactivate</button>'
+          : '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="dsaSetFacultyApproved(\'' + f.uid + '\',true)">Approve →</button>')
+      + '</td></tr>';
+  });
+  body.innerHTML = html;
+}
+function dsaSetFacultyApproved(uid, approved) {
+  _dsaDb.collection('users').doc(uid).update({ approved: approved }).then(function() {
+    toast(approved ? '✅ Faculty approved' : '🚫 Faculty deactivated');
+    dsaLoadFaculty();
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+
+// ── DOUBTS ──
+function dsaLoadDoubtsFull() {
+  _dsaDb.collection('doubts').orderBy('when', 'desc').limit(50).get().then(function(snap) {
+    _dsaDoubtsCache = [];
+    snap.forEach(function(doc) { _dsaDoubtsCache.push(Object.assign({ id: doc.id }, doc.data())); });
+    dsaRenderDoubtsFull();
+  }).catch(function(err) {
+    var list = document.getElementById('dsa-doubts-list-full');
+    if (list) list.innerHTML = '<div style="color:#dc2626;font-size:.8rem">' + err.message + '</div>';
+  });
+}
+function dsaRenderDoubtsFull() {
+  var list = document.getElementById('dsa-doubts-list-full');
+  if (!list) return;
+  if (_dsaDoubtsCache.length === 0) { list.innerHTML = '<div style="color:var(--t3);font-size:.8rem">No doubts yet.</div>'; return; }
+  var html = '';
+  _dsaDoubtsCache.forEach(function(d) {
+    html += '<div style="background:var(--bg2);border-radius:8px;padding:12px 14px">'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+      + '<b style="font-size:.85rem">' + d.name + '</b>'
+      + '<span style="font-size:.72rem;padding:2px 8px;border-radius:10px;background:' + (d.status === 'answered' ? 'rgba(22,163,74,.15);color:#16a34a' : 'rgba(245,158,11,.15);color:#f59e0b') + '">' + (d.status === 'answered' ? 'Answered' : 'Pending') + '</span>'
+      + '</div>'
+      + '<div style="font-size:.72rem;color:var(--t3);margin-bottom:6px">' + d.subject + ' · Ch.' + d.chapter + '</div>'
+      + '<div style="font-size:.85rem;margin-bottom:8px">' + d.question + '</div>'
+      + (d.answer ? '<div style="font-size:.8rem;background:var(--bg1);padding:8px 10px;border-radius:6px;margin-bottom:8px">💡 ' + d.answer + '</div>' : '')
+      + '<div style="display:flex;gap:8px">'
+      + '<input id="dsa-reply-' + d.id + '" placeholder="' + (d.answer ? 'Update reply...' : 'Type a reply...') + '" style="flex:1;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1);font-size:.8rem">'
+      + '<button class="btn btn-sm" style="background:#2563eb;color:#fff" onclick="dsaAnswerDoubtFull(\'' + d.id + '\')">Send</button>'
+      + '</div></div>';
+  });
+  list.innerHTML = html;
+}
+function dsaAnswerDoubtFull(id) {
+  var input = document.getElementById('dsa-reply-' + id);
+  var answer = input.value.trim();
+  if (!answer) return;
+  _dsaDb.collection('doubts').doc(id).update({ answer: answer, status: 'answered' }).then(function() {
+    toast('✅ Reply sent');
+    dsaLoadDoubtsFull();
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+
+// ── ANNOUNCEMENTS ──
+function dsaLoadAnnouncement() {
+  _dsaDb.collection('announcements').orderBy('when', 'desc').limit(1).get().then(function(snap) {
+    var box = document.getElementById('dsa-current-announcement');
+    if (!box) return;
+    if (snap.empty) { box.innerHTML = '<div style="color:var(--t3);font-size:.8rem">Nothing posted right now.</div>'; return; }
+    var doc = snap.docs[0];
+    var a = doc.data();
+    box.innerHTML = '<div style="background:var(--bg2);border-radius:8px;padding:10px 12px;font-size:.85rem">' + a.message
+      + '<div style="margin-top:8px"><button class="btn btn-sm btn-gh" style="color:#dc2626" onclick="dsaClearAnnouncement(\'' + doc.id + '\')">Clear</button></div></div>';
+  }).catch(function(){});
+}
+function dsaPostAnnouncement() {
+  var text = document.getElementById('dsa-announce-text').value.trim();
+  if (!text) { toast('Type a message first'); return; }
+  _dsaDb.collection('announcements').add({ message: text, when: firebase.firestore.FieldValue.serverTimestamp(), by: 'DSA Admin' }).then(function() {
+    toast('✅ Posted to everyone');
+    document.getElementById('dsa-announce-text').value = '';
+    dsaLoadAnnouncement();
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+function dsaClearAnnouncement(id) {
+  _dsaDb.collection('announcements').doc(id).delete().then(function() {
+    toast('Announcement cleared');
+    dsaLoadAnnouncement();
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+
+// Try to auto-restore a previous DSA admin session when the page loads
+dsaTryAutoRestore();
+
 
 function initAll() {
   startSiteAccessListener();   // SAM: dedicated onSnapshot — started ONCE here only
@@ -4649,7 +4969,6 @@ function startRealtimeListeners() {
         var map = {};
         localAgents.forEach(function(a) { if (a.refId) map[a.refId] = a; });
         fsAgents.forEach(function(a)    { if (a.refId) map[a.refId] = a; });
-        try { _rtoRepairPartialRecords(fsAgents, localAgents); } catch(eRep) {}
         allAgentData = Object.values(map);
         try { localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData)); } catch(e2) {}
         var pendingCount = allAgentData.filter(function(a) { return a.status === 'pending'; }).length;
@@ -9262,7 +9581,6 @@ function loadAgentRequests() {
         var map = {};
         localAgents.forEach(function(a){ if (a.refId) map[a.refId] = a; });
         fsAgents.forEach(function(a)   { if (a.refId) map[a.refId] = a; });
-        try { _rtoRepairPartialRecords(fsAgents, localAgents); } catch(eRep) {}
         allAgentData = Object.values(map);
         try { localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData)); } catch(e2) {}
         renderAgentsTable(allAgentData);
@@ -10372,52 +10690,6 @@ function deleteAgent(refId) {
   showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
 }
 
-var _RTO_REG_FIELDS = ['name','company','mobile','email','city','address','website','logo','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps','services'];
-/* What the RTO tool + receivers read from Firestore: admin decision + the agent's full details.
-   (Details are included so the promo link works on ANY device, even for agents that
-    were first approved from this browser only.) */
-function _rtoCloudPayload(agent) {
-  var p = {
-    refId:        agent.refId,
-    status:       agent.status       || 'pending',
-    approvedAt:   agent.approvedAt   || null,
-    rejectedAt:   agent.rejectedAt   || null,
-    rejectReason: agent.rejectReason || '',
-    _suspended:   agent._suspended   || false,
-    _expired:     agent._expired     || false,
-    _expireDate:  agent._expireDate  || null,
-    updatedAt:    new Date().toISOString(),
-    updatedBy:    'admin'
-  };
-  if (agent._shortCode) p._shortCode = agent._shortCode;   /* never overwrite the code with an empty value */
-  if (agent.name) {
-    _RTO_REG_FIELDS.forEach(function(f) { p[f] = agent[f] || ''; });
-    p.submittedAt = agent.submittedAt || new Date().toISOString();
-  }
-  return p;
-}
-
-/* Cloud record exists but has no agent details (created earlier by a status-only sync)
-   -> complete it from the full copy this browser holds, so receivers see the ad popup. */
-var _rtoRepairDone = {};
-function _rtoRepairPartialRecords(fsAgents, localAgents) {
-  if (!db) return;
-  var have = {};
-  (fsAgents || []).forEach(function(a) { if (a && a.refId) have[a.refId] = true; });
-  (localAgents || []).forEach(function(a) {
-    if (!a || !a.refId || !a.name || have[a.refId] || _rtoRepairDone[a.refId]) return;
-    _rtoRepairDone[a.refId] = true;
-    var ref = db.collection('rto_agent_requests').doc(a.refId);
-    ref.get().then(function(s) {
-      if (s.exists && !((s.data() || {}).name)) {
-        return ref.set(_rtoCloudPayload(a), { merge: true }).then(function() {
-          console.info('[RTO Agents] completed cloud record for ' + a.refId);
-        });
-      }
-    }).catch(function(e) { console.warn('[RTO Agents] repair skipped for ' + a.refId + ':', e.message); });
-  });
-}
-
 function saveAgentsToStorage() {
   localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData));
   // Sync admin actions (approve/reject/suspend/delete) to Firestore
@@ -10429,7 +10701,20 @@ function _syncAgentsToFirestore() {
   if (!db) return;
   allAgentData.forEach(function(agent) {
     if (!agent.refId) return;
-    db.collection('rto_agent_requests').doc(agent.refId).set(_rtoCloudPayload(agent), { merge: true }).catch(function(e) {
+    var upd = {
+      status:       agent.status       || 'pending',
+      approvedAt:   agent.approvedAt   || null,
+      rejectedAt:   agent.rejectedAt   || null,
+      rejectReason: agent.rejectReason || '',
+      _suspended:   agent._suspended   || false,
+      _expired:     agent._expired     || false,
+      _expireDate:  agent._expireDate  || null,
+      updatedAt:    new Date().toISOString(),
+      updatedBy:    'admin'
+    };
+    /* keep the agent's short code — never overwrite it with an empty value */
+    if (agent._shortCode) upd._shortCode = agent._shortCode;
+    db.collection('rto_agent_requests').doc(agent.refId).set(upd, { merge: true }).catch(function(e) {
       console.warn('[RTO Agents] Firestore sync failed for ' + agent.refId + ':', e.message);
       var now = Date.now();
       if (!window._rtoSyncWarnAt || now - window._rtoSyncWarnAt > 8000) {
