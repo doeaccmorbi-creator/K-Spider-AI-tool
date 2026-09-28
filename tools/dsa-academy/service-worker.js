@@ -7,7 +7,7 @@
    AI answers need a real connection.
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v2';
+const CACHE_NAME = 'dsa-shell-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -49,7 +49,7 @@ self.addEventListener('fetch', event => {
     req.url.includes('gstatic.com/firebasejs')
   ) return;
 
-  if (req.mode === 'navigate' || req.url.endsWith('.js') || req.url.endsWith('.json')) {
+  if (req.mode === 'navigate' || new URL(req.url).pathname.endsWith('.js') || new URL(req.url).pathname.endsWith('.json')) {
     // Network-first for the page itself AND app.js/config files, so a
     // logged-in user always gets the latest code+content when online —
     // this is what makes future updates show up without a manual cache
