@@ -1442,7 +1442,7 @@ gtag('config', 'G-PLBHWMHEC1');
             <span>Powered by</span>
             <a href="https://www.kspiderai.in" target="_blank" rel="noopener">www.kspiderai.in</a>
           </div>
-          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r7</div>
+          <div id="ks-build-tag" style="font-size:.62rem;opacity:.45;margin-top:6px">Build 2026-09-20 · r8</div>
         </div>
         <div class="footer-col">
           <h4>Quick Links</h4>
@@ -2996,7 +2996,7 @@ const TEST_DURATION = 1200; // 20 min in seconds
     };
   } catch (e) {}
 })();
-var KS_BUILD = '2026-09-20 · r7';
+var KS_BUILD = '2026-09-20 · r8';
 var _ksErrs = [];
 
 /* ════════════════════════════════════════════════════════════
@@ -3381,6 +3381,34 @@ if (_ksDebugOn) {
   window.addEventListener('error', function (e) { ksDbg('JS ERROR: ' + (e && e.message)); });
   window.addEventListener('unhandledrejection', function (e) { ksDbg('PROMISE ERROR: ' + (e && e.reason && e.reason.message ? e.reason.message : e.reason)); });
 }
+
+
+/* ── Auto-update guard (fixes "stale cached copy shows old/broken behaviour"
+      even after we upload a fix — exactly what caused the Chrome/Firefox
+      "link doesn't open" issue while Edge/Incognito worked fine).
+      Runs once per page load: fetches THIS SAME url bypassing cache, compares
+      build tags, and if the live server has a newer build, force-reloads
+      with a cache-busting param — keeping every query param (?k=&r=&debug=1)
+      intact. Silent, non-blocking, and never loops more than once. ── */
+(function () {
+  try {
+    var SK = 'ks_seen_build';
+    if (sessionStorage.getItem(SK) === KS_BUILD) return;   /* already confirmed fresh this session */
+    var freshURL = location.pathname + (location.search ? location.search + '&' : '?') + '_kvchk=' + Date.now();
+    fetch(freshURL, { cache: 'no-store' }).then(function (r) { return r.ok ? r.text() : ''; }).then(function (html) {
+      if (!html) return;
+      var m = html.match(/KS_BUILD\s*=\s*'([^']+)'/);
+      if (!m) return;
+      if (m[1] === KS_BUILD) { sessionStorage.setItem(SK, KS_BUILD); return; }
+      if (sessionStorage.getItem('ks_reload_once') === m[1]) return;   /* avoid any reload loop */
+      sessionStorage.setItem('ks_reload_once', m[1]);
+      var u = new URL(location.href);
+      u.searchParams.set('_kv', Date.now());
+      ksDbg && ksDbg('stale build detected: mine=' + KS_BUILD + ' live=' + m[1] + ' -> reloading');
+      location.replace(u.toString());
+    }).catch(function () {});
+  } catch (e) {}
+})();
 
 var _ksSplashDone = false;
 
