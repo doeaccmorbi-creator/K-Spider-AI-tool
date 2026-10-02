@@ -272,7 +272,9 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 @keyframes ksAurora{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-2%,2%,0) scale(1.08)}}
 /* ADS: centered, narrower, never hidden under sidebar */
 .ks-adbanner{margin-left:var(--sb)!important;width:auto!important;padding:10px 20px!important;display:flex!important;justify-content:center;box-sizing:border-box;position:relative;z-index:1}
-.ks-adbanner [data-ks-slot]{width:100%;max-width:728px;margin:0 auto;border-radius:14px;box-shadow:0 6px 24px rgba(0,0,0,.28);border:1px solid var(--br)}
+.ks-adbanner [data-ks-slot]{width:100%;max-width:728px;margin:0 auto;border-radius:14px;background:transparent!important;box-shadow:none!important;border:0!important}
+.ks-adbanner [data-ks-slot]>*{background:transparent!important;box-shadow:none!important;border:0!important;padding:0!important;display:flex!important;justify-content:center!important;align-items:center}
+.ks-nolabel::before,.ks-nolabel::after{content:none!important;display:none!important}
 .ks-adbanner [data-ks-slot]>*{max-width:100%!important;width:100%!important;box-sizing:border-box;margin-left:auto!important;margin-right:auto!important}
 .ks-adbanner img,.ks-adbanner iframe,.ks-adbanner video{max-width:100%!important;height:auto}
 [data-ks-slot]:empty{background:linear-gradient(100deg,var(--bg2) 30%,var(--bg3) 50%,var(--bg2) 70%);background-size:200% 100%;animation:ksShim 1.6s linear infinite}
@@ -329,6 +331,26 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 @media(max-width:900px){.ks-steps{grid-template-columns:1fr 1fr}}
 @media(max-width:500px){.ks-steps,.ks-tl{grid-template-columns:1fr}.ks-fab{bottom:70px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+<style id="ks-premium-v11">
+.ks-fest{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:9px;margin-bottom:16px}
+.ks-fest>div{background:var(--bg2);border:1px solid var(--br);border-radius:var(--r2);padding:10px 12px;cursor:pointer;transition:all .2s;animation:ksIn .5s both}
+.ks-fest>div:hover{border-color:var(--g1);transform:translateY(-3px)}
+.ks-fest b{display:block;font-size:11.5px;color:var(--t1)}.ks-fest span{font-size:10px;color:var(--t2)}.ks-fest em{font-style:normal;font-family:var(--FH);font-weight:800;color:var(--g1);font-size:17px}
+.ks-sec{font-size:10.5px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.7px;margin:0 0 7px}
+.ks-recent{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}
+.ks-top{position:fixed;right:16px;bottom:70px;z-index:440;width:38px;height:38px;border-radius:50%;border:1px solid var(--br3);background:var(--bg2);color:var(--g1);font-size:16px;cursor:pointer;opacity:0;pointer-events:none;transition:.25s}
+.ks-top.on{opacity:1;pointer-events:auto}.ks-top:hover{transform:translateY(-3px)}
+.ks-cmd{position:fixed;inset:0;z-index:950;background:rgba(0,0,0,.6);backdrop-filter:blur(5px);display:none;align-items:flex-start;justify-content:center;padding:12vh 14px 0}
+.ks-cmd.on{display:flex}
+.ks-cbox{width:100%;max-width:520px;background:var(--bg1);border:1px solid var(--br3);border-radius:14px;overflow:hidden;animation:ksIn .25s both}
+.ks-cbox input{width:100%;padding:14px 16px;background:transparent;border:0;border-bottom:1px solid var(--br);color:var(--t1);font:600 14px var(--F);outline:none}
+.ks-cl{max-height:320px;overflow:auto}
+.ks-cl div{padding:10px 16px;font-size:12px;color:var(--t2);cursor:pointer;display:flex;gap:8px}
+.ks-cl div.sel,.ks-cl div:hover{background:var(--g4);color:var(--g1)}
+.ks-net{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:960;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none}
+.ks-net.off{display:block;background:var(--red2);color:var(--red);border:1px solid var(--red)}.ks-net.on{display:block;background:var(--g4);color:var(--g1);border:1px solid var(--g1)}
+.ks-sbtn{display:flex;align-items:center;gap:7px;margin:8px 0 0;padding:8px 10px;font-size:11px;font-weight:700;border-radius:var(--r2);background:var(--wa2);color:var(--wa);border:1px solid rgba(37,211,102,.3);cursor:pointer}
 </style>
 </head>
 <body>
@@ -427,6 +449,8 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
   </div>
   <div class="ks-guide-act"><button class="btn btn-g btn-sm" onclick="openBizModal()">&#127970; Setup Business</button><button class="btn btn-out btn-sm" onclick="ksGuideOpen()">&#128214; Full User Guide</button></div>
 </div>
+<div id="ksFestWrap"><div class="ks-sec">&#127881; Upcoming festivals &mdash; create greetings in 1 click</div><div class="ks-fest" id="ksFest"></div></div>
+<div id="ksRecentWrap" style="display:none"><div class="ks-sec">&#128337; Recently used</div><div class="ks-recent" id="ksRecent"></div></div>
 <div id="boosterEl"></div>
   <div class="srow">
     <div class="sc"><div class="sv" id="statMsgs">0</div><div class="sl">Messages Generated</div></div>
@@ -2633,6 +2657,56 @@ function sendToTranslator(text) {
   var H={mkt:'Pick content type & platform|Choose language / tone|Press Generate, then copy',greet:'Choose festival or occasion|Select language|Generate and share on WhatsApp Status',offer:'Enter product / service & discount|Pick offer style|Generate ready-to-post offer text',script:'Choose video topic & length|Select language|Generate and read it while recording',tags:'Enter your topic or keyword|Generate titles & hashtags|Copy and paste on YouTube / Instagram',wa:'Pick message type|Choose language & tone|Generate, copy or open WhatsApp directly',sms:'Select campaign type|Keep text short (160 characters)|Generate and copy to your SMS app',biztools:'Setup Business first|Open a smart tool card|Use result directly in your business',grow:'Setup Business category first|Read the growth ideas|Apply one idea per week',review:'Choose star rating & style|Generate review request|Send to happy customers',faq:'Select your services|Generate FAQs|Paste on website / Google profile',seo:'Enter keyword|Choose output type (Google, YouTube, Meta)|Generate and copy',social:'Pick platform (Instagram / Facebook / LinkedIn)|Select post type|Generate caption & hashtags',viral:'Choose viral angle|Generate hook messages|Share on groups & status',testimonial:'Enter service & customer type|Generate testimonial text|Use on website or posters',email:'Choose email purpose|Generate subject + body|Copy into Gmail / Outlook',bio:'Choose platform|Generate short bio|Paste on your profile',hist:'All generated messages appear here|Copy any old message again|Clear history when needed',translate:'Paste your text|Choose target language|Translate and copy'};
   Object.keys(H).forEach(function(id){var tab=g('tab-'+id);if(!tab||tab.querySelector('.ks-howto'))return;var d=document.createElement('details');d.className='ks-howto';d.innerHTML='<summary>&#128161; How to use this tool</summary><ol>'+H[id].split('|').map(function(s){return'<li>'+s+'</li>'}).join('')+'</ol>';var tb=tab.querySelector('.topbar');if(tb)tb.insertAdjacentElement('afterend',d);else tab.insertBefore(d,tab.firstChild)});
   document.addEventListener('click',function(e){var b=e.target.closest('.btn');if(!b)return;var r=b.getBoundingClientRect(),s=Math.max(r.width,r.height),x=document.createElement('span');x.className='ks-rip';x.style.cssText='width:'+s+'px;height:'+s+'px;left:'+(e.clientX-r.left-s/2)+'px;top:'+(e.clientY-r.top-s/2)+'px';b.appendChild(x);setTimeout(function(){x.remove()},600)});
+})();
+</script>
+<button class="ks-top" id="ksTop" aria-label="Back to top" onclick="window.scrollTo({top:0,behavior:'smooth'});var m=document.querySelector('main');if(m)m.scrollTo&&m.scrollTo({top:0,behavior:'smooth'})">&#8593;</button>
+<div class="ks-net" id="ksNet"></div>
+<div class="ks-cmd" id="ksCmd" onclick="if(event.target===this)ksCmdClose()"><div class="ks-cbox"><input id="ksCI" placeholder="Search any tool... (e.g. whatsapp, offer, seo)" autocomplete="off"><div class="ks-cl" id="ksCL"></div></div></div>
+<script>
+(function(){
+  function g(i){return document.getElementById(i)}
+  function ls(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){}}
+  /* 1. Ads: remove "ADVERTISEMENT" label, show ad clean & centered */
+  var re=/^\s*advertis(e)?ments?\s*$/i,busy=false;
+  function cleanAds(){if(busy)return;busy=true;
+    document.querySelectorAll('[data-ks-slot]').forEach(function(s){
+      var w=document.createTreeWalker(s,NodeFilter.SHOW_TEXT),n,hide=[];
+      while(n=w.nextNode()){if(re.test(n.nodeValue)&&n.parentElement&&n.parentElement!==s)hide.push(n.parentElement)}
+      hide.forEach(function(e){e.style.setProperty('display','none','important')});
+      s.querySelectorAll('*').forEach(function(e){['::before','::after'].forEach(function(q){var c=getComputedStyle(e,q).content;if(c&&/advertis/i.test(c))e.classList.add('ks-nolabel')})});
+      var f=s.firstElementChild;if(f){['::before','::after'].forEach(function(q){var c=getComputedStyle(f,q).content;if(c&&/advertis/i.test(c))f.classList.add('ks-nolabel')})}
+      if(s.getAttribute('data-label'))s.removeAttribute('data-label');
+    });busy=false}
+  var tm;function sched(){clearTimeout(tm);tm=setTimeout(cleanAds,60)}
+  function watch(){document.querySelectorAll('[data-ks-slot]').forEach(function(s){if(s._ksw)return;s._ksw=1;new MutationObserver(sched).observe(s,{childList:true,subtree:true,characterData:true})});cleanAds()}
+  watch();var k=0,iv=setInterval(function(){watch();if(++k>20)clearInterval(iv)},700);
+  /* 2. Tool list for search + recent */
+  var T=[];document.querySelectorAll('.ni[data-tab]').forEach(function(n){var l=n.querySelector('.ni-lbl'),i=n.querySelector('.ni-ico');T.push({id:n.getAttribute('data-tab'),name:l?l.textContent:n.dataset.tab,ico:i?i.textContent:''})});
+  function tn(id){for(var i=0;i<T.length;i++)if(T[i].id===id)return T[i]}
+  function drawRecent(){var r=[];try{r=JSON.parse(ls('ks_recent')||'[]')}catch(e){}var box=g('ksRecent'),w=g('ksRecentWrap');if(!box)return;box.innerHTML='';r=r.filter(tn);w.style.display=r.length?'block':'none';r.forEach(function(id){var t=tn(id),c=document.createElement('span');c.className='chip';c.textContent=t.ico+' '+t.name;c.onclick=function(){go(id,null)};box.appendChild(c)})}
+  if(typeof window.go==='function'){var _go=window.go;window.go=function(t,el){if(t&&t!=='home'&&tn(t)){var r=[];try{r=JSON.parse(ls('ks_recent')||'[]')}catch(e){}r=[t].concat(r.filter(function(x){return x!==t})).slice(0,5);ls('ks_recent',JSON.stringify(r));setTimeout(drawRecent,50)}return _go.apply(this,arguments)}}
+  drawRecent();
+  /* 3. Festival countdown (India) */
+  var F=[['Dussehra','2026-10-20','&#127993;'],['Diwali','2026-11-08','&#129684;'],['Bhai Dooj','2026-11-11','&#128107;'],['Christmas','2026-12-25','&#127876;'],['New Year','2027-01-01','&#127881;'],['Makar Sankranti','2027-01-14','&#129409;'],['Republic Day','2027-01-26','&#127470;&#127475;']];
+  var now=new Date();now.setHours(0,0,0,0);var fe=g('ksFest');
+  if(fe){var c=0;F.forEach(function(f){var d=Math.round((new Date(f[1]+'T00:00:00')-now)/864e5);if(d<0||c>=4)return;c++;var el=document.createElement('div');el.innerHTML='<span>'+f[2]+' '+f[0]+'</span><br><em>'+(d===0?'Today!':d+' days')+'</em><br><span>Create greeting &rarr;</span>';el.onclick=function(){go('greet',null)};fe.appendChild(el)});if(!c)g('ksFestWrap').style.display='none'}
+  /* 4. Ctrl+K tool search */
+  var sel=0,list=[];
+  function draw(q){q=(q||'').toLowerCase();list=T.filter(function(t){return t.name.toLowerCase().indexOf(q)>-1||t.id.indexOf(q)>-1});sel=0;var b=g('ksCL');b.innerHTML='';list.forEach(function(t,i){var d=document.createElement('div');if(i===0)d.className='sel';d.textContent=t.ico+'  '+t.name;d.onclick=function(){pick(t)};b.appendChild(d)});if(!list.length)b.innerHTML='<div>No tool found</div>'}
+  function pick(t){ksCmdClose();go(t.id,document.querySelector('.ni[data-tab="'+t.id+'"]'))}
+  window.ksCmdOpen=function(){g('ksCmd').classList.add('on');g('ksCI').value='';draw('');g('ksCI').focus()};
+  window.ksCmdClose=function(){g('ksCmd').classList.remove('on')};
+  g('ksCI').addEventListener('input',function(){draw(this.value)});
+  g('ksCI').addEventListener('keydown',function(e){var r=g('ksCL').children;if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();if(r[sel])r[sel].classList.remove('sel');sel=(sel+(e.key==='ArrowDown'?1:-1)+list.length)%Math.max(list.length,1);if(r[sel]){r[sel].classList.add('sel');r[sel].scrollIntoView({block:'nearest'})}}else if(e.key==='Enter'&&list[sel])pick(list[sel]);else if(e.key==='Escape')ksCmdClose()});
+  document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();ksCmdOpen()}});
+  /* search + share buttons in sidebar */
+  var inner=document.querySelector('.sb-inner');
+  if(inner){var b=document.createElement('div');b.className='ks-sbtn';b.style.cssText+=';background:var(--g4);color:var(--g1);border-color:var(--br3)';b.innerHTML='&#128269; Search tools <span style="margin-left:auto;opacity:.6;font-size:9px">Ctrl+K</span>';b.onclick=ksCmdOpen;inner.insertBefore(b,inner.firstChild);
+    var sh=document.createElement('div');sh.className='ks-sbtn';sh.innerHTML='&#128172; Share this tool on WhatsApp';sh.onclick=function(){window.open('https://wa.me/?text='+encodeURIComponent('Free AI Business Marketing Tool for Indian businesses - WhatsApp, Offers, Reels, SEO & more: https://www.kspiderai.in/tools/kspider_Universal_Business_Pro.html'),'_blank')};inner.appendChild(sh)}
+  /* 5. Back-to-top + online/offline notice */
+  var tp=g('ksTop');window.addEventListener('scroll',function(){tp.classList.toggle('on',(window.scrollY||document.documentElement.scrollTop)>400)},{passive:true});
+  var nt=g('ksNet');function net(){if(!navigator.onLine){nt.className='ks-net off';nt.textContent='\u26A0 You are offline - AI features need internet'}else if(nt.className.indexOf('off')>-1){nt.className='ks-net on';nt.textContent='\u2705 Back online';setTimeout(function(){nt.className='ks-net'},2200)}}
+  window.addEventListener('online',net);window.addEventListener('offline',net);net();
 })();
 </script>
 </body>
