@@ -385,6 +385,10 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 [data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
 [data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
 [data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+
+/* ── KSpider v3: hide any "Advertisement" text node injected around ad slots ── */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [class*="advert" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="sponsor" i],.ks-adbanner [class*="advert" i],.ks-adlabel{display:none!important;}
 </style>
 </head>
 <body>
@@ -3823,24 +3827,12 @@ function doAiFill() {
 
   var userPrompt = 'User info: "' + userText + '"\n\nExtract and return JSON for these fields: ' + fieldList;
 
-  fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: sysPrompt,
-      messages: [{ role: 'user', content: userPrompt }]
-    })
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
+  window.ksAICall(sysPrompt, [{ role: 'user', content: userPrompt }], 1000)
+  .then(function(text) {
     if (btn) btn.disabled = false;
     if (loader) loader.classList.remove('show');
     try {
-      var text = '';
-      if (data.content && data.content[0]) text = data.content[0].text || '';
-      text = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      text = (text || '').replace(/```json/g, '').replace(/```/g, '').trim();
       // Find JSON object
       var start = text.indexOf('{');
       var end = text.lastIndexOf('}');
@@ -3885,7 +3877,7 @@ function doAiFill() {
   .catch(function(err) {
     if (btn) btn.disabled = false;
     if (loader) loader.classList.remove('show');
-    showNotif('AI connect nai thayo. Internet check karo.', true);
+    showNotif('AI available nathi (API key set nathi). Manually fill karo.', true);
   });
 }
 
@@ -9366,6 +9358,25 @@ generatePreview = function() {
 <!-- ✅ KSpider Ad In-Content -->
 <div class="ks-adbanner ks-adincontent" style="width:100%;text-align:center;padding:8px 0;margin:12px 0;"><div data-ks-slot="in-content"></div></div>
 <script src="/ks-ads.js"></script>
+
+<!-- KSpider: strip any auto-injected "Advertisement" label around ad slots -->
+<script>
+(function(){
+  var RE=/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i;
+  function clean(){
+    document.querySelectorAll('.ks-adbanner').forEach(function(box){
+      var w=document.createTreeWalker(box,NodeFilter.SHOW_TEXT,null),n,kill=[];
+      while(n=w.nextNode()){ if(RE.test(n.nodeValue)) kill.push(n); }
+      kill.forEach(function(x){ var p=x.parentNode; if(p&&p.children.length===0&&p!==box&&!p.hasAttribute('data-ks-slot')){p.style.display='none';} x.nodeValue=''; });
+      box.removeAttribute('aria-label'); box.removeAttribute('title');
+      box.querySelectorAll('[aria-label],[title]').forEach(function(e){ if(RE.test(e.getAttribute('aria-label')||'')||RE.test(e.getAttribute('title')||'')){e.removeAttribute('aria-label');e.removeAttribute('title');} });
+    });
+  }
+  function start(){ clean(); new MutationObserver(clean).observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
+
 
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
