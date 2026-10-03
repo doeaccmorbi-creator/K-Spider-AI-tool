@@ -4975,8 +4975,8 @@ function startRealtimeListeners() {
         var badge = document.getElementById('agent-badge');
         if (badge) { badge.style.display = pendingCount ? '' : 'none'; badge.textContent = pendingCount; }
         updateAgentStats(allAgentData);
-        var sec = document.getElementById('s-rto-agents');
-        if (sec && sec.style.display !== 'none') renderAgentsTable(allAgentData);
+        var sec = document.getElementById('panel-rto-agents');
+        if (sec && sec.classList.contains('on')) renderAgentsTable(allAgentData);
       }, function(err) { console.warn('[RTO Agents] Listener error:', err.message); });
   } catch(e) { console.warn('[RTO Agents] Listener setup error:', e.message); }
 }
@@ -9568,38 +9568,61 @@ function restoreConnectUi(prefix, url){
 let allAgentData = [];
 let agentFilterMode = 'all';
 
+var _rtoLoadToken = 0;   /* bumped on every call so a late/stuck response from a previous call can never overwrite a newer one */
 function loadAgentRequests() {
+  var myToken = ++_rtoLoadToken;
+  var settled = false;
+  var watchdog = setTimeout(function() {
+    if (settled || myToken !== _rtoLoadToken) return;
+    settled = true;
+    console.warn('[RTO Agents] Firestore load timed out after 8s — falling back to localStorage');
+    _loadAgentsFromLocal();
+    showAdminToast('⚠️ RTO Agents cloud load timed out — showing local cache. Tap Refresh to retry.', 'error');
+  }, 8000);
+
   // PRIMARY: Firestore — gets cross-browser submissions from all agents
   if (db) {
     db.collection('rto_agent_requests').orderBy('submittedAt', 'desc').get()
       .then(function(snap) {
+        if (settled || myToken !== _rtoLoadToken) return;
+        settled = true; clearTimeout(watchdog);
         var fsAgents = [];
         snap.forEach(function(doc) { fsAgents.push(doc.data()); });
         // Merge with localStorage (backward compat for pre-Firestore agents)
         var localAgents = [];
         try { localAgents = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]'); } catch(e2) {}
+        if (!Array.isArray(localAgents)) localAgents = [];
         var map = {};
-        localAgents.forEach(function(a){ if (a.refId) map[a.refId] = a; });
-        fsAgents.forEach(function(a)   { if (a.refId) map[a.refId] = a; });
+        localAgents.forEach(function(a){ if (a && a.refId) map[a.refId] = a; });
+        fsAgents.forEach(function(a)   { if (a && a.refId) map[a.refId] = a; });
+        try { _rtoRepairPartialRecords(fsAgents, localAgents); } catch(eRep) {}
         allAgentData = Object.values(map);
         try { localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData)); } catch(e2) {}
         renderAgentsTable(allAgentData);
         updateAgentStats(allAgentData);
       }).catch(function(e) {
+        if (settled || myToken !== _rtoLoadToken) return;
+        settled = true; clearTimeout(watchdog);
         console.warn('[RTO Agents] Firestore load failed, using localStorage:', e.message);
         _loadAgentsFromLocal();
+        showAdminToast('⚠️ RTO Agents cloud load failed — showing local cache: ' + e.message, 'error');
       });
   } else {
+    settled = true; clearTimeout(watchdog);
     _loadAgentsFromLocal();
   }
 }
 
 function _loadAgentsFromLocal() {
   try {
-    allAgentData = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
-    renderAgentsTable(allAgentData);
-    updateAgentStats(allAgentData);
-  } catch(e) { console.error('Error loading agents:', e); }
+    var parsed = JSON.parse(localStorage.getItem('rto_admin_pending') || '[]');
+    allAgentData = Array.isArray(parsed) ? parsed : [];
+  } catch(e) {
+    console.error('[RTO Agents] local cache unreadable, showing empty list:', e.message);
+    allAgentData = [];
+  }
+  renderAgentsTable(allAgentData);   /* ALWAYS runs — table/stats can never stay stuck on "Loading..." again */
+  updateAgentStats(allAgentData);
 }
 
 function updateAgentStats(data) {
@@ -10690,6 +10713,53 @@ function deleteAgent(refId) {
   showAdminToast('Agent deleted \uD83D\uDDD1\uFE0F', 'info');
 }
 
+var _RTO_REG_FIELDS = ['name','company','mobile','email','city','address','website','logo','whatsapp','facebook','instagram','youtube','telegram','linkedin','twitter','gmaps','services'];
+/* What the RTO tool + receivers read from Firestore: admin decision + the agent's full details.
+   (Details are included so the promo link + ad popup work on ANY device, even for agents that
+    were first approved from this browser only.) */
+function _rtoCloudPayload(agent) {
+  var p = {
+    refId:        agent.refId,
+    status:       agent.status       || 'pending',
+    approvedAt:   agent.approvedAt   || null,
+    rejectedAt:   agent.rejectedAt   || null,
+    rejectReason: agent.rejectReason || '',
+    _suspended:   agent._suspended   || false,
+    _expired:     agent._expired     || false,
+    _expireDate:  agent._expireDate  || null,
+    updatedAt:    new Date().toISOString(),
+    updatedBy:    'admin'
+  };
+  if (agent._shortCode) p._shortCode = agent._shortCode;   /* never overwrite the code with an empty value */
+  if (agent.name) {
+    _RTO_REG_FIELDS.forEach(function(f) { p[f] = agent[f] || ''; });
+    p.submittedAt = agent.submittedAt || new Date().toISOString();
+  }
+  return p;
+}
+
+/* Cloud record exists but has no agent details (created earlier by a status-only sync, or by an
+   admin approving before the agent's own device ever synced) -> complete it from the full copy
+   this browser holds, so receivers on ANY device see the banner + ad popup. */
+var _rtoRepairDone = {};
+function _rtoRepairPartialRecords(fsAgents, localAgents) {
+  if (!db) return;
+  var have = {};
+  (fsAgents || []).forEach(function(a) { if (a && a.refId && a.name) have[a.refId] = true; });
+  (localAgents || []).forEach(function(a) {
+    if (!a || !a.refId || !a.name || have[a.refId] || _rtoRepairDone[a.refId]) return;
+    _rtoRepairDone[a.refId] = true;
+    var ref = db.collection('rto_agent_requests').doc(a.refId);
+    ref.get().then(function(s) {
+      if (s.exists && !((s.data() || {}).name)) {
+        return ref.set(_rtoCloudPayload(a), { merge: true }).then(function() {
+          console.info('[RTO Agents] completed cloud record for ' + a.refId);
+        });
+      }
+    }).catch(function(e) { console.warn('[RTO Agents] repair skipped for ' + a.refId + ':', e.message); });
+  });
+}
+
 function saveAgentsToStorage() {
   localStorage.setItem('rto_admin_pending', JSON.stringify(allAgentData));
   // Sync admin actions (approve/reject/suspend/delete) to Firestore
@@ -10701,20 +10771,7 @@ function _syncAgentsToFirestore() {
   if (!db) return;
   allAgentData.forEach(function(agent) {
     if (!agent.refId) return;
-    var upd = {
-      status:       agent.status       || 'pending',
-      approvedAt:   agent.approvedAt   || null,
-      rejectedAt:   agent.rejectedAt   || null,
-      rejectReason: agent.rejectReason || '',
-      _suspended:   agent._suspended   || false,
-      _expired:     agent._expired     || false,
-      _expireDate:  agent._expireDate  || null,
-      updatedAt:    new Date().toISOString(),
-      updatedBy:    'admin'
-    };
-    /* keep the agent's short code — never overwrite it with an empty value */
-    if (agent._shortCode) upd._shortCode = agent._shortCode;
-    db.collection('rto_agent_requests').doc(agent.refId).set(upd, { merge: true }).catch(function(e) {
+    db.collection('rto_agent_requests').doc(agent.refId).set(_rtoCloudPayload(agent), { merge: true }).catch(function(e) {
       console.warn('[RTO Agents] Firestore sync failed for ' + agent.refId + ':', e.message);
       var now = Date.now();
       if (!window._rtoSyncWarnAt || now - window._rtoSyncWarnAt > 8000) {
