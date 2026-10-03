@@ -2670,6 +2670,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
           <button class="btn btn-sm btn-gh" id="dsa-tab-faculty" onclick="dsaShowTab('faculty')">🧑‍🏫 Faculty</button>
           <button class="btn btn-sm btn-gh" id="dsa-tab-doubts" onclick="dsaShowTab('doubts')">💬 Doubts</button>
           <button class="btn btn-sm btn-gh" id="dsa-tab-announce" onclick="dsaShowTab('announce')">📣 Announcements</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-mcq" onclick="dsaShowTab('mcq');dsaMcqLoadStatus()">📚 MCQ Bank</button>
           <button class="btn btn-sm btn-gh" onclick="dsaRefreshAll()" style="margin-left:auto">🔄 Refresh</button>
         </div>
 
@@ -2729,6 +2730,23 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
         <!-- DOUBTS -->
         <div id="dsa-sub-doubts" class="dsa-sub" style="display:none">
           <div id="dsa-doubts-list-full" style="padding:16px;display:flex;flex-direction:column;gap:10px"></div>
+        </div>
+
+        <!-- MCQ BANK (added) — upload clean CSVs, sync to DSA students' MCQ Practice Hub -->
+        <div id="dsa-sub-mcq" class="dsa-sub" style="display:none">
+          <div style="padding:16px;max-width:760px">
+            <div style="font-weight:700;font-size:1rem;margin-bottom:4px">📚 MCQ Question Bank</div>
+            <div style="font-size:.8rem;color:var(--t3);line-height:1.6;margin-bottom:14px">
+              Upload the clean question CSV file(s) (<code>DSA_ALL_questions.csv</code>, or any of the per-subject <code>DSA_*.csv</code> files),
+              check the summary, then press <b>Sync to students</b>. Uploading a subject again replaces that subject's old questions; other subjects stay untouched.
+            </div>
+            <div id="dsa-mcq-status" style="font-size:.8rem;color:var(--t2);margin-bottom:12px;padding:10px 12px;background:var(--bg2);border-radius:8px">Loading current bank status…</div>
+            <input type="file" id="dsa-mcq-files" accept=".csv,text/csv" multiple onchange="dsaMcqPreview()" style="margin-bottom:10px;font-size:.82rem">
+            <div id="dsa-mcq-preview" style="font-size:.8rem;color:var(--t2);line-height:1.7;margin-bottom:12px"></div>
+            <button class="btn btn-g btn-sm" id="dsa-mcq-btn" onclick="dsaMcqSync()" disabled>⬆️ Sync to students</button>
+            <button class="btn btn-sm btn-gh" onclick="dsaMcqLoadStatus()" style="margin-left:6px">🔄 Refresh status</button>
+            <pre id="dsa-mcq-log" style="display:none;margin-top:12px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:.74rem;line-height:1.55;white-space:pre-wrap;max-height:260px;overflow:auto"></pre>
+          </div>
         </div>
 
         <!-- ANNOUNCEMENTS -->
@@ -4532,7 +4550,7 @@ function dsaTryAutoRestore() {
 }
 
 function dsaShowTab(name) {
-  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce'];
+  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce', 'mcq'];
   tabs.forEach(function(t) {
     var sub = document.getElementById('dsa-sub-' + t);
     var btn = document.getElementById('dsa-tab-' + t);
@@ -11682,6 +11700,138 @@ function waRefDelete(code) {
   }).catch(function(e) { showToast('Error: ' + e.message, 'err'); });
 }
 
+</script>
+<script>
+/* =========================================================================
+   DSA ADMIN → MCQ Bank sync (added). Unique "dsaMcq*" names; touches only the
+   DSA project's mcqBank / mcqFree / mcqMeta collections via the already
+   signed-in DSA admin connection (_dsaDb). Nothing else on this page is used
+   or changed except the shared toast().
+   ========================================================================= */
+var _dsaMcqRows = null;
+function dsaMcqSlug(s){ return String(s).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,''); }
+function dsaMcqParseCsv(text){
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  var rows = [], row = [], f = '', q = false, i = 0, n = text.length, c;
+  while (i < n) {
+    c = text[i];
+    if (q) {
+      if (c === '"') { if (text[i+1] === '"') { f += '"'; i++; } else q = false; }
+      else f += c;
+    } else if (c === '"') q = true;
+    else if (c === ',') { row.push(f); f = ''; }
+    else if (c === '\n' || c === '\r') { if (c === '\r' && text[i+1] === '\n') i++; row.push(f); f = ''; if (row.length > 1 || row[0] !== '') rows.push(row); row = []; }
+    else f += c;
+    i++;
+  }
+  if (f !== '' || row.length) { row.push(f); rows.push(row); }
+  return rows;
+}
+function dsaMcqToObjects(rows){
+  var h = rows[0].map(function(x){ return x.trim(); }), need = ['ID','Exam','Subject','Chapter','Question','OptionA','OptionB','OptionC','OptionD','Answer(0-3)'];
+  var miss = need.filter(function(k){ return h.indexOf(k) < 0; });
+  if (miss.length) throw new Error('Missing column(s): ' + miss.join(', '));
+  return rows.slice(1).map(function(r){ var o = {}; h.forEach(function(k, i){ o[k] = (r[i] === undefined ? '' : r[i]); }); return o; });
+}
+/* validate + group -> {chapters:{key:{meta,qs}}, bad:[...]} */
+function dsaMcqBuild(objs){
+  var chapters = {}, bad = [], seen = {};
+  objs.forEach(function(o, ix){
+    var a = parseInt(o['Answer(0-3)'], 10);
+    var opts = [o.OptionA, o.OptionB, o.OptionC, o.OptionD].map(function(x){ return String(x).trim(); });
+    if (!o.ID || !o.Exam || !o.Subject || !o.Chapter || !String(o.Question).trim() || opts.some(function(x){ return !x; }) || !(a >= 0 && a <= 3)) { bad.push('Row ' + (ix + 2) + ': incomplete'); return; }
+    if (seen[o.ID]) { bad.push('Row ' + (ix + 2) + ': duplicate ID ' + o.ID); return; }
+    seen[o.ID] = 1;
+    var key = dsaMcqSlug(o.Exam) + '__' + dsaMcqSlug(o.Subject) + '__' + dsaMcqSlug(o.Chapter);
+    var ch = chapters[key] || (chapters[key] = { meta: { k: key, e: o.Exam.trim(), s: o.Subject.trim(), c: o.Chapter.trim(), cl: (o.Class || '').trim(), n: 0, tg: {}, yr: {} }, qs: [] });
+    var qq = { i: o.ID.trim(), q: String(o.Question).trim(), o: opts, a: a };
+    var tag = (o.Tag || '').trim(), yr = (o.Year || '').trim(), ex = (o.Explanation || '').trim();
+    if (tag) { qq.t = tag; ch.meta.tg[tag] = (ch.meta.tg[tag] || 0) + 1; }
+    if (yr)  { qq.y = yr;  ch.meta.yr[yr] = (ch.meta.yr[yr] || 0) + 1; }
+    if (ex) qq.e = ex;
+    ch.qs.push(qq); ch.meta.n++;
+  });
+  return { chapters: chapters, bad: bad };
+}
+function dsaMcqSummary(b){
+  var g = {}; Object.keys(b.chapters).forEach(function(k){ var m = b.chapters[k].meta, gk = m.e + ' · ' + m.s; g[gk] = g[gk] || { ch: 0, q: 0 }; g[gk].ch++; g[gk].q += m.n; });
+  return g;
+}
+function dsaMcqLog(msg, reset){
+  var el = document.getElementById('dsa-mcq-log'); if (!el) return;
+  el.style.display = 'block'; el.textContent = (reset ? '' : el.textContent) + msg + '\n'; el.scrollTop = el.scrollHeight;
+}
+function dsaMcqPreview(){
+  var inp = document.getElementById('dsa-mcq-files'), pv = document.getElementById('dsa-mcq-preview'), btn = document.getElementById('dsa-mcq-btn');
+  _dsaMcqRows = null; btn.disabled = true;
+  if (!inp.files.length) { pv.innerHTML = ''; return; }
+  pv.innerHTML = 'Reading files…';
+  Promise.all(Array.prototype.map.call(inp.files, function(f){ return f.text().then(function(t){ return dsaMcqToObjects(dsaMcqParseCsv(t)); }); }))
+    .then(function(arrs){
+      var all = [].concat.apply([], arrs), b = dsaMcqBuild(all), g = dsaMcqSummary(b), keys = Object.keys(g).sort();
+      if (!keys.length) { pv.innerHTML = '<span style="color:#dc2626">No valid questions found in the selected file(s).</span>'; return; }
+      var tot = 0; keys.forEach(function(k){ tot += g[k].q; });
+      var big = Object.keys(b.chapters).filter(function(k){ return JSON.stringify(b.chapters[k].qs).length > 900000; });
+      pv.innerHTML = '<b>' + tot.toLocaleString('en-IN') + ' valid questions</b> ready:<br>' +
+        keys.map(function(k){ return '• ' + k + ' — ' + g[k].q.toLocaleString('en-IN') + ' questions, ' + g[k].ch + ' chapters'; }).join('<br>') +
+        (b.bad.length ? '<br><span style="color:#d97706">⚠️ ' + b.bad.length + ' row(s) skipped (incomplete/duplicate): ' + b.bad.slice(0, 5).join('; ') + (b.bad.length > 5 ? '…' : '') + '</span>' : '') +
+        (big.length ? '<br><span style="color:#dc2626">❌ A chapter is too large for one record — cannot sync.</span>' : '');
+      if (!big.length) { _dsaMcqRows = b; btn.disabled = !_dsaSignedIn; }
+    }).catch(function(e){ pv.innerHTML = '<span style="color:#dc2626">❌ ' + e.message + '</span>'; });
+}
+function dsaMcqLoadStatus(){
+  var st = document.getElementById('dsa-mcq-status'); if (!st) return;
+  if (!_dsaSignedIn) { st.textContent = 'Connect the DSA admin account first.'; return; }
+  _dsaDb.collection('mcqMeta').doc('index').get().then(function(d){
+    if (!d.exists) { st.innerHTML = '📭 No question bank uploaded yet.'; return; }
+    var x = d.data(), g = {}; (x.chapters || []).forEach(function(c){ var k = c.e + ' · ' + c.s; g[k] = g[k] || { ch: 0, q: 0 }; g[k].ch++; g[k].q += c.n; });
+    var when = x.updatedAt && x.updatedAt.toDate ? x.updatedAt.toDate().toLocaleString('en-IN') : '';
+    st.innerHTML = '🟢 <b>Live bank: ' + (x.total || 0).toLocaleString('en-IN') + ' questions</b>' + (when ? ' · last sync ' + when : '') + '<br>' +
+      Object.keys(g).sort().map(function(k){ return '• ' + k + ': ' + g[k].q.toLocaleString('en-IN') + ' (' + g[k].ch + ' chapters)'; }).join('<br>');
+  }).catch(function(e){ st.innerHTML = '<span style="color:#dc2626">Could not read bank status: ' + e.message + ' — make sure the new Firestore rules are published.</span>'; });
+}
+async function dsaMcqSync(){
+  var b = _dsaMcqRows; if (!b || !_dsaSignedIn) { toast('Select a valid file and connect DSA Admin first.'); return; }
+  var btn = document.getElementById('dsa-mcq-btn'); btn.disabled = true;
+  var FV = firebase.firestore.FieldValue;
+  try {
+    dsaMcqLog('Starting sync…', true);
+    var idxRef = _dsaDb.collection('mcqMeta').doc('index'), old = await idxRef.get();
+    var oldCh = old.exists ? (old.data().chapters || []) : [];
+    var newGroups = {}; Object.keys(b.chapters).forEach(function(k){ var m = b.chapters[k].meta; newGroups[m.e + '|' + m.s] = 1; });
+    var keep = oldCh.filter(function(c){ return !newGroups[c.e + '|' + c.s]; });
+    var gone = oldCh.filter(function(c){ return newGroups[c.e + '|' + c.s] && !b.chapters[c.k]; });
+    var keys = Object.keys(b.chapters), written = 0, ops = [];
+    keys.forEach(function(k){
+      var ch = b.chapters[k], qs = ch.qs.slice().sort(function(x, y){ return x.i < y.i ? -1 : 1; });
+      ops.push({ type: 'set', col: 'mcqBank', id: k, data: { k: k, e: ch.meta.e, s: ch.meta.s, c: ch.meta.c, n: ch.meta.n, qs: qs, updatedAt: FV.serverTimestamp() } });
+      ops.push({ type: 'set', col: 'mcqFree', id: k, data: { k: k, qs: qs.slice(0, 10), updatedAt: FV.serverTimestamp() } });
+    });
+    gone.forEach(function(c){ ops.push({ type: 'del', col: 'mcqBank', id: c.k }); ops.push({ type: 'del', col: 'mcqFree', id: c.k }); });
+    dsaMcqLog('Writing ' + keys.length + ' chapters (' + ops.length + ' records)…');
+    for (var i = 0; i < ops.length; i += 10) {
+      var batch = _dsaDb.batch();
+      ops.slice(i, i + 10).forEach(function(op){
+        var ref = _dsaDb.collection(op.col).doc(op.id);
+        if (op.type === 'set') batch.set(ref, op.data); else batch.delete(ref);
+      });
+      await batch.commit(); written = Math.min(i + 10, ops.length);
+      dsaMcqLog('  …' + written + ' / ' + ops.length);
+    }
+    var idx = keep.concat(keys.map(function(k){ return b.chapters[k].meta; }));
+    idx.sort(function(x, y){ return (x.e + x.s + x.c) < (y.e + y.s + y.c) ? -1 : 1; });
+    var total = idx.reduce(function(s, c){ return s + c.n; }, 0);
+    await idxRef.set({ chapters: idx, total: total, updatedAt: FV.serverTimestamp() });
+    dsaMcqLog('✅ Done. Live bank now has ' + total.toLocaleString('en-IN') + ' questions in ' + idx.length + ' chapters.');
+    toast('✅ MCQ bank synced — ' + total.toLocaleString('en-IN') + ' questions live');
+    dsaMcqLoadStatus();
+  } catch (e) {
+    console.warn('[DSA MCQ sync]', e);
+    dsaMcqLog('❌ Failed: ' + (e && e.message ? e.message : e) + '\nIf this says "permission", publish the new DSA Firestore rules first, then try again.');
+    toast('❌ Sync failed — see the log');
+  }
+  btn.disabled = false;
+}
 </script>
 </body>
 </html>
