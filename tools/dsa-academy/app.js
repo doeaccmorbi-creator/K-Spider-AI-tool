@@ -203,6 +203,7 @@ function render(){
     adminanalytics: renderAdminAnalytics,
     mock: renderMock,
     mcqtracks: renderMcqTracks,
+    mcq: renderMcq, // MCQ Practice Hub (mcq.js)
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
     leaderboard: renderLeaderboard,
@@ -225,7 +226,7 @@ function render(){
   const ROLE_FOR_VIEW = {
     student:'student', subject:'student', chapter:'student', test:'student', result:'student',
     mock:'student', leaderboard:'student', progress:'student', doubts:'student', bookmarks:'student',
-    plans:'student', myfees:'student',
+    plans:'student', myfees:'student', mcq:'student',
     parent:'parent', parentaddchild:'parent',
     admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
     adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
@@ -252,7 +253,7 @@ const NAV = {
   student: [
     {id:'overview', ic:'🏠', label:'Dashboard', view:'student'},
     {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
-    {id:'mcqtracks', ic:'📝', label:'MCQ Practice Series', view:'mcqtracks'},
+    {id:'mcqtracks', ic:'📚', label:'MCQ Practice Hub', view:'mcq'},
     {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
     {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
     {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
