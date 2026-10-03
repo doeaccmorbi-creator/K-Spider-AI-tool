@@ -41,6 +41,90 @@ function formatWhen(w){
 }
 
 /* demo leaderboard seed so the feature is visible even with one real user */
+/* ============================== MCQ PRACTICE SERIES =======================
+   Live-fetched from the user's own published Google Sheets — edit the sheet
+   any time and it reflects here immediately, no code changes ever needed.
+   ========================================================================= */
+const MCQ_SHEETS = {
+  'NEET-Biology':   'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7shbTrfGpJik0xSkcOk9An2bJyyrE1sLb_BwU6Qm7uiin6Kb1LO9CxmH8889zV_BuKwgAHCHRSaLm/pub?gid=151475311&single=true&output=csv',
+  'NEET-Physics':   'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7shbTrfGpJik0xSkcOk9An2bJyyrE1sLb_BwU6Qm7uiin6Kb1LO9CxmH8889zV_BuKwgAHCHRSaLm/pub?gid=1629042323&single=true&output=csv',
+  'NEET-Chemistry': 'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7shbTrfGpJik0xSkcOk9An2bJyyrE1sLb_BwU6Qm7uiin6Kb1LO9CxmH8889zV_BuKwgAHCHRSaLm/pub?gid=225893892&single=true&output=csv',
+  'JEE-Maths':      'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7shbTrfGpJik0xSkcOk9An2bJyyrE1sLb_BwU6Qm7uiin6Kb1LO9CxmH8889zV_BuKwgAHCHRSaLm/pub?gid=770501624&single=true&output=csv',
+  'JEE-Chemistry':  'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7shbTrfGpJik0xSkcOk9An2bJyyrE1sLb_BwU6Qm7uiin6Kb1LO9CxmH8889zV_BuKwgAHCHRSaLm/pub?gid=748395735&single=true&output=csv',
+  'JEE-Physics':    'https://docs.google.com/spreadsheets/d/e/2PACX-1vS7shbTrfGpJik0xSkcOk9An2bJyyrE1sLb_BwU6Qm7uiin6Kb1LO9CxmH8889zV_BuKwgAHCHRSaLm/pub?gid=931823601&single=true&output=csv',
+};
+const MCQ_TRACK_SUBJECTS = { NEET:['Biology','Physics','Chemistry'], JEE:['Maths','Physics','Chemistry'] };
+const MCQ_SUBJECT_META = {
+  Biology:  {icon:'🧬', color:'var(--gold-600)', bg:'var(--gold-100)'},
+  Physics:  {icon:'⚛️', color:'var(--navy-700)', bg:'var(--paper-2)'},
+  Chemistry:{icon:'🧪', color:'var(--green-600)', bg:'var(--green-100)'},
+  Maths:    {icon:'📐', color:'#9333ea', bg:'#f3e8ff'},
+};
+
+function parseCSV(text){
+  const rows = [];
+  let row = [], field = '', inQuotes = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i], next = text[i+1];
+    if(inQuotes){
+      if(c === '"' && next === '"'){ field += '"'; i++; }
+      else if(c === '"'){ inQuotes = false; }
+      else field += c;
+    } else {
+      if(c === '"') inQuotes = true;
+      else if(c === ','){ row.push(field); field=''; }
+      else if(c === '\r'){ /* skip, handled by \n */ }
+      else if(c === '\n'){ row.push(field); field=''; rows.push(row); row=[]; }
+      else field += c;
+    }
+  }
+  if(field.length>0 || row.length>0){ row.push(field); rows.push(row); }
+  return rows.filter(r => r.length>1 || (r.length===1 && r[0].trim()!==''));
+}
+
+function fetchMCQSheet(key){
+  DB._mcqCache = DB._mcqCache || {};
+  if(DB._mcqCache[key]) return Promise.resolve(DB._mcqCache[key]);
+  const url = MCQ_SHEETS[key];
+  return fetch(url).then(res=>res.text()).then(text=>{
+    const rows = parseCSV(text);
+    const header = rows[0].map(h=>h.trim());
+    const idx = {
+      topic: header.indexOf('Topic'),
+      question: header.indexOf('Question'),
+      a: header.indexOf('OptionA'), b: header.indexOf('OptionB'),
+      c: header.indexOf('OptionC'), d: header.indexOf('OptionD'),
+      answer: header.indexOf('Answer(0-3)'),
+      explanation: header.indexOf('Explanation'),
+      tag: header.indexOf('Year'),
+    };
+    const questions = [];
+    for(let i=1;i<rows.length;i++){
+      const r = rows[i];
+      if(!r || r.length < 7) continue;
+      const correctIndex = parseInt(r[idx.answer], 10);
+      if(isNaN(correctIndex) || !r[idx.question]) continue;
+      questions.push({
+        topic: (r[idx.topic]||'General').trim(),
+        text: r[idx.question]||'',
+        options: [r[idx.a]||'', r[idx.b]||'', r[idx.c]||'', r[idx.d]||''],
+        correctIndex,
+        explanation: r[idx.explanation]||'',
+        tag: (r[idx.tag]||'').trim(),
+      });
+    }
+    const byTopic = {};
+    questions.forEach(q=>{ (byTopic[q.topic] = byTopic[q.topic]||[]).push(q); });
+    const data = {questions, byTopic};
+    DB._mcqCache[key] = data;
+    return data;
+  }).catch(err=>{
+    console.warn('[DSA] MCQ sheet fetch failed', key, err);
+    toast('Could not load this question bank right now', '⚠️');
+    return {questions:[], byTopic:{}};
+  });
+}
+
 const DEMO_LEADERBOARD = [
   {name:'Ishaan Verma', pct:92, subject:'Full Mock', when:'Yesterday'},
   {name:'Priya Nair', pct:88, subject:'Chemistry · Ch.2', when:'2 days ago'},
@@ -118,6 +202,9 @@ function render(){
     adminparents: renderAdminParents,
     adminanalytics: renderAdminAnalytics,
     mock: renderMock,
+    mcqtracks: renderMcqTracks,
+    mcqsubjects: renderMcqSubjects,
+    mcqtopics: renderMcqTopics,
     leaderboard: renderLeaderboard,
     progress: renderProgress,
     doubts: renderDoubts,
@@ -165,6 +252,7 @@ const NAV = {
   student: [
     {id:'overview', ic:'🏠', label:'Dashboard', view:'student'},
     {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
+    {id:'mcqtracks', ic:'📝', label:'MCQ Practice Series', view:'mcqtracks'},
     {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
     {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
     {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
@@ -1002,8 +1090,12 @@ function renderTest(){
   const i = TEST_STATE.current;
   const q = qs[i];
   const chosen = TEST_STATE.answers[i];
-  const headerLabel = TEST_STATE.mode==='mock' ? 'Full Syllabus Mock Test' : `${TEST_STATE.subject} · Ch.${TEST_STATE.chapter} · ${TEST_STATE.section}`;
-  const qMeta = TEST_STATE.mode==='mock' ? `<span class="pill pill-navy" style="margin-bottom:8px;display:inline-block">${q.subject} · Ch.${q.chapter}</span><br>` : '';
+  const headerLabel = TEST_STATE.mode==='mock' ? 'Full Syllabus Mock Test' : TEST_STATE.mode==='mcqseries' ? `${TEST_STATE.subject} · ${TEST_STATE.section}` : `${TEST_STATE.subject} · Ch.${TEST_STATE.chapter} · ${TEST_STATE.section}`;
+  const qMeta = TEST_STATE.mode==='mock'
+    ? `<span class="pill pill-navy" style="margin-bottom:8px;display:inline-block">${q.subject} · Ch.${q.chapter}</span><br>`
+    : (TEST_STATE.mode==='mcqseries' && TEST_STATE.section==='Full Subject Mock' && q.topic)
+      ? `<span class="pill pill-navy" style="margin-bottom:8px;display:inline-block">${q.topic}</span><br>`
+      : '';
 
   return `
   <div class="app-shell">
@@ -1083,7 +1175,7 @@ function submitTest(){
     else if(a===q.correctIndex){ correct++; bySubject[subj].correct++; }
     else { wrong++; bySubject[subj].wrong++; }
   });
-  const isNEET = TEST_STATE.mode==='mock' || TEST_STATE.section==='Chapter Test';
+  const isNEET = TEST_STATE.mode==='mock' || TEST_STATE.section==='Chapter Test' || TEST_STATE.graded===true;
   const score = isNEET ? (correct*4 - wrong*1) : correct;
   const max = isNEET ? qs.length*4 : qs.length;
   const pct = Math.max(0, Math.round((score/max)*100));
@@ -1111,7 +1203,7 @@ function renderResult(){
   if(!TEST_STATE || !TEST_STATE.submitted) return renderStudentDashboard();
   const qs = TEST_STATE.questions;
   const r = TEST_STATE.result;
-  const headerLabel = TEST_STATE.mode==='mock' ? 'Full Syllabus Mock Test' : `${TEST_STATE.subject} · Ch.${TEST_STATE.chapter} · ${TEST_STATE.section}`;
+  const headerLabel = TEST_STATE.mode==='mock' ? 'Full Syllabus Mock Test' : TEST_STATE.mode==='mcqseries' ? `${TEST_STATE.subject} · ${TEST_STATE.section}` : `${TEST_STATE.subject} · Ch.${TEST_STATE.chapter} · ${TEST_STATE.section}`;
   return `
   <div class="app-shell">
     ${sidebar('overview')}
@@ -1142,7 +1234,7 @@ function renderResult(){
           const a = TEST_STATE.answers[i];
           return `
           <div style="margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border)">
-            <div class="q-tag">Question ${i+1}${q.subject?' · '+q.subject+' Ch.'+q.chapter:''}</div>
+            <div class="q-tag">Question ${i+1}${q.subject?' · '+q.subject+' Ch.'+q.chapter:''}${q.topic?' · '+q.topic:''}</div>
             <div class="q-text" style="font-size:14.5px">${q.text}</div>
             ${q.options.map((o,oi)=>{
               let cls='opt-row';
@@ -1187,6 +1279,166 @@ function renderMock(){
       </div>
     </div>
   </div>`;
+}
+
+/* ============================== MCQ PRACTICE SERIES (UI) ================== */
+function renderMcqTracks(){
+  if(!DB.currentUser) return renderAuth();
+  return `
+  <div class="app-shell">
+    ${sidebar('mcqtracks')}
+    <div class="main" style="max-width:720px">
+      <div class="main-head"><div><h2>📝 MCQ Practice Series</h2><p>Topic-wise and full-mock practice, live from a running question bank</p></div></div>
+      <div class="subject-grid">
+        <div class="card subject-card" onclick="go('mcqsubjects',{track:'NEET'})">
+          <div class="subject-icon" style="background:var(--green-100);color:var(--green-600)">🩺</div>
+          <h3>NEET</h3><p>Biology, Physics, Chemistry</p>
+        </div>
+        <div class="card subject-card" onclick="go('mcqsubjects',{track:'JEE'})">
+          <div class="subject-icon" style="background:var(--paper-2);color:var(--navy-700)">⚙️</div>
+          <h3>JEE</h3><p>Maths, Physics, Chemistry</p>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderMcqSubjects(){
+  if(!DB.currentUser) return renderAuth();
+  const track = ROUTE.params.track || 'NEET';
+  const subjects = MCQ_TRACK_SUBJECTS[track];
+  return `
+  <div class="app-shell">
+    ${sidebar('mcqtracks')}
+    <div class="main" style="max-width:800px">
+      <div class="main-head">
+        <div><h2>${track} — Pick a subject</h2></div>
+        <button class="btn btn-outline btn-sm" onclick="go('mcqtracks')">← Tracks</button>
+      </div>
+      <div class="subject-grid">
+        ${subjects.map(s=>{
+          const m = MCQ_SUBJECT_META[s];
+          return `<div class="card subject-card" onclick="go('mcqtopics',{track:'${track}',subject:'${s}'})">
+            <div class="subject-icon" style="background:${m.bg};color:${m.color}">${m.icon}</div>
+            <h3>${s}</h3><p>Topic-wise practice + full mocks</p>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function renderMcqTopics(){
+  if(!DB.currentUser) return renderAuth();
+  const track = ROUTE.params.track || 'NEET';
+  const subject = ROUTE.params.subject || MCQ_TRACK_SUBJECTS[track][0];
+  const key = track+'-'+subject;
+  DB._mcqCache = DB._mcqCache || {};
+  if(!DB._mcqCache[key]){
+    fetchMCQSheet(key).then(()=>{ if(ROUTE.view==='mcqtopics') render(); });
+    return `<div class="app-shell">${sidebar('mcqtracks')}<div class="main"><div class="empty"><div class="ic">⏳</div>Loading ${track} ${subject} question bank…</div></div></div>`;
+  }
+  const data = DB._mcqCache[key];
+  const isPremium = DB.currentUser.plan === 'premium';
+  const topics = Object.keys(data.byTopic);
+  const years = Array.from(new Set(data.questions.map(q=>q.tag).filter(t=>/^\d{4}$/.test(t)))).sort().reverse();
+
+  if(data.questions.length === 0){
+    return `<div class="app-shell">${sidebar('mcqtracks')}<div class="main"><div class="empty"><div class="ic">📭</div>Could not load this question bank — try refreshing.</div></div></div>`;
+  }
+
+  return `
+  <div class="app-shell">
+    ${sidebar('mcqtracks')}
+    <div class="main">
+      <div class="main-head">
+        <div><h2>${track} ${subject} — Practice Series</h2><p>${data.questions.length} questions across ${topics.length} topics</p></div>
+        <button class="btn btn-outline btn-sm" onclick="go('mcqsubjects',{track:'${track}'})">← ${track} subjects</button>
+      </div>
+
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <h3 style="font-size:15px">🧪 Full Subject Mock</h3><span class="pill pill-gold">Premium</span>
+        </div>
+        <p style="font-size:13px;color:var(--muted);margin-bottom:14px">45 random questions mixed across every topic — full exam simulation, NEET/JEE marking.</p>
+        ${isPremium
+          ? `<button class="btn btn-gold btn-sm" onclick="startMcqSubjectMock('${track}','${subject}')">Start Full Mock →</button>`
+          : `<button class="btn btn-gold btn-sm" onclick="go('plans')">Unlock with Premium →</button>`}
+      </div>
+
+      ${years.length>0 ? `
+      <div class="card" style="padding:20px;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h3 style="font-size:15px">📅 Practice by Year</h3><span class="pill pill-gold">Premium</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${years.map(y=>`<button class="btn btn-outline btn-sm" onclick="${isPremium?`startMcqYearPractice('${track}','${subject}','${y}')`:`go('plans')`}">${y}</button>`).join('')}
+        </div>
+      </div>` : ''}
+
+      <div class="card" style="padding:20px">
+        <h3 style="font-size:15px;margin-bottom:14px">Topics</h3>
+        ${topics.map(t=>{
+          const count = data.byTopic[t].length;
+          const enc = encodeURIComponent(t);
+          return `<div class="chapter-row">
+            <div class="l"><div class="chapter-badge">${count}</div><div><h4>${t}</h4><span>${count} questions</span></div></div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-outline btn-sm" onclick="startMcqPractice('${track}','${subject}','${enc}','quick')">Quick Practice</button>
+              ${isPremium
+                ? `<button class="btn btn-primary btn-sm" onclick="startMcqPractice('${track}','${subject}','${enc}','topicTest')">Topic Test →</button>`
+                : `<button class="btn btn-gold btn-sm" onclick="go('plans')">🔒 Topic Test</button>`}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+function startMcqPractice(track, subject, encodedTopic, mode){
+  const topic = decodeURIComponent(encodedTopic);
+  const key = track+'-'+subject;
+  fetchMCQSheet(key).then(data=>{
+    const pool = (data.byTopic[topic] || []).slice();
+    const qs = mode==='quick' ? shuffle(pool).slice(0,10) : shuffle(pool);
+    if(qs.length===0){ toast('No questions found for this topic', '⚠️'); return; }
+    TEST_STATE = {
+      mode:'mcqseries', subject: track+' '+subject, chapter:null, section: topic,
+      questions: qs, answers: Array(qs.length).fill(null), marked: Array(qs.length).fill(false),
+      current:0, submitted:false, graded: mode==='topicTest'
+    };
+    TEST_TIME_LEFT = qs.length * (mode==='topicTest' ? 60 : 45);
+    go('test', {_justStarted:true});
+  });
+}
+function startMcqSubjectMock(track, subject){
+  const key = track+'-'+subject;
+  fetchMCQSheet(key).then(data=>{
+    const qs = shuffle(data.questions.slice()).slice(0,45);
+    if(qs.length===0){ toast('No questions available', '⚠️'); return; }
+    TEST_STATE = {
+      mode:'mcqseries', subject: track+' '+subject, chapter:null, section:'Full Subject Mock',
+      questions: qs, answers: Array(qs.length).fill(null), marked: Array(qs.length).fill(false),
+      current:0, submitted:false, graded:true
+    };
+    TEST_TIME_LEFT = qs.length * 60;
+    go('test', {_justStarted:true});
+  });
+}
+function startMcqYearPractice(track, subject, year){
+  const key = track+'-'+subject;
+  fetchMCQSheet(key).then(data=>{
+    const qs = shuffle(data.questions.filter(q=>q.tag===year).slice());
+    if(qs.length===0){ toast('No questions for this year', '⚠️'); return; }
+    TEST_STATE = {
+      mode:'mcqseries', subject: track+' '+subject, chapter:null, section: year+' Practice',
+      questions: qs, answers: Array(qs.length).fill(null), marked: Array(qs.length).fill(false),
+      current:0, submitted:false, graded:true
+    };
+    TEST_TIME_LEFT = qs.length * 60;
+    go('test', {_justStarted:true});
+  });
 }
 
 /* ============================== LEADERBOARD ============================== */
