@@ -55,7 +55,7 @@ function locked(what){ toast('🔒 '+what+' is a Premium feature','★'); }
 })();
 
 /* ---------- data layer ---------- */
-function newProg(){ return {v:1, ch:{}, wrong:[], mark:[], hist:[], streak:{last:'',n:0}, daily:{d:'',s:0}}; }
+function newProg(){ return {v:1, ch:{}, wrong:[], mark:[], hist:[], streak:{last:'',n:0}, daily:{d:'',s:0}, days:{}, goal:{}, todo:[]}; }
 function kickIndex(){
   if(S.idxBusy) return; S.idxBusy=true;
   db().collection('mcqMeta').doc('index').get().then(function(d){
@@ -64,23 +64,37 @@ function kickIndex(){
     else S.idxErr='empty';
   }).catch(function(e){ S.idxBusy=false; S.idxErr='err'; console.warn('[MCQ] index load failed',e); }).then(refresh);
 }
-function kickProg(){
-  if(S.progBusy) return; S.progBusy=true;
-  var u=user(); if(!u||!u.uid){ S.prog=newProg(); S.progBusy=false; return; }
-  db().collection('mcqProgress').doc(u.uid).get().then(function(d){
+S.loadProg=function(){
+  if(S.prog) return Promise.resolve(S.prog);
+  if(S.progP) return S.progP;
+  var u=user(); if(!u||!u.uid||!db()){ S.prog=newProg(); return Promise.resolve(S.prog); }
+  S.progP=db().collection('mcqProgress').doc(u.uid).get().then(function(d){
     var p=newProg(); if(d.exists){ var x=d.data()||{}; for(var k in p){ if(x[k]!==undefined) p[k]=x[k]; } }
     S.prog=p;
   }).catch(function(e){ console.warn('[MCQ] progress load failed',e); S.prog=newProg(); })
-  .then(function(){ S.progBusy=false; refresh(); });
+  .then(function(){ S.progP=null; return S.prog; });
+  return S.progP;
+};
+function kickProg(){ if(S.progBusy) return; S.progBusy=true; S.loadProg().then(function(){ S.progBusy=false; refresh(); }); }
+/* compact summary mirrored onto the student's own profile so parents / faculty / admin can see activity */
+function mirror(){
+  var u=user(); if(!u||!u.uid||!S.prog||!db()) return;
+  var P=S.prog, a=0, c=0, n7=0, i;
+  Object.keys(P.ch).forEach(function(k){ a+=P.ch[k].a; c+=P.ch[k].c; });
+  for(i=0;i<7;i++) n7+=(P.days[ymd(new Date(Date.now()-i*864e5))]||0);
+  var weak=S.index?Object.keys(P.ch).filter(function(k){ return P.ch[k].a>=5&&chapByKey(k); }).sort(function(x,y){ return pct(P.ch[x].c,P.ch[x].a)-pct(P.ch[y].c,P.ch[y].a); }).slice(0,3).map(function(k){ return chapByKey(k).c; }):[];
+  db().collection('users').doc(u.uid).update({mcqSummary:{a:a,c:c,n7:n7,streak:(P.streak&&P.streak.n)||0,last:(P.streak&&P.streak.last)||'',weak:weak,upd:Date.now()}}).catch(function(){});
 }
 function saveProg(){
   var u=user(); if(!u||!u.uid||!S.prog||!db()) return;
   clearTimeout(S.saveT);
   S.saveT=setTimeout(function(){
     var p=Object.assign({},S.prog,{upd:firebase.firestore.FieldValue.serverTimestamp()});
-    db().collection('mcqProgress').doc(u.uid).set(p).catch(function(e){ console.warn('[MCQ] progress save failed',e); });
+    var keep={}, t=Date.now(); Object.keys(p.days||{}).forEach(function(d){ if(t-new Date(d).getTime()<36*864e5) keep[d]=p.days[d]; }); p.days=keep;
+    db().collection('mcqProgress').doc(u.uid).set(p).then(mirror).catch(function(e){ console.warn('[MCQ] progress save failed',e); });
   },800);
 }
+S.save=function(){ saveProg(); };
 function loadChapter(k){
   var tier=prem()?'B':'F', ck=tier+k;
   if(S.cache[ck]) return Promise.resolve(S.cache[ck]);
@@ -317,6 +331,7 @@ function scrSession(){
     '</div>'+
     '<div class="q-nav"><button class="btn btn-outline btn-sm" '+(s.i===0?'disabled':'')+' onclick="mcqNav(-1)">← Previous</button>'+
       '<button class="btn btn-ghost btn-sm" onclick="mcqBm()">'+(bm?'★ Saved':'☆ Bookmark')+'</button>'+
+      '<button class="btn btn-ghost btn-sm" onclick="mcqReport()">🚩 Report</button>'+
       (learn?'':'<button class="btn btn-ghost btn-sm" onclick="mcqMark()">'+(s.marked[s.i]?'⚑ Marked':'⚐ Mark for review')+'</button>')+
       (s.i===s.qs.length-1?'<button class="btn btn-gold btn-sm" onclick="mcqSubmit()">'+(learn?'Finish ✓':'Submit test ✓')+'</button>':'<button class="btn btn-primary btn-sm" onclick="mcqNav(1)">Next →</button>')+
     '</div></div>'+
@@ -337,6 +352,14 @@ window.mcqBm=function(){
   var q=S.sess.qs[S.sess.i], id=q.k+'~'+q.i, m=S.prog.mark, ix=m.indexOf(id);
   if(ix>=0) m.splice(ix,1); else { m.unshift(id); if(m.length>MAXMARK) m.length=MAXMARK; }
   saveProg(); render();
+};
+window.mcqReport=function(){
+  var s=S.sess, q=s&&s.qs[s.i]; if(!q||!db()) return;
+  var r=prompt('What is wrong with this question?\n1 = Wrong answer key\n2 = Typo / unclear question\n3 = Problem with options\n4 = Other\n\nType 1-4 and press OK');
+  if(!r) return;
+  var map={'1':'Wrong answer key','2':'Typo / unclear','3':'Problem with options','4':'Other'};
+  db().collection('mcqReports').add({qid:q.i,k:q.k,q:String(q.q).slice(0,220),reason:map[r.trim()]||String(r).slice(0,80),by:user().email||'',uid:user().uid||'',when:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(function(){ toast('Thanks — sent to the team for checking','🚩'); }).catch(function(){ toast('Could not send report right now','⚠️'); });
 };
 window.mcqQuit=function(){ if(!confirm('Quit this practice? Answers given so far will be saved.')) return; window.mcqSubmit(true); };
 
@@ -364,6 +387,7 @@ window.mcqSubmit=function(force){
     if(st.last!==today()){ st.n=(st.last===yesterday())?st.n+1:1; st.last=today(); }
     if(s.daily) P.daily={d:today(),s:score};
   }
+  if(answered>0){ P.days=P.days||{}; P.days[today()]=(P.days[today()]||0)+answered; }
   saveProg();
   S.res={label:s.label,mode:s.mode,items:items,c:c,w:w,sk:sk,score:score,max:s.qs.length*4,secs:secs,per:per};
   S.sess=null; S.screen='result'; render(); window.scrollTo({top:0,behavior:'instant'});
