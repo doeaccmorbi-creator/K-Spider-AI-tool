@@ -7,12 +7,14 @@
    AI answers need a real connection.
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v4';
+const CACHE_NAME = 'dsa-shell-v6';
 const CORE_ASSETS = [
   './',
   './index.html',
   './app.js',
   './mcq.js',
+  './extras.js',
+  './campus.js',
   './firebase-config.js',
   './emailjs-config.js',
   './DSA_LOGO.png',
@@ -82,4 +84,3 @@ self.addEventListener('fetch', event => {
     })
   );
 });
- 
