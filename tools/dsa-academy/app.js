@@ -204,6 +204,10 @@ function render(){
     mock: renderMock,
     mcqtracks: renderMcqTracks,
     mcq: renderMcq, // MCQ Practice Hub (mcq.js)
+    studyhub: renderStudyHub, notices: renderNotices, parentreport: renderParentReport, // extras.js
+    facultyinsights: renderFacultyInsights, adminmcq: renderAdminMcq, // extras.js
+    timetable: renderTimetable, resources: renderResources, myattendance: renderMyAttendance, // campus.js
+    parentattendance: renderParentAttendance, facultyattendance: renderFacultyAttendance, adminattendance: renderAdminAttendance, // campus.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
     leaderboard: renderLeaderboard,
@@ -226,7 +230,9 @@ function render(){
   const ROLE_FOR_VIEW = {
     student:'student', subject:'student', chapter:'student', test:'student', result:'student',
     mock:'student', leaderboard:'student', progress:'student', doubts:'student', bookmarks:'student',
-    plans:'student', myfees:'student', mcq:'student',
+    plans:'student', myfees:'student', mcq:'student', studyhub:'student',
+    parentreport:'parent', facultyinsights:'faculty', adminmcq:'admin',
+    myattendance:'student', parentattendance:'parent', facultyattendance:'faculty', adminattendance:'admin',
     parent:'parent', parentaddchild:'parent',
     admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
     adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
@@ -254,16 +260,26 @@ const NAV = {
     {id:'overview', ic:'🏠', label:'Dashboard', view:'student'},
     {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
     {id:'mcqtracks', ic:'📚', label:'MCQ Practice Hub', view:'mcq'},
+    {id:'studyhub', ic:'🎯', label:'Study Planner', view:'studyhub'},
+    {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
+    {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
+    {id:'myattendance', ic:'✅', label:'My Attendance', view:'myattendance'},
     {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
     {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
     {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
     {id:'bookmarks', ic:'⭐', label:'Bookmarks', view:'bookmarks'},
+    {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
     {id:'plans', ic:'💎', label:'Plans', view:'plans'},
     {id:'myfees', ic:'💳', label:'My Fees', view:'myfees'},
     {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
   parent: [
     {id:'overview', ic:'🏠', label:'Overview', view:'parent'},
+    {id:'parentreport', ic:'📄', label:'Weekly Report', view:'parentreport'},
+    {id:'parentattendance', ic:'✅', label:'Attendance', view:'parentattendance'},
+    {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
+    {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
+    {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
   ],
   admin: [
     {id:'overview', ic:'🏠', label:'Overview', view:'admin'},
@@ -271,10 +287,20 @@ const NAV = {
     {id:'admindoubts', ic:'💬', label:'Doubts inbox', view:'admindoubts'},
     {id:'adminfaculty', ic:'🎓', label:'Manage Faculty', view:'adminfaculty'},
     {id:'adminparents', ic:'👪', label:'Parent Accounts', view:'adminparents'},
+    {id:'adminmcq', ic:'📚', label:'MCQ Insights', view:'adminmcq'},
+    {id:'adminattendance', ic:'✅', label:'Attendance', view:'adminattendance'},
+    {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
+    {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
+    {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
   ],
   faculty: [
     {id:'facultydoubts', ic:'💬', label:'Doubts inbox', view:'facultydoubts'},
     {id:'facultyperformance', ic:'📊', label:'Student Performance', view:'facultyperformance'},
+    {id:'facultyinsights', ic:'🔎', label:'Class Insights', view:'facultyinsights'},
+    {id:'facultyattendance', ic:'✅', label:'Mark Attendance', view:'facultyattendance'},
+    {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
+    {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
+    {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
     {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
 };
