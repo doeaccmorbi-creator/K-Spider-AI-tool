@@ -95,8 +95,57 @@ function saveProg(){
   },800);
 }
 S.save=function(){ saveProg(); };
+S.loadIndex=function(){
+  if(S.index) return Promise.resolve(S.index);
+  if(!db()) return Promise.resolve(null);
+  return db().collection('mcqMeta').doc('index').get().then(function(d){ if(d.exists&&d.data().chapters&&d.data().chapters.length) S.index=d.data(); return S.index; }).catch(function(){ return null; });
+};
+var STOPW={and:1,the:1,of:1,in:1,to:1,for:1,with:1,their:1,its:1};
+function toks(s){ return String(s).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(function(w){ return w.length>2&&!STOPW[w]; }); }
+function matchChapter(subject,title){
+  var AL={'motion in a straight line':'Kinematics','motion in a plane':'Kinematics','physical world':'Units and Measurements','work energy and power':'Work, Energy and Power'};
+  var al=AL[String(title).toLowerCase().trim()]; if(al) title=al;
+  var A=toks(title), best=null, bs=0, rank={NEET:3,JEE:2,'JEE Advanced':1};
+  if(!A.length) return null;
+  S.index.chapters.forEach(function(c){
+    if(c.s!==subject) return;
+    var B=toks(c.c), inter=A.filter(function(w){ return B.indexOf(w)>=0; }).length, uni=A.length+B.length-inter;
+    var sc=uni?inter/uni:0; var a=A.join(' '), b=B.join(' '); if(a&&b&&(a.indexOf(b)>=0||b.indexOf(a)>=0)) sc+=0.5;
+    sc+= (rank[c.e]||0)/100;
+    if(sc>bs){ bs=sc; best=c; }
+  });
+  return bs>=0.3?best:null;
+}
+window.mcqFromNotes=function(subject,enc){
+  var title=''; try{ title=decodeURIComponent(enc); }catch(e){ title=enc; }
+  S.pending={subject:subject,title:title}; S.screen='home'; go('mcq');
+};
+function jumpFromNotes(){
+  var p=S.pending; S.pending=null;
+  var best=matchChapter(p.subject,p.title);
+  if(best){
+    S.exam=best.e; S.subj=best.s; S.screen='subject';
+    S.sel={ch:{},cnt:prem()?20:FREE_N,mode:'learn',timer:true,shuffle:true,tag:'',year:'',cls:'all',q:''}; S.sel.ch[best.k]=1;
+    setTimeout(function(){ window.mcqStart(); },0);
+  } else {
+    var any=S.index.chapters.filter(function(c){ return c.s===p.subject; })[0];
+    S.screen='home'; if(any) S.exam=any.e; toast('No matching chapter in the question bank yet — pick one here','ℹ️');
+    setTimeout(refresh,0);
+  }
+}
+/* run a teacher-made class test through the same practice engine */
+window.mcqRunTest=function(qs,label,meta){
+  S.loadProg().then(function(){
+    qs=qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||'',k:'custom'}; });
+    var mins=meta.mins||qs.length;
+    S.sess={qs:qs,i:0,ans:qs.map(function(){return null;}),marked:qs.map(function(){return false;}),times:qs.map(function(){return 0;}),
+      mode:'test',label:label,daily:false,timer:true,total:mins*60,deadline:Date.now()+mins*60000,qStart:Date.now(),started:Date.now(),tid:null,meta:meta};
+    S.screen='session'; go('mcq');
+  });
+};
 function loadChapter(k){
-  var tier=prem()?'B':'F', ck=tier+k;
+  var staff=user()&&(user().role==='admin'||user().role==='faculty');
+  var tier=(prem()||staff)?'B':'F', ck=tier+k;
   if(S.cache[ck]) return Promise.resolve(S.cache[ck]);
   function fromFree(){ return db().collection('mcqFree').doc(k).get().then(function(d){ return d.exists?(d.data().qs||[]):[]; }); }
   var p = tier==='B'
@@ -104,6 +153,7 @@ function loadChapter(k){
     : fromFree();
   return p.then(function(qs){ qs=qs.map(function(x){ x.k=k; return x; }); S.cache[ck]=qs; return qs; });
 }
+S.loadChapter=function(k){ return loadChapter(k); };
 function chaptersOf(exam,subj){ return S.index.chapters.filter(function(c){ return c.e===exam && c.s===subj; }); }
 function chapByKey(k){ for(var i=0;i<S.index.chapters.length;i++){ if(S.index.chapters[i].k===k) return S.index.chapters[i]; } return null; }
 
@@ -127,12 +177,13 @@ window.renderMcq=function(){
   if(!user()) return renderAuth();
   var body;
   if(!db()) body = head('MCQ Practice Hub','Chapter-wise and topic-wise MCQ practice')+box('⚡','The MCQ Practice Hub works in live mode. Connect Firebase first.');
-  else if(!S.index){
+  else if(!S.index && !(S.sess&&S.sess.meta) && !(S.screen==='result'&&S.res&&S.res.meta)){
     if(S.idxErr==='empty') body=head('MCQ Practice Hub','')+box('📚','The new question bank is being set up. You can use the Practice Series meanwhile.','<br><button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="go(\'mcqtracks\')">Open the Practice Series (live sheets) →</button>');
     else if(S.idxErr) body=head('MCQ Practice Hub','')+box('⚠️','Could not load the question bank. Check your internet and try again.','<br><button class="btn btn-primary btn-sm" onclick="MCQ.idxErr=\'\';render()">Retry</button> <button class="btn btn-outline btn-sm" onclick="go(\'mcqtracks\')">Practice Series</button>');
     else { kickIndex(); body=box('⏳','Loading question bank…'); }
   }
   else if(!S.prog){ kickProg(); body=box('⏳','Loading your progress…'); }
+  else if(S.pending && S.index){ jumpFromNotes(); body=box('⏳','Opening practice…'); }
   else if(S.screen==='subject') body=scrSubject();
   else if(S.screen==='session' && S.sess) { body=scrSession(); setTimeout(ensureTimer,0); }
   else if(S.screen==='result' && S.res) body=scrResult();
@@ -330,8 +381,7 @@ function scrSession(){
     (shown?'<div class="explain-box" style="margin-top:12px"><b>'+(a===q.a?'✓ Correct':'✗ Incorrect — answer: '+String.fromCharCode(65+q.a))+'</b>'+(q.e?'<div style="margin-top:6px">'+esc(q.e)+'</div>':'')+'</div>':'')+
     '</div>'+
     '<div class="q-nav"><button class="btn btn-outline btn-sm" '+(s.i===0?'disabled':'')+' onclick="mcqNav(-1)">← Previous</button>'+
-      '<button class="btn btn-ghost btn-sm" onclick="mcqBm()">'+(bm?'★ Saved':'☆ Bookmark')+'</button>'+
-      '<button class="btn btn-ghost btn-sm" onclick="mcqReport()">🚩 Report</button>'+
+      (s.meta?'':'<button class="btn btn-ghost btn-sm" onclick="mcqBm()">'+(bm?'★ Saved':'☆ Bookmark')+'</button><button class="btn btn-ghost btn-sm" onclick="mcqReport()">🚩 Report</button>')+
       (learn?'':'<button class="btn btn-ghost btn-sm" onclick="mcqMark()">'+(s.marked[s.i]?'⚑ Marked':'⚐ Mark for review')+'</button>')+
       (s.i===s.qs.length-1?'<button class="btn btn-gold btn-sm" onclick="mcqSubmit()">'+(learn?'Finish ✓':'Submit test ✓')+'</button>':'<button class="btn btn-primary btn-sm" onclick="mcqNav(1)">Next →</button>')+
     '</div></div>'+
@@ -374,6 +424,7 @@ window.mcqSubmit=function(force){
     items.push({q:q,a:a,ok:ok,t:s.times[i]});
     if(a===null){ sk++; return; }
     if(ok) c++; else w++;
+    if(s.meta) return;
     var p=P.ch[q.k]||(P.ch[q.k]={a:0,c:0,t:0}); p.a++; if(ok) p.c++; p.t+=Math.round(s.times[i]);
     per[q.k]=per[q.k]||{a:0,c:0}; per[q.k].a++; if(ok) per[q.k].c++;
     var wi=P.wrong.indexOf(id);
@@ -381,15 +432,16 @@ window.mcqSubmit=function(force){
   });
   if(P.wrong.length>MAXWRONG) P.wrong.length=MAXWRONG;
   var score=c*4-w, answered=c+w, secs=Math.round((Date.now()-s.started)/1000);
-  if(answered>0){
+  if(answered>0 && !s.meta){
     P.hist.unshift({t:Date.now(),l:s.label,n:s.qs.length,c:c,a:answered,s:score,m:s.mode,d:secs}); if(P.hist.length>MAXHIST) P.hist.length=MAXHIST;
     var st=P.streak||(P.streak={last:'',n:0});
     if(st.last!==today()){ st.n=(st.last===yesterday())?st.n+1:1; st.last=today(); }
     if(s.daily) P.daily={d:today(),s:score};
   }
-  if(answered>0){ P.days=P.days||{}; P.days[today()]=(P.days[today()]||0)+answered; }
-  saveProg();
-  S.res={label:s.label,mode:s.mode,items:items,c:c,w:w,sk:sk,score:score,max:s.qs.length*4,secs:secs,per:per};
+  if(answered>0 && !s.meta){ P.days=P.days||{}; P.days[today()]=(P.days[today()]||0)+answered; }
+  if(!s.meta) saveProg();
+  S.res={label:s.label,mode:s.mode,items:items,c:c,w:w,sk:sk,score:score,max:s.qs.length*4,secs:secs,per:per,meta:s.meta||null};
+  if(s.meta&&s.meta.onDone){ try{ s.meta.onDone(S.res); }catch(e){ console.warn(e); } }
   S.sess=null; S.screen='result'; render(); window.scrollTo({top:0,behavior:'instant'});
 };
 function scrResult(){
@@ -403,9 +455,10 @@ function scrResult(){
     '<div class="card stat-box"><b>'+r.c+' / '+r.w+' / '+r.sk+'</b><span>Right / Wrong / Skipped</span></div>'+
     '<div class="card stat-box"><b>'+fmtT(r.secs)+'</b><span>Time</span></div></div>'+
   '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'+
-    (wrongQs.length?'<button class="btn btn-gold btn-sm" onclick="mcqRetryWrong()">🔁 Retry the '+wrongQs.length+' wrong</button>':'')+
+    (r.meta?'<button class="btn btn-primary btn-sm" onclick="go(\'classtests\')">← Back to class tests</button>':'')+
+    (r.meta?'':(wrongQs.length?'<button class="btn btn-gold btn-sm" onclick="mcqRetryWrong()">🔁 Retry the '+wrongQs.length+' wrong</button>':'')+
     '<button class="btn btn-primary btn-sm" onclick="mcqGo(\'subject\',\''+esc(S.exam)+'\',\''+esc(S.subj)+'\')">Practice more</button>'+
-    '<button class="btn btn-outline btn-sm" onclick="mcqGo(\'home\')">Hub home</button></div>'+
+    '<button class="btn btn-outline btn-sm" onclick="mcqGo(\'home\')">Hub home</button>')+'</div>'+
   (perRows&&Object.keys(r.per).length>1?'<div class="card" style="padding:6px 6px 2px;margin-bottom:16px"><table class="table-simple"><thead><tr><th>Chapter</th><th>Score</th><th>Accuracy</th></tr></thead><tbody>'+perRows+'</tbody></table></div>':'')+
   '<h3 style="font-family:var(--font-display);margin:6px 0 10px">Review</h3>'+
   r.items.map(function(x,i){
