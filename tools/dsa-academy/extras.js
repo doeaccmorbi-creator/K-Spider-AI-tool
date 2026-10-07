@@ -34,9 +34,26 @@ function firstName(n){ var p=String(n||'Student').trim().split(/\s+/); return p[
 function reqLive(view,sb){ return !live()?shell(sb,note('⚡','This feature works in live mode. Connect Firebase first.')):null; }
 
 /* ============================ NOTICE BOARD (all roles) ==================== */
+function loadPn(){
+  if(X.pnb||X.pn) return; X.pnb=true;
+  fbDb.collection('notifications').where('toEmail','==',DB.currentUser.email||'-').limit(40).get()
+    .then(function(s){ X.pn=s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); }).sort(function(a,b){ return ms(b.when)-ms(a.when); }); })
+    .catch(function(){ X.pn=[]; }).then(function(){ X.pnb=false; again('notices'); });
+}
+function pnHtml(){
+  if(!X.pn||!X.pn.length) return '';
+  var un=X.pn.filter(function(n){ return !n.read; }).length;
+  return card('<div style="display:flex;align-items:center;margin-bottom:10px">'+h3('📬 For you'+(un?' ('+un+' new)':'')).replace('margin:0 0 12px','margin:0')+(un?'<button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="xPnRead()">Mark all read</button>':'')+'</div>'+
+    X.pn.slice(0,15).map(function(n){ return '<div style="padding:9px 0;border-top:1px solid var(--border);font-size:13.5px;'+(n.read?'opacity:.7':'')+'"><b>'+(n.read?'':'● ')+esc(n.title)+'</b><div style="margin-top:2px;line-height:1.5">'+esc(n.msg)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(formatWhen(n.when))+(n.by?' · '+esc(n.by):'')+'</div></div>'; }).join(''));
+}
+window.xPnRead=function(){
+  var b=fbDb.batch(), n=0; (X.pn||[]).forEach(function(p){ if(!p.read){ b.update(fbDb.collection('notifications').doc(p.id),{read:true}); p.read=true; n++; } });
+  if(n) b.commit().then(function(){ toast('Marked as read'); render(); }).catch(function(){ toast('Could not update','⚠️'); });
+};
 window.renderNotices=function(){
   if(!DB.currentUser) return renderAuth();
   var bad=reqLive('notices','notices'); if(bad) return bad;
+  loadPn();
   if(!X.notices || Date.now()-X.noticeAt>60000){
     if(!X.nbusy){ X.nbusy=true;
       fbDb.collection('announcements').orderBy('when','desc').limit(30).get()
@@ -48,6 +65,7 @@ window.renderNotices=function(){
   }
   var adm=DB.currentUser.role==='admin';
   return shell('notices',head('🔔 Notice Board','Every announcement from the academy, newest first')+
+    pnHtml()+
     (adm?card('<b style="font-size:14px">Post a new announcement</b><div style="display:flex;gap:8px;margin-top:10px"><input id="xNoticeIn" placeholder="Type announcement for everyone…" style="flex:1;padding:10px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:14px"><button class="btn btn-primary btn-sm" onclick="xNoticePost()">Post</button></div>'):'')+
     (X.notices.length?X.notices.map(function(a,i){
       return '<div class="card" style="padding:14px 18px;margin-bottom:10px;border-left:4px solid '+(i===0?'var(--gold-500)':'var(--navy-700)')+'"><div style="font-size:14px;line-height:1.55">'+esc(a.message)+'</div><div style="font-size:12px;color:var(--muted);margin-top:6px;display:flex;gap:10px;align-items:center">'+esc(formatWhen(a.when))+(a.by?' · '+esc(a.by):'')+(adm?'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="xNoticeDel(\''+a.id+'\')">Delete</button>':'')+'</div></div>';
@@ -211,5 +229,10 @@ window.xRepDel=function(id){ fbDb.collection('mcqReports').doc(id).delete().then
 window.xAdmExport=function(){ var am=X.am; if(!am) return; csv('mcq-practice',[['Name','Email','Plan','Attempted','Correct','Accuracy %','Qs 7d','Streak','Last active']].concat(am.students.map(function(s){ var m=s.mcqSummary||{}; return [s.name,s.email,s.plan||'free',m.a||0,m.c||0,pct(m.c||0,m.a||0),m.n7||0,m.streak||0,m.last||'']; }))); };
 
 /* refresh cached data when the user changes screen */
-var _go=window.go; window.go=function(v,p){ if(v==='notices') X.notices=null; if(v==='adminmcq') X.am=null; if(v==='facultyinsights') X.fi=null; if(v==='parentreport'&&!(p&&p.child)){ if(X.pr){ X.pr.data=null; } } return _go(v,p); };
+var _go=window.go; window.go=function(v,p){
+  var u=DB.currentUser;
+  if(u&&u.email&&live()&&X.unreadFor!==u.email){ X.unreadFor=u.email;
+    fbDb.collection('notifications').where('toEmail','==',u.email).where('read','==',false).limit(20).get()
+      .then(function(s){ if(s.size) toast('🔔 You have '+s.size+' new notification'+(s.size>1?'s':'')+' — open Notice Board','🔔'); }).catch(function(){}); }
+  if(v==='notices'){ X.notices=null; X.pn=null; } if(v==='adminmcq') X.am=null; if(v==='facultyinsights') X.fi=null; if(v==='parentreport'&&!(p&&p.child)){ if(X.pr){ X.pr.data=null; } } return _go(v,p); };
 })();
