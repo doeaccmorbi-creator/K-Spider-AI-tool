@@ -208,6 +208,7 @@ function render(){
     facultyinsights: renderFacultyInsights, adminmcq: renderAdminMcq, // extras.js
     timetable: renderTimetable, resources: renderResources, myattendance: renderMyAttendance, // campus.js
     parentattendance: renderParentAttendance, facultyattendance: renderFacultyAttendance, adminattendance: renderAdminAttendance, // campus.js
+    adminfees: renderAdminFees, facultytests: renderFacultyTests, admintests: renderFacultyTests, classtests: renderClassTests, parenttests: renderParentTests, // classwork.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
     leaderboard: renderLeaderboard,
@@ -233,6 +234,7 @@ function render(){
     plans:'student', myfees:'student', mcq:'student', studyhub:'student',
     parentreport:'parent', facultyinsights:'faculty', adminmcq:'admin',
     myattendance:'student', parentattendance:'parent', facultyattendance:'faculty', adminattendance:'admin',
+    classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
     parent:'parent', parentaddchild:'parent',
     admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
     adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
@@ -264,6 +266,7 @@ const NAV = {
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'myattendance', ic:'✅', label:'My Attendance', view:'myattendance'},
+    {id:'classtests', ic:'📝', label:'Class Tests', view:'classtests'},
     {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
     {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
     {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
@@ -277,6 +280,7 @@ const NAV = {
     {id:'overview', ic:'🏠', label:'Overview', view:'parent'},
     {id:'parentreport', ic:'📄', label:'Weekly Report', view:'parentreport'},
     {id:'parentattendance', ic:'✅', label:'Attendance', view:'parentattendance'},
+    {id:'parenttests', ic:'📝', label:'Class Tests', view:'parenttests'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
@@ -289,6 +293,8 @@ const NAV = {
     {id:'adminparents', ic:'👪', label:'Parent Accounts', view:'adminparents'},
     {id:'adminmcq', ic:'📚', label:'MCQ Insights', view:'adminmcq'},
     {id:'adminattendance', ic:'✅', label:'Attendance', view:'adminattendance'},
+    {id:'adminfees', ic:'💰', label:'Fee Reminders', view:'adminfees'},
+    {id:'admintests', ic:'📝', label:'Class Tests', view:'admintests'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
@@ -298,6 +304,7 @@ const NAV = {
     {id:'facultyperformance', ic:'📊', label:'Student Performance', view:'facultyperformance'},
     {id:'facultyinsights', ic:'🔎', label:'Class Insights', view:'facultyinsights'},
     {id:'facultyattendance', ic:'✅', label:'Mark Attendance', view:'facultyattendance'},
+    {id:'facultytests', ic:'📝', label:'Class Tests', view:'facultytests'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
@@ -1004,6 +1011,7 @@ function renderChapter(){
         <div style="display:flex;gap:8px">
           ${prevCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${prevCh}})">← Ch.${prevCh}</button>`:''}
           ${nextCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${nextCh}})">Ch.${nextCh} →</button>`:''}
+          <button class="btn btn-gold btn-sm" onclick="mcqFromNotes('${subject}','${encodeURIComponent(DATA.titles[subject][chapter])}')">📚 Practice MCQs</button>
           <button class="btn btn-outline btn-sm" onclick="go('subject',{subject:'${subject}'})">All chapters</button>
         </div>
       </div>
