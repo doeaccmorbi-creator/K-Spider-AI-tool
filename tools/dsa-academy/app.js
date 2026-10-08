@@ -146,6 +146,14 @@ const DB = {
 let ROUTE = {view:'landing', params:{}};
 
 /* ============================== ROUTER ================================ */
+// Safe lookup for screens that live in the add-on files (mcq.js, extras.js, campus.js, classwork.js).
+// If one of those files has not been uploaded yet, the app keeps working and shows a friendly note instead of crashing.
+function R_(n){
+  return function(){
+    if(typeof window[n]==='function') return window[n]();
+    return '<div class="app-shell">'+sidebar('')+'<div class="main"><div class="card" style="padding:30px;text-align:center;max-width:560px"><div style="font-size:30px">⚠️</div><b>This feature needs the latest update files.</b><div style="margin-top:8px;font-size:13.5px;color:var(--muted);line-height:1.6">Refresh the page (Ctrl + Shift + R). If you still see this, one of the new files (mcq.js, extras.js, campus.js, classwork.js) has not been uploaded next to index.html yet.</div></div></div></div>';
+  };
+}
 function go(view, params={}){
   ROUTE = {view, params};
   if(view==='leaderboard') DB.leaderboardCache = DB.leaderboardCache; // no reset, loaded lazily
@@ -203,12 +211,12 @@ function render(){
     adminanalytics: renderAdminAnalytics,
     mock: renderMock,
     mcqtracks: renderMcqTracks,
-    mcq: renderMcq, // MCQ Practice Hub (mcq.js)
-    studyhub: renderStudyHub, notices: renderNotices, parentreport: renderParentReport, // extras.js
-    facultyinsights: renderFacultyInsights, adminmcq: renderAdminMcq, // extras.js
-    timetable: renderTimetable, resources: renderResources, myattendance: renderMyAttendance, // campus.js
-    parentattendance: renderParentAttendance, facultyattendance: renderFacultyAttendance, adminattendance: renderAdminAttendance, // campus.js
-    adminfees: renderAdminFees, facultytests: renderFacultyTests, admintests: renderFacultyTests, classtests: renderClassTests, parenttests: renderParentTests, // classwork.js
+    mcq: R_('renderMcq'), // MCQ Practice Hub (mcq.js)
+    studyhub: R_('renderStudyHub'), notices: R_('renderNotices'), parentreport: R_('renderParentReport'), // extras.js
+    facultyinsights: R_('renderFacultyInsights'), adminmcq: R_('renderAdminMcq'), // extras.js
+    timetable: R_('renderTimetable'), resources: R_('renderResources'), myattendance: R_('renderMyAttendance'), // campus.js
+    parentattendance: R_('renderParentAttendance'), facultyattendance: R_('renderFacultyAttendance'), adminattendance: R_('renderAdminAttendance'), // campus.js
+    adminfees: R_('renderAdminFees'), facultytests: R_('renderFacultyTests'), admintests: R_('renderFacultyTests'), classtests: R_('renderClassTests'), parenttests: R_('renderParentTests'), // classwork.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
     leaderboard: renderLeaderboard,
@@ -1011,7 +1019,7 @@ function renderChapter(){
         <div style="display:flex;gap:8px">
           ${prevCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${prevCh}})">← Ch.${prevCh}</button>`:''}
           ${nextCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${nextCh}})">Ch.${nextCh} →</button>`:''}
-          <button class="btn btn-gold btn-sm" onclick="mcqFromNotes('${subject}','${encodeURIComponent(DATA.titles[subject][chapter])}')">📚 Practice MCQs</button>
+          <button class="btn btn-gold btn-sm" onclick="(window.mcqFromNotes||function(){toast('Update files not loaded — refresh the page','⚠️')})('${subject}','${encodeURIComponent(DATA.titles[subject][chapter])}')">📚 Practice MCQs</button>
           <button class="btn btn-outline btn-sm" onclick="go('subject',{subject:'${subject}'})">All chapters</button>
         </div>
       </div>
