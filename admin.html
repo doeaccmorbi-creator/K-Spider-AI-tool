@@ -11833,5 +11833,67 @@ async function dsaMcqSync(){
   btn.disabled = false;
 }
 </script>
+<script>
+/* =========================================================================
+   DSA Admin — richer student detail + manual Premium control (added).
+   Replaces the old detail panel: it now scrolls into view, shows errors
+   instead of failing silently, and adds practice / attendance / class-test
+   numbers, a Free<->Premium switch and a one-tap notification.
+   ========================================================================= */
+function dsaEsc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function dsaOpenStudentDetail(uid) {
+  var s = _dsaStudentsCache.filter(function(x){ return x.uid === uid; })[0];
+  if (!s) return;
+  var em = s.email || '-', box = document.getElementById('dsa-student-detail');
+  box.style.display = 'block';
+  box.innerHTML = '<div style="color:var(--t3);font-size:.85rem">Loading details…</div>';
+  try { box.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+  function get(col){ return _dsaDb.collection(col).where('email', '==', em).get().catch(function(){ return null; }); }
+  Promise.all([get('testResults'), get('doubts'), get('attendance'), get('classTestResults')]).then(function(r) {
+    var tests = r[0] ? r[0].size : '—', doubts = r[1] ? r[1].size : '—';
+    var att = '—'; if (r[2] && r[2].size) { var p = 0; r[2].forEach(function(d){ if (d.data().status === 'P') p++; }); att = Math.round(p * 100 / r[2].size) + '% (' + p + '/' + r[2].size + ')'; }
+    var ct = '—'; if (r[3] && r[3].size) { var sum = 0; r[3].forEach(function(d){ var x = d.data(); sum += x.max ? x.score * 100 / x.max : 0; }); ct = Math.round(sum / r[3].size) + '% avg (' + r[3].size + ' tests)'; }
+    var m = s.mcqSummary || {}, due = Math.max(0, (s.feeTotal || 0) - (s.feePaid || 0)), prem = s.plan === 'premium';
+    var inp = 'padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)';
+    box.innerHTML =
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap">'
+      + '<b style="font-size:.95rem">' + dsaEsc(s.name) + ' <span style="color:var(--t3);font-weight:400">(' + dsaEsc(s.email) + ')</span></b>'
+      + '<button class="btn btn-sm btn-gh" onclick="document.getElementById(\'dsa-student-detail\').style.display=\'none\'">✕ Close</button></div>'
+      + '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-bottom:14px;font-size:.78rem">'
+      + '<div>📝 Tests: <b>' + tests + '</b></div><div>💬 Doubts: <b>' + doubts + '</b></div>'
+      + '<div>💳 Due: <b style="color:' + (due > 0 ? '#dc2626' : '#16a34a') + '">₹' + due + '</b></div>'
+      + '<div>✅ Attendance: <b>' + att + '</b></div><div>📝 Class tests: <b>' + ct + '</b></div>'
+      + '<div>📚 MCQ: <b>' + (m.a ? m.a + ' attempted · ' + Math.round(m.c * 100 / m.a) + '%' : 'none yet') + '</b></div>'
+      + '<div>🔥 Streak: <b>' + (m.streak || 0) + '</b></div><div>🕒 Last practice: <b>' + dsaEsc(m.last || '—') + '</b></div>'
+      + '<div>💎 Plan: <b>' + (prem ? 'Premium' : 'Free') + '</b></div></div>'
+      + '<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">'
+      + (prem ? '<button class="btn btn-sm btn-gh" onclick="dsaSetPlan(\'' + uid + '\',\'free\')">Set to Free</button>' : '<button class="btn btn-sm" style="background:#d97706;color:#fff" onclick="dsaSetPlan(\'' + uid + '\',\'premium\')">★ Make Premium</button>')
+      + (s.banned ? '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="dsaBanStudent(\'' + uid + '\',false)">Restore access</button>' : '<button class="btn btn-sm" style="background:#dc2626;color:#fff" onclick="dsaBanStudent(\'' + uid + '\',true)">Ban student</button>')
+      + '</div>'
+      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">'
+      + '<input id="dsa-fee-total" type="number" placeholder="Total fees ₹" value="' + (s.feeTotal || '') + '" style="' + inp + '">'
+      + '<input id="dsa-fee-due-date" type="date" value="' + dsaEsc(s.feeDueDate || '') + '" style="' + inp + '"></div>'
+      + '<button class="btn btn-sm btn-gh" onclick="dsaSaveFeePlan(\'' + uid + '\')" style="margin-bottom:14px">Save fee plan</button>'
+      + '<div style="display:flex;gap:8px;margin-bottom:14px"><input id="dsa-pay-amount" type="number" placeholder="Amount ₹" style="width:110px;' + inp + '">'
+      + '<button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="dsaRecordPayment(\'' + uid + '\')">Record payment</button></div>'
+      + '<textarea id="dsa-admin-note" rows="2" placeholder="Direct instruction / message to this student..." style="width:100%;' + inp + ';margin-bottom:8px">' + dsaEsc(s.adminNote || '') + '</textarea>'
+      + '<button class="btn btn-sm btn-gh" onclick="dsaSaveAdminNote(\'' + uid + '\')">Show on dashboard</button> '
+      + '<button class="btn btn-sm btn-gh" onclick="dsaNotifyStudent(\'' + uid + '\')">🔔 Send as notification</button>';
+  }).catch(function(err) { box.innerHTML = '<span style="color:#dc2626">Could not load details: ' + dsaEsc(err && err.message) + '</span>'; });
+}
+function dsaSetPlan(uid, plan) {
+  if (!confirm('Change this student to ' + (plan === 'premium' ? 'PREMIUM' : 'FREE') + '?')) return;
+  _dsaDb.collection('users').doc(uid).update({ plan: plan }).then(function() {
+    toast(plan === 'premium' ? '★ Student is now Premium' : 'Student set to Free');
+    dsaLoadStudents(); document.getElementById('dsa-student-detail').style.display = 'none';
+  }).catch(function(err) { toast('❌ ' + err.message); });
+}
+function dsaNotifyStudent(uid) {
+  var s = _dsaStudentsCache.filter(function(x){ return x.uid === uid; })[0], t = (document.getElementById('dsa-admin-note').value || '').trim();
+  if (!s || !t) { toast('Type a message first'); return; }
+  _dsaDb.collection('notifications').add({ toEmail: s.email, title: 'Message from Admin', msg: t.slice(0, 300), kind: 'msg', by: 'Admin', when: firebase.firestore.FieldValue.serverTimestamp(), read: false })
+    .then(function(){ toast('🔔 Notification sent'); }).catch(function(err){ toast('❌ ' + err.message); });
+}
+</script>
 </body>
 </html>
