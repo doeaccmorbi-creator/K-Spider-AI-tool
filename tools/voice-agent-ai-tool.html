@@ -27,6 +27,8 @@
 <meta name="geo.region" content="IN-GJ"/><meta name="geo.placename" content="Gujarat, India"/><meta name="geo.position" content="22.2587;71.1924"/><meta name="ICBM" content="22.2587, 71.1924"/>
 <meta http-equiv="X-Content-Type-Options" content="nosniff"/><meta http-equiv="X-Frame-Options" content="SAMEORIGIN"/><meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin"/><meta http-equiv="X-XSS-Protection" content="1; mode=block"/>
 <link rel="icon" type="image/png" sizes="32x32" href="https://www.kspiderai.in/assets/favicon-32.png"/>
+<link rel="icon" type="image/png" sizes="16x16" href="https://www.kspiderai.in/assets/favicon-16.png"/>
+<link rel="apple-touch-icon" sizes="180x180" href="https://www.kspiderai.in/assets/apple-touch-icon.png"/>
 <link rel="shortcut icon" href="https://www.kspiderai.in/assets/favicon.ico" type="image/x-icon"/>
 <link rel="manifest" href="https://www.kspiderai.in/manifest.json"/>
 
@@ -878,6 +880,30 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 /* Hide wrapper when slot is empty */
 .ks-ad-wrap:has([data-ks-slot]:empty) { display: none; }
 
+
+/* ── KSpider v3: hide any "Advertisement" text node injected around ad slots ── */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after,.ks-ad-wrap::before,.ks-ad-wrap::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="advert" i],[data-ks-slot] [class*="sponsor" i],.ks-ad-wrap [class*="advert" i]{display:none!important;}
+
+/* ══ KSpider v3 — Premium animated look (additive only, no feature changed) ══ */
+@keyframes ksFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes ksGlow{0%,100%{box-shadow:0 0 0 0 rgba(0,212,255,.35)}50%{box-shadow:0 0 0 9px rgba(0,212,255,0)}}
+@keyframes ksRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.card{transition:transform .28s cubic-bezier(.2,.8,.2,1),box-shadow .28s ease,border-color .28s ease;}
+.card:hover{transform:translateY(-3px);box-shadow:0 14px 32px rgba(0,212,255,.12);}
+.tbtn{transition:transform .18s ease,background .18s ease;}
+.tbtn:hover{transform:translateY(-1px);}
+.ftab{transition:transform .18s ease,box-shadow .2s ease;}
+.ftab.on{box-shadow:0 6px 16px rgba(0,212,255,.18);}
+#fab-main{animation:ksGlow 3s ease-in-out infinite;}
+#fab-main:hover{transform:scale(1.12);}
+.sr-chip,.vqc-btn,.chat-act-btn{transition:transform .18s ease,box-shadow .2s ease;}
+.sr-chip:hover,.vqc-btn:hover,.chat-act-btn:hover{transform:translateY(-2px);}
+.aico{transition:transform .25s ease;}
+.aitem:hover .aico{transform:scale(1.1) rotate(-3deg);}
+.pg.on{animation:ksRise .45s cubic-bezier(.2,.8,.2,1) both;}
+html{scroll-behavior:smooth;}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important;}}
 .ks-ad-label {
   display: block;
   font-size: 0.58rem;
@@ -3794,6 +3820,24 @@ function toggleFS(){
 </script>
 <!-- ── K SPIDER ADMIN AD MANAGER ── -->
 <script src="/ks-ads.js"></script>
+<!-- KSpider: strip any auto-injected "Advertisement" label around ad slots -->
+<script>
+(function(){
+  var RE=/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i;
+  function clean(){
+    document.querySelectorAll('.ks-ad-wrap').forEach(function(box){
+      var w=document.createTreeWalker(box,NodeFilter.SHOW_TEXT,null),n,kill=[];
+      while(n=w.nextNode()){ if(RE.test(n.nodeValue)) kill.push(n); }
+      kill.forEach(function(x){ var p=x.parentNode; if(p&&p.children.length===0&&p!==box&&!p.hasAttribute('data-ks-slot')){p.style.display='none';} x.nodeValue=''; });
+      box.removeAttribute('aria-label'); box.removeAttribute('title');
+      box.querySelectorAll('[aria-label],[title]').forEach(function(e){ if(RE.test(e.getAttribute('aria-label')||'')||RE.test(e.getAttribute('title')||'')){e.removeAttribute('aria-label');e.removeAttribute('title');} });
+    });
+  }
+  function start(){ clean(); new MutationObserver(clean).observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start); else start();
+})();
+</script>
+
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 — ks-ads.js ke baad -->
 <script>
 (function(){
@@ -3907,7 +3951,7 @@ function toggleFS(){
       <li>📊 Analytics — sentiment, emotion detection, keywords</li>
     </ul>
     <p style="margin-top:8px;font-size:11px;color:var(--mu)">Powered by Groq AI (FREE) + Claude AI (Anthropic) | Secured by Cloudflare | © 2025 K Spider AI — kspiderai.in</p>
-  </div></div>
+  </div>
 
   <!-- How To Panel -->
   <div class="fpanel" id="ft-howto">
