@@ -5,14 +5,14 @@
 var base=location.pathname.replace(/[^\/]*$/,'');
 var checks=[
  ['index.html','index.html','classwork.js','Loads the new files'],
- ['app.js','app.js','function R_(','Main app (new menu + features)'],
+ ['app.js','app.js','xAfterRender','Main app (new menu + today summary)'],
  ['mcq.js','mcq.js','mcqRunTest','MCQ Practice Hub'],
- ['extras.js','extras.js','renderStudyHub','Study Planner, Weekly Report, Notice Board, Insights'],
+ ['extras.js','extras.js','xBuildGlance','Study Planner, Weekly Report, Notice Board, Today summary'],
  ['campus.js','campus.js','renderTimetable','Timetable, Resources, Attendance'],
  ['classwork.js','classwork.js','renderAdminFees','Fee Reminders, Class Tests'],
- ['service-worker.js','service-worker.js','dsa-shell-v7','Offline cache (version 7)']
+ ['service-worker.js','service-worker.js','dsa-shell-v8','Offline cache (version 8)']
 ];
 function row(ok,t,d){var e=document.createElement('div');e.className='r '+(ok?'ok':'bad');e.innerHTML='<div>'+(ok?'✅':'❌')+'</div><div><b>'+t+'</b><br><small>'+d+'</small></div>';document.getElementById('out').appendChild(e);}
 checks.forEach(function(c){fetch(base+c[1]+'?t='+Date.now(),{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.text();}).then(function(t){var ok=t.indexOf(c[2])>=0;row(ok,c[0],ok?c[3]+' — OK':'File is there but it is the OLD version. Upload the new '+c[0]+' from the pack.');}).catch(function(){row(false,c[0],'NOT FOUND in this folder. Upload '+c[0]+' from the pack (same folder as index.html).');});});
-['/admin.html','/admin/index.html','/admin/'].reduce(function(p,u){return p.then(function(found){if(found)return found;return fetch(u+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(t){return t&&t.indexOf('K Spider')>=0&&t.indexOf('dsa-sub')>=0?{u:u,t:t}:null;}).catch(function(){return null;});});},Promise.resolve(null)).then(function(f){if(!f)return row(false,'admin page','Could not find the admin file here. Open kspiderai.in/admin and check the MCQ Bank tab manually.');var ok=f.t.indexOf('dsa-sub-mcq')>=0;row(ok,'admin ('+f.u+')',ok?'MCQ Bank tab is installed — OK':'Admin file is the OLD version. Replace admin.html with the one in 2_K_SPIDER_ADMIN.');});
+['/admin.html','/admin/index.html','/admin/'].reduce(function(p,u){return p.then(function(found){if(found)return found;return fetch(u+'?t='+Date.now(),{cache:'no-store'}).then(function(r){return r.ok?r.text():null;}).then(function(t){return t&&t.indexOf('K Spider')>=0&&t.indexOf('dsa-sub')>=0?{u:u,t:t}:null;}).catch(function(){return null;});});},Promise.resolve(null)).then(function(f){if(!f)return row(false,'admin page','Could not find the admin file here. Open kspiderai.in/admin and check the MCQ Bank tab manually.');var ok=f.t.indexOf('dsa-sub-mcq')>=0&&f.t.indexOf('dsaSetPlan')>=0;row(ok,'admin ('+f.u+')',ok?'MCQ Bank tab + student detail fix installed — OK':'Admin file is the OLD version. Replace admin.html with the one in 2_K_SPIDER_ADMIN.');});
 </script></body></html>

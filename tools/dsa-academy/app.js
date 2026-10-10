@@ -258,6 +258,7 @@ function render(){
 }
 
 function afterRender(){
+  try{ if(typeof window.xAfterRender==='function') window.xAfterRender(); }catch(e){} // 'Today at a glance' (extras.js)
   if(ROUTE.view==='test' && ROUTE.params._justStarted){
     ROUTE.params._justStarted = false;
     startTimer();

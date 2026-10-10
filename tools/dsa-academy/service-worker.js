@@ -7,7 +7,7 @@
    AI answers need a real connection.
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v7';
+const CACHE_NAME = 'dsa-shell-v8';
 const CORE_ASSETS = [
   './',
   './index.html',

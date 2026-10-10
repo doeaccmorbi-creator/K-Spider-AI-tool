@@ -33,6 +33,65 @@ function csv(name,rows){
 function firstName(n){ var p=String(n||'Student').trim().split(/\s+/); return p[0]+(p[1]?' '+p[1][0]+'.':''); }
 function reqLive(view,sb){ return !live()?shell(sb,note('⚡','This feature works in live mode. Connect Firebase first.')):null; }
 
+
+/* ============================ TODAY AT A GLANCE (every role) =============== */
+function tile(ic,big,sub,goto){ return '<div class="card" style="padding:13px 15px;cursor:pointer;flex:1;min-width:150px" onclick="'+goto+'"><div style="font-size:12px;color:var(--muted)">'+ic+' '+sub+'</div><div style="font-size:18px;font-weight:700;margin-top:4px;line-height:1.25">'+big+'</div></div>'; }
+function fmt12(t){ if(!t) return ''; var p=t.split(':'),h=+p[0]; return ((h%12)||12)+':'+p[1]+(h>=12?' PM':' AM'); }
+function q0(p){ return p.catch(function(){ return null; }); }
+function buildGlance(u,v){
+  var role=u.role, em=u.email||'-';
+  var sched=q0(fbDb.collection('schedule').where('date','==',today()).get());
+  var unread=q0(fbDb.collection('notifications').where('toEmail','==',em).where('read','==',false).limit(50).get());
+  function classTile(s){
+    var cl=s?s.docs.map(function(d){ return d.data(); }).sort(function(a,b){ return (a.time||'')<(b.time||'')?-1:1; }):[];
+    if(role==='faculty') cl=cl.filter(function(c){ return c.byUid===u.uid||u.role==='admin'; });
+    var first=cl[0]; return tile('🗓',cl.length?(cl.length+' class'+(cl.length>1?'es':'')+' today'):'No class today',first?esc(fmt12(first.time)+' · '+first.subject):'Timetable',"go('timetable')");
+  }
+  function notiTile(s){ var n=s?s.size:0; return tile('🔔',n?(n+' new'):'All caught up','Notifications',"go('notices')"); }
+  if(role==='student'){
+    var tests=q0(fbDb.collection('facultyTests').where('active','==',true).limit(30).get()), mine=q0(fbDb.collection('classTestResults').where('uid','==',u.uid).get()), prog=(window.MCQ&&MCQ.loadProg)?MCQ.loadProg():Promise.resolve(null);
+    return Promise.all([sched,unread,tests,mine,prog]).then(function(r){
+      var done={}; if(r[3]) r[3].forEach(function(d){ done[d.data().testId]=1; });
+      var wait=r[2]?r[2].docs.filter(function(d){ return !done[d.id]; }).length:0, P=r[4]||{}, g=P.goal||{}, daily=g.daily||30, tn=(P.days&&P.days[today()])||0;
+      var due=Math.max(0,(u.feeTotal||0)-(u.feePaid||0));
+      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+'</div>';
+    });
+  }
+  if(role==='parent'){
+    return Promise.all([sched,unread]).then(function(r){ return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+notiTile(r[1])+tile('📄','Open','Weekly report',"go('parentreport')")+tile('✅','View','Attendance',"go('parentattendance')")+'</div>'; });
+  }
+  if(role==='faculty'){
+    var mt=q0(fbDb.collection('facultyTests').where('byUid','==',u.uid).where('active','==',true).get());
+    var doubts=DB._facultyDoubtsCache?Promise.resolve(DB._facultyDoubtsCache):q0(loadFacultyDoubts(u.subject));
+    return Promise.all([sched,unread,mt,doubts]).then(function(r){
+      var pend=(r[3]||[]).filter(function(d){ return d.status!=='answered'; }).length;
+      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+tile('💬',pend,'Doubts pending',"go('facultydoubts')")+tile('📝',r[2]?r[2].size:0,'Your live tests',"go('facultytests')")+notiTile(r[1])+tile('✅','Mark','Attendance',"go('facultyattendance')")+'</div>';
+    });
+  }
+  /* admin */
+  return Promise.all([sched,loadAllStudents(),q0(fbDb.collection('mcqReports').limit(50).get())]).then(function(r){
+    var st=r[1]||[], prem=st.filter(function(s){ return s.plan==='premium'; }).length, od=st.filter(function(s){ var due=(s.feeTotal||0)-(s.feePaid||0); return due>0&&s.feeDueDate&&s.feeDueDate<today(); }).length;
+    var act=st.filter(function(s){ return s.mcqSummary&&s.mcqSummary.n7>0; }).length;
+    return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+tile('🎓',st.length,'Students · '+prem+' Premium',"go('admin')")+tile('💰',od,'Fees overdue',"go('adminfees')")+tile('📚',act,'Practised this week',"go('adminmcq')")+tile('🚩',r[2]?r[2].size:0,'Reported questions',"go('adminmcq')")+'</div>';
+  });
+}
+function injectGlance(){
+  var u=DB.currentUser; if(!u||!live()) return;
+  var v=ROUTE.view, ok=(u.role==='student'&&v==='student')||(u.role==='parent'&&v==='parent')||(u.role==='faculty'&&v==='facultydoubts')||(u.role==='admin'&&v==='admin');
+  if(!ok) return;
+  var main=document.querySelector('.main'); if(!main||document.getElementById('xGlance')) return;
+  var head=main.querySelector('.main-head'); if(!head) return;
+  var box=document.createElement('div'); box.id='xGlance'; box.style.cssText='margin-bottom:18px';
+  head.parentNode.insertBefore(box,head.nextSibling);
+  var g=X.glance, key=u.uid+'|'+v;
+  if(g&&g.k===key&&Date.now()-g.t<60000){ box.innerHTML=g.h; return; }
+  box.innerHTML='<div class="card" style="padding:12px 16px;font-size:13px;color:var(--muted)">Loading today\'s summary…</div>';
+  buildGlance(u,v).then(function(h){ X.glance={k:key,t:Date.now(),h:h}; var b=document.getElementById('xGlance'); if(b) b.innerHTML=h; })
+    .catch(function(){ var b=document.getElementById('xGlance'); if(b) b.innerHTML=''; });
+}
+window.xAfterRender=injectGlance;
+window.xBuildGlance=buildGlance;
+
 /* ============================ NOTICE BOARD (all roles) ==================== */
 function loadPn(){
   if(X.pnb||X.pn) return; X.pnb=true;
@@ -200,9 +259,21 @@ window.renderFacultyInsights=function(){
   var inactive=rows.filter(function(r){ return r.idle>=7; }).length;
   return shell('facultyinsights',head('🔎 Class Insights',esc(u.subject||'')+' · doubts and student practice activity')+
     '<div class="stat-row"><div class="card stat-box"><b>'+pend+'</b><span>Doubts pending</span></div><div class="card stat-box"><b>'+fi.doubts.length+'</b><span>Recent doubts</span></div><div class="card stat-box"><b>'+rows.filter(function(r){ return r.n7>0; }).length+'</b><span>Students active (7d)</span></div><div class="card stat-box"><b>'+inactive+'</b><span>Inactive 7+ days</span></div></div>'+
+    card(h3('📣 Message your students')+'<textarea id="xFacMsgIn" rows="2" maxlength="300" class="mcq-sel" style="width:100%" placeholder="e.g. Tomorrow\'s class is shifted to 6 PM. Revise Optics before coming."></textarea><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="xFacMsg()">Send to all students</button><div style="font-size:12px;color:var(--muted);margin-top:6px">Students see it as a notification (🔔 Notice Board).</div>')+
     card(h3('🔥 Doubt hot-spots — chapters to re-teach')+(hot.length?'<table class="table-simple"><thead><tr><th>Chapter</th><th>Doubts</th><th>Pending</th></tr></thead><tbody>'+hot.map(function(h){ return '<tr><td>'+esc(h.k)+'</td><td>'+h.n+'</td><td>'+h.p+'</td></tr>'; }).join('')+'</tbody></table>':'<div style="font-size:13px;color:var(--muted)">No doubts yet.</div>'))+
     card('<div style="display:flex;align-items:center;margin-bottom:12px">'+h3('Student MCQ practice').replace('margin:0 0 12px','margin:0')+'<button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="xFacExport()">⬇ Export CSV</button></div>'+
       (rows.length?'<div style="max-height:420px;overflow:auto"><table class="table-simple"><thead><tr><th>Student</th><th>Qs (7d)</th><th>Accuracy</th><th>Last active</th></tr></thead><tbody>'+rows.map(function(r){ return '<tr><td>'+esc(r.n)+'</td><td>'+r.n7+'</td><td>'+(r.a?r.acc+'%':'—')+'</td><td>'+(r.last?esc(r.last):'<span class="pill pill-red">never</span>')+'</td></tr>'; }).join('')+'</tbody></table></div>':'<div style="font-size:13px;color:var(--muted)">No students found.</div>')));
+};
+window.xFacMsg=async function(){
+  var el=document.getElementById('xFacMsgIn'), t=el&&el.value.trim(), u=DB.currentUser, st=((X.fi&&X.fi.students)||[]).filter(function(s){ return !s.banned&&s.email; });
+  if(!t){ toast('Type a message first','⚠️'); return; }
+  if(!st.length){ toast('No students to message','⚠️'); return; }
+  if(!confirm('Send this message to '+st.length+' students?')) return;
+  try{ var b=fbDb.batch(), n=0;
+    for(var i=0;i<st.length;i++){ b.set(fbDb.collection('notifications').doc(),{toEmail:st[i].email,title:'Message from '+(u.name||'your teacher'),msg:t.slice(0,300),kind:'msg',by:u.name||'',when:firebase.firestore.FieldValue.serverTimestamp(),read:false}); n++;
+      if(n%400===0){ await b.commit(); b=fbDb.batch(); } }
+    if(n%400) await b.commit(); toast('Sent to '+n+' students ✅'); el.value='';
+  }catch(e){ toast(e.message||'Could not send','⚠️'); }
 };
 window.xFacExport=function(){ var fi=X.fi; if(!fi) return; csv('class-practice',[['Name','Email','Questions (7d)','Attempted','Accuracy %','Last active']].concat(fi.students.map(function(s){ var m=s.mcqSummary||{}; return [s.name,s.email,m.n7||0,m.a||0,pct(m.c||0,m.a||0),m.last||'']; }))); };
 
