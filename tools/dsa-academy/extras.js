@@ -41,6 +41,8 @@ function q0(p){ return p.catch(function(){ return null; }); }
 function buildGlance(u,v){
   var role=u.role, em=u.email||'-';
   var sched=q0(fbDb.collection('schedule').where('date','==',today()).get());
+  var liveLec=q0(fbDb.collection('lectures').where('live','==',true).limit(20).get());
+  function liveTile(s){ var n=s?s.size:0; return tile(n?'🔴':'🎬',n?(n+' live now'):'Watch','Video lectures',"go('lectures')"); }
   var unread=q0(fbDb.collection('notifications').where('toEmail','==',em).where('read','==',false).limit(50).get());
   function classTile(s){
     var cl=s?s.docs.map(function(d){ return d.data(); }).sort(function(a,b){ return (a.time||'')<(b.time||'')?-1:1; }):[];
@@ -50,15 +52,15 @@ function buildGlance(u,v){
   function notiTile(s){ var n=s?s.size:0; return tile('🔔',n?(n+' new'):'All caught up','Notifications',"go('notices')"); }
   if(role==='student'){
     var tests=q0(fbDb.collection('facultyTests').where('active','==',true).limit(30).get()), mine=q0(fbDb.collection('classTestResults').where('uid','==',u.uid).get()), prog=(window.MCQ&&MCQ.loadProg)?MCQ.loadProg():Promise.resolve(null);
-    return Promise.all([sched,unread,tests,mine,prog]).then(function(r){
+    return Promise.all([sched,unread,tests,mine,prog,liveLec]).then(function(r){
       var done={}; if(r[3]) r[3].forEach(function(d){ done[d.data().testId]=1; });
       var wait=r[2]?r[2].docs.filter(function(d){ return !done[d.id]; }).length:0, P=r[4]||{}, g=P.goal||{}, daily=g.daily||30, tn=(P.days&&P.days[today()])||0;
       var due=Math.max(0,(u.feeTotal||0)-(u.feePaid||0));
-      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+'</div>';
+      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+liveTile(r[5])+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+'</div>';
     });
   }
   if(role==='parent'){
-    return Promise.all([sched,unread]).then(function(r){ return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+notiTile(r[1])+tile('📄','Open','Weekly report',"go('parentreport')")+tile('✅','View','Attendance',"go('parentattendance')")+'</div>'; });
+    return Promise.all([sched,unread,liveLec]).then(function(r){ return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+liveTile(r[2])+notiTile(r[1])+tile('📄','Open','Weekly report',"go('parentreport')")+tile('✅','View','Attendance',"go('parentattendance')")+'</div>'; });
   }
   if(role==='faculty'){
     var mt=q0(fbDb.collection('facultyTests').where('byUid','==',u.uid).where('active','==',true).get());

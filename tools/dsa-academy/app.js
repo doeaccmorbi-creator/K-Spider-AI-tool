@@ -216,6 +216,7 @@ function render(){
     facultyinsights: R_('renderFacultyInsights'), adminmcq: R_('renderAdminMcq'), // extras.js
     timetable: R_('renderTimetable'), resources: R_('renderResources'), myattendance: R_('renderMyAttendance'), // campus.js
     parentattendance: R_('renderParentAttendance'), facultyattendance: R_('renderFacultyAttendance'), adminattendance: R_('renderAdminAttendance'), // campus.js
+    lectures: R_('renderLectures'), // lectures.js
     adminfees: R_('renderAdminFees'), facultytests: R_('renderFacultyTests'), admintests: R_('renderFacultyTests'), classtests: R_('renderClassTests'), parenttests: R_('renderParentTests'), // classwork.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
@@ -272,6 +273,7 @@ const NAV = {
     {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
     {id:'mcqtracks', ic:'📚', label:'MCQ Practice Hub', view:'mcq'},
     {id:'studyhub', ic:'🎯', label:'Study Planner', view:'studyhub'},
+    {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'myattendance', ic:'✅', label:'My Attendance', view:'myattendance'},
@@ -290,6 +292,7 @@ const NAV = {
     {id:'parentreport', ic:'📄', label:'Weekly Report', view:'parentreport'},
     {id:'parentattendance', ic:'✅', label:'Attendance', view:'parentattendance'},
     {id:'parenttests', ic:'📝', label:'Class Tests', view:'parenttests'},
+    {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
@@ -304,6 +307,7 @@ const NAV = {
     {id:'adminattendance', ic:'✅', label:'Attendance', view:'adminattendance'},
     {id:'adminfees', ic:'💰', label:'Fee Reminders', view:'adminfees'},
     {id:'admintests', ic:'📝', label:'Class Tests', view:'admintests'},
+    {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
@@ -314,6 +318,7 @@ const NAV = {
     {id:'facultyinsights', ic:'🔎', label:'Class Insights', view:'facultyinsights'},
     {id:'facultyattendance', ic:'✅', label:'Mark Attendance', view:'facultyattendance'},
     {id:'facultytests', ic:'📝', label:'Class Tests', view:'facultytests'},
+    {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
@@ -1021,6 +1026,7 @@ function renderChapter(){
           ${prevCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${prevCh}})">← Ch.${prevCh}</button>`:''}
           ${nextCh?`<button class="btn btn-outline btn-sm" onclick="go('chapter',{subject:'${subject}',chapter:${nextCh}})">Ch.${nextCh} →</button>`:''}
           <button class="btn btn-gold btn-sm" onclick="(window.mcqFromNotes||function(){toast('Update files not loaded — refresh the page','⚠️')})('${subject}','${encodeURIComponent(DATA.titles[subject][chapter])}')">📚 Practice MCQs</button>
+          <button class="btn btn-outline btn-sm" onclick="(window.lecForChapter||function(){toast('Update files not loaded — refresh the page','⚠️')})('${subject}','${encodeURIComponent(DATA.titles[subject][chapter])}')">🎬 Watch lectures</button>
           <button class="btn btn-outline btn-sm" onclick="go('subject',{subject:'${subject}'})">All chapters</button>
         </div>
       </div>
