@@ -2671,6 +2671,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
           <button class="btn btn-sm btn-gh" id="dsa-tab-doubts" onclick="dsaShowTab('doubts')">💬 Doubts</button>
           <button class="btn btn-sm btn-gh" id="dsa-tab-announce" onclick="dsaShowTab('announce')">📣 Announcements</button>
           <button class="btn btn-sm btn-gh" id="dsa-tab-mcq" onclick="dsaShowTab('mcq');dsaMcqLoadStatus()">📚 MCQ Bank</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-lec" onclick="dsaShowTab('lec');dsaLecLoad()">🎬 Lectures</button>
           <button class="btn btn-sm btn-gh" onclick="dsaRefreshAll()" style="margin-left:auto">🔄 Refresh</button>
         </div>
 
@@ -2746,6 +2747,26 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
             <button class="btn btn-g btn-sm" id="dsa-mcq-btn" onclick="dsaMcqSync()" disabled>⬆️ Sync to students</button>
             <button class="btn btn-sm btn-gh" onclick="dsaMcqLoadStatus()" style="margin-left:6px">🔄 Refresh status</button>
             <pre id="dsa-mcq-log" style="display:none;margin-top:12px;padding:10px 12px;background:var(--bg2);border-radius:8px;font-size:.74rem;line-height:1.55;white-space:pre-wrap;max-height:260px;overflow:auto"></pre>
+          </div>
+        </div>
+
+        <!-- VIDEO LECTURES (added) -->
+        <div id="dsa-sub-lec" class="dsa-sub" style="display:none">
+          <div style="padding:16px;max-width:820px">
+            <div style="font-weight:700;font-size:1rem;margin-bottom:4px">🎬 Video Lectures</div>
+            <div style="font-size:.8rem;color:var(--t3);line-height:1.6;margin-bottom:14px">Add recorded or <b>live</b> YouTube links (one or many) for any chapter / topic. Students watch inside the DSA app. Only links are stored.</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:10px">
+              <select id="dl-sub" style="padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)"><option>Physics</option><option>Chemistry</option><option>Biology</option><option>Maths</option></select>
+              <input id="dl-ch" placeholder="Chapter (e.g. Laws of Motion)" maxlength="80" style="padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">
+              <input id="dl-topic" placeholder="Topic (optional)" maxlength="80" style="padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">
+            </div>
+            <input id="dl-title" placeholder="Lecture title" maxlength="100" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1);margin-bottom:10px">
+            <textarea id="dl-links" rows="4" placeholder="One link per line. Optional label:  Part 1 | https://youtu.be/xxxxxxxxxxx" style="width:100%;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1);font-family:monospace;font-size:.78rem;margin-bottom:10px"></textarea>
+            <label style="font-size:.8rem;display:inline-flex;gap:6px;align-items:center;margin-right:16px"><input type="checkbox" id="dl-live"> 🔴 Live right now</label>
+            <label style="font-size:.8rem;display:inline-flex;gap:6px;align-items:center"><input type="checkbox" id="dl-notify" checked> Notify all students</label><br>
+            <button class="btn btn-g btn-sm" style="margin-top:12px" id="dl-btn" onclick="dsaLecAdd()">Publish lecture</button>
+            <div style="font-weight:700;font-size:.9rem;margin:20px 0 8px">All lectures</div>
+            <div id="dl-list" style="font-size:.8rem;color:var(--t2)">Open this tab to load…</div>
           </div>
         </div>
 
@@ -4550,7 +4571,7 @@ function dsaTryAutoRestore() {
 }
 
 function dsaShowTab(name) {
-  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce', 'mcq'];
+  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce', 'mcq', 'lec'];
   tabs.forEach(function(t) {
     var sub = document.getElementById('dsa-sub-' + t);
     var btn = document.getElementById('dsa-tab-' + t);
@@ -11894,6 +11915,65 @@ function dsaNotifyStudent(uid) {
   _dsaDb.collection('notifications').add({ toEmail: s.email, title: 'Message from Admin', msg: t.slice(0, 300), kind: 'msg', by: 'Admin', when: firebase.firestore.FieldValue.serverTimestamp(), read: false })
     .then(function(){ toast('🔔 Notification sent'); }).catch(function(err){ toast('❌ ' + err.message); });
 }
+</script>
+<script>
+/* DSA Admin — Video Lectures (added). Uses the signed-in DSA admin connection (_dsaDb). */
+function dsaLecInfo(u) {
+  try { var x = new URL(String(u).trim()); if (x.protocol !== 'https:') return false; return true; } catch (e) { return false; }
+}
+function dsaLecParse(text) {
+  var out = [], errs = [];
+  String(text).split('\n').forEach(function(line, i) {
+    line = line.trim(); if (!line) return;
+    var lab = '', u = line, p = line.indexOf('|'); if (p > 0) { lab = line.slice(0, p).trim(); u = line.slice(p + 1).trim(); }
+    if (!dsaLecInfo(u)) { errs.push('Line ' + (i + 1) + ': link must start with https://'); return; }
+    out.push({ t: (lab || ('Part ' + (out.length + 1))).slice(0, 60), u: u });
+  });
+  if (out.length > 20) errs.push('Maximum 20 links per lecture');
+  return { v: out.slice(0, 20), errs: errs };
+}
+function dsaLecLoad() {
+  var box = document.getElementById('dl-list'); if (!box) return;
+  if (!_dsaSignedIn) { box.textContent = 'Connect the DSA admin account first.'; return; }
+  _dsaDb.collection('lectures').orderBy('when', 'desc').limit(100).get().then(function(s) {
+    if (!s.size) { box.innerHTML = 'No lectures yet.'; return; }
+    box.innerHTML = s.docs.map(function(d) {
+      var l = d.data(), n = (l.videos || []).length;
+      return '<div style="display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);flex-wrap:wrap"><div style="flex:1;min-width:200px"><b>' + dsaEsc(l.title) + '</b> ' + (l.live ? '<span style="color:#dc2626;font-weight:700">🔴 LIVE</span>' : '') + '<br><span style="color:var(--t3)">' + dsaEsc(l.subject) + (l.chapter ? ' · ' + dsaEsc(l.chapter) : '') + ' · ' + n + ' part' + (n > 1 ? 's' : '') + ' · ' + dsaEsc(l.by || '') + '</span></div>'
+        + '<button class="btn btn-sm btn-gh" onclick="dsaLecToggle(\'' + d.id + '\',' + (l.live ? 'false' : 'true') + ')">' + (l.live ? 'Mark recorded' : 'Mark LIVE') + '</button>'
+        + '<button class="btn btn-sm btn-gh" onclick="dsaLecDel(\'' + d.id + '\')">Delete</button></div>';
+    }).join('');
+  }).catch(function(e) { box.innerHTML = '<span style="color:#dc2626">' + dsaEsc(e.message) + ' — publish the new Firestore rules first.</span>'; });
+}
+async function dsaLecAdd() {
+  if (!_dsaSignedIn) { toast('Connect DSA Admin first'); return; }
+  var g = function(id) { return (document.getElementById(id).value || '').trim(); };
+  var p = dsaLecParse(g('dl-links')), ch = g('dl-ch'), topic = g('dl-topic'), title = g('dl-title') || topic || ch, sub = g('dl-sub');
+  if (p.errs.length) { toast('❌ ' + p.errs[0]); return; }
+  if (!p.v.length) { toast('Add at least one link'); return; }
+  if (!title) { toast('Add a chapter, topic or title'); return; }
+  var live = document.getElementById('dl-live').checked, notify = document.getElementById('dl-notify').checked, btn = document.getElementById('dl-btn');
+  btn.disabled = true;
+  try {
+    var FV = firebase.firestore.FieldValue, uid = _dsaAuth.currentUser.uid;
+    await _dsaDb.collection('lectures').add({ title: title.slice(0, 100), subject: sub, chapter: ch.slice(0, 80), topic: topic.slice(0, 80), videos: p.v, live: live, by: 'Admin', byUid: uid, when: FV.serverTimestamp() });
+    if (notify) {
+      var snap = await _dsaDb.collection('users').where('role', '==', 'student').get(), b = _dsaDb.batch(), n = 0;
+      for (var i = 0; i < snap.docs.length; i++) {
+        var u = snap.docs[i].data(); if (!u.email || u.banned) continue;
+        b.set(_dsaDb.collection('notifications').doc(), { toEmail: u.email, title: live ? '🔴 Live class now' : 'New video lecture', msg: title + ' (' + sub + (ch ? ' · ' + ch : '') + ') is now in Video Lectures.', kind: 'lecture', by: 'Admin', when: FV.serverTimestamp(), read: false });
+        n++; if (n % 400 === 0) { await b.commit(); b = _dsaDb.batch(); }
+      }
+      if (n % 400) await b.commit();
+    }
+    ['dl-ch', 'dl-topic', 'dl-title', 'dl-links'].forEach(function(id) { document.getElementById(id).value = ''; });
+    document.getElementById('dl-live').checked = false;
+    toast('✅ Lecture published'); dsaLecLoad();
+  } catch (e) { toast('❌ ' + (e.message || 'Could not publish')); }
+  btn.disabled = false;
+}
+function dsaLecToggle(id, live) { _dsaDb.collection('lectures').doc(id).update({ live: live }).then(function() { toast(live ? '🔴 Marked LIVE' : 'Marked recorded'); dsaLecLoad(); }).catch(function(e) { toast('❌ ' + e.message); }); }
+function dsaLecDel(id) { if (!confirm('Delete this lecture for everyone?')) return; _dsaDb.collection('lectures').doc(id).delete().then(function() { toast('Deleted'); dsaLecLoad(); }).catch(function(e) { toast('❌ ' + e.message); }); }
 </script>
 </body>
 </html>
