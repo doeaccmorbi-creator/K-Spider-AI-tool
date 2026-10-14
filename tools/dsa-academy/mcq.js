@@ -83,7 +83,8 @@ function mirror(){
   Object.keys(P.ch).forEach(function(k){ a+=P.ch[k].a; c+=P.ch[k].c; });
   for(i=0;i<7;i++) n7+=(P.days[ymd(new Date(Date.now()-i*864e5))]||0);
   var weak=S.index?Object.keys(P.ch).filter(function(k){ return P.ch[k].a>=5&&chapByKey(k); }).sort(function(x,y){ return pct(P.ch[x].c,P.ch[x].a)-pct(P.ch[y].c,P.ch[y].a); }).slice(0,3).map(function(k){ return chapByKey(k).c; }):[];
-  db().collection('users').doc(u.uid).update({mcqSummary:{a:a,c:c,n7:n7,streak:(P.streak&&P.streak.n)||0,last:(P.streak&&P.streak.last)||'',weak:weak,upd:Date.now()}}).catch(function(){});
+  var ex=(window.LRN&&LRN.summary)?LRN.summary():{};
+  db().collection('users').doc(u.uid).update({mcqSummary:Object.assign({a:a,c:c,n7:n7,streak:(P.streak&&P.streak.n)||0,last:(P.streak&&P.streak.last)||'',weak:weak,upd:Date.now()},ex)}).catch(function(){});
 }
 function saveProg(){
   var u=user(); if(!u||!u.uid||!S.prog||!db()) return;
@@ -95,6 +96,8 @@ function saveProg(){
   },800);
 }
 S.save=function(){ saveProg(); };
+S.begin=function(qs,label,opts){ return begin(qs,label,opts); };
+S.chapByKey=function(k){ return chapByKey(k); };
 S.loadIndex=function(){
   if(S.index) return Promise.resolve(S.index);
   if(!db()) return Promise.resolve(null);
@@ -305,7 +308,7 @@ function begin(qs,label,opts){
   if(!qs.length){ toast('No questions found for this selection','⚠️'); S.busy=false; render(); return; }
   var n=qs.length, mode=opts.mode;
   S.sess={qs:qs,i:0,ans:qs.map(function(){return null;}),marked:qs.map(function(){return false;}),times:qs.map(function(){return 0;}),
-    mode:mode,label:label,daily:!!opts.daily,timer:(mode==='test'&&opts.timer),total:n*SEC_PER_Q,deadline:Date.now()+n*SEC_PER_Q*1000,
+    mode:mode,label:label,daily:!!opts.daily,timer:(mode==='test'&&opts.timer),total:(opts.mins?opts.mins*60:n*SEC_PER_Q),deadline:Date.now()+(opts.mins?opts.mins*60:n*SEC_PER_Q)*1000,
     qStart:Date.now(),started:Date.now(),tid:null};
   S.busy=false; S.screen='session'; render(); window.scrollTo({top:0,behavior:'instant'});
 }
@@ -372,7 +375,7 @@ function scrSession(){
   var bm=S.prog.mark.indexOf(q.k+'~'+q.i)>=0, left=s.timer?Math.ceil((s.deadline-Date.now())/1000):0;
   return '<div class="card test-head"><h3>'+esc(s.label)+'</h3>'+(s.timer?'<div class="test-timer" id="mcqTimer">⏱ '+fmtT(left)+'</div>':'<div class="pill pill-navy">'+(learn?'Learn mode':'Test mode')+'</div>')+'</div>'+
   '<div class="test-shell"><div>'+
-    '<div class="card q-card"><div class="q-tag">Question '+(s.i+1)+' of '+s.qs.length+(q.t?' · '+esc(q.t):'')+(q.y?' · '+esc(q.y):'')+'</div>'+
+    '<div class="card q-card"><div class="q-tag">Question '+(s.i+1)+' of '+s.qs.length+(q.t?' · '+esc(q.t):'')+(q.y?' · '+esc(q.y):'')+(window.lrnBadge&&!s.meta?window.lrnBadge(q):'')+'</div>'+
     '<div class="q-text">'+esc(q.q)+'</div><div class="opt-list">'+
     q.o.map(function(o,oi){
       var cls=''; if(shown){ if(oi===q.a) cls='correct'; else if(oi===a) cls='wrong'; } else if(a===oi) cls='selected';
@@ -442,6 +445,7 @@ window.mcqSubmit=function(force){
   if(!s.meta) saveProg();
   S.res={label:s.label,mode:s.mode,items:items,c:c,w:w,sk:sk,score:score,max:s.qs.length*4,secs:secs,per:per,meta:s.meta||null};
   if(s.meta&&s.meta.onDone){ try{ s.meta.onDone(S.res); }catch(e){ console.warn(e); } }
+  if(!s.meta&&window.LRN&&LRN.onResult){ try{ LRN.onResult(items,s.label); }catch(e){ console.warn(e); } }
   S.sess=null; S.screen='result'; render(); window.scrollTo({top:0,behavior:'instant'});
 };
 function scrResult(){
@@ -454,6 +458,7 @@ function scrResult(){
     '<div class="card stat-box"><b>'+pct(r.c,answered)+'%</b><span>Accuracy</span></div>'+
     '<div class="card stat-box"><b>'+r.c+' / '+r.w+' / '+r.sk+'</b><span>Right / Wrong / Skipped</span></div>'+
     '<div class="card stat-box"><b>'+fmtT(r.secs)+'</b><span>Time</span></div></div>'+
+  (window.lrnResultExtra&&!r.meta?window.lrnResultExtra(r):'')+
   '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'+
     (r.meta?'<button class="btn btn-primary btn-sm" onclick="go(\'classtests\')">← Back to class tests</button>':'')+
     (r.meta?'':(wrongQs.length?'<button class="btn btn-gold btn-sm" onclick="mcqRetryWrong()">🔁 Retry the '+wrongQs.length+' wrong</button>':'')+

@@ -52,11 +52,12 @@ function buildGlance(u,v){
   function notiTile(s){ var n=s?s.size:0; return tile('🔔',n?(n+' new'):'All caught up','Notifications',"go('notices')"); }
   if(role==='student'){
     var tests=q0(fbDb.collection('facultyTests').where('active','==',true).limit(30).get()), mine=q0(fbDb.collection('classTestResults').where('uid','==',u.uid).get()), prog=(window.MCQ&&MCQ.loadProg)?MCQ.loadProg():Promise.resolve(null);
-    return Promise.all([sched,unread,tests,mine,prog,liveLec]).then(function(r){
+    var dueP=(window.LRN&&LRN.load)?LRN.load().then(function(){ return LRN.dueCount(); }).catch(function(){ return 0; }):Promise.resolve(0);
+    return Promise.all([sched,unread,tests,mine,prog,liveLec,dueP]).then(function(r){
       var done={}; if(r[3]) r[3].forEach(function(d){ done[d.data().testId]=1; });
       var wait=r[2]?r[2].docs.filter(function(d){ return !done[d.id]; }).length:0, P=r[4]||{}, g=P.goal||{}, daily=g.daily||30, tn=(P.days&&P.days[today()])||0;
       var due=Math.max(0,(u.feeTotal||0)-(u.feePaid||0));
-      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+liveTile(r[5])+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+'</div>';
+      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+liveTile(r[5])+(r[6]?tile('🧠',r[6]+' to revise','Spaced revision due',"go('learn')"):'')+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+'</div>';
     });
   }
   if(role==='parent'){
@@ -221,6 +222,7 @@ function buildReport(d){
     'Tests this week: '+wr.length+(avgWk!==null?' (avg '+avgWk+'%)':''),
     'Overall test average: '+(avgAll===null?'—':avgAll+'%'),
     'MCQ practice this week: '+(m.n7||0)+' questions · overall accuracy '+pct(m.c||0,m.a||0)+'% · streak '+(m.streak||0)+' days',
+    (m.due!==undefined?'Revision pending: '+(m.due||0)+' questions'+(m.topReason?' · main mistake type: '+m.topReason:''):'Revision pending: —'),
     (m.weak&&m.weak.length?'Needs revision: '+m.weak.join(', '):'Needs revision: not enough data yet'),
     'Doubts open: '+open, 'Fees due: ₹'+due, '— Dr. Shreyansh Academy'];
   return {m:m,wr:wr,avgWk:avgWk,avgAll:avgAll,due:due,open:open,alerts:alerts,text:lines.join('\n'),name:p.name||d.childEmail};

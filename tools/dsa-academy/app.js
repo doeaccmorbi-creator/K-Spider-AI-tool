@@ -217,6 +217,7 @@ function render(){
     timetable: R_('renderTimetable'), resources: R_('renderResources'), myattendance: R_('renderMyAttendance'), // campus.js
     parentattendance: R_('renderParentAttendance'), facultyattendance: R_('renderFacultyAttendance'), adminattendance: R_('renderAdminAttendance'), // campus.js
     lectures: R_('renderLectures'), // lectures.js
+    learn: R_('renderLearn'), // learn.js
     adminfees: R_('renderAdminFees'), facultytests: R_('renderFacultyTests'), admintests: R_('renderFacultyTests'), classtests: R_('renderClassTests'), parenttests: R_('renderParentTests'), // classwork.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
@@ -243,7 +244,7 @@ function render(){
     plans:'student', myfees:'student', mcq:'student', studyhub:'student',
     parentreport:'parent', facultyinsights:'faculty', adminmcq:'admin',
     myattendance:'student', parentattendance:'parent', facultyattendance:'faculty', adminattendance:'admin',
-    classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
+    learn:'student', classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
     parent:'parent', parentaddchild:'parent',
     admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
     adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
@@ -272,6 +273,7 @@ const NAV = {
     {id:'overview', ic:'🏠', label:'Dashboard', view:'student'},
     {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
     {id:'mcqtracks', ic:'📚', label:'MCQ Practice Hub', view:'mcq'},
+    {id:'learn', ic:'🧠', label:'Learning Hub', view:'learn'},
     {id:'studyhub', ic:'🎯', label:'Study Planner', view:'studyhub'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
