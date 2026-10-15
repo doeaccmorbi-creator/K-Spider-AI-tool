@@ -1,22 +1,10 @@
 <!DOCTYPE html>
 <html lang="hi">
 <head>
-<style id="ks-uni-ads-base">
-[data-ks-slot]{margin-left:auto;margin-right:auto;box-sizing:border-box;max-width:728px}
-[class*="ad-label"],[class*="adlabel"],[class*="ad_label"]{display:none!important}
-[data-ks-slot].ks-filled>*{max-width:100%!important;width:100%!important;box-sizing:border-box;margin-left:auto!important;margin-right:auto!important;background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important;display:flex!important;justify-content:center!important;align-items:center}
-[data-ks-slot] img,[data-ks-slot] iframe,[data-ks-slot] video{max-width:100%!important;height:auto}
-[data-ks-slot]:empty{background:linear-gradient(100deg,rgba(128,128,128,.05) 30%,rgba(128,128,128,.14) 50%,rgba(128,128,128,.05) 70%);background-size:200% 100%;animation:kuShim 1.6s linear infinite}
-@keyframes kuShim{to{background-position:-200% 0}}
-.ks-nolabel::before,.ks-nolabel::after{content:none!important;display:none!important}
-.ks-hide-ph{display:none!important}
-@media print{[data-ks-slot],.ks-adbanner,.ad-sticky{display:none!important}}
-</style>
-
+<meta charset="UTF-8"/>
 <!-- ─── K SPIDER AI — File Analyzer Pro | www.kspiderai.in ─── -->
 <script src="/tool-guard.js"></script>
 <script src="../ks-guard.js"></script>
-<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta http-equiv="Content-Language" content="en-IN"/>
@@ -321,6 +309,22 @@ details[open] summary{color:var(--text2)}
 [data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
 [data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
 [data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+
+/* ── KSpider Ad Label Hide Fix ── */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after,.ks-adbanner::before,.ks-adbanner::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="advert" i],[data-ks-slot] [class*="sponsor" i],.ks-adbanner [class*="advert" i],.ks-adbanner [class*="sponsor" i],.ks-adbanner [class*="label" i]{display:none!important;}
+
+/* ── KSpider Premium Animated Polish v1.0 (additive) ── */
+@keyframes ksFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ksShimmer{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+@keyframes ksGlow{0%,100%{box-shadow:0 0 0 rgba(0,0,0,0)}50%{box-shadow:0 0 18px rgba(255,107,43,.45)}}
+@keyframes ksRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.hero-pill{animation:ksFloat 4.5s ease-in-out infinite}
+.hero h1 em{background-size:200% auto;animation:ksShimmer 3.5s linear infinite}
+.card{animation:ksRise .5s ease both}
+.btn-primary{position:relative}
+.btn-primary:hover{animation:ksGlow 1.8s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;} }
 </style>
 </head>
 <body>
@@ -409,7 +413,7 @@ details[open] summary{color:var(--text2)}
 
   <!-- API KEY (collapsible advanced) -->
   <details style="margin-top:4px">
-    <summary style="font-size:12px;color:var(--text3);cursor:pointer;user-select:none;padding:6px 0">🔑 Custom API Key use karna chahte ho? (Optional — Default key already active hai)</summary>
+    <summary style="font-size:12px;color:var(--text3);cursor:pointer;user-select:none;padding:6px 0">🔑 <span id="lbl-apikey">Custom API Key use karna chahte ho? (Optional — Default key already active hai)</span></summary>
     <div style="margin-top:10px">
       <div class="api-row">
         <input type="password" class="inp inp-mono" id="api-key-input" placeholder="sk-ant-api03-... (khali chhodo default use ke liye)" style="flex:1" autocomplete="off"/>
@@ -2426,6 +2430,23 @@ function showToast(msg,dur=3000){
 
 <!-- ✅ KSpider Admin Ad Manager -->
 <script src="/ks-ads.js"></script>
+<!-- ✅ KSpider Ad Label Scrub -->
+<script>
+(function(){
+  function scrub(root){
+    if(!root) return;
+    var walker=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n; while((n=walker.nextNode())){
+      if(/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i.test(n.nodeValue||'')){ n.nodeValue=''; }
+    }
+  }
+  function scrubAll(){ document.querySelectorAll('.ks-adbanner,[data-ks-slot]').forEach(scrub); }
+  scrubAll();
+  var mo=new MutationObserver(function(){ scrubAll(); });
+  if(document.body){ mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  else{ document.addEventListener('DOMContentLoaded',function(){ scrubAll(); mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }); }
+})();
+</script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
 (function(){
@@ -2533,73 +2554,6 @@ function showToast(msg,dur=3000){
     d.appendChild(document.createTextNode(s||''));
     return d.innerHTML;
   };
-})();
-</script>
-<style id="ks-uni-css">
-html{scroll-behavior:smooth}
-body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(600px 400px at 10% 10%,rgba(255,107,26,.08),transparent 60%),radial-gradient(700px 500px at 92% 25%,rgba(56,139,253,.07),transparent 60%),radial-gradient(600px 500px at 55% 100%,rgba(124,58,237,.06),transparent 60%);animation:kuAur 18s ease-in-out infinite alternate}
-@keyframes kuAur{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(-2%,2%,0) scale(1.08)}}
-:focus-visible{outline:2px solid #ff6b1a;outline-offset:2px}
-::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:rgba(128,128,128,.45);border-radius:8px}::-webkit-scrollbar-thumb:hover{background:#ff6b1a}
-#kuProg{position:fixed;top:0;left:0;height:3px;width:0;z-index:99998;background:linear-gradient(90deg,#ff6b1a,#388bfd,#7c3aed);transition:width .1s;pointer-events:none}
-#kuFab{position:fixed;right:14px;bottom:14px;z-index:99990;width:44px;height:44px;border-radius:50%;border:0;color:#fff;font:800 19px sans-serif;cursor:pointer;background:linear-gradient(135deg,#ff6b1a,#7c3aed);box-shadow:0 6px 20px rgba(255,107,26,.4);animation:kuRing 3s infinite;transition:transform .2s}
-#kuFab:hover{transform:scale(1.1)}
-@keyframes kuRing{0%,100%{box-shadow:0 6px 20px rgba(255,107,26,.4),0 0 0 0 rgba(255,107,26,.45)}50%{box-shadow:0 6px 20px rgba(255,107,26,.4),0 0 0 9px rgba(255,107,26,0)}}
-#kuTop{position:fixed;right:20px;bottom:66px;z-index:99989;width:36px;height:36px;border-radius:50%;border:1px solid rgba(128,128,128,.4);background:rgba(20,20,30,.85);color:#ff9a5c;cursor:pointer;opacity:0;pointer-events:none;transition:.25s}#kuTop.on{opacity:1;pointer-events:auto}
-#kuOv{position:fixed;inset:0;z-index:99995;background:rgba(0,0,0,.65);backdrop-filter:blur(5px);display:none;align-items:flex-start;justify-content:center;padding:8vh 12px 12px}#kuOv.on{display:flex}
-#kuBx{background:#fff;color:#1a1a2e;border-radius:16px;width:100%;max-width:560px;max-height:84vh;overflow:auto;padding:18px 20px;box-shadow:0 20px 60px rgba(0,0,0,.45);font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;animation:kuIn .3s both}
-@keyframes kuIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-#kuBx h2{margin:0 0 4px;font-size:18px;color:#c2410c}#kuBx h4{margin:14px 0 6px;font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;color:#7c3aed}
-#kuBx li,#kuBx p{font-size:13px;line-height:1.65;color:#334155}#kuBx ol,#kuBx ul{margin-left:18px}
-#kuBx button{border:0;border-radius:9px;padding:8px 14px;font-weight:800;font-size:12px;cursor:pointer;color:#fff;background:linear-gradient(135deg,#ff6b1a,#c2410c);margin:3px 4px 3px 0}
-#kuBx button.g{background:#eef2f7;color:#1a1a2e;border:1px solid #cbd5e1}#kuBx button.w{background:#25d366}
-#kuNet{position:fixed;left:50%;top:10px;transform:translateX(-50%);z-index:99999;padding:6px 14px;border-radius:20px;font:700 12px system-ui,sans-serif;display:none;background:#fde8e8;color:#b91c1c;border:1px solid #b91c1c}#kuNet.on{display:block}
-@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-</style>
-<script id="ks-uni-js">
-(function(){
-if(window.__ksUni)return;window.__ksUni=1;
-function g(i){return document.getElementById(i)}
-var NAME=(document.title||'this tool').split(/[|\u2014\u2013-]/)[0].trim().slice(0,60)||'this tool';
-/* 1. label cleaner */
-var re=/^\s*advertis(e)?ments?\s*$/i,busy=false,tm;
-function lab(e){['::before','::after'].forEach(function(q){var c=getComputedStyle(e,q).content;if(c&&/advertis/i.test(c))e.classList.add('ks-nolabel')})}
-function clean(){if(busy)return;busy=true;try{document.querySelectorAll('[data-ks-slot]').forEach(function(s){var w=document.createTreeWalker(s,NodeFilter.SHOW_TEXT),n,h=[];while(n=w.nextNode()){if(re.test(n.nodeValue)&&n.parentElement&&n.parentElement!==s)h.push(n.parentElement)}h.forEach(function(e){e.style.setProperty('display','none','important')});lab(s);s.querySelectorAll('*').forEach(lab);s.removeAttribute('data-label');if(s.firstElementChild)s.classList.add('ks-filled');else s.classList.remove('ks-filled')})}catch(e){}busy=false}
-function sch(){clearTimeout(tm);tm=setTimeout(clean,60)}
-function watch(){document.querySelectorAll('[data-ks-slot]').forEach(function(s){if(s._w)return;s._w=1;new MutationObserver(sch).observe(s,{childList:true,subtree:true,characterData:true})});clean()}
-/* 2. hide dead placeholder ad boxes */
-var PH=/(\b(728|468|970|320|300|336)\s*[x\u00d7]\s*(90|60|250|50|100|600)\b|ad slot|adsense ready|ca-pub-|leaderboard|banner ad\b|header ad|footer ad|bottom ad|ad placeholder|ad unit)/i;
-var CL=/(^|[\s_-])(ads?|adslot|adph|adbox|adsense|sponsor|ad-[a-z]+|ks-ad[a-z]*)($|[\s_-])/i;
-function ownText(p){var t='';for(var n=p.firstChild;n;n=n.nextSibling)if(n.nodeType===3)t+=n.nodeValue;return t.replace(/\s+/g,'')}
-function hid(e){return e.classList.contains('ks-hide-ph')||e.tagName==='SCRIPT'||e.tagName==='STYLE'}
-function phs(){try{document.querySelectorAll('ins.adsbygoogle').forEach(function(i){var c=i.getAttribute('data-ad-client')||'';if(/X{4,}/i.test(c)&&!i.getAttribute('data-ad-status'))i.classList.add('ks-hide-ph')});
-  document.querySelectorAll('div,span,p,aside,section').forEach(function(e){if(e._ph||e.querySelector('[data-ks-slot],input,button,select,textarea,canvas,img,a[href]'))return;var cls=(typeof e.className==='string'?e.className:'')||'',st=e.getAttribute('style')||'';if(!(CL.test(cls)||/dashed/.test(st)))return;var t=(e.textContent||'').trim();if(t.length>200||!PH.test(t))return;e._ph=1;e.classList.add('ks-hide-ph')});
-  document.querySelectorAll('.ks-hide-ph').forEach(function(e){var p=e.parentElement,k=0;while(p&&p!==document.body&&k++<2){if(p.querySelector('[data-ks-slot]'))break;var kids=[].slice.call(p.children);if(!kids.every(hid)||ownText(p).length)break;p.classList.add('ks-hide-ph');p=p.parentElement}})}catch(x){}}
-/* 3. keep ads clear of fixed header / sidebar */
-function fix(){try{var F=[],vw=innerWidth,vh=innerHeight;document.querySelectorAll('body *').forEach(function(e){if(e.offsetParent!==null||e.id&&/^ku/.test(e.id))return;var cs=getComputedStyle(e);if(cs.position!=='fixed'||cs.display==='none'||cs.visibility==='hidden')return;var r=e.getBoundingClientRect();if(r.width<2||r.height<2)return;F.push({e:e,r:r})});
-  document.querySelectorAll('[data-ks-slot]').forEach(function(s){var w=s.closest('.ks-adbanner,[class*="ks-ad"],[class*="ad-wrap"],[class*="adslot"]')||s;if(w._kf)return;var inFixed=F.some(function(f){return f.e.contains(w)});if(inFixed)return;var r=w.getBoundingClientRect(),top=r.top+(window.scrollY||0),ml=0,mt=0;
-    F.forEach(function(f){var fr=f.r;if(fr.top<=1&&fr.height<=220&&fr.width>=vw*.6&&top<fr.bottom-1&&top+r.height>0)mt=Math.max(mt,Math.ceil(fr.bottom-top));if(fr.left<=1&&fr.width<=440&&fr.height>=vh*.5&&r.left<fr.right-1)ml=Math.max(ml,Math.ceil(fr.right-r.left))});
-    if(mt){w.style.marginTop=((parseFloat(getComputedStyle(w).marginTop)||0)+mt)+'px';w._kf=1}
-    if(ml){w.style.marginLeft=((parseFloat(getComputedStyle(w).marginLeft)||0)+ml)+'px';w.style.width='auto';w.style.boxSizing='border-box';w._kf=1}})}catch(x){}}
-function run(){watch();phs();fix()}
-/* 4. helper UI */
-function ui(){
-  var d=document.createElement('div');
-  d.innerHTML='<div id="kuProg"></div><div id="kuNet">\u26A0 You are offline - some features need internet</div><button id="kuTop" aria-label="Back to top">\u2191</button><button id="kuFab" title="How to use (press ?)" aria-label="Help">?</button>'+
-  '<div id="kuOv"><div id="kuBx" role="dialog" aria-label="User guide"></div></div>';
-  while(d.firstChild)document.body.appendChild(d.firstChild);
-  g('kuBx').innerHTML='<button class="g" id="kuX" style="float:right">Close \u2715</button><h2>\uD83D\uDCD6 How to use '+NAME.replace(/[<>&]/g,'')+'</h2><p>Simple guide - 1 minute mein samajh jaiye.</p><h4>4 easy steps</h4><ol><li><b>Choose</b> the option, tab or tool you need from the menu.</li><li><b>Fill</b> your details or upload your file / text.</li><li><b>Press</b> the main action button (Generate / Convert / Analyze / Start).</li><li><b>Copy, download or share</b> the result.</li></ol><h4>Quick tips</h4><ul><li>Everything runs in your browser - your data stays with you.</li><li>If something does not respond, refresh the page and try again.</li><li>Press <b>?</b> anytime for this guide and <b>Esc</b> to close.</li></ul><p style="margin-top:10px"><button class="w" id="kuWA">\uD83D\uDCAC Share this tool on WhatsApp</button><button class="g" id="kuIn" style="display:none">\uD83D\uDCF2 Install app</button></p>';
-  var ip=null;window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();ip=e;g('kuIn').style.display='inline-block'});
-  g('kuIn').onclick=function(){if(ip){ip.prompt();ip=null;this.style.display='none'}};
-  g('kuWA').onclick=function(){window.open('https://wa.me/?text='+encodeURIComponent('Free AI tool - '+NAME+': '+location.href.split('#')[0]),'_blank')};
-  function open(){g('kuOv').classList.add('on')}function close(){g('kuOv').classList.remove('on')}
-  g('kuFab').onclick=open;g('kuX').onclick=close;g('kuOv').onclick=function(e){if(e.target===this)close()};
-  g('kuTop').onclick=function(){window.scrollTo({top:0,behavior:'smooth'})};
-  document.addEventListener('keydown',function(e){var t=(e.target.tagName||'').toLowerCase(),ty=t==='input'||t==='textarea'||t==='select'||e.target.isContentEditable;if(e.key==='Escape')close();else if(!ty&&e.key==='?'&&!e.ctrlKey&&!e.metaKey)open()});
-  window.addEventListener('scroll',function(){var de=document.documentElement,y=window.scrollY||de.scrollTop,m=de.scrollHeight-de.clientHeight;g('kuProg').style.width=(m>0?Math.min(100,y/m*100):0)+'%';g('kuTop').classList.toggle('on',y>600)},{passive:true});
-  function net(){g('kuNet').classList.toggle('on',!navigator.onLine)}window.addEventListener('online',net);window.addEventListener('offline',net);net()}
-function boot(){try{ui()}catch(e){console.warn('KS uni ui',e)}run();var k=0,iv=setInterval(function(){run();if(++k>8)clearInterval(iv)},900);var rt;window.addEventListener('resize',function(){clearTimeout(rt);rt=setTimeout(function(){document.querySelectorAll('[data-ks-slot]').forEach(function(s){var w=s.closest('.ks-adbanner,[class*="ks-ad"],[class*="ad-wrap"],[class*="adslot"]')||s;w._kf=0});fix()},300)})}
-if(document.readyState==='complete')boot();else window.addEventListener('load',boot);
 })();
 </script>
 </body>
