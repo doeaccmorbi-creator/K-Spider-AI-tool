@@ -860,6 +860,21 @@ body { background:var(--BG); color:var(--T1); }
 [data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
 [data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
 [data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+
+/* ── KSpider Ad Label Hide Fix ── */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after,.ks-adbanner::before,.ks-adbanner::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="advert" i],[data-ks-slot] [class*="sponsor" i],.ks-adbanner [class*="advert" i]{display:none!important;}
+
+/* ── KSpider Premium Visual Polish (additive, non-destructive) ── */
+@keyframes ksFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ksShimmer{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+@keyframes ksGlow{0%,100%{box-shadow:0 0 0 rgba(0,0,0,0)}50%{box-shadow:0 0 18px rgba(0,112,80,.35)}}
+@keyframes ksRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.logo-box{animation:ksFloat 3.6s ease-in-out infinite;}
+.card{animation:ksRise .5s ease both;transition:box-shadow .25s ease,transform .25s ease;}
+.card:hover{box-shadow:0 6px 24px rgba(0,112,80,.12);transform:translateY(-2px);}
+.btn-g:hover,.btn-g:focus-visible{animation:ksGlow 1.6s ease-in-out infinite;}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;} }
 </style>
 <link rel="manifest" href="data:application/json;charset=utf-8,{
   &quot;name&quot;: &quot;K Spider AI Pharmacy Pro&quot;,
@@ -6315,6 +6330,23 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
 
 <!-- ✅ KSpider Admin Ad Manager -->
 <script src="/ks-ads.js"></script>
+<!-- ✅ KSpider Ad Label Scrub -->
+<script>
+(function(){
+  function scrub(root){
+    if(!root) return;
+    var walker=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n; while((n=walker.nextNode())){
+      if(/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i.test(n.nodeValue||'')){ n.nodeValue=''; }
+    }
+  }
+  function scrubAll(){ document.querySelectorAll('.ks-adbanner,[data-ks-slot]').forEach(scrub); }
+  scrubAll();
+  var mo=new MutationObserver(function(){ scrubAll(); });
+  if(document.body){ mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  else{ document.addEventListener('DOMContentLoaded',function(){ scrubAll(); mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }); }
+})();
+</script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
 (function(){
