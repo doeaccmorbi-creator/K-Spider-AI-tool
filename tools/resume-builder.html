@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="UTF-8"/>
 <script src="../ks-guard.js"></script>
 <script src="/tool-guard.js"></script>
-<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <title>K Spider AI Resume Builder Pro v4.0 2026 — Free ATS Resume Builder India | Job Placement AI | kspiderai.in</title>
 <meta name="description" content="Free ATS Resume Builder 2026 — AI-powered resumes, cover letters & LinkedIn profiles. Job placement, recruiter matching & interview prep. 100% Free. No login.">
@@ -465,6 +465,24 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
 [data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
 [data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
 [data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+/* ── KSpider Ad Label Hide Fix ── hides any pseudo-element or label-like
+   child that could render "ADVERTISEMENT"/"Ad"/"Sponsored" text over slots */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after,
+.ks-adbanner::before,.ks-adbanner::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="advert" i],
+[data-ks-slot] [class*="sponsor" i],.ks-adbanner [class*="advert" i],.ks-adbanner [class*="label" i],
+.ks-adbanner [class*="sponsor" i]{display:none!important;}
+
+/* ── KSpider Premium Visual Polish v1.0 (additive, respects reduced motion) ── */
+@keyframes ksFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ksShimmer{0%{background-position:0% 50%}100%{background-position:100% 50%}}
+@keyframes ksGlow{0%,100%{box-shadow:0 0 0 rgba(0,0,0,0)}50%{box-shadow:0 0 18px rgba(99,102,241,.45)}}
+@keyframes ksRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion: reduce){ *{animation:none!important;transition:none!important;} }
+.hero-glow{animation:ksFloat 6s ease-in-out infinite}
+.btn-brand:hover{animation:ksGlow 1.6s ease-in-out infinite}
+.mode-tab.active{animation:ksRise .5s var(--ease)}
+.ai-result-box:not(:empty){animation:ksRise .45s var(--ease)}
 </style>
 </head>
 <body>
@@ -2736,6 +2754,23 @@ document.querySelectorAll('.modal-ov').forEach(function(ov){
 
 <!-- ✅ KSpider Admin Ad Manager -->
 <script src="/ks-ads.js"></script>
+<!-- ✅ KSpider Ad Label Scrub v1.0 — removes any stray "Advertisement"/"Ad"/"Sponsored" text node -->
+<script>
+(function(){
+  function scrub(root){
+    if(!root) return;
+    var walker=document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null, false);
+    var n; while((n=walker.nextNode())){
+      if(/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i.test(n.nodeValue||'')){ n.nodeValue=''; }
+    }
+  }
+  function scrubAll(){ document.querySelectorAll('.ks-adbanner,[data-ks-slot]').forEach(scrub); }
+  scrubAll();
+  var mo=new MutationObserver(function(){ scrubAll(); });
+  if(document.body){ mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }
+  else{ document.addEventListener('DOMContentLoaded',function(){ scrubAll(); mo.observe(document.body,{childList:true,subtree:true,characterData:true}); }); }
+})();
+</script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
 (function(){
