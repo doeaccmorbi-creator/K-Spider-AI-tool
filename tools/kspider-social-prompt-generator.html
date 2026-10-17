@@ -1037,6 +1037,17 @@ body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;ba
 .ks-net{position:fixed;left:50%;top:60px;transform:translateX(-50%);z-index:960;padding:6px 14px;border-radius:20px;font-size:11px;font-weight:700;display:none;background:#2a1215;color:#ff6b6b;border:1px solid #ff6b6b}.ks-net.on{display:block}
 @media(max-width:900px){.ks-gs{grid-template-columns:1fr 1fr}}@media(max-width:500px){.ks-gs{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+
+/* ── KS ad-label hide + additive motion ── */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after,.ks-adbanner::before,.ks-adbanner::after,.ks-adtop::before,.ks-adtop::after,.ks-adaftertool::before,.ks-adaftertool::after,.ks-adbottom::before,.ks-adbottom::after,.ks-adsidebar::before,.ks-adsidebar::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="advert" i],[data-ks-slot] [class*="sponsor" i],.ks-adbanner [class*="advert" i]{display:none!important;}
+@keyframes ksFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ksShimmer{0%{background-position:0 50%}100%{background-position:200% 50%}}
+@keyframes ksGlow{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,.0)}50%{box-shadow:0 0 18px 2px rgba(99,102,241,.45)}}
+@keyframes ksRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.ks-hero-badge{animation:ksFloat 4s ease-in-out infinite}
+.ks-card{animation:ksRise .5s both cubic-bezier(.2,.8,.2,1)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
@@ -4430,5 +4441,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   function net(){g('ksNet').classList.toggle('on',!navigator.onLine)}window.addEventListener('online',net);window.addEventListener('offline',net);net();
 })();
 </script>
+<script src="/ks-ads.js"></script>
+<script>(function(){function scrub(r){if(!r)return;var w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT,null,false),n;while((n=w.nextNode())){if(/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i.test(n.nodeValue||''))n.nodeValue='';}}function all(){document.querySelectorAll('.ks-adbanner,.ks-adtop,.ks-adaftertool,.ks-adbottom,.ks-adsidebar,[data-ks-slot]').forEach(scrub);}all();new MutationObserver(all).observe(document.body,{childList:true,subtree:true,characterData:true});})();</script>
 </body>
 </html>
