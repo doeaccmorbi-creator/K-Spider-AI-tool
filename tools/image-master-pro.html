@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<meta charset="UTF-8"/>
 <!-- ── TWO-LAYER GUARD: tool-level + site-level ── -->
 <script src="/tool-guard.js"></script>
 <script src="../ks-guard.js"></script>
@@ -28,7 +29,6 @@
      ═══════════════════════════════════════════════════════ -->
 
 <!-- ── CHARSET & VIEWPORT ── -->
-<meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
 <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 <meta http-equiv="Content-Language" content="en-IN"/>
@@ -552,6 +552,18 @@ input[type=range]{width:100%;accent-color:var(--acc);cursor:pointer}
 [data-ks-slot="top-banner"],[data-ks-slot="bottom-banner"]{max-width:970px;width:100%;margin:0 auto;}
 [data-ks-slot="in-content"],[data-ks-slot="after-result"]{max-width:336px;width:100%;margin:0 auto;}
 [data-ks-slot="sidebar-left"]{max-width:300px;width:100%;margin:0 auto;}
+
+/* ── KSpider ad label hide + motion (additive) ── */
+[data-ks-slot] *::before,[data-ks-slot] *::after,[data-ks-slot]::before,[data-ks-slot]::after,.ks-adbanner::before,.ks-adbanner::after,.ks-adslot::before,.ks-adslot::after{content:none!important;display:none!important;}
+[data-ks-slot] [class*="label" i],[data-ks-slot] [id*="advert" i],[data-ks-slot] [class*="advert" i],[data-ks-slot] [class*="sponsor" i],.ks-adbanner [class*="advert" i]{display:none!important;}
+@keyframes ksFloat{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes ksShimmer{0%{background-position:0% 50%}100%{background-position:200% 50%}}
+@keyframes ksGlow{0%,100%{box-shadow:0 0 0 0 rgba(99,102,241,0)}50%{box-shadow:0 0 14px 2px rgba(99,102,241,.45)}}
+@keyframes ksRise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+.feat-c,.step-c{animation:ksRise .6s ease both}
+.step-n{animation:ksGlow 3s ease-in-out infinite}
+.feat-i{display:inline-block;animation:ksFloat 4s ease-in-out infinite}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body class="lm">
@@ -3400,6 +3412,7 @@ input, textarea, select, [contenteditable] {
 
 <!-- ✅ KSpider Admin Ad Manager -->
 <script src="/ks-ads.js"></script>
+<script>(function(){function scrub(r){if(!r)return;var w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT,null,false),n;while((n=w.nextNode())){if(/^\s*(advertisement|advertisements|ad|ads|sponsored)\s*$/i.test(n.nodeValue||''))n.nodeValue='';}}function all(){document.querySelectorAll('.ks-adbanner,[data-ks-slot]').forEach(scrub);}all();new MutationObserver(all).observe(document.body,{childList:true,subtree:true,characterData:true});})();</script>
 <!-- ✅ KSpider Ad No-Jump Patch v1.0 -->
 <script>
 (function(){
