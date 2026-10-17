@@ -385,6 +385,7 @@ function scrSession(){
     '</div>'+
     '<div class="q-nav"><button class="btn btn-outline btn-sm" '+(s.i===0?'disabled':'')+' onclick="mcqNav(-1)">← Previous</button>'+
       (s.meta?'':'<button class="btn btn-ghost btn-sm" onclick="mcqBm()">'+(bm?'★ Saved':'☆ Bookmark')+'</button><button class="btn btn-ghost btn-sm" onclick="mcqReport()">🚩 Report</button>')+
+      (learn&&window.tutorSession&&!s.meta?'<button class="btn btn-ghost btn-sm" onclick="tutorSession()">🎓 Tutor</button>':'')+
       (learn?'':'<button class="btn btn-ghost btn-sm" onclick="mcqMark()">'+(s.marked[s.i]?'⚑ Marked':'⚐ Mark for review')+'</button>')+
       (s.i===s.qs.length-1?'<button class="btn btn-gold btn-sm" onclick="mcqSubmit()">'+(learn?'Finish ✓':'Submit test ✓')+'</button>':'<button class="btn btn-primary btn-sm" onclick="mcqNav(1)">Next →</button>')+
     '</div></div>'+
@@ -438,7 +439,14 @@ window.mcqSubmit=function(force){
   if(answered>0 && !s.meta){
     P.hist.unshift({t:Date.now(),l:s.label,n:s.qs.length,c:c,a:answered,s:score,m:s.mode,d:secs}); if(P.hist.length>MAXHIST) P.hist.length=MAXHIST;
     var st=P.streak||(P.streak={last:'',n:0});
-    if(st.last!==today()){ st.n=(st.last===yesterday())?st.n+1:1; st.last=today(); }
+    if(st.last!==today()){
+      var gap=st.last?Math.round((new Date(today()+'T00:00:00')-new Date(st.last+'T00:00:00'))/864e5):99;
+      if(gap===1){ st.n++; }
+      else if(gap===2&&(st.fz||0)>0){ st.fz--; st.n++; st.used=(st.used||0)+1; if(window.toast) toast('🧊 Streak freeze saved your '+st.n+'-day streak!','🧊'); }
+      else st.n=1;
+      st.last=today();
+      if(st.n>0&&st.n%7===0&&(st.fz||0)<2) st.fz=(st.fz||0)+1;   // earn a freeze every 7 days (max 2)
+    }
     if(s.daily) P.daily={d:today(),s:score};
   }
   if(answered>0 && !s.meta){ P.days=P.days||{}; P.days[today()]=(P.days[today()]||0)+answered; }

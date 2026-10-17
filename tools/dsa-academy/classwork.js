@@ -104,7 +104,7 @@ window.cwParse=parseQs;
 window.renderFacultyTests=function(){
   var v=ROUTE.view, g=guard(v); if(g) return g;
   var u=me(); if(u.role==='faculty'&&u.approved===false) return shell(v,note('⏳','Your account is waiting for admin approval.'));
-  var fb=W.fb;
+  var fb=W.fb; if(window.BT) BT.ensure();
   if(!W.ft){ if(!W.ftb){ W.ftb=true;
       var q=u.role==='admin'?fbDb.collection('facultyTests').orderBy('when','desc').limit(40):fbDb.collection('facultyTests').where('byUid','==',u.uid).limit(40);
       q.get().then(function(s){ W.ft=s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); }).sort(function(a,b){ var x=a.when&&a.when.toMillis?a.when.toMillis():0,y=b.when&&b.when.toMillis?b.when.toMillis():0; return y-x; }); })
@@ -121,7 +121,7 @@ window.renderFacultyTests=function(){
   return shell(v,head('📝 Class Tests','Create a test for your students — they attempt it once, you see every score')+
     card(h3('➕ Create a class test')+
       '<div class="mcq-tabs"><button class="mcq-chip '+(fb.mode==='bank'?'on':'')+'" onclick="cwFb(\'mode\',\'bank\')">From question bank</button><button class="mcq-chip '+(fb.mode==='type'?'on':'')+'" onclick="cwFb(\'mode\',\'type\')">Type / paste my own questions</button></div>'+
-      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div style="flex:1;min-width:200px">'+lbl('Test title')+'<input id="cwTitle" class="mcq-sel" style="width:100%;padding:9px 11px" maxlength="80" placeholder="e.g. Kinematics weekly test"></div><div>'+lbl('Subject label')+'<input id="cwSubj" class="mcq-sel" style="padding:9px 11px" maxlength="30" value="'+esc(fb.mode==='bank'?fb.subj:(u.subject||''))+'"></div><div>'+lbl('Time (minutes)')+'<input id="cwMins" type="number" min="5" max="180" class="mcq-sel" style="width:90px;padding:9px 11px" value="'+Math.max(10,fb.n)+'"></div></div>'+
+      '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px"><div style="flex:1;min-width:200px">'+lbl('Test title')+'<input id="cwTitle" class="mcq-sel" style="width:100%;padding:9px 11px" maxlength="80" placeholder="e.g. Kinematics weekly test"></div><div>'+lbl('Subject label')+'<input id="cwSubj" class="mcq-sel" style="padding:9px 11px" maxlength="30" value="'+esc(fb.mode==='bank'?fb.subj:(u.subject||''))+'"></div><div>'+lbl('Time (minutes)')+'<input id="cwMins" type="number" min="5" max="180" class="mcq-sel" style="width:90px;padding:9px 11px" value="'+Math.max(10,fb.n)+'"></div>'+(window.BT?'<div>'+lbl('Batch')+BT.select('cwBatch','')+'</div>':'')+'</div>'+
       (fb.mode==='bank'?bankHtml:'<textarea id="cwText" rows="9" class="mcq-sel" style="width:100%;font-family:monospace;font-size:12.5px" placeholder="Q: What is the SI unit of force?\nA: Joule\nB: Newton\nC: Watt\nD: Pascal\nAns: B\nExp: Force = mass × acceleration, so the unit is the newton.\n\n(leave one blank line between questions)"></textarea>')+
       '<label style="display:flex;gap:8px;align-items:center;font-size:13px;margin:12px 0"><input type="checkbox" id="cwNotify" checked> Notify all students</label>'+
       '<button class="btn btn-primary" onclick="cwCreate()" '+(W.cb?'disabled':'')+'>'+(W.cb?'Creating…':'Create test')+'</button>')+
@@ -133,7 +133,7 @@ window.renderFacultyTests=function(){
 window.cwFb=function(k,v){ var c=val('cwTitle'); W.fb[k]=v; if(k==='exam'||k==='subj') W.fb.sel={}; render(); var e=document.getElementById('cwTitle'); if(e&&c) e.value=c; };
 window.cwFbCh=function(k){ var c=val('cwTitle'); W.fb.sel[k]=!W.fb.sel[k]; render(); var e=document.getElementById('cwTitle'); if(e&&c) e.value=c; };
 window.cwCreate=async function(){
-  var u=me(), title=val('cwTitle'), mins=Math.max(5,Math.min(180,+val('cwMins')||20)), subj=val('cwSubj')||'General', qs=[], fb=W.fb;
+  var u=me(), bid=val('cwBatch'), title=val('cwTitle'), mins=Math.max(5,Math.min(180,+val('cwMins')||20)), subj=val('cwSubj')||'General', qs=[], fb=W.fb;
   if(!title){ toast('Give the test a title','⚠️'); return; }
   try{
     if(fb.mode==='type'){ var p=parseQs(val('cwText')); if(p.errs.length){ toast(p.errs[0],'⚠️'); return; } qs=p.qs; }
@@ -144,9 +144,9 @@ window.cwCreate=async function(){
     if(qs.length>60){ qs=qs.slice(0,60); }
     if(JSON.stringify(qs).length>600000){ W.cb=false; toast('Test is too large','⚠️'); render(); return; }
     W.cb=true; render();
-    var ref=await fbDb.collection('facultyTests').add({title:title.slice(0,80),subject:subj.slice(0,30),mins:mins,count:qs.length,qs:qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||''}; }),by:u.name||'',byUid:u.uid,active:true,when:ts()});
+    var ref=await fbDb.collection('facultyTests').add({title:title.slice(0,80),subject:subj.slice(0,30),mins:mins,count:qs.length,qs:qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||''}; }),batchId:bid,batchName:(window.BT?BT.name(bid):''),by:u.name||'',byUid:u.uid,active:true,when:ts()});
     var notify=document.getElementById('cwNotify'); 
-    if(!notify||notify.checked!==false){ var st=await loadAllStudents(), b=fbDb.batch(), n=0;
+    if(!notify||notify.checked!==false){ var st=(await loadAllStudents()).filter(function(x){ return !bid||x.batchId===bid; }), b=fbDb.batch(), n=0;
       for(var i=0;i<st.length;i++){ b.set(fbDb.collection('notifications').doc(),{toEmail:st[i].email,title:'New class test',msg:title+' ('+subj+', '+qs.length+' questions, '+mins+' min) is live in Class Tests.',kind:'test',by:u.name||'',when:ts(),read:false}); n++;
         if(n%400===0){ await b.commit(); b=fbDb.batch(); } }
       if(n%400) await b.commit(); }
@@ -166,18 +166,18 @@ window.renderClassTests=function(){
   if(!W.tests||!W.my){ if(!W.tb){ W.tb=true;
       Promise.all([fbDb.collection('facultyTests').where('active','==',true).limit(30).get().then(function(s){ return s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); }); }).catch(function(){ return []; }),
         fbDb.collection('classTestResults').where('uid','==',u.uid).get().then(function(s){ var m={}; s.docs.forEach(function(d){ m[d.data().testId]=d.data(); }); return m; }).catch(function(){ return {}; })])
-        .then(function(a){ W.tests=a[0].sort(function(x,y){ var p=x.when&&x.when.toMillis?x.when.toMillis():0,q=y.when&&y.when.toMillis?y.when.toMillis():0; return q-p; }); W.my=a[1]; W.tb=false; again('classtests'); }); }
+        .then(function(a){ W.tests=a[0].filter(function(t){ return !window.BT||BT.mine(t); }).sort(function(x,y){ var p=x.when&&x.when.toMillis?x.when.toMillis():0,q=y.when&&y.when.toMillis?y.when.toMillis():0; return q-p; }); W.my=a[1]; W.tb=false; again('classtests'); }); }
     return shell('classtests',head('📝 Class Tests','')+note('⏳','Loading…')); }
   return shell('classtests',head('📝 Class Tests','Tests set by your teachers — one attempt each, timed, +4 / −1')+
     (W.tests.length?W.tests.map(function(t){ var r=W.my[t.id];
-      return card('<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="font-size:15px">'+esc(t.title)+'</b><div style="font-size:12.5px;color:var(--muted)">'+esc(t.subject)+' · '+t.count+' questions · '+t.mins+' min · by '+esc(t.by||'teacher')+'</div></div>'+
+      return card('<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap"><div style="flex:1;min-width:180px"><b style="font-size:15px">'+esc(t.title)+'</b><div style="font-size:12.5px;color:var(--muted)">'+esc(t.subject)+' · '+t.count+' questions · '+t.mins+' min · by '+esc(t.by||'teacher')+(t.batchName?' · 🎓 '+esc(t.batchName):'')+'</div></div>'+
         (r?'<div style="text-align:right"><b style="font-size:18px">'+r.score+' / '+r.max+'</b><div style="font-size:12px;color:var(--muted)">'+pct(r.correct,r.correct+r.wrong+r.skipped)+'% correct · attempted</div></div>':'<button class="btn btn-primary btn-sm" onclick="cwStart(\''+t.id+'\')">Start test →</button>')+'</div>','margin-bottom:10px'); }).join(''):note('📭','No class tests are live right now.')));
 };
 window.cwStart=function(id){
   var t=W.tests.filter(function(x){ return x.id===id; })[0]; if(!t||W.my[id]) return;
   if(!confirm('Start “'+t.title+'”?\nYou have '+t.mins+' minutes and only one attempt.')) return;
   mcqRunTest(t.qs,t.title,{testId:id,mins:t.mins,onDone:function(r){
-    var u=me(); fbDb.collection('classTestResults').doc(id+'_'+u.uid).set({testId:id,uid:u.uid,email:u.email||'',name:u.name||'',title:t.title,score:r.score,max:r.max,correct:r.c,wrong:r.w,skipped:r.sk,secs:r.secs,when:ts()})
+    var u=me(); fbDb.collection('classTestResults').doc(id+'_'+u.uid).set({testId:id,uid:u.uid,email:u.email||'',name:u.name||'',title:t.title,score:r.score,max:r.max,correct:r.c,wrong:r.w,skipped:r.sk,secs:r.secs,ans:r.items.map(function(x){ return x.a===null?-1:x.a; }),when:ts()})
       .then(function(){ W.my=null; toast('Result saved ✅'); }).catch(function(){ toast('Could not save your result — tell your teacher','⚠️'); });
   }});
 };

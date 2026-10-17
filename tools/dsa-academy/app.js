@@ -218,6 +218,7 @@ function render(){
     parentattendance: R_('renderParentAttendance'), facultyattendance: R_('renderFacultyAttendance'), adminattendance: R_('renderAdminAttendance'), // campus.js
     lectures: R_('renderLectures'), // lectures.js
     learn: R_('renderLearn'), // learn.js
+    batches: R_('renderBatches'), tanalytics: R_('renderTAnalytics'), admintanalytics: R_('renderTAnalytics'), // batches.js
     adminfees: R_('renderAdminFees'), facultytests: R_('renderFacultyTests'), admintests: R_('renderFacultyTests'), classtests: R_('renderClassTests'), parenttests: R_('renderParentTests'), // classwork.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
@@ -244,7 +245,7 @@ function render(){
     plans:'student', myfees:'student', mcq:'student', studyhub:'student',
     parentreport:'parent', facultyinsights:'faculty', adminmcq:'admin',
     myattendance:'student', parentattendance:'parent', facultyattendance:'faculty', adminattendance:'admin',
-    learn:'student', classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
+    learn:'student', tanalytics:'faculty', admintanalytics:'admin', classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
     parent:'parent', parentaddchild:'parent',
     admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
     adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
@@ -280,6 +281,7 @@ const NAV = {
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'myattendance', ic:'✅', label:'My Attendance', view:'myattendance'},
     {id:'classtests', ic:'📝', label:'Class Tests', view:'classtests'},
+    {id:'batches', ic:'🎓', label:'My Batch', view:'batches'},
     {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
     {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
     {id:'doubts', ic:'💬', label:'Ask a Doubt', view:'doubts'},
@@ -309,6 +311,8 @@ const NAV = {
     {id:'adminattendance', ic:'✅', label:'Attendance', view:'adminattendance'},
     {id:'adminfees', ic:'💰', label:'Fee Reminders', view:'adminfees'},
     {id:'admintests', ic:'📝', label:'Class Tests', view:'admintests'},
+    {id:'batches', ic:'🎓', label:'Batches', view:'batches'},
+    {id:'admintanalytics', ic:'📊', label:'Teacher Analytics', view:'admintanalytics'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
@@ -320,6 +324,8 @@ const NAV = {
     {id:'facultyinsights', ic:'🔎', label:'Class Insights', view:'facultyinsights'},
     {id:'facultyattendance', ic:'✅', label:'Mark Attendance', view:'facultyattendance'},
     {id:'facultytests', ic:'📝', label:'Class Tests', view:'facultytests'},
+    {id:'batches', ic:'🎓', label:'Batches', view:'batches'},
+    {id:'tanalytics', ic:'📊', label:'Teacher Analytics', view:'tanalytics'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},

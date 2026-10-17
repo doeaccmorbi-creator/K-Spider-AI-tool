@@ -40,18 +40,19 @@ window.renderTimetable=function(){
         .then(function(s){ C.tt=s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); }); })
         .catch(function(){ C.tt=[]; }).then(function(){ C.ttb=false; again('timetable'); }); }
     return shell('timetable',head('🗓 Timetable','Upcoming classes')+note('⏳','Loading…')); }
-  var by={}; C.tt.forEach(function(c){ (by[c.date]=by[c.date]||[]).push(c); });
+  var by={}; C.tt.forEach(function(c){ if(window.BT&&me().role==='student'&&!BT.mine(c)) return; (by[c.date]=by[c.date]||[]).push(c); });
+  if(window.BT&&isStaff()) BT.ensure();
   var days=Object.keys(by).sort(), u=me(), staff=isStaff();
   return shell('timetable',head('🗓 Timetable','Upcoming classes and live-class links')+
     (staff?card(h3('➕ Schedule a class')+'<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:end">'+
       '<div>'+lbl('Date')+inp('ttDate','','date','value="'+today()+'" min="'+today()+'"')+'</div><div>'+lbl('Time')+inp('ttTime','','time','value="17:00"')+'</div>'+
-      '<div>'+lbl('Subject')+subjSel('ttSub',u.subject||'')+'</div><div style="flex:1;min-width:160px">'+lbl('Topic / chapter')+inp('ttTopic','e.g. Thermodynamics – Part 2','text','maxlength="90" style="width:100%"')+'</div>'+
+      '<div>'+lbl('Subject')+subjSel('ttSub',u.subject||'')+'</div>'+(window.BT?'<div>'+lbl('Batch')+BT.select('ttBatch','')+'</div>':'')+'<div style="flex:1;min-width:160px">'+lbl('Topic / chapter')+inp('ttTopic','e.g. Thermodynamics – Part 2','text','maxlength="90" style="width:100%"')+'</div>'+
       '<div style="flex:1;min-width:200px">'+lbl('Live class link (Zoom / Meet / YouTube, https)')+inp('ttLink','https://…','url','style="width:100%"')+'</div>'+
       '<button class="btn btn-primary btn-sm" onclick="cTtAdd()">Add class</button></div>'):'')+
     (days.length?days.map(function(d){
       return card(h3(esc(fmtDay(d)))+by[d].sort(function(a,b){ return (a.time||'')<(b.time||'')?-1:1; }).map(function(c){
         var l=safeUrl(c.link), mine=staff&&(u.role==='admin'||c.byUid===u.uid);
-        return '<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--border);flex-wrap:wrap"><div style="min-width:74px;font-weight:700;font-size:14px">'+esc(fmtTime(c.time))+'</div><div style="flex:1;min-width:150px"><b>'+esc(c.subject)+'</b> · '+esc(c.topic||'Class')+'<div style="font-size:12px;color:var(--muted)">'+esc(c.teacher||'')+'</div></div>'+
+        return '<div style="display:flex;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--border);flex-wrap:wrap"><div style="min-width:74px;font-weight:700;font-size:14px">'+esc(fmtTime(c.time))+'</div><div style="flex:1;min-width:150px"><b>'+esc(c.subject)+'</b> · '+esc(c.topic||'Class')+'<div style="font-size:12px;color:var(--muted)">'+esc(c.teacher||'')+(c.batchName?' · 🎓 '+esc(c.batchName):'')+'</div></div>'+
           (l?'<a class="btn btn-green btn-sm" href="'+esc(l)+'" target="_blank" rel="noopener">🎥 Join class</a>':'<span class="pill pill-navy">Offline / link soon</span>')+
           (mine?'<button class="btn btn-ghost btn-sm" onclick="cTtDel(\''+c.id+'\')">Delete</button>':'')+'</div>'; }).join(''));
     }).join(''):note('📭','No upcoming classes scheduled yet.')));
@@ -60,7 +61,7 @@ window.cTtAdd=function(){
   var d=val('ttDate'), t=val('ttTime'), top=val('ttTopic'), l=val('ttLink'), u=me();
   if(!d||!t){ toast('Choose date and time','⚠️'); return; }
   if(l&&!safeUrl(l)){ toast('Link must start with https://','⚠️'); return; }
-  fbDb.collection('schedule').add({date:d,time:t,dur:60,subject:val('ttSub'),topic:top.slice(0,90),teacher:u.name||'',link:l,by:u.name||'',byUid:u.uid,when:firebase.firestore.FieldValue.serverTimestamp()})
+  fbDb.collection('schedule').add({date:d,time:t,dur:60,subject:val('ttSub'),topic:top.slice(0,90),teacher:u.name||'',link:l,batchId:val('ttBatch'),batchName:(window.BT?BT.name(val('ttBatch')):''),by:u.name||'',byUid:u.uid,when:firebase.firestore.FieldValue.serverTimestamp()})
     .then(function(){ toast('Class scheduled ✅'); C.tt=null; render(); }).catch(function(e){ toast(e.message,'⚠️'); });
 };
 window.cTtDel=function(id){ if(!confirm('Delete this class?')) return; fbDb.collection('schedule').doc(id).delete().then(function(){ C.tt=null; toast('Deleted'); render(); }).catch(function(e){ toast(e.message,'⚠️'); }); };
@@ -128,23 +129,25 @@ window.renderFacultyAttendance=function(){
   var u=me(), fa=C.fa=C.fa||{date:today(),sub:u.subject||subjects()[0],absent:{}};
   if(!fa.students){ if(!fa.b){ fa.b=true; loadAllStudents().then(function(s){ fa.students=s.filter(function(x){ return !x.banned; }).sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); }); fa.b=false; again('facultyattendance'); }); }
     return shell('facultyattendance',head('✅ Attendance','')+note('⏳','Loading students…')); }
+  if(window.BT) BT.ensure();
+  var list=fa.batch?fa.students.filter(function(x){ return x.batchId===fa.batch; }):fa.students;
   var abs=Object.keys(fa.absent).filter(function(k){ return fa.absent[k]; }).length;
   return shell('facultyattendance',head('✅ Mark Attendance','Everyone starts as present — tap to mark absent')+
-    card('<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end"><div>'+lbl('Date')+inp('atDate','','date','value="'+esc(fa.date)+'" max="'+today()+'" onchange="cAtCtl()"')+'</div><div>'+lbl('Subject')+subjSel('atSub',fa.sub).replace('<select','<select onchange="cAtCtl()"')+'</div>'+
-      '<button class="btn btn-primary btn-sm" onclick="cAtSave()">Save attendance ('+(fa.students.length-abs)+' present · '+abs+' absent)</button></div>')+
-    (fa.students.length?'<div class="card" style="padding:8px 10px;max-height:520px;overflow:auto">'+fa.students.map(function(s){ var a=!!fa.absent[s.uid];
+    card('<div style="display:flex;gap:12px;flex-wrap:wrap;align-items:end"><div>'+lbl('Date')+inp('atDate','','date','value="'+esc(fa.date)+'" max="'+today()+'" onchange="cAtCtl()"')+'</div><div>'+lbl('Subject')+subjSel('atSub',fa.sub).replace('<select','<select onchange="cAtCtl()"')+'</div>'+(window.BT?'<div>'+lbl('Batch')+BT.select('atBatch',fa.batch||'').replace('<select','<select onchange="cAtCtl();render()"')+'</div>':'')+
+      '<button class="btn btn-primary btn-sm" onclick="cAtSave()">Save attendance ('+(list.length-abs)+' present · '+abs+' absent)</button></div>')+
+    (list.length?'<div class="card" style="padding:8px 10px;max-height:520px;overflow:auto">'+list.map(function(s){ var a=!!fa.absent[s.uid];
       return '<div class="mcq-row '+(a?'':'on')+'" onclick="cAtTog(\''+s.uid+'\')"><span class="nm">'+esc(s.name||s.email)+'</span><span class="pill '+(a?'pill-red':'pill-green')+'">'+(a?'Absent':'Present')+'</span></div>'; }).join('')+'</div>':note('👥','No students registered yet.')));
 };
-window.cAtCtl=function(){ var f=C.fa; f.date=val('atDate')||f.date; f.sub=val('atSub')||f.sub; };
+window.cAtCtl=function(){ var f=C.fa; f.date=val('atDate')||f.date; f.sub=val('atSub')||f.sub; if(document.getElementById('atBatch')) f.batch=val('atBatch'); };
 window.cAtTog=function(uid){ cAtCtl(); C.fa.absent[uid]=!C.fa.absent[uid]; render(); };
 window.cAtSave=async function(){
-  cAtCtl(); var f=C.fa, u=me(); if(!f.date){ toast('Pick a date','⚠️'); return; }
+  cAtCtl(); var f=C.fa, u=me(), list=f.batch?f.students.filter(function(x){ return x.batchId===f.batch; }):f.students; if(!f.date){ toast('Pick a date','⚠️'); return; }
   if(f.date>today()){ toast('Cannot mark attendance for a future date','⚠️'); return; }
   try{
-    for(var i=0;i<f.students.length;i+=400){ var b=fbDb.batch();
-      f.students.slice(i,i+400).forEach(function(s){ b.set(fbDb.collection('attendance').doc(f.date+'_'+slug(f.sub)+'_'+s.uid),{uid:s.uid,email:s.email,name:s.name||'',date:f.date,subject:f.sub,status:f.absent[s.uid]?'A':'P',by:u.name||'',when:firebase.firestore.FieldValue.serverTimestamp()}); });
+    for(var i=0;i<list.length;i+=400){ var b=fbDb.batch();
+      list.slice(i,i+400).forEach(function(s){ b.set(fbDb.collection('attendance').doc(f.date+'_'+slug(f.sub)+'_'+s.uid),{uid:s.uid,email:s.email,name:s.name||'',date:f.date,subject:f.sub,status:f.absent[s.uid]?'A':'P',by:u.name||'',when:firebase.firestore.FieldValue.serverTimestamp()}); });
       await b.commit(); }
-    toast('Attendance saved for '+f.students.length+' students ✅'); f.absent={}; C.aa=null;
+    toast('Attendance saved for '+list.length+' students ✅'); f.absent={}; C.aa=null;
   }catch(e){ toast(e.message||'Could not save','⚠️'); }
 };
 

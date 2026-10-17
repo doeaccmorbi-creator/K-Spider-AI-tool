@@ -30,7 +30,7 @@ function prem(){ return !!me()&&me().plan==='premium'; }
 function again(){ if(ROUTE.view==='learn') render(); }
 function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)),t=a[i];a[i]=a[j];a[j]=t; } return a; }
 function ts(){ return firebase.firestore.FieldValue.serverTimestamp(); }
-function newD(){ return {v:1,srs:{},nb:{},seen:[],plan:{d:'',w:'',n:''},td:{d:'',by:{}},mocks:[]}; }
+function newD(){ return {v:1,srs:{},nb:{},seen:[],plan:{d:'',w:'',n:''},td:{d:'',by:{}},mocks:[],gx:{xp:0,wk:{w:'',xp:0},gd:0,rc:0,mk:0},bd:{}}; }
 function card(i,x){ return '<div class="card" style="padding:18px 20px;margin-bottom:16px;'+(x||'')+'">'+i+'</div>'; }
 function h3(t){ return '<h3 style="font-size:15px;margin:0 0 12px">'+t+'</h3>'; }
 function note(ic,m){ return '<div class="card" style="padding:34px;text-align:center"><div style="font-size:32px;margin-bottom:8px">'+ic+'</div><div style="font-size:14px;color:var(--muted);line-height:1.6">'+m+'</div></div>'; }
@@ -69,7 +69,7 @@ LRN.summary=function(){
 /* record every finished practice/mock: revision schedule, notebook, seen, difficulty stats */
 LRN.onResult=function(items,label){
   LRN.load().then(function(){
-    var D=T.D, t=today(), seen={}, byCh={}, c=0, w=0, bySubj={};
+    var D=T.D, t=today(), seen={}, byCh={}, c=0, w=0, bySubj={}, cleared=0;
     D.seen.forEach(function(i){ seen[i]=1; });
     if(D.td.d!==t) D.td={d:t,by:{}};
     items.forEach(function(x){
@@ -77,14 +77,14 @@ LRN.onResult=function(items,label){
       var id=q.k+'~'+q.i; if(x.ok) c++; else w++;
       if(!seen[id]){ seen[id]=1; D.seen.push(id); }
       D.td.by[q.k]=(D.td.by[q.k]||0)+1;
-      var o=(byCh[q.k]=byCh[q.k]||{}); var s=(o[q.i]=o[q.i]||{a:0,c:0}); s.a++; if(x.ok) s.c++;
+      if(q.k!=='gen'){ var o=(byCh[q.k]=byCh[q.k]||{}); var s=(o[q.i]=o[q.i]||{a:0,c:0,p:[0,0,0,0]}); s.a++; if(x.ok) s.c++; if(x.a>=0&&x.a<4) s.p[x.a]++; }
       var ch=MCQ.chapByKey&&MCQ.chapByKey(q.k); if(ch){ var b=(bySubj[ch.s]=bySubj[ch.s]||{c:0,w:0}); if(x.ok) b.c++; else b.w++; }
       if(!x.ok){
         D.srs[id]={k:q.k,s:0,d:addDays(t,1)};
         var prev=D.nb[id]||{}; D.nb[id]={k:q.k,i:q.i,q:String(q.q).slice(0,400),o:q.o,a:q.a,e:String(q.e||'').slice(0,300),w:x.a,ts:Date.now(),ok:0,r:T.pend[id]||prev.r||''};
         delete T.pend[id];
       } else {
-        var e=D.srs[id]; if(e&&e.d<=t){ e.s++; if(e.s>=STAGES.length) delete D.srs[id]; else e.d=addDays(t,STAGES[e.s]); }
+        var e=D.srs[id]; if(e&&e.d<=t){ cleared++; e.s++; if(e.s>=STAGES.length) delete D.srs[id]; else e.d=addDays(t,STAGES[e.s]); }
         var n=D.nb[id]; if(n){ n.ok=(n.ok||0)+1; if(n.ok>=2) delete D.nb[id]; }
       }
     });
@@ -92,13 +92,14 @@ LRN.onResult=function(items,label){
     var nk=Object.keys(D.nb); if(nk.length>MAXNB){ nk.sort(function(a,b){ return D.nb[a].ts-D.nb[b].ts; }).slice(0,nk.length-MAXNB).forEach(function(k){ delete D.nb[k]; }); }
     var sk=Object.keys(D.srs); if(sk.length>MAXSRS){ sk.sort(function(a,b){ return D.srs[b].s-D.srs[a].s; }).slice(0,sk.length-MAXSRS).forEach(function(k){ delete D.srs[k]; }); }
     if(/mock/i.test(label)&&c+w>0){ D.mocks.unshift({t:Date.now(),l:String(label).slice(0,40),sc:c*4-w,mx:items.length*4,acc:pct(c,c+w),s:bySubj}); if(D.mocks.length>MAXMOCK) D.mocks.length=MAXMOCK; }
+    if(window.RWD&&RWD.onResult){ try{ RWD.onResult({D:D,items:items,label:label,c:c,w:w,cleared:cleared,P:MCQ.prog}); }catch(e){ console.warn('[RWD]',e); } }
     save(); statsWrite(byCh); LRN.refreshGlance&&LRN.refreshGlance();
   });
 };
 function statsWrite(byCh){
   if(!live()) return; var inc=firebase.firestore.FieldValue.increment;
   Object.keys(byCh).forEach(function(k){
-    var s={}; Object.keys(byCh[k]).forEach(function(id){ s[id]={a:inc(byCh[k][id].a),c:inc(byCh[k][id].c)}; });
+    var s={}; Object.keys(byCh[k]).forEach(function(id){ var v=byCh[k][id], o={a:inc(v.a),c:inc(v.c)}; v.p.forEach(function(n,ix){ if(n) o['p'+ix]=inc(n); }); s[id]=o; });
     fbDb.collection('qStats').doc(k).set({s:s},{merge:true}).catch(function(){}); delete T.stats[k];
   });
 }
@@ -110,9 +111,11 @@ function loadStats(k){
     .catch(function(){ T.stats[k]={}; return {}; }).then(function(r){ delete T.statsBusy[k]; return r; });
   return T.statsBusy[k];
 }
+LRN.loadStats=function(k){ return loadStats(k); };
+LRN.optStats=function(k,i){ var s=T.stats[k]; s=s&&s[i]; if(!s||!s.a||s.a<5) return null; return {a:s.a,c:s.c,p:[s.p0||0,s.p1||0,s.p2||0,s.p3||0]}; };
 function diffOf(q){ var s=T.stats[q.k]; s=s&&s[q.i]; if(!s||s.a<5) return null; var p=s.c/s.a; return {p:p,l:p>=0.7?'Easy':(p>=0.4?'Medium':'Hard')}; }
 window.lrnBadge=function(q){
-  if(!live()||!q||!q.k||q.k==='custom') return '';
+  if(!live()||!q||!q.k||q.k==='custom'||q.k==='gen') return '';
   if(!T.stats[q.k]){ if(!T.statsBusy[q.k]) loadStats(q.k).then(function(){ if(ROUTE.view==='mcq') render(); }); return ''; }
   var d=diffOf(q); if(!d) return '';
   var col=d.l==='Easy'?'var(--green-700)':(d.l==='Hard'?'var(--red-600)':'var(--gold-700)');
@@ -149,8 +152,9 @@ window.lrnRevise=function(){
   var ids=dueIds().slice(0,25); if(!ids.length){ toast('Nothing due — great job!','🎉'); return; }
   var by={}; ids.forEach(function(id){ var p=id.split('~'); (by[p[0]]=by[p[0]]||{})[p[1]]=1; });
   T.mb=true; again();
-  Promise.all(Object.keys(by).map(function(k){ return MCQ.loadChapter(k); })).then(function(arrs){
-    var all=[].concat.apply([],arrs).filter(function(q){ return by[q.k]&&by[q.k][q.i]; });
+  var real=Object.keys(by).filter(function(k){ return k!=='gen'; }), gens=by.gen?Object.keys(by.gen).map(function(i){ return window.GEN&&GEN.rebuild(i); }).filter(Boolean):[];
+  Promise.all(real.map(function(k){ return MCQ.loadChapter(k); })).then(function(arrs){
+    var all=[].concat.apply([],arrs).filter(function(q){ return by[q.k]&&by[q.k][q.i]; }).concat(gens);
     startSession(shuffle(all),'Revision · due today',{mode:'learn',timer:false});
   }).catch(function(){ T.mb=false; toast('Could not load questions','⚠️'); again(); });
 };
@@ -212,8 +216,8 @@ window.renderLearn=function(){
   if(!ready()){ kick(); return wrap('<div class="main-head"><div><h2>🧠 Learning Hub</h2></div></div>'+note('⏳','Loading your learning data…')); }
   if(MCQ.index.chapters.length===0) return wrap(note('📚','The question bank is being set up.'));
   var D=T.D, due=dueIds().length, nbN=Object.keys(D.nb).length;
-  var tabs=[['plan','🗓 Today'],['rev','🔁 Revision'+(due?' ('+due+')':'')],['nb','📓 Notebook'+(nbN?' ('+nbN+')':'')],['map','🗺 Mastery map'],['mock','📝 Mock exams']];
-  var body={plan:tabPlan,rev:tabRev,nb:tabNb,map:tabMap,mock:tabMock}[T.tab]();
+  var tabs=[['plan','🗓 Today'],['rev','🔁 Revision'+(due?' ('+due+')':'')],['nb','📓 Notebook'+(nbN?' ('+nbN+')':'')],['map','🗺 Mastery map'],['mock','📝 Mock exams'],['gen','♾ Numericals'],['rwd','🏆 Rewards']];
+  var body={plan:tabPlan,rev:tabRev,nb:tabNb,map:tabMap,mock:tabMock,gen:tabGen,rwd:tabRwd}[T.tab]();
   return wrap('<div class="main-head"><div><h2>🧠 Learning Hub</h2><p>Practice that adapts to you — revision, mistakes, mastery and real exam mocks</p></div></div>'+
     '<div class="mcq-tabs">'+tabs.map(function(t){ return '<button class="mcq-chip '+(T.tab===t[0]?'on':'')+'" onclick="lrnTab(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>'+
     (T.mb?'<div class="card" style="padding:14px 18px;margin-bottom:14px">⏳ Preparing your questions…</div>':'')+body);
@@ -257,7 +261,7 @@ function tabRev(){
   var days=Object.keys(up).sort().slice(0,7), by={}; due.forEach(function(id){ var kk=id.split('~')[0]; by[kk]=(by[kk]||0)+1; });
   return card(h3('🔁 Spaced revision')+'<div style="font-size:32px;font-weight:700;margin-bottom:4px">'+due.length+'</div><div style="font-size:13.5px;color:var(--muted);margin-bottom:14px">question'+(due.length===1?'':'s')+' due today · '+Object.keys(D.srs).length+' scheduled in total</div>'+
     (due.length?'<button class="btn btn-primary" onclick="lrnRevise()">Start revision ('+Math.min(25,due.length)+' questions) →</button>':'<div style="font-size:14px;color:var(--green-700);font-weight:600">🎉 You are all caught up.</div>'))+
-    (Object.keys(by).length?card(h3('Due by chapter')+Object.keys(by).map(function(kk){ var ch=MCQ.chapByKey(kk); return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:13.5px"><span>'+esc(ch?ch.c:kk)+'</span><b>'+by[kk]+'</b></div>'; }).join('')):'')+
+    (Object.keys(by).length?card(h3('Due by chapter')+Object.keys(by).map(function(kk){ var ch=MCQ.chapByKey(kk); return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:13.5px"><span>'+esc(ch?ch.c:(kk==='gen'?'Infinite numericals':kk))+'</span><b>'+by[kk]+'</b></div>'; }).join('')):'')+
     (days.length?card(h3('Coming up')+days.map(function(d){ return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-top:1px solid var(--border);font-size:13.5px"><span>'+esc(new Date(d+'T00:00:00').toLocaleDateString('en-IN',{weekday:'short',day:'numeric',month:'short'}))+'</span><b>'+up[d]+'</b></div>'; }).join('')):'');
 }
 function tabNb(){
@@ -270,9 +274,10 @@ function tabNb(){
     (list.length?list.slice(0,40).map(function(id){ var n=D.nb[id];
       return card('<div style="font-size:14px;line-height:1.55;margin-bottom:8px">'+esc(n.q)+'</div>'+n.o.map(function(o,oi){ return '<div style="font-size:13px;padding:2px 0;'+(oi===n.a?'color:var(--green-700);font-weight:700':(oi===n.w?'color:var(--red-600)':''))+'">'+String.fromCharCode(65+oi)+'. '+esc(o)+(oi===n.a?' ✓':(oi===n.w?' ✗ (your answer)':''))+'</div>'; }).join('')+
         (n.e?'<div class="explain-box" style="margin-top:8px">'+esc(n.e)+'</div>':'')+
-        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center">'+REASONS.map(function(rs){ return '<button class="mcq-chip '+(n.r===rs[0]?'on':'')+'" style="padding:4px 10px;font-size:12px" onclick="lrnTag(\''+esc(id)+'\',\''+rs[0]+'\')">'+rs[1]+' '+rs[2]+'</button>'; }).join('')+'<button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="lrnNbDel(\''+esc(id)+'\')">Got it — remove</button></div>','margin-bottom:10px'); }).join(''):note('📓',ids.length?'Nothing in this filter.':'Your notebook is empty. Every question you get wrong in practice lands here automatically.'));
+        '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center">'+REASONS.map(function(rs){ return '<button class="mcq-chip '+(n.r===rs[0]?'on':'')+'" style="padding:4px 10px;font-size:12px" onclick="lrnTag(\''+esc(id)+'\',\''+rs[0]+'\')">'+rs[1]+' '+rs[2]+'</button>'; }).join('')+''+(window.tutorOpen?'<button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="lrnNbTutor(\''+esc(id)+'\')">🎓 Tutor</button>':'')+'<button class="btn btn-ghost btn-sm" onclick="lrnNbDel(\''+esc(id)+'\')">Got it — remove</button></div>','margin-bottom:10px'); }).join(''):note('📓',ids.length?'Nothing in this filter.':'Your notebook is empty. Every question you get wrong in practice lands here automatically.'));
 }
 window.lrnNbF=function(f){ T.nbf=f; render(); };
+window.lrnNbTutor=function(id){ var n=T.D.nb[id]; if(n&&window.tutorOpen) tutorOpen({q:n.q,o:n.o,a:n.a,e:n.e,k:n.k,i:n.i,w:n.w}); };
 window.lrnNbDel=function(id){ delete T.D.nb[id]; save(); render(); };
 function tabMap(){
   var chs=chapAll(), exams=[]; chs.forEach(function(c){ if(exams.indexOf(c.e)<0) exams.push(c.e); });
@@ -294,4 +299,28 @@ function tabMock(){
     (D.mocks.length?card(h3('📈 Your mock history')+'<table class="table-simple"><thead><tr><th>Mock</th><th>Date</th><th>Score</th><th>Accuracy</th></tr></thead><tbody>'+D.mocks.slice(0,10).map(function(x){ return '<tr><td>'+esc(x.l)+'</td><td>'+new Date(x.t).toLocaleDateString('en-IN')+'</td><td><b>'+x.sc+'</b> / '+x.mx+'</td><td>'+x.acc+'%</td></tr>'; }).join('')+'</tbody></table>'):'')+
     '<div style="font-size:12px;color:var(--muted)">Mocks are timed, strictly +4 / −1, and end with coaching insights. Questions are drawn at random from the bank each time.</div>';
 }
+/* ---- ♾ Infinite numericals ---- */
+var GN={subj:'Physics',topics:{},lv:1,n:10};
+function tabGen(){
+  if(!window.GEN) return note('⚠️','Numerical generator file (gen.js) is not loaded. Upload gen.js and refresh.');
+  var subs=GEN.subjects(), tp=GEN.topics(GN.subj), sel=tp.filter(function(t){ return GN.topics[t.id]; }).length;
+  return card(h3('♾ Infinite numericals')+'<div style="font-size:13.5px;color:var(--muted);line-height:1.6;margin-bottom:14px">Fresh formula-based questions every time — <b>'+GEN.count+' question types</b>, never the same twice. Each has a full worked solution and every wrong answer comes back in your revision list. Free for everyone.</div>'+
+    '<div class="mcq-tabs">'+subs.map(function(s){ return '<button class="mcq-chip '+(GN.subj===s?'on':'')+'" onclick="lrnGn(\'subj\',\''+s+'\')">'+s+'</button>'; }).join('')+'</div>'+
+    '<div style="font-size:12px;font-weight:700;color:var(--muted);margin:6px 0 6px">TOPICS <span style="font-weight:400">(none selected = all)</span></div>'+
+    '<div class="mcq-tabs">'+tp.map(function(t){ return '<button class="mcq-chip '+(GN.topics[t.id]?'on':'')+'" onclick="lrnGnTopic(\''+t.id+'\')">'+esc(t.t)+'</button>'; }).join('')+'</div>'+
+    '<div style="display:flex;gap:22px;flex-wrap:wrap;margin:8px 0 16px"><div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">LEVEL</div><div class="mcq-tabs" style="margin:0">'+GEN.levels.map(function(x,i){ return '<button class="mcq-chip '+(GN.lv===i?'on':'')+'" onclick="lrnGn(\'lv\','+i+')">'+x+'</button>'; }).join('')+'</div></div>'+
+      '<div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px">QUESTIONS</div><div class="mcq-tabs" style="margin:0">'+[10,20,30].map(function(n){ return '<button class="mcq-chip '+(GN.n===n?'on':'')+'" onclick="lrnGn(\'n\','+n+')">'+n+'</button>'; }).join('')+'</div></div></div>'+
+    '<button class="btn btn-primary" onclick="lrnGnStart()">Start '+GN.n+' '+GEN.levels[GN.lv].toLowerCase()+' '+GN.subj+' numericals →</button>');
+}
+window.lrnGn=function(k,v){ GN[k]=v; if(k==='subj') GN.topics={}; render(); };
+window.lrnGnTopic=function(id){ GN.topics[id]=!GN.topics[id]; render(); };
+window.lrnGnStart=function(){
+  var ids=Object.keys(GN.topics).filter(function(k){ return GN.topics[k]; }), qs=GEN.session(GN.subj,ids,GN.n,GN.lv);
+  if(!qs.length){ toast('Could not build questions','⚠️'); return; }
+  startSession(qs,'Numericals · '+GN.subj+' · '+GEN.levels[GN.lv],{mode:'learn',timer:false});
+};
+function tabRwd(){ return window.RWD?RWD.render():note('⚠️','Rewards file (rewards.js) is not loaded. Upload rewards.js and refresh.'); }
+LRN.tabs={ready:ready,note:note,card:card,h3:h3,bar:bar,esc:esc};
+LRN.data=function(){ return T.D; };
+LRN.save=function(){ save(); };
 })();
