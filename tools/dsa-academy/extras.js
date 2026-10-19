@@ -38,6 +38,12 @@ function reqLive(view,sb){ return !live()?shell(sb,note('⚡','This feature work
 function tile(ic,big,sub,goto){ return '<div class="card" style="padding:13px 15px;cursor:pointer;flex:1;min-width:150px" onclick="'+goto+'"><div style="font-size:12px;color:var(--muted)">'+ic+' '+sub+'</div><div style="font-size:18px;font-weight:700;margin-top:4px;line-height:1.25">'+big+'</div></div>'; }
 function fmt12(t){ if(!t) return ''; var p=t.split(':'),h=+p[0]; return ((h%12)||12)+':'+p[1]+(h>=12?' PM':' AM'); }
 function q0(p){ return p.catch(function(){ return null; }); }
+function premTile(u){
+  var pe=u.planExpiryMs||0, d=pe?Math.ceil((pe-Date.now())/864e5):null;
+  if(u.plan==='premium'&&d!==null&&d<=7) return tile('💎',d<=0?'Expires today':d+' day'+(d===1?'':'s'),'Premium expires — renew',"go('plans')");
+  if(u.planExpired) return tile('💎','Expired','Renew your Premium',"go('plans')");
+  return '';
+}
 function buildGlance(u,v){
   var role=u.role, em=u.email||'-';
   var sched=q0(fbDb.collection('schedule').where('date','==',today()).get());
@@ -57,7 +63,7 @@ function buildGlance(u,v){
       var done={}; if(r[3]) r[3].forEach(function(d){ done[d.data().testId]=1; });
       var wait=r[2]?r[2].docs.filter(function(d){ return !done[d.id]; }).length:0, P=r[4]||{}, g=P.goal||{}, daily=g.daily||30, tn=(P.days&&P.days[today()])||0;
       var due=Math.max(0,(u.feeTotal||0)-(u.feePaid||0));
-      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+liveTile(r[5])+(r[6]?tile('🧠',r[6]+' to revise','Spaced revision due',"go('learn')"):'')+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+'</div>';
+      return '<div style="display:flex;gap:12px;flex-wrap:wrap">'+classTile(r[0])+liveTile(r[5])+(r[6]?tile('🧠',r[6]+' to revise','Spaced revision due',"go('learn')"):'')+tile('📝',wait?(wait+' waiting'):'None pending','Class tests',"go('classtests')")+notiTile(r[1])+tile('🎯',tn+' / '+daily,'Questions today',"go('studyhub')")+(due>0?tile('💳','₹'+due,'Fees due'+(u.feeDueDate?' · '+esc(u.feeDueDate):''),"go('myfees')"):'')+premTile(u)+'</div>';
     });
   }
   if(role==='parent'){
