@@ -2673,6 +2673,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
           <button class="btn btn-sm btn-gh" id="dsa-tab-mcq" onclick="dsaShowTab('mcq');dsaMcqLoadStatus()">📚 MCQ Bank</button>
           <button class="btn btn-sm btn-gh" id="dsa-tab-lec" onclick="dsaShowTab('lec');dsaLecLoad()">🎬 Lectures</button>
           <button class="btn btn-sm btn-gh" id="dsa-tab-prem" onclick="dsaShowTab('prem');dsaPrLoad()">💎 Premium</button>
+          <button class="btn btn-sm btn-gh" id="dsa-tab-qb" onclick="dsaShowTab('qb');dsaQbLoad()">🏗 Question Bank</button>
           <button class="btn btn-sm btn-gh" onclick="dsaRefreshAll()" style="margin-left:auto">🔄 Refresh</button>
         </div>
 
@@ -2792,6 +2793,32 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
             <button class="btn btn-g btn-sm" style="margin-top:8px" onclick="dsaPrSaveCfg()">Save payment settings</button>
             <div style="font-weight:700;font-size:.9rem;margin:22px 0 8px">🧾 Recent decisions</div>
             <div id="dp-history" style="font-size:.78rem;color:var(--t2)"></div>
+          </div>
+        </div>
+
+        <!-- QUESTION BANK (added): review teachers' questions, edit/delete, fix reports, bank health -->
+        <div id="dsa-sub-qb" class="dsa-sub" style="display:none">
+          <div style="padding:16px;max-width:980px">
+            <div style="font-weight:700;font-size:1rem;margin-bottom:4px">🏗 Question Bank</div>
+            <div style="font-size:.8rem;color:var(--t3);line-height:1.6;margin-bottom:14px">Teachers add questions from the DSA app (<b>Add Questions</b>). Approve them here and they go live for students instantly — no CSV needed. You can also edit, delete or add questions directly.</div>
+            <div style="font-weight:700;font-size:.9rem;margin:6px 0 8px">⏳ Waiting for review <span id="qb-pn"></span></div>
+            <div id="qb-drafts" style="font-size:.8rem;margin-bottom:20px;color:var(--t2)">Open this tab to load…</div>
+            <div style="font-weight:700;font-size:.9rem;margin:6px 0 8px">🚩 Reported by students <span id="qb-rn"></span></div>
+            <div id="qb-reports" style="font-size:.8rem;margin-bottom:20px;color:var(--t2)"></div>
+            <div style="font-weight:700;font-size:.9rem;margin:6px 0 8px">📚 Bank manager</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;align-items:center">
+              <select id="qb-ex" onchange="dsaQbPickEx()" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)"></select>
+              <select id="qb-sb" onchange="dsaQbPickSb()" style="padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)"></select>
+              <select id="qb-ch" onchange="dsaQbPickCh()" style="max-width:300px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)"></select>
+              <input id="qb-search" oninput="dsaQbSearch(this.value)" placeholder="Search text or question id…" style="flex:1;min-width:160px;padding:7px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">
+              <button class="btn btn-sm btn-g" onclick="dsaQbAddNew()">➕ Add question here</button>
+            </div>
+            <div id="qb-new" style="margin-bottom:10px"></div>
+            <div id="qb-list" style="font-size:.8rem;color:var(--t2)">Choose a chapter above.</div>
+            <div style="font-weight:700;font-size:.9rem;margin:22px 0 8px">📊 Bank health</div>
+            <div id="qb-health" style="font-size:.8rem;color:var(--t2)"></div>
+            <button class="btn btn-sm btn-gh" style="margin-top:10px" onclick="dsaQbScan()">🔍 Deep scan (reads every chapter, ~180 reads)</button>
+            <div id="qb-scan" style="font-size:.78rem;color:var(--t2);margin-top:10px"></div>
           </div>
         </div>
 
@@ -4596,7 +4623,7 @@ function dsaTryAutoRestore() {
 }
 
 function dsaShowTab(name) {
-  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce', 'mcq', 'lec', 'prem'];
+  var tabs = ['overview', 'students', 'faculty', 'doubts', 'announce', 'mcq', 'lec', 'prem', 'qb'];
   tabs.forEach(function(t) {
     var sub = document.getElementById('dsa-sub-' + t);
     var btn = document.getElementById('dsa-tab-' + t);
@@ -12091,6 +12118,193 @@ function dsaSetPlan(uid, plan) {
     upd.planExpiry = d ? firebase.firestore.Timestamp.fromMillis(Date.now() + d * 864e5) : FV.delete();
   } else { if (!confirm('Change this student to FREE?')) return; upd.planExpiry = FV.delete(); }
   _dsaDb.collection('users').doc(uid).update(upd).then(function() { toast(plan === 'premium' ? '★ Premium activated' : 'Student set to Free'); dsaLoadStudents(); document.getElementById('dsa-student-detail').style.display = 'none'; }).catch(function(err) { toast('❌ ' + err.message); });
+}
+</script>
+<script>
+/* =========================================================================
+   DSA Admin — Question Bank (added): review, publish, edit, delete, health.
+   Writes straight into mcqBank / mcqFree / mcqMeta (admin only) — students see
+   the change immediately, no CSV re-sync.
+   ========================================================================= */
+var _qb = { idx: null, drafts: [], reports: [], k: '', qs: [], pg: 0, q: '', open: {} };
+function dsaQbSlug(s) { return String(s).toLowerCase().replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); }
+function dsaQbNorm(s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function dsaQbId(ex, sb) {
+  var a = new Uint8Array(4); (window.crypto || window.msCrypto).getRandomValues(a);
+  var h = Array.prototype.map.call(a, function(x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+  return 'U' + ({ NEET: 'N', JEE: 'J', 'JEE Advanced': 'A' }[ex] || 'X') + ({ Biology: 'B', Physics: 'P', Chemistry: 'C', Maths: 'M' }[sb] || 'X') + '-' + h;
+}
+function dsaQbImg(u) {
+  u = String(u || '').trim(); if (!u) return { ok: true, v: '' };
+  var d = u.match(/drive\.google\.com\/file\/d\/([\w-]+)/) || u.match(/drive\.google\.com\/open\?id=([\w-]+)/); if (d) u = 'https://lh3.googleusercontent.com/d/' + d[1];
+  return /^https:\/\/[^\s<>"']{4,300}$/.test(u) ? { ok: true, v: u } : { ok: false };
+}
+function dsaQbMeta(qs) { var tg = {}, yr = {}; qs.forEach(function(x) { if (x.t) tg[x.t] = (tg[x.t] || 0) + 1; if (x.y) yr[x.y] = (yr[x.y] || 0) + 1; }); return { tg: tg, yr: yr }; }
+function dsaQbCheck(q) {
+  var e = []; if (!q.q || q.q.length < 12) e.push('Question is too short'); if (q.q && q.q.length > 600) e.push('Question is over 600 characters');
+  if (!q.o || q.o.length !== 4 || q.o.some(function(x) { return !x; })) e.push('All four options are required');
+  else { var s = {}; q.o.forEach(function(x) { s[x.toLowerCase()] = 1; }); if (Object.keys(s).length < 4) e.push('Two options are the same'); }
+  if (!(q.a >= 0 && q.a < 4)) e.push('Choose the correct option'); return e;
+}
+/* ---- core writers ---- */
+async function dsaQbCommit(key, bank, free, idx, q) {
+  var FV = firebase.firestore.FieldValue, m = dsaQbMeta(bank.qs), meta = idx.chapters.filter(function(c) { return c.k === key; })[0];
+  if (!bank.qs.length) { idx.chapters = idx.chapters.filter(function(c) { return c.k !== key; }); }
+  else {
+    if (!meta) { meta = { k: key, e: bank.e, s: bank.s, c: bank.c, cl: (q && q.cls) || '', n: 0, tg: {}, yr: {} }; idx.chapters.push(meta); }
+    meta.n = bank.qs.length; meta.tg = m.tg; meta.yr = m.yr;
+  }
+  idx.total = idx.chapters.reduce(function(a, c) { return a + c.n; }, 0); idx.updatedAt = FV.serverTimestamp();
+  var b = _dsaDb.batch(), bankRef = _dsaDb.collection('mcqBank').doc(key), freeRef = _dsaDb.collection('mcqFree').doc(key);
+  if (!bank.qs.length) { b.delete(bankRef); b.delete(freeRef); }
+  else { bank.n = bank.qs.length; bank.updatedAt = FV.serverTimestamp(); free.updatedAt = FV.serverTimestamp(); b.set(bankRef, bank); b.set(freeRef, free); }
+  b.set(_dsaDb.collection('mcqMeta').doc('index'), idx); await b.commit();
+}
+async function dsaQbLoadChapter(key, q) {
+  var r = await Promise.all([_dsaDb.collection('mcqBank').doc(key).get(), _dsaDb.collection('mcqFree').doc(key).get(), _dsaDb.collection('mcqMeta').doc('index').get()]);
+  return { bank: r[0].exists ? r[0].data() : { k: key, e: q.exam, s: q.subject, c: q.chapter, n: 0, qs: [] }, free: r[1].exists ? r[1].data() : { k: key, qs: [] }, idx: r[2].exists ? r[2].data() : { chapters: [], total: 0 } };
+}
+async function dsaQbPublish(q) {
+  var key = dsaQbSlug(q.exam) + '__' + dsaQbSlug(q.subject) + '__' + dsaQbSlug(q.chapter), d = await dsaQbLoadChapter(key, q), n = dsaQbNorm(q.q);
+  if (d.bank.qs.some(function(x) { return dsaQbNorm(x.q) === n; })) throw new Error('This question already exists in the chapter');
+  var item = { i: dsaQbId(q.exam, q.subject), q: q.q, o: q.o, a: q.a }; if (q.tag) item.t = q.tag; if (q.year) item.y = q.year; if (q.e) item.e = q.e; if (q.img) item.m = q.img;
+  d.bank.qs.push(item); if (JSON.stringify(d.bank.qs).length > 900000) throw new Error('This chapter is full — start a second chapter name');
+  if (d.free.qs.length < 10) d.free.qs.push(item);
+  await dsaQbCommit(key, d.bank, d.free, d.idx, q); return { key: key, item: item };
+}
+async function dsaQbEditItem(key, id, f) {
+  var d = await dsaQbLoadChapter(key, {}), ix = d.bank.qs.findIndex(function(x) { return x.i === id; }); if (ix < 0) throw new Error('Question not found');
+  var item = { i: id, q: f.q, o: f.o, a: f.a }; if (f.tag) item.t = f.tag; if (f.year) item.y = f.year; if (f.e) item.e = f.e; if (f.img) item.m = f.img;
+  d.bank.qs[ix] = item; var fx = d.free.qs.findIndex(function(x) { return x.i === id; }); if (fx >= 0) d.free.qs[fx] = item;
+  await dsaQbCommit(key, d.bank, d.free, d.idx, {}); return item;
+}
+async function dsaQbDeleteItem(key, id) {
+  var d = await dsaQbLoadChapter(key, {}); d.bank.qs = d.bank.qs.filter(function(x) { return x.i !== id; }); d.free.qs = d.free.qs.filter(function(x) { return x.i !== id; });
+  var have = {}; d.free.qs.forEach(function(x) { have[x.i] = 1; }); d.bank.qs.forEach(function(x) { if (d.free.qs.length < 10 && !have[x.i]) d.free.qs.push(x); });
+  await dsaQbCommit(key, d.bank, d.free, d.idx, {});
+}
+/* ---- editor form (used for review, manager and new questions) ---- */
+function dsaQbEditor(p, q) {
+  q = q || { o: ['', '', '', ''] }; var st = 'width:100%;padding:6px 9px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1);margin-bottom:6px;font-size:.78rem';
+  var TAGS = ['', 'High-Yield', 'Quick-Fire', 'Diagram-Based', 'Assertion-Reason', 'Numerical', 'Advanced', 'Conceptual', '2026 Expected'];
+  return '<textarea id="' + p + '-q" rows="3" style="' + st + '" placeholder="Question">' + dsaEsc(q.q || '') + '</textarea>' +
+    [0, 1, 2, 3].map(function(i) { return '<input id="' + p + '-o' + i + '" placeholder="Option ' + 'ABCD'[i] + '" value="' + dsaEsc((q.o || [])[i] || '') + '" style="' + st + '">'; }).join('') +
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:6px"><select id="' + p + '-a" style="' + st + ';width:auto"><option value="">Correct option…</option>' + [0, 1, 2, 3].map(function(i) { return '<option value="' + i + '"' + (q.a === i ? ' selected' : '') + '>' + 'ABCD'[i] + '</option>'; }).join('') + '</select>' +
+    '<select id="' + p + '-tag" style="' + st + ';width:auto">' + TAGS.map(function(t) { return '<option' + ((q.t || q.tag) === t ? ' selected' : '') + ' value="' + dsaEsc(t) + '">' + (t || 'Type…') + '</option>'; }).join('') + '</select>' +
+    '<input id="' + p + '-yr" placeholder="Year" maxlength="4" value="' + dsaEsc(q.y || q.year || '') + '" style="' + st + ';width:80px"></div>' +
+    '<textarea id="' + p + '-e" rows="2" style="' + st + '" placeholder="Explanation">' + dsaEsc(q.e || '') + '</textarea>' +
+    '<input id="' + p + '-img" placeholder="Figure link (https, optional)" value="' + dsaEsc(q.m || q.img || '') + '" style="' + st + '">';
+}
+function dsaQbRead(p) {
+  var g = function(id) { return (document.getElementById(p + '-' + id).value || '').trim(); }, im = dsaQbImg(g('img'));
+  var q = { q: g('q'), o: [g('o0'), g('o1'), g('o2'), g('o3')], a: g('a') === '' ? -1 : +g('a'), e: g('e'), tag: g('tag'), year: /^\d{4}$/.test(g('yr')) ? g('yr') : '', img: im.v }, er = dsaQbCheck(q);
+  if (!im.ok) er.push('Figure link must start with https://'); if (er.length) { toast('❌ ' + er[0]); return null; } return q;
+}
+function dsaQbOptsTxt(q) { return (q.o || []).map(function(o, i) { return '<div style="' + (i === q.a ? 'color:#16a34a;font-weight:700' : '') + '">' + 'ABCD'[i] + '. ' + dsaEsc(o) + (i === q.a ? ' ✓' : '') + '</div>'; }).join(''); }
+/* ---- screen ---- */
+function dsaQbLoad() {
+  if (!_dsaSignedIn) { document.getElementById('qb-drafts').textContent = 'Connect the DSA admin account first.'; return; }
+  Promise.all([_dsaDb.collection('mcqMeta').doc('index').get(), _dsaDb.collection('questionDrafts').where('status', '==', 'pending').get(), _dsaDb.collection('mcqReports').limit(60).get().catch(function() { return { docs: [] }; })]).then(function(r) {
+    _qb.idx = r[0].exists ? r[0].data() : { chapters: [], total: 0 };
+    _qb.drafts = r[1].docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); }).sort(function(a, b) { return (a.when && a.when.toMillis ? a.when.toMillis() : 0) - (b.when && b.when.toMillis ? b.when.toMillis() : 0); });
+    _qb.reports = r[2].docs.map(function(d) { return Object.assign({ id: d.id }, d.data()); });
+    dsaQbDrafts(); dsaQbReports(); dsaQbSelectors(); dsaQbHealth();
+  }).catch(function(e) { document.getElementById('qb-drafts').innerHTML = '<span style="color:#dc2626">' + dsaEsc(e.message) + ' — publish the latest Firestore rules first.</span>'; });
+}
+function dsaQbDrafts() {
+  var box = document.getElementById('qb-drafts'); document.getElementById('qb-pn').textContent = _qb.drafts.length ? '(' + _qb.drafts.length + ')' : '';
+  box.innerHTML = _qb.drafts.length ? _qb.drafts.map(function(d) {
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px"><div style="color:var(--t3);margin-bottom:4px">' + dsaEsc(d.exam) + ' · ' + dsaEsc(d.subject) + ' · <b>' + dsaEsc(d.chapter) + '</b> · by ' + dsaEsc(d.by) + (d.tag ? ' · ' + dsaEsc(d.tag) : '') + '</div>' +
+      '<div style="font-size:.85rem;margin-bottom:6px">' + dsaEsc(d.q) + '</div>' + (d.img ? '<img src="' + dsaEsc(d.img) + '" style="max-width:240px;max-height:150px;border-radius:6px;margin-bottom:6px" onerror="this.style.display=\'none\'">' : '') + dsaQbOptsTxt(d) +
+      (d.e ? '<div style="margin-top:6px;color:var(--t3)">💡 ' + dsaEsc(d.e) + '</div>' : '<div style="margin-top:6px;color:#d97706">No explanation written</div>') +
+      '<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-sm" style="background:#16a34a;color:#fff" onclick="dsaQbApprove(\'' + d.id + '\')">✓ Approve</button><button class="btn btn-sm btn-gh" onclick="dsaQbToggle(\'d' + d.id + '\')">✎ Edit &amp; approve</button><button class="btn btn-sm btn-gh" onclick="dsaQbReject(\'' + d.id + '\')">✕ Send back</button></div>' +
+      '<div id="ed-d' + d.id + '" style="display:none;margin-top:10px">' + dsaQbEditor('d' + d.id, d) + '<button class="btn btn-sm btn-g" onclick="dsaQbApprove(\'' + d.id + '\',true)">Save &amp; publish</button></div></div>'; }).join('') : 'Nothing waiting 🎉';
+}
+function dsaQbToggle(id) { var e = document.getElementById('ed-' + id); if (e) e.style.display = e.style.display === 'none' ? 'block' : 'none'; }
+async function dsaQbApprove(id, edited) {
+  try {
+    var d = _qb.drafts.filter(function(x) { return x.id === id; })[0]; if (!d) return;
+    var q = { exam: d.exam, subject: d.subject, chapter: d.chapter, cls: d.cls, tag: d.tag, year: d.year, q: d.q, o: d.o, a: d.a, e: d.e, img: d.img };
+    if (edited) { var f = dsaQbRead('d' + id); if (!f) return; Object.assign(q, f); }
+    var res = await dsaQbPublish(q);
+    await _dsaDb.collection('questionDrafts').doc(id).update({ status: 'approved', resolvedAt: firebase.firestore.FieldValue.serverTimestamp(), pubId: res.item.i });
+    if (d.byEmail) _dsaDb.collection('notifications').add({ toEmail: d.byEmail, title: '✅ Question published', msg: 'Your question in ' + d.chapter + ' is now live for students. Thank you!', kind: 'qbank', by: 'Admin', when: firebase.firestore.FieldValue.serverTimestamp(), read: false }).catch(function() {});
+    toast('✅ Published — live for students'); dsaQbLoad();
+  } catch (e) { toast('❌ ' + (e.message || 'Could not publish')); }
+}
+function dsaQbReject(id) {
+  var why = prompt('What should the teacher fix? (shown to them)', 'Please check the correct option and add an explanation'); if (why === null) return;
+  var d = _qb.drafts.filter(function(x) { return x.id === id; })[0]; if (!d) return;
+  _dsaDb.collection('questionDrafts').doc(id).update({ status: 'rejected', note: why.slice(0, 200), resolvedAt: firebase.firestore.FieldValue.serverTimestamp() }).then(function() {
+    if (d.byEmail) _dsaDb.collection('notifications').add({ toEmail: d.byEmail, title: 'Question sent back', msg: why.slice(0, 200), kind: 'qbank', by: 'Admin', when: firebase.firestore.FieldValue.serverTimestamp(), read: false }).catch(function() {});
+    toast('Sent back to the teacher'); dsaQbLoad(); }).catch(function(e) { toast('❌ ' + e.message); });
+}
+function dsaQbReports() {
+  var box = document.getElementById('qb-reports'); document.getElementById('qb-rn').textContent = _qb.reports.length ? '(' + _qb.reports.length + ')' : '';
+  box.innerHTML = _qb.reports.length ? _qb.reports.map(function(r) {
+    return '<div style="display:flex;gap:10px;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap"><div style="flex:1;min-width:240px"><b style="color:#d97706">' + dsaEsc(r.reason) + '</b> <span style="color:var(--t3)">' + dsaEsc(r.qid) + '</span><br>' + dsaEsc(r.q) + '</div><button class="btn btn-sm btn-gh" onclick="dsaQbFix(\'' + dsaEsc(r.k) + '\',\'' + dsaEsc(r.qid) + '\')">✎ Fix</button><button class="btn btn-sm btn-gh" onclick="dsaQbDismiss(\'' + r.id + '\')">Dismiss</button></div>'; }).join('') : 'No reports 🎉';
+}
+function dsaQbDismiss(id) { _dsaDb.collection('mcqReports').doc(id).delete().then(function() { toast('Dismissed'); dsaQbLoad(); }).catch(function(e) { toast('❌ ' + e.message); }); }
+function dsaQbFix(k, qid) {
+  var c = _qb.idx.chapters.filter(function(x) { return x.k === k; })[0]; if (!c) { toast('Chapter not found in the index'); return; }
+  document.getElementById('qb-ex').value = c.e; dsaQbPickEx(); document.getElementById('qb-sb').value = c.s; dsaQbPickSb(); document.getElementById('qb-ch').value = k; _qb.q = qid; document.getElementById('qb-search').value = qid; dsaQbPickCh();
+  document.getElementById('qb-list').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+/* ---- bank manager ---- */
+function dsaQbSelectors() {
+  var chs = _qb.idx.chapters, exams = []; chs.forEach(function(c) { if (exams.indexOf(c.e) < 0) exams.push(c.e); });
+  document.getElementById('qb-ex').innerHTML = exams.map(function(e) { return '<option>' + dsaEsc(e) + '</option>'; }).join(''); dsaQbPickEx();
+}
+function dsaQbPickEx() { var ex = document.getElementById('qb-ex').value, s = []; _qb.idx.chapters.forEach(function(c) { if (c.e === ex && s.indexOf(c.s) < 0) s.push(c.s); }); document.getElementById('qb-sb').innerHTML = s.map(function(e) { return '<option>' + dsaEsc(e) + '</option>'; }).join(''); dsaQbPickSb(); }
+function dsaQbPickSb() { var ex = document.getElementById('qb-ex').value, sb = document.getElementById('qb-sb').value; document.getElementById('qb-ch').innerHTML = '<option value="">— chapter —</option>' + _qb.idx.chapters.filter(function(c) { return c.e === ex && c.s === sb; }).sort(function(a, b) { return a.c < b.c ? -1 : 1; }).map(function(c) { return '<option value="' + dsaEsc(c.k) + '">' + dsaEsc(c.c) + ' (' + c.n + ')</option>'; }).join(''); }
+async function dsaQbPickCh() {
+  var k = document.getElementById('qb-ch').value; _qb.k = k; _qb.pg = 0; document.getElementById('qb-new').innerHTML = '';
+  if (!k) { document.getElementById('qb-list').textContent = 'Choose a chapter above.'; return; }
+  document.getElementById('qb-list').textContent = 'Loading…';
+  try { var s = await _dsaDb.collection('mcqBank').doc(k).get(); _qb.qs = s.exists ? (s.data().qs || []) : []; dsaQbList(); } catch (e) { document.getElementById('qb-list').innerHTML = '<span style="color:#dc2626">' + dsaEsc(e.message) + '</span>'; }
+}
+function dsaQbSearch(v) { _qb.q = v; _qb.pg = 0; dsaQbList(); }
+function dsaQbList() {
+  var q = (_qb.q || '').toLowerCase(), rows = _qb.qs.filter(function(x) { return !q || x.q.toLowerCase().indexOf(q) >= 0 || String(x.i).toLowerCase().indexOf(q) >= 0; }), per = 15, pages = Math.max(1, Math.ceil(rows.length / per)), pg = Math.min(_qb.pg, pages - 1), box = document.getElementById('qb-list');
+  box.innerHTML = '<div style="color:var(--t3);margin-bottom:6px">' + rows.length + ' of ' + _qb.qs.length + ' questions · page ' + (pg + 1) + '/' + pages + '</div>' + rows.slice(pg * per, pg * per + per).map(function(x) {
+    return '<div style="border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-bottom:6px"><div style="display:flex;gap:8px;align-items:start"><div style="flex:1"><span style="color:var(--t3)">' + dsaEsc(x.i) + (x.t ? ' · ' + dsaEsc(x.t) : '') + (x.m ? ' · 🖼' : '') + (!x.e ? ' · <span style="color:#d97706">no explanation</span>' : '') + '</span><br>' + dsaEsc(x.q) + '</div><button class="btn btn-sm btn-gh" onclick="dsaQbToggle(\'m' + dsaEsc(x.i) + '\')">✎ Edit</button><button class="btn btn-sm btn-gh" onclick="dsaQbDel(\'' + dsaEsc(x.i) + '\')">🗑</button></div>' +
+      '<div style="margin-top:4px">' + dsaQbOptsTxt(x) + '</div><div id="ed-m' + dsaEsc(x.i) + '" style="display:none;margin-top:8px">' + dsaQbEditor('m' + x.i, x) + '<button class="btn btn-sm btn-g" onclick="dsaQbSave(\'' + dsaEsc(x.i) + '\')">Save changes</button></div></div>'; }).join('') +
+    (pages > 1 ? '<div style="margin-top:8px"><button class="btn btn-sm btn-gh" onclick="_qb.pg=Math.max(0,' + (pg - 1) + ');dsaQbList()">← Prev</button> <button class="btn btn-sm btn-gh" onclick="_qb.pg=' + Math.min(pages - 1, pg + 1) + ';dsaQbList()">Next →</button></div>' : '');
+}
+/* refresh counts + health without losing the chapter you are working on */
+async function dsaQbReindex() {
+  var cur = document.getElementById('qb-ch').value, r = await _dsaDb.collection('mcqMeta').doc('index').get(); _qb.idx = r.exists ? r.data() : { chapters: [], total: 0 };
+  dsaQbPickSb(); var sel = document.getElementById('qb-ch'); if (cur) sel.value = cur; _qb.k = sel.value || ''; dsaQbHealth();
+}
+async function dsaQbSave(id) { var f = dsaQbRead('m' + id); if (!f) return; try { var it = await dsaQbEditItem(_qb.k, id, { q: f.q, o: f.o, a: f.a, e: f.e, tag: f.tag, year: f.year, img: f.img }); _qb.qs = _qb.qs.map(function(x) { return x.i === id ? it : x; }); toast('✅ Saved — live for students'); dsaQbList(); } catch (e) { toast('❌ ' + e.message); } }
+async function dsaQbDel(id) { if (!confirm('Delete this question for everyone? This cannot be undone.')) return; try { await dsaQbDeleteItem(_qb.k, id); _qb.qs = _qb.qs.filter(function(x) { return x.i !== id; }); toast('Deleted'); dsaQbList(); await dsaQbReindex(); } catch (e) { toast('❌ ' + e.message); } }
+function dsaQbAddNew() {
+  var k = _qb.k; if (!k) { toast('Choose a chapter first'); return; }
+  document.getElementById('qb-new').innerHTML = '<div style="border:1px dashed var(--border);border-radius:8px;padding:10px">' + dsaQbEditor('nw', null) + '<button class="btn btn-sm btn-g" onclick="dsaQbCreate()">Publish question</button></div>';
+}
+async function dsaQbCreate() {
+  var f = dsaQbRead('nw'); if (!f) return; var c = _qb.idx.chapters.filter(function(x) { return x.k === _qb.k; })[0]; if (!c) return;
+  try { await dsaQbPublish({ exam: c.e, subject: c.s, chapter: c.c, cls: c.cl, tag: f.tag, year: f.year, q: f.q, o: f.o, a: f.a, e: f.e, img: f.img }); toast('✅ Published'); document.getElementById('qb-new').innerHTML = ''; await dsaQbReindex(); await dsaQbPickCh(); } catch (e) { toast('❌ ' + e.message); }
+}
+/* ---- health ---- */
+function dsaQbHealth() {
+  var chs = _qb.idx.chapters, by = {}; chs.forEach(function(c) { var k = c.e + ' · ' + c.s; by[k] = by[k] || { n: 0, ch: 0, thin: 0, need: 0 }; by[k].n += c.n; by[k].ch++; if (c.n < 25) by[k].thin++; by[k].need += Math.max(0, 40 - c.n); });
+  var weak = chs.slice().sort(function(a, b) { return a.n - b.n; }).slice(0, 12);
+  document.getElementById('qb-health').innerHTML = '<div style="font-weight:600;margin-bottom:6px">' + (_qb.idx.total || 0).toLocaleString('en-IN') + ' questions · ' + chs.length + ' chapters</div>' +
+    '<table style="width:100%;border-collapse:collapse;margin-bottom:12px"><tr style="text-align:left;color:var(--t3)"><th>Exam · Subject</th><th>Questions</th><th>Chapters</th><th>Under 25</th><th>To reach 40/chapter</th></tr>' + Object.keys(by).sort().map(function(k) { var r = by[k]; return '<tr style="border-top:1px solid var(--border)"><td>' + dsaEsc(k) + '</td><td>' + r.n + '</td><td>' + r.ch + '</td><td style="color:' + (r.thin ? '#dc2626' : '#16a34a') + '">' + r.thin + '</td><td>' + r.need + '</td></tr>'; }).join('') + '</table>' +
+    '<div style="font-weight:600;margin-bottom:4px">Thinnest chapters — ask teachers to add here first</div>' + weak.map(function(c) { return '<div>' + dsaEsc(c.e) + ' · ' + dsaEsc(c.s) + ' · <b>' + dsaEsc(c.c) + '</b> — ' + c.n + '</div>'; }).join('');
+}
+async function dsaQbScan() {
+  var box = document.getElementById('qb-scan'), chs = _qb.idx ? _qb.idx.chapters : []; if (!chs.length) { box.textContent = 'Load the tab first.'; return; }
+  var st = {}, seen = {}, dups = 0, thin = [], tot = 0;
+  for (var i = 0; i < chs.length; i++) {
+    box.textContent = 'Scanning ' + (i + 1) + ' / ' + chs.length + '…';
+    var s = await _dsaDb.collection('mcqBank').doc(chs[i].k).get(), qs = s.exists ? (s.data().qs || []) : [], key = chs[i].e + ' · ' + chs[i].s; st[key] = st[key] || { n: 0, exp: 0, thin: 0, img: 0 };
+    qs.forEach(function(q) { tot++; var r = st[key]; r.n++; if (q.e) r.exp++; if (q.e && q.e.length < 40) { r.thin++; if (thin.length < 15) thin.push({ k: chs[i].k, i: q.i, q: q.q }); } if (q.m) r.img++; var n = dsaQbNorm(q.q); if (seen[n]) dups++; else seen[n] = 1; });
+  }
+  box.innerHTML = '<b>' + tot.toLocaleString('en-IN') + ' questions scanned</b> · duplicates across the bank: <b>' + dups + '</b><table style="width:100%;border-collapse:collapse;margin:8px 0"><tr style="text-align:left;color:var(--t3)"><th>Exam · Subject</th><th>Explanation</th><th>Thin (&lt;40 chars)</th><th>With figure</th></tr>' +
+    Object.keys(st).sort().map(function(k) { var r = st[k]; return '<tr style="border-top:1px solid var(--border)"><td>' + dsaEsc(k) + '</td><td>' + Math.round(r.exp * 100 / r.n) + '%</td><td>' + r.thin + '</td><td>' + r.img + '</td></tr>'; }).join('') + '</table>' +
+    (thin.length ? '<div style="font-weight:600;margin-top:6px">Improve these explanations first</div>' + thin.map(function(t) { return '<div style="padding:3px 0">' + dsaEsc(t.q.slice(0, 90)) + ' <button class="btn btn-sm btn-gh" onclick="dsaQbFix(\'' + t.k + '\',\'' + dsaEsc(t.i) + '\')">✎ Fix</button></div>'; }).join('') : '');
 }
 </script>
 </body>
