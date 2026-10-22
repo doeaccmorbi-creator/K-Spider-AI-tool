@@ -218,6 +218,7 @@ function render(){
     parentattendance: R_('renderParentAttendance'), facultyattendance: R_('renderFacultyAttendance'), adminattendance: R_('renderAdminAttendance'), // campus.js
     lectures: R_('renderLectures'), // lectures.js
     learn: R_('renderLearn'), // learn.js
+    qauthor: R_('renderQAuthor'), // qbank.js
     batches: R_('renderBatches'), tanalytics: R_('renderTAnalytics'), admintanalytics: R_('renderTAnalytics'), // batches.js
     adminfees: R_('renderAdminFees'), facultytests: R_('renderFacultyTests'), admintests: R_('renderFacultyTests'), classtests: R_('renderClassTests'), parenttests: R_('renderParentTests'), // classwork.js
     mcqsubjects: renderMcqSubjects,
@@ -311,6 +312,7 @@ const NAV = {
     {id:'adminattendance', ic:'✅', label:'Attendance', view:'adminattendance'},
     {id:'adminfees', ic:'💰', label:'Fee Reminders', view:'adminfees'},
     {id:'admintests', ic:'📝', label:'Class Tests', view:'admintests'},
+    {id:'qauthor', ic:'➕', label:'Add Questions', view:'qauthor'},
     {id:'batches', ic:'🎓', label:'Batches', view:'batches'},
     {id:'admintanalytics', ic:'📊', label:'Teacher Analytics', view:'admintanalytics'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
@@ -324,6 +326,7 @@ const NAV = {
     {id:'facultyinsights', ic:'🔎', label:'Class Insights', view:'facultyinsights'},
     {id:'facultyattendance', ic:'✅', label:'Mark Attendance', view:'facultyattendance'},
     {id:'facultytests', ic:'📝', label:'Class Tests', view:'facultytests'},
+    {id:'qauthor', ic:'➕', label:'Add Questions', view:'qauthor'},
     {id:'batches', ic:'🎓', label:'Batches', view:'batches'},
     {id:'tanalytics', ic:'📊', label:'Teacher Analytics', view:'tanalytics'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},

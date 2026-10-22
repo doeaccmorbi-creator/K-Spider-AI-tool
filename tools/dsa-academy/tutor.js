@@ -21,14 +21,14 @@ function subjOf(s){ var ch=window.MCQ&&MCQ.chapByKey&&MCQ.chapByKey(s.k); return
 window.tutorOpen=function(src){ TU.src=src; TU.step=1; draw(); if(src.k&&src.k!=='gen'&&window.LRN&&LRN.loadStats) LRN.loadStats(src.k).then(function(){ if(TU.src===src&&TU.step>=2) draw(); }); };
 window.tutorClose=function(){ var el=document.getElementById('tutorModal'); if(el) el.remove(); TU.src=null; };
 window.tutorNext=function(){ TU.step=Math.min(4,TU.step+1); draw(); };
-window.tutorSession=function(){ var s=MCQ.sess; if(!s) return; var q=s.qs[s.i]; tutorOpen({q:q.q,o:q.o,a:q.a,e:q.e,k:q.k,i:q.i,topic:q.topic,sub:q.sub,w:s.ans[s.i]}); };
+window.tutorSession=function(){ var s=MCQ.sess; if(!s) return; var q=s.qs[s.i]; tutorOpen({q:q.q,o:q.o,a:q.a,e:q.e,m:q.m,k:q.k,i:q.i,topic:q.topic,sub:q.sub,w:s.ans[s.i]}); };
 function draw(){
   var s=TU.src; if(!s) return;
   var el=document.getElementById('tutorModal');
   if(!el){ el=document.createElement('div'); el.id='tutorModal'; el.style.cssText='position:fixed;inset:0;background:rgba(10,20,40,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:14px'; el.onclick=function(e){ if(e.target===el) tutorClose(); }; document.body.appendChild(el); }
   var ch=window.MCQ&&MCQ.chapByKey?MCQ.chapByKey(s.k):null, sub=subjOf(s), st=TU.step, body='';
   body+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><b style="font-size:16px">🎓 Smart Tutor</b><button class="btn btn-ghost btn-sm" onclick="tutorClose()">✕</button></div>'+
-    '<div style="font-size:14.5px;line-height:1.55;margin-bottom:10px">'+esc(s.q)+'</div>'+
+    '<div style="font-size:14.5px;line-height:1.55;margin-bottom:10px">'+esc(s.q)+'</div>'+(window.mcqImg?mcqImg(s):'')+
     s.o.map(function(o,i){ return '<div style="font-size:13px;padding:2px 0">'+L(i)+'. '+esc(o)+'</div>'; }).join('');
   /* step 1 */
   body+='<div class="explain-box" style="margin-top:14px"><b>💡 Hint 1 — What is this about?</b><div style="margin-top:6px;font-size:13.5px;line-height:1.6">'+

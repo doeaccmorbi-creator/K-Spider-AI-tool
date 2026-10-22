@@ -81,7 +81,7 @@ LRN.onResult=function(items,label){
       var ch=MCQ.chapByKey&&MCQ.chapByKey(q.k); if(ch){ var b=(bySubj[ch.s]=bySubj[ch.s]||{c:0,w:0}); if(x.ok) b.c++; else b.w++; }
       if(!x.ok){
         D.srs[id]={k:q.k,s:0,d:addDays(t,1)};
-        var prev=D.nb[id]||{}; D.nb[id]={k:q.k,i:q.i,q:String(q.q).slice(0,400),o:q.o,a:q.a,e:String(q.e||'').slice(0,300),w:x.a,ts:Date.now(),ok:0,r:T.pend[id]||prev.r||''};
+        var prev=D.nb[id]||{}; D.nb[id]={k:q.k,i:q.i,q:String(q.q).slice(0,400),o:q.o,a:q.a,e:String(q.e||'').slice(0,300),m:(typeof q.m==='string'&&q.m.length<300)?q.m:'',w:x.a,ts:Date.now(),ok:0,r:T.pend[id]||prev.r||''};
         delete T.pend[id];
       } else {
         var e=D.srs[id]; if(e&&e.d<=t){ cleared++; e.s++; if(e.s>=STAGES.length) delete D.srs[id]; else e.d=addDays(t,STAGES[e.s]); }
@@ -272,12 +272,12 @@ function tabNb(){
       REASONS.map(function(r){ return '<div style="display:flex;gap:10px;align-items:center;font-size:12.5px;margin-bottom:5px"><span style="width:130px">'+r[1]+' '+r[2]+'</span><div style="flex:1">'+bar(pct(cnt[r[0]],ids.length),'var(--navy-600)')+'</div><b style="width:26px;text-align:right">'+cnt[r[0]]+'</b></div>'; }).join('')):'')+
     '<div class="mcq-tabs">'+[['all','All ('+cnt.all+')'],['none','Untagged ('+cnt.none+')']].concat(REASONS.map(function(r){ return [r[0],r[1]+' '+r[2]+' ('+cnt[r[0]]+')']; })).map(function(t){ return '<button class="mcq-chip '+(f===t[0]?'on':'')+'" onclick="lrnNbF(\''+t[0]+'\')">'+t[1]+'</button>'; }).join('')+'</div>'+
     (list.length?list.slice(0,40).map(function(id){ var n=D.nb[id];
-      return card('<div style="font-size:14px;line-height:1.55;margin-bottom:8px">'+esc(n.q)+'</div>'+n.o.map(function(o,oi){ return '<div style="font-size:13px;padding:2px 0;'+(oi===n.a?'color:var(--green-700);font-weight:700':(oi===n.w?'color:var(--red-600)':''))+'">'+String.fromCharCode(65+oi)+'. '+esc(o)+(oi===n.a?' ✓':(oi===n.w?' ✗ (your answer)':''))+'</div>'; }).join('')+
+      return card('<div style="font-size:14px;line-height:1.55;margin-bottom:8px">'+esc(n.q)+'</div>'+(window.mcqImg?mcqImg(n):'')+n.o.map(function(o,oi){ return '<div style="font-size:13px;padding:2px 0;'+(oi===n.a?'color:var(--green-700);font-weight:700':(oi===n.w?'color:var(--red-600)':''))+'">'+String.fromCharCode(65+oi)+'. '+esc(o)+(oi===n.a?' ✓':(oi===n.w?' ✗ (your answer)':''))+'</div>'; }).join('')+
         (n.e?'<div class="explain-box" style="margin-top:8px">'+esc(n.e)+'</div>':'')+
         '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center">'+REASONS.map(function(rs){ return '<button class="mcq-chip '+(n.r===rs[0]?'on':'')+'" style="padding:4px 10px;font-size:12px" onclick="lrnTag(\''+esc(id)+'\',\''+rs[0]+'\')">'+rs[1]+' '+rs[2]+'</button>'; }).join('')+''+(window.tutorOpen?'<button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="lrnNbTutor(\''+esc(id)+'\')">🎓 Tutor</button>':'')+'<button class="btn btn-ghost btn-sm" onclick="lrnNbDel(\''+esc(id)+'\')">Got it — remove</button></div>','margin-bottom:10px'); }).join(''):note('📓',ids.length?'Nothing in this filter.':'Your notebook is empty. Every question you get wrong in practice lands here automatically.'));
 }
 window.lrnNbF=function(f){ T.nbf=f; render(); };
-window.lrnNbTutor=function(id){ var n=T.D.nb[id]; if(n&&window.tutorOpen) tutorOpen({q:n.q,o:n.o,a:n.a,e:n.e,k:n.k,i:n.i,w:n.w}); };
+window.lrnNbTutor=function(id){ var n=T.D.nb[id]; if(n&&window.tutorOpen) tutorOpen({q:n.q,o:n.o,a:n.a,e:n.e,m:n.m,k:n.k,i:n.i,w:n.w}); };
 window.lrnNbDel=function(id){ delete T.D.nb[id]; save(); render(); };
 function tabMap(){
   var chs=chapAll(), exams=[]; chs.forEach(function(c){ if(exams.indexOf(c.e)<0) exams.push(c.e); });

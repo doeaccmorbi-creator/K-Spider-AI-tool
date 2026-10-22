@@ -139,12 +139,12 @@ window.cwCreate=async function(){
     if(fb.mode==='type'){ var p=parseQs(val('cwText')); if(p.errs.length){ toast(p.errs[0],'⚠️'); return; } qs=p.qs; }
     else { var keys=Object.keys(fb.sel).filter(function(k){ return fb.sel[k]; }); if(!keys.length){ toast('Select at least one chapter','⚠️'); return; }
       W.cb=true; render(); var all=[].concat.apply([],await Promise.all(keys.map(function(k){ return MCQ.loadChapter(k); })));
-      qs=shuffle(all).slice(0,fb.n).map(function(x,i){ return {i:'B'+(i+1),q:x.q,o:x.o,a:x.a,e:x.e||''}; }); }
+      qs=shuffle(all).slice(0,fb.n).map(function(x,i){ return {i:'B'+(i+1),q:x.q,o:x.o,a:x.a,e:x.e||'',m:x.m||''}; }); }
     if(!qs.length){ W.cb=false; toast('No questions found','⚠️'); render(); return; }
     if(qs.length>60){ qs=qs.slice(0,60); }
     if(JSON.stringify(qs).length>600000){ W.cb=false; toast('Test is too large','⚠️'); render(); return; }
     W.cb=true; render();
-    var ref=await fbDb.collection('facultyTests').add({title:title.slice(0,80),subject:subj.slice(0,30),mins:mins,count:qs.length,qs:qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||''}; }),batchId:bid,batchName:(window.BT?BT.name(bid):''),by:u.name||'',byUid:u.uid,active:true,when:ts()});
+    var ref=await fbDb.collection('facultyTests').add({title:title.slice(0,80),subject:subj.slice(0,30),mins:mins,count:qs.length,qs:qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||'',m:x.m||''}; }),batchId:bid,batchName:(window.BT?BT.name(bid):''),by:u.name||'',byUid:u.uid,active:true,when:ts()});
     var notify=document.getElementById('cwNotify'); 
     if(!notify||notify.checked!==false){ var st=(await loadAllStudents()).filter(function(x){ return !bid||x.batchId===bid; }), b=fbDb.batch(), n=0;
       for(var i=0;i<st.length;i++){ b.set(fbDb.collection('notifications').doc(),{toEmail:st[i].email,title:'New class test',msg:title+' ('+subj+', '+qs.length+' questions, '+mins+' min) is live in Class Tests.',kind:'test',by:u.name||'',when:ts(),read:false}); n++;

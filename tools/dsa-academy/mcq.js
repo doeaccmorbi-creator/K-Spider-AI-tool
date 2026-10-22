@@ -27,6 +27,8 @@ function yesterday(){ return ymd(new Date(Date.now()-864e5)); }
 function shuffle(a){ a=a.slice(); for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=a[i]; a[i]=a[j]; a[j]=t; } return a; }
 function pct(a,b){ return b>0 ? Math.round(a*100/b) : 0; }
 function fmtT(s){ s=Math.max(0,Math.round(s)); return pad(Math.floor(s/60))+':'+pad(s%60); }
+function qimg(q){ var u=q&&q.m; return (typeof u==='string'&&/^https:\/\//.test(u))?'<div style="margin:10px 0;text-align:center"><img src="'+esc(u)+'" alt="Question figure" loading="lazy" referrerpolicy="no-referrer" style="max-width:100%;max-height:340px;border-radius:10px;border:1px solid var(--border)" onerror="this.parentNode.style.display=\'none\'"></div>':''; }
+window.mcqImg=qimg;
 function refresh(){ if(typeof ROUTE!=='undefined' && ROUTE.view==='mcq') render(); }
 function locked(what){ toast('🔒 '+what+' is a Premium feature','★'); }
 
@@ -139,7 +141,7 @@ function jumpFromNotes(){
 /* run a teacher-made class test through the same practice engine */
 window.mcqRunTest=function(qs,label,meta){
   S.loadProg().then(function(){
-    qs=qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||'',k:'custom'}; });
+    qs=qs.map(function(x){ return {i:x.i,q:x.q,o:x.o,a:x.a,e:x.e||'',m:x.m||'',k:'custom'}; });
     var mins=meta.mins||qs.length;
     S.sess={qs:qs,i:0,ans:qs.map(function(){return null;}),marked:qs.map(function(){return false;}),times:qs.map(function(){return 0;}),
       mode:'test',label:label,daily:false,timer:true,total:mins*60,deadline:Date.now()+mins*60000,qStart:Date.now(),started:Date.now(),tid:null,meta:meta};
@@ -376,7 +378,7 @@ function scrSession(){
   return '<div class="card test-head"><h3>'+esc(s.label)+'</h3>'+(s.timer?'<div class="test-timer" id="mcqTimer">⏱ '+fmtT(left)+'</div>':'<div class="pill pill-navy">'+(learn?'Learn mode':'Test mode')+'</div>')+'</div>'+
   '<div class="test-shell"><div>'+
     '<div class="card q-card"><div class="q-tag">Question '+(s.i+1)+' of '+s.qs.length+(q.t?' · '+esc(q.t):'')+(q.y?' · '+esc(q.y):'')+(window.lrnBadge&&!s.meta?window.lrnBadge(q):'')+'</div>'+
-    '<div class="q-text">'+esc(q.q)+'</div><div class="opt-list">'+
+    '<div class="q-text">'+esc(q.q)+'</div>'+qimg(q)+'<div class="opt-list">'+
     q.o.map(function(o,oi){
       var cls=''; if(shown){ if(oi===q.a) cls='correct'; else if(oi===a) cls='wrong'; } else if(a===oi) cls='selected';
       return '<div class="opt-row '+cls+'" onclick="mcqPick('+oi+')"><span class="opt-letter">'+String.fromCharCode(65+oi)+'</span><span>'+esc(o)+'</span></div>';
@@ -476,7 +478,7 @@ function scrResult(){
   '<h3 style="font-family:var(--font-display);margin:6px 0 10px">Review</h3>'+
   r.items.map(function(x,i){
     var q=x.q, st=x.a===null?'skip':(x.ok?'ok':'bad');
-    return '<details class="mcq-rev '+st+'"><summary>'+(i+1)+'. '+esc(q.q)+'</summary><div style="margin-top:8px">'+
+    return '<details class="mcq-rev '+st+'"><summary>'+(i+1)+'. '+esc(q.q)+'</summary><div style="margin-top:8px">'+qimg(q)+
       q.o.map(function(o,oi){ return '<div style="padding:2px 0;'+(oi===q.a?'color:var(--green-700);font-weight:700':(oi===x.a?'color:var(--red-600);font-weight:700':''))+'">'+String.fromCharCode(65+oi)+'. '+esc(o)+(oi===q.a?' ✓':(oi===x.a?' ✗ (your answer)':''))+'</div>'; }).join('')+
       (x.a===null?'<div style="color:var(--faint);margin-top:4px">Skipped</div>':'')+(q.e?'<div class="explain-box" style="margin-top:8px">'+esc(q.e)+'</div>':'')+'</div></details>';
   }).join('');
