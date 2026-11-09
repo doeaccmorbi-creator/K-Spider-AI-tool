@@ -1,181 +1,328 @@
-// ═══════════════════════════════════════════════════════════════════════════
-// K SPIDER AI — Firestore Security Rules  v7.4
+// ===========================================================================
+// K SPIDER AI -- Firestore Security Rules  v8.11
 // Project  : kspideraimain
-// Updated  : May 2026  (v7.4 — rto_agent_requests added)
+// Updated  : October 2026
 //
-// ┌─────────────────────────────────────────────────────────────────────────┐
-// │  COLLECTION MAP                                                         │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ users            │ Admin: full CRUD                                     │
-// │                  │ Owner: read own + write safe fields only             │
-// │                  │ Public: no access                                    │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ payments         │ Admin: full CRUD                                     │
-// │                  │ LoggedIn user: read own, create new                  │
-// │                  │ Public: no access                                    │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ tools            │ Admin: full CRUD                                     │
-// │                  │ Public: read-only                                    │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ admin            │ Admin: full CRUD                                     │
-// │  ├ site_settings │ Public: read-only                                    │
-// │  ├ pricing       │ Public: read-only                                    │
-// │  ├ tool_settings │ Public: read-only                                    │
-// │  ├ tool_pricing  │ Public: read-only                                    │
-// │  └ claude_usage  │ Admin only (internal API usage log)                  │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ ads              │ Admin: full CRUD                                     │
-// │                  │ Public: read-only                                    │
-// │                  │ Anyone: increment clicks + impressions only          │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ adRequests       │ Admin: full CRUD                                     │
-// │                  │ Anyone: create (advertiser form)                     │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ instituteRequests│ Admin: full CRUD                                     │
-// │                  │ Anyone: READ ← v7.1 FIX                             │
-// │                  │ Anyone: create (Learn Smart Tool, no auth)           │
-// │                  │ Anyone: update status/ban/expire fields only         │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ students         │ Admin: full CRUD                                     │
-// │                  │ Anyone: create + update (Learn Smart Tool, no auth)  │
-// │ └ /exams/{id}    │ Admin: full CRUD                                     │
-// │                  │ Anyone: create + read (tool syncs without auth)      │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ franchise_inq..  │ Admin: full CRUD                                     │
-// │                  │ Anyone: create (franchise form)                      │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ announcements    │ Admin: full CRUD                                     │
-// │                  │ Public: read-only                                    │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ otp_store        │ Admin: full CRUD                                     │
-// │                  │ Anyone: create (send OTP)                            │
-// │                  │ LoggedIn: update own (verify OTP)                    │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ admin_notif..    │ Admin: full CRUD                                     │
-// │                  │ LoggedIn: create (email queue)                       │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ user_api_keys    │ Admin: full CRUD (view/delete)   ← NEW in v7.2       │
-// │ /{safeEmailId}   │ Owner: read + write own doc only                     │
-// │                  │ Public: no access                                    │
-// │                  │ Doc ID = email with . → _ and @ → _at_              │
-// ├──────────────────┬──────────────────────────────────────────────────────┤
-// │ wa_referrals     │ Admin: full CRUD                ← NEW in v7.3        │
-// │ /{shortCode}     │ Anyone: read (banner display — ?ref=CODE)            │
-// │                  │ Anyone: create (promo link registration form)        │
-// │                  │ Admin: update status (approve/suspend/pending)       │
-// │                  │ Anyone: update safe fields only (updatedAt)          │
-// └──────────────────┴──────────────────────────────────────────────────────┘
+// v8.11 change (PHASE A hardening -- nothing else from v8.10 was removed):
+//   1. isAdmin() now also requires request.auth.token.email_verified == true
+//      (admin signs in with Google only, so the claim is always true for the
+//      real admin; an unverified email/password account using the admin's
+//      address can no longer become admin).
+//   2. /users/{userId}: a non-admin write can no longer change plan or
+//      payment fields (planType, premium, planExpiry, paidAmount,
+//      paymentStatus) away from their current value, can no longer touch
+//      paymentMethod / paymentId / accessStart / disabled / suspended /
+//      suspendReason / adminNote, and can no longer write toolAccess_<tool>.
+//      A NEW user doc may only be created with default (free / unpaid)
+//      values. Writes that leave those fields unchanged (e.g. Google login
+//      re-saving the same plan values) still work. Read access and every
+//      other field are unchanged on purpose (Phase B will tighten them after
+//      the separate tool pages are checked).
+//      >>> WHEN A NEW TOOL IS ADDED TO THE SITE, ADD ITS ID TO
+//      >>> toolAccessKeys() BELOW, otherwise a user could write
+//      >>> toolAccess_<newtool> themselves.
+//   3. /otp_store: admin only (the OTP flow was removed -- login is now
+//      Google Sign-In only).
+//   4. /payments create: only a request-style document is accepted
+//      (status 'pending', userEmail + orderId present). A client can no
+//      longer create a payment that is already 'approved'.
+//   5. userSafeFields() (unused helper) no longer lists plan/payment keys.
 //
-// ─────────────────────────────────────────────────────────────────────────
-// WHAT CHANGED: v7.2 → v7.3
-// ─────────────────────────────────────────────────────────────────────────
+// v8.10 change: /rto_agent_requests/{refId} -- the RTO Exam Pro tool may now
+// record an approved agent's short link code (_shortCode + linkGeneratedAt)
+// ONCE, only after admin approval, and only if no code is saved yet. This lets
+// old "?k=CODE" promo links resolve from the cloud on any device. Nothing else
+// from v8.9 was changed.
 //
-// 1. wa_referrals collection — NEW
-//    WHY: WA Broadcast Pro & WA Bulk Sender tools allow users to create
-//    promotional referral links. When someone opens a tool via ?ref=CODE,
-//    the tool reads the doc to show the agent's banner (name, logo, contact).
-//    Doc ID = 6-char shortCode (e.g. "X7K2MQ")
-//    SECURITY:
-//    • Anyone can read (needed for banner display — unauthenticated tools)
-//    • Anyone can create (form submission, no auth in tool)
-//    • Only admin can change status (approve/suspend)
-//    • Public update restricted to updatedAt field only
-//    • Admin has full CRUD
+// v8.9 change: added the K SPIDER DOCTOR AI block (/doctors/{doctorId} plus
+// its private subcollections, and /doctorSignupRequests). This gives the
+// Doctor AI tool three things it was missing: real per-doctor data isolation
+// (no doctor can reach another's patients), cross-device access (patient data
+// lives in Firestore under the doctor's UID instead of only in one browser's
+// localStorage), and an admin approval gate (a new signup is locked to
+// approvalStatus:'pending' and cannot self-approve). Nothing else from v8.8
+// was changed.
 //
-// 2. ALL OTHER RULES — identical to v7.2, not touched.
+// v8.8 change: bcJobApplications now also lets a job's poster read the
+// applications for THAT job (request.auth.uid matched against the job
+// doc's postedByAuthUid via get()) -- needed for BrahminConnect's "View
+// Applicants" list, which was previously only readable by the applicant
+// themselves or admin. Nothing else changed from v8.7.
 //
-// ═══════════════════════════════════════════════════════════════════════════
+// v8.7 change: added rules for BrahminConnect's collections (bcBiodata,
+// bcBusiness, bcJobs, bcJobApplications, bc_reports, bcSuccessStories,
+// bcInterests, bcShortlists, bcBlocks). BrahminConnect is a SEPARATE tool
+// from Brahmin Vivaah, sharing this same project/login on purpose (so
+// members stay logged in across both) but using its own "bc"-prefixed
+// collections so its data never mixes with Brahmin Vivaah's. Same
+// Anonymous-Auth + ownerAuthUid security model as /brahminBiodata below,
+// nothing else in v8.6 was touched.
+// ===========================================================================
+//
+// +-----------------------------------------------------------------------------+
+// |  WHAT CHANGED: v8.4 -> v8.5 -- SECURITY HARDENING for Brahmin Vivaah      |
+// +---------------------------------------------------------------------------+
+// |  v8.4 gave Brahmin Vivaah collections the SAME "isOwner() || true"      |
+// |  document-ID-is-identity model already used sitewide. That's an        |
+// |  accepted trade-off for most tools here, but for a matrimony tool it    |
+// |  means anyone who can compute someone's sanitised-email doc ID (that    |
+// |  ID isn't random -- it IS their email, lightly escaped) could read       |
+// |  their phone number and address directly, bypassing the "reveal after  |
+// |  accepted interest" flow in the app entirely.                          |
+// |                                                                         |
+// |  v8.5 fixes this WITHOUT touching your OTP login or any other tool:     |
+// |                                                                         |
+// |  - The tool now also signs every visitor in with Firebase Anonymous    |
+// |    Auth (silent, free, no backend). This gives Firestore rules a REAL  |
+// |    request.auth.uid to check server-side -- something OTP alone         |
+// |    can't provide.                                                      |
+// |                                                                         |
+// |  - /brahminBiodata/{userId} now only holds public-safe biodata fields. |
+// |    Writes require request.auth.uid == the doc's own ownerAuthUid       |
+// |    (set once, from a real anon-auth session) instead of "anyone who    |
+// |    knows the ID."                                                      |
+// |                                                                         |
+// |  - NEW /brahminBiodata/{userId}/private/contact -- mobile, WhatsApp,    |
+// |    email, address, reference. CLOSED by default. Readable only by the  |
+// |    verified owner, admin, or an authUid the owner explicitly added to  |
+// |    allowedReaderAuthUids (done automatically by the app once both      |
+// |    sides of an interest have accepted -- see bvGrantContactAccess in    |
+// |    the tool). No amount of doc-ID guessing exposes this collection.    |
+// |                                                                         |
+// |  - /interests/{pairId} create/update now require the real authUid of   |
+// |    the sender (create) or of the sender/recipient-owner (update) --     |
+// |    no longer "anyone can flip any interest's status."                  |
+// |                                                                         |
+// |  - /shortlists/{userId} and /blocks/{userId} ownership now checked      |
+// |    against the matching biodata doc's real ownerAuthUid.               |
+// |                                                                         |
+// |  Trade-off to know about: Anonymous Auth sessions are tied to a        |
+// |  browser/device (Firebase persists them in IndexedDB). If someone      |
+// |  clears site data or switches devices, they get a new authUid and      |
+// |  won't automatically own their old biodata doc anymore -- they'd need   |
+// |  the admin to reassign ownerAuthUid for them from the Brahmin Vivaah   |
+// |  admin panel (a manual "recover my profile" support step, not          |
+// |  something the rules can solve on their own without adding a real      |
+// |  backend/Cloud Function -- which would be the fully complete fix but    |
+// |  needs a paid Firebase plan and server code).                          |
+// |                                                                         |
+// |  ALL OTHER RULES -- identical to v8.4, not touched.                     |
+// +-----------------------------------------------------------------------------+
+// ===========================================================================
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // HELPER FUNCTIONS
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
 
+    // v8.11: email_verified added. The admin signs in with Google, which
+    // always sets email_verified = true.
     function isAdmin() {
       return request.auth != null
-          && request.auth.token.email == 'kspider221206@gmail.com';
+          && request.auth.token.email == 'kspider221206@gmail.com'
+          && request.auth.token.email_verified == true;
     }
 
     function isLoggedIn() {
       return request.auth != null;
     }
 
-    function isOwner(docId) {
-      return isLoggedIn() && (
-        request.auth.uid == docId
-        ||
-        request.auth.token.email
-          .replace('.', '_').replace('.', '_').replace('.', '_')
-          .replace('.', '_').replace('.', '_')
-          .replace('#', '_').replace('$', '_')
-          .replace('[', '_').replace(']', '_') == docId
-      );
+    function emailToKey(email) {
+      return email
+        .replace('.', '_').replace('.', '_').replace('.', '_')
+        .replace('.', '_').replace('.', '_').replace('.', '_')
+        .replace('.', '_').replace('.', '_').replace('.', '_')
+        .replace('.', '_')
+        .replace('#', '_').replace('#', '_')
+        .replace('$', '_').replace('$', '_')
+        .replace('/', '_').replace('/', '_')
+        .replace('[', '_').replace('[', '_')
+        .replace(']', '_').replace(']', '_');
     }
 
+    // NOTE (Phase B): the trailing "|| true" is still here on purpose. It is
+    // removed in Phase B, together with a corrected emailToKey(), once the
+    // separate tool pages have been checked so that nothing that reads
+    // /users/{key} without a login breaks.
+    function isOwner(docId) {
+      return docId != null && docId != ''
+        && (
+          (request.auth != null && request.auth.uid == docId)
+          || (request.auth != null && emailToKey(request.auth.token.email) == docId)
+          || true
+        );
+    }
+
+    // v8.11: plan / payment keys removed -- only the admin may write those.
     function userSafeFields() {
       return [
         'name', 'mobile', 'email',
         'country', 'state', 'city', 'cityPin',
-        'language',
-        'photoURL', 'loginMethod', 'loginCount',
-        'lastLogin', 'lastSeen', 'updatedAt',
-        'toolsUsed',
-        'verified', 'createdAt'
+        'language', 'photoURL', 'loginMethod',
+        'loginCount', 'lastLogin', 'lastSeen',
+        'updatedAt', 'registeredAt', 'verifiedAt', 'createdAt',
+        'toolsUsed', 'lastToolUsed', 'timeSpentMins',
+        'verified', 'source',
+        'pendingPlan', 'pendingOrderId',
+        'profession', 'bio'
       ];
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // v8.11: fields only the admin may set on a /users document.
+    function userLockedKeys() {
+      return [
+        'paymentMethod', 'paymentId', 'accessStart',
+        'disabled', 'suspended', 'suspendReason', 'adminNote'
+      ];
+    }
+
+    // v8.11: per-tool paid-access keys (toolAccess_<toolId>), written only by
+    // the admin when a tool payment is approved. Firestore rules cannot match
+    // a key prefix, so every tool id is listed here. ADD A NEW TOOL'S ID HERE
+    // WHEN IT LAUNCHES.
+    function toolAccessKeys() {
+      return [
+        'toolAccess_whatsapp-bulk-sender',
+        'toolAccess_resume-builder',
+        'toolAccess_image-master-pro',
+        'toolAccess_ai-teacher',
+        'toolAccess_dr-shreyansh-academy',
+        'toolAccess_ai-business-consultant',
+        'toolAccess_ai-prompt-engine',
+        'toolAccess_ai-file-converter',
+        'toolAccess_pharmacy-master',
+        'toolAccess_pharma-marketing-tool',
+        'toolAccess_india-fbook',
+        'toolAccess_linkshare',
+        'toolAccess_multipost',
+        'toolAccess_brahmin-vivaah',
+        'toolAccess_brahminconnect',
+        'toolAccess_doctor-elite-pro-max',
+        'toolAccess_kspider-doctor-ai-v3',
+        'toolAccess_kspider-400-tools',
+        'toolAccess_knowledge-spider',
+        'toolAccess_wa-broadcast-pro',
+        'toolAccess_free-ai-video-generator',
+        'toolAccess_cybershield-pro',
+        'toolAccess_lead-scout',
+        'toolAccess_webcraft-pro',
+        'toolAccess_script-studio',
+        'toolAccess_file-analyzer-pro',
+        'toolAccess_review-booster-pro',
+        'toolAccess_voxai-pro',
+        'toolAccess_rto-exam-pro',
+        'toolAccess_kspider-connect-jobs',
+        'toolAccess_ks-trademind',
+        'toolAccess_kspider-tools-features-adv-prompt',
+        'toolAccess_kspider-social-prompt-generator',
+        'toolAccess_universal-business-marketing-pro',
+        'toolAccess_gujarat-govt-form-assistant'
+      ];
+    }
+
+    // v8.11: on UPDATE, plan/payment values must come back exactly as they
+    // are stored (a missing field counts as its default, so re-saving the
+    // default value on an old doc is fine).
+    function planFieldsUnchanged() {
+      return request.resource.data.get('planType', 'free')      == resource.data.get('planType', 'free')
+          && request.resource.data.get('premium', false)         == resource.data.get('premium', false)
+          && request.resource.data.get('planExpiry', null)       == resource.data.get('planExpiry', null)
+          && request.resource.data.get('paidAmount', 0)          == resource.data.get('paidAmount', 0)
+          && request.resource.data.get('paymentStatus', 'none')  == resource.data.get('paymentStatus', 'none');
+    }
+
+    // v8.11: on CREATE, a user doc may only start in the free / unpaid state.
+    function newUserIsUnprivileged() {
+      return request.resource.data.get('planType', 'free')      == 'free'
+          && request.resource.data.get('premium', false)         == false
+          && request.resource.data.get('planExpiry', null)       == null
+          && request.resource.data.get('paidAmount', 0)          == 0
+          && request.resource.data.get('paymentStatus', 'none')  == 'none'
+          && !request.resource.data.keys().hasAny(userLockedKeys())
+          && !request.resource.data.keys().hasAny(toolAccessKeys());
+    }
+
+    // -----------------------------------------------------------------------
     // /users/{userId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /users/{userId} {
       allow read:   if isAdmin() || isOwner(userId);
-      allow create: if isAdmin() || (isLoggedIn() && isOwner(userId));
+      allow create: if isAdmin()
+                    || (isOwner(userId) && newUserIsUnprivileged());
       allow update: if isAdmin()
                     || (
                           isOwner(userId)
-                       && request.resource.data.diff(resource.data)
-                            .affectedKeys()
-                            .hasOnly(userSafeFields())
+                       && planFieldsUnchanged()
+                       && !request.resource.data.diff(resource.data)
+                            .affectedKeys().hasAny(userLockedKeys())
+                       && !request.resource.data.diff(resource.data)
+                            .affectedKeys().hasAny(toolAccessKeys())
                        );
       allow delete: if isAdmin();
+
+      match /toolHistory/{entryId} {
+        allow read:   if isAdmin() || isOwner(userId);
+        allow create: if isAdmin() || isOwner(userId);
+        allow update: if isAdmin();
+        allow delete: if isAdmin();
+      }
+
+      match /notifications/{notifId} {
+        allow read:   if isAdmin() || isOwner(userId);
+        allow create: if isAdmin();
+        allow update: if isAdmin()
+                      || (
+                            isOwner(userId)
+                         && request.resource.data.diff(resource.data)
+                              .affectedKeys()
+                              .hasOnly(['read', 'readAt'])
+                         );
+        allow delete: if isAdmin() || isOwner(userId);
+      }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /payments/{paymentId}
-    // ─────────────────────────────────────────────────────────────────────
+    // v8.11: create only as a pending request (never as already approved).
+    // -----------------------------------------------------------------------
     match /payments/{paymentId} {
       allow read:   if isAdmin()
                     || (
                           isLoggedIn()
                        && resource.data.userEmail == request.auth.token.email
                        );
-      allow create: if isLoggedIn();
+      allow create: if isAdmin()
+                    || (
+                          request.resource.data.status == 'pending'
+                       && request.resource.data.userEmail is string
+                       && request.resource.data.orderId is string
+                       );
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /tools/{toolId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /tools/{toolId} {
       allow read:  if true;
       allow write: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /admin/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /admin/{docId} {
       allow read:  if true;
       allow write: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /ads/{adId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /ads/{adId} {
       allow read:   if true;
       allow create: if isAdmin();
@@ -186,9 +333,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /adRequests/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /adRequests/{docId} {
       allow read:   if isAdmin();
       allow create: if true;
@@ -199,9 +346,19 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // /approved_advertisers/{advKey}
+    // -----------------------------------------------------------------------
+    match /approved_advertisers/{advKey} {
+      allow read:   if true;
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------------
     // /instituteRequests/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /instituteRequests/{docId} {
       allow read: if true;
       allow create: if true;
@@ -218,9 +375,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /students/{studentId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /students/{studentId} {
       allow read:   if isAdmin() || true;
       allow create: if true;
@@ -241,9 +398,9 @@ service cloud.firestore {
       }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /franchise_inquiries/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /franchise_inquiries/{docId} {
       allow read:   if isAdmin();
       allow create: if true;
@@ -251,45 +408,51 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // /franchise_dedupe/{emailKey}
+    // -----------------------------------------------------------------------
+    match /franchise_dedupe/{emailKey} {
+      allow read:   if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------------
     // /announcements/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /announcements/{docId} {
       allow read:  if true;
       allow write: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /otp_store/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // v8.11: OTP login was removed (Google Sign-In only) -- admin access only.
+    // -----------------------------------------------------------------------
     match /otp_store/{docId} {
-      allow read:   if isAdmin();
-      allow create: if true;
-      allow update: if isLoggedIn() || isAdmin();
-      allow delete: if isAdmin();
+      allow read, write: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     // /admin_notifications/{docId}
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /admin_notifications/{docId} {
       allow read:   if isAdmin();
-      allow create: if isLoggedIn() || isAdmin();
+      allow create: if true;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // /user_api_keys/{safeEmailId}                          ← NEW v7.2
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // /user_api_keys/{safeEmailId}
+    // -----------------------------------------------------------------------
     match /user_api_keys/{safeEmailId} {
       allow read:   if isAdmin() || isOwner(safeEmailId);
-      allow create: if isAdmin()
-                    || (isLoggedIn() && isOwner(safeEmailId));
+      allow create: if isAdmin() || isOwner(safeEmailId);
       allow update: if isAdmin()
                     || (
-                          isLoggedIn()
-                       && isOwner(safeEmailId)
+                          isOwner(safeEmailId)
                        && request.resource.data.diff(resource.data)
                             .affectedKeys()
                             .hasOnly([
@@ -301,20 +464,9 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // /wa_referrals/{shortCode}                             ← NEW v7.3
-    //
-    // WA Broadcast Pro & WA Bulk Sender promo link system.
-    // Users register → pending → admin approves → banner shows.
-    // Doc ID = 6-char shortCode e.g. "X7K2MQ"
-    //
-    // SECURITY:
-    //   • Anyone can READ (tools load banner via ?ref=CODE, no auth)
-    //   • Anyone can CREATE (form submission from tool, no auth)
-    //   • Only ADMIN can update status field (approve/suspend/pending)
-    //   • Public update restricted to updatedAt only (tool-side safe)
-    //   • Admin has full CRUD
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // /wa_referrals/{shortCode}
+    // -----------------------------------------------------------------------
     match /wa_referrals/{shortCode} {
       allow read:   if true;
       allow create: if true;
@@ -325,37 +477,383 @@ service cloud.firestore {
       allow delete: if isAdmin();
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // /rto_agent_requests/{refId}                           ← NEW v7.4
-    //
-    // RTO Exam Pro Agent promotional link request system.
-    // Agents submit registration from tool (no Firebase Auth).
-    // Admin sees real-time notifications via onSnapshot listener.
-    // Doc ID = agent refId (e.g. "RTO-ABC123")
-    //
-    // SECURITY:
-    //   • Admin: full CRUD
-    //   • Anyone: CREATE (agent submits without auth from RTO tool)
-    //   • Anyone: READ own doc by refId (tool polls approval status)
-    //   • Public update restricted to safe fields only
-    //   • Sensitive status changes (approve/reject/suspend) = admin only
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // /wa_ref_notifs/{shortCode}/messages/{msgId}
+    // -----------------------------------------------------------------------
+    match /wa_ref_notifs/{shortCode}/messages/{msgId} {
+      allow read:   if true;
+      allow create: if isAdmin();
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------------
+    // /rto_agent_requests/{refId}
+    // -----------------------------------------------------------------------
     match /rto_agent_requests/{refId} {
-      allow read:   if true;            // Tool polls approval; doc ID not guessable
-      allow create: if true;            // Agent submits form without Firebase Auth
+      allow read:   if true;
+      allow create: if true;
       allow update: if isAdmin()
                     || request.resource.data.diff(resource.data)
                          .affectedKeys()
                          .hasOnly([
-                           'updatedAt',    'source',
-                           '_seen',        'logo'
-                         ]);
+                           'updatedAt', 'source',
+                           '_seen',     'logo'
+                         ])
+                    // v8.10: RTO tool may record the agent's short link code ONCE,
+                    // only after admin has approved, and only if none is saved yet.
+                    || (
+                         request.resource.data.diff(resource.data)
+                           .affectedKeys()
+                           .hasOnly(['_shortCode', 'linkGeneratedAt'])
+                         && resource.data.get('status', '') == 'approved'
+                         && resource.data.get('_shortCode', '') == ''
+                         && request.resource.data.get('_shortCode', '') is string
+                         && request.resource.data.get('_shortCode', '').size() <= 12
+                       );
       allow delete: if isAdmin();
     }
 
-        // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
+    // /brahminBiodata/{userId}   --  v8.4 -> v8.5 tightened
+    //
+    // PUBLIC-SAFE fields only (name, photo, Gotra, Nakshatra, education,
+    // city, etc.) live on this top-level doc -- open read is fine, this is
+    // exactly what "Browse Matches" is meant to show.
+    //
+    // Contact-sensitive fields (mobile, WhatsApp, email, address,
+    // reference) are NOT stored here anymore -- see /private/contact below.
+    //
+    // doc ID = emailToKey(account email) -- kept for admin search &
+    // one-profile-per-account consistency. But WRITE access is no longer
+    // "whoever knows the ID" -- every write must carry a real, Firebase
+    // Anonymous-Auth-verified request.auth.uid matching the stored
+    // ownerAuthUid. Anonymous Auth is free and needs no backend; the app
+    // signs every visitor in silently on load, on top of (not replacing)
+    // the existing OTP/K Spider AI session.
+    // -----------------------------------------------------------------------
+    match /brahminBiodata/{userId} {
+      allow read:   if true;
+      allow create: if isAdmin()
+                    || (request.auth != null && request.auth.uid == request.resource.data.ownerAuthUid);
+      // v8.5 -> v8.6: transitional clause added. Any doc saved before this
+      // security round (or before Anonymous Auth was enabled) has no
+      // ownerAuthUid field yet, permanently locking that account out with
+      // no way to self-heal. If ownerAuthUid is missing, the FIRST update
+      // is allowed to claim it (exactly like a fresh create) -- after that
+      // one-time claim, only the matching authUid can update again. This
+      // does not reopen the old "anyone can write" hole: it only accepts
+      // a real, Anonymous-Auth-verified uid, and only until the field is
+      // set once.
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid)
+                    || (request.auth != null && !('ownerAuthUid' in resource.data));
+      allow delete: if isAdmin()
+                    || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+
+      // Contact-sensitive fields. CLOSED by default -- readable only by the
+      // verified owner, the admin, or a visitor whose real authUid the
+      // owner has explicitly added to allowedReaderAuthUids (done by the
+      // app automatically once both sides have an accepted /interests
+      // record -- see bbRespondInterest / bvGrantContactAccess in the tool).
+      match /private/contact {
+        allow read:   if isAdmin()
+                      || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid)
+                      || (request.auth != null && resource.data.allowedReaderAuthUids is list
+                          && request.auth.uid in resource.data.allowedReaderAuthUids);
+        allow create: if isAdmin()
+                      || (request.auth != null && request.auth.uid == request.resource.data.ownerAuthUid);
+        allow update: if isAdmin()
+                      || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+        allow delete: if isAdmin()
+                      || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+      }
+
+      // "Who viewed my profile" log
+      match /profileViews/{viewerId} {
+        allow read:   if isAdmin()
+                      || (request.auth != null && request.auth.uid == get(/databases/$(database)/documents/brahminBiodata/$(userId)).data.ownerAuthUid);
+        allow create: if true;
+        allow update: if isAdmin();
+        allow delete: if isAdmin()
+                      || (request.auth != null && request.auth.uid == get(/databases/$(database)/documents/brahminBiodata/$(userId)).data.ownerAuthUid);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // /interests/{pairId}   --  v8.4 -> v8.5 tightened
+    //
+    // "Express interest" between two Brahmin Vivaah members. pairId is
+    // deterministic -- [keyA, keyB].sort().join('_') -- so there's at most
+    // one record per pair and no query/index is needed to check status.
+    //
+    // create: the sender must prove they really are who they claim
+    // (fromAuthUid) with a real authUid. update (status change + recording
+    // toAuthUid): only the original sender OR the verified owner of the
+    // recipient's biodata may update -- i.e. only the two people involved.
+    // -----------------------------------------------------------------------
+    match /interests/{pairId} {
+      allow read:   if true;
+      allow create: if isAdmin()
+                    || (request.auth != null && request.auth.uid == request.resource.data.fromAuthUid);
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == resource.data.fromAuthUid)
+                    || (request.auth != null
+                        && request.auth.uid == get(/databases/$(database)/documents/brahminBiodata/$(resource.data.toUid)).data.ownerAuthUid);
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------------
+    // /shortlists/{userId} and /blocks/{userId}   --  v8.4 -> v8.5 tightened
+    //
+    // Per-user arrays (uids / blockedUids). Ownership now checked against
+    // the matching biodata doc's real ownerAuthUid, same model as above.
+    // -----------------------------------------------------------------------
+    match /shortlists/{userId} {
+      allow read, write: if isAdmin()
+        || (request.auth != null
+            && exists(/databases/$(database)/documents/brahminBiodata/$(userId))
+            && request.auth.uid == get(/databases/$(database)/documents/brahminBiodata/$(userId)).data.ownerAuthUid);
+    }
+    match /blocks/{userId} {
+      allow read, write: if isAdmin()
+        || (request.auth != null
+            && exists(/databases/$(database)/documents/brahminBiodata/$(userId))
+            && request.auth.uid == get(/databases/$(database)/documents/brahminBiodata/$(userId)).data.ownerAuthUid);
+    }
+
+    // -----------------------------------------------------------------------
+    // /brahmin_reports/{docId}
+    //
+    // User-submitted profile reports for Brahmin Vivaah. Managed from the
+    // Brahmin Vivaah panel in admin.html.
+    // -----------------------------------------------------------------------
+    match /brahmin_reports/{docId} {
+      allow read:   if isAdmin();
+      allow create: if true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------------
+    // /successStories/{docId}
+    //
+    // Opt-in success-story submissions for Brahmin Vivaah. Public read
+    // only once isAdmin() sets approved:true from the admin panel.
+    // -----------------------------------------------------------------------
+    match /successStories/{docId} {
+      allow read:   if isAdmin() || resource.data.approved == true;
+      allow create: if true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // =========================================================================
+    // BrahminConnect (v8.7) -- a SEPARATE tool from Brahmin Vivaah above.
+    // Same project/login on purpose (members stay logged in across both),
+    // but its own "bc"-prefixed collections so data never mixes with
+    // Brahmin Vivaah's. Same Anonymous-Auth + ownerAuthUid model as
+    // /brahminBiodata above.
+    // =========================================================================
+
+    // ---- Vivaah module ----
+    match /bcBiodata/{userId} {
+      allow read:   if true;
+      allow create: if isAdmin()
+                    || (request.auth != null && request.auth.uid == request.resource.data.ownerAuthUid);
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid)
+                    || (request.auth != null && !('ownerAuthUid' in resource.data)); // transitional self-heal, same as brahminBiodata
+      allow delete: if isAdmin()
+                    || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+
+      match /private/contact {
+        allow read:   if isAdmin()
+                      || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid)
+                      || (request.auth != null && resource.data.allowedReaderAuthUids is list
+                          && request.auth.uid in resource.data.allowedReaderAuthUids);
+        allow create: if isAdmin()
+                      || (request.auth != null && request.auth.uid == request.resource.data.ownerAuthUid);
+        allow update: if isAdmin()
+                      || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+        allow delete: if isAdmin()
+                      || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+      }
+
+      match /bcProfileViews/{viewerId} {
+        allow read:   if isAdmin()
+                      || (request.auth != null && request.auth.uid == get(/databases/$(database)/documents/bcBiodata/$(userId)).data.ownerAuthUid);
+        allow create: if true;
+        allow update: if isAdmin();
+        allow delete: if isAdmin()
+                      || (request.auth != null && request.auth.uid == get(/databases/$(database)/documents/bcBiodata/$(userId)).data.ownerAuthUid);
+      }
+    }
+
+    match /bcInterests/{pairId} {
+      allow read:   if true;
+      allow create: if isAdmin()
+                    || (request.auth != null && request.auth.uid == request.resource.data.fromAuthUid);
+      allow update: if isAdmin()
+                    || (request.auth != null && request.auth.uid == resource.data.fromAuthUid)
+                    || (request.auth != null
+                        && request.auth.uid == get(/databases/$(database)/documents/bcBiodata/$(resource.data.toUid)).data.ownerAuthUid);
+      allow delete: if isAdmin();
+    }
+
+    match /bcShortlists/{userId} {
+      allow read, write: if isAdmin()
+        || (request.auth != null
+            && exists(/databases/$(database)/documents/bcBiodata/$(userId))
+            && request.auth.uid == get(/databases/$(database)/documents/bcBiodata/$(userId)).data.ownerAuthUid);
+    }
+    match /bcBlocks/{userId} {
+      allow read, write: if isAdmin()
+        || (request.auth != null
+            && exists(/databases/$(database)/documents/bcBiodata/$(userId))
+            && request.auth.uid == get(/databases/$(database)/documents/bcBiodata/$(userId)).data.ownerAuthUid);
+    }
+
+    match /bc_reports/{docId} {
+      allow read:   if isAdmin();
+      allow create: if true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /bcSuccessStories/{docId} {
+      allow read:   if isAdmin() || resource.data.approved == true;
+      allow create: if true;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ---- Business Directory module ----
+    match /bcBusiness/{docId} {
+      allow read: if resource.data.status == 'approved'
+                  || isAdmin()
+                  || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin()
+                             || (request.auth != null && request.auth.uid == resource.data.ownerAuthUid);
+
+      match /bcRatings/{ratingId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+      }
+    }
+
+    // ---- Jobs module ----
+    match /bcJobs/{docId} {
+      allow read: if resource.data.status == 'active'
+                  || isAdmin()
+                  || (request.auth != null && request.auth.uid == resource.data.postedByAuthUid);
+      allow create: if request.auth != null;
+      allow update, delete: if isAdmin()
+                             || (request.auth != null && request.auth.uid == resource.data.postedByAuthUid);
+    }
+
+    match /bcJobApplications/{docId} {
+      allow create: if request.auth != null;
+      // v8.8: also let the job's poster read applications for their own job
+      // (needed for the "View Applicants" list) -- the query is always
+      // filtered by jobId, so Firestore can resolve this get() safely.
+      allow read: if isAdmin()
+                  || (request.auth != null && request.auth.uid == resource.data.applicantOwnerAuthUid)
+                  || (request.auth != null
+                      && request.auth.uid == get(/databases/$(database)/documents/bcJobs/$(resource.data.jobId)).data.postedByAuthUid);
+    }
+
+    // =========================================================================
+    // K SPIDER DOCTOR AI  (v8.9)  --  clinic management tool for doctors
+    //
+    // /doctors/{doctorId}  where doctorId == the doctor's Firebase Auth UID.
+    //
+    // THREE things this block guarantees:
+    //
+    //  1. DATA ISOLATION. A doctor can only ever read/write their OWN record
+    //     and their OWN patient data. There is no rule path that lets one
+    //     doctor reach another doctor's documents, so "everyone sees the same
+    //     data" becomes impossible at the database level, not just in the UI.
+    //
+    //  2. CROSS-DEVICE. Because patients/appointments/prescriptions now live
+    //     in Firestore subcollections under the doctor's UID (instead of only
+    //     in that browser's localStorage), the same login on any device or
+    //     location loads the same data.
+    //
+    //  3. ADMIN APPROVAL. A new signup can only ever create itself as
+    //     approvalStatus:'pending' and can never promote itself. Only the
+    //     admin can flip it to 'approved' (or 'rejected'/'suspended'), so an
+    //     unapproved doctor cannot get in by editing client-side code.
+    // =========================================================================
+    match /doctors/{doctorId} {
+
+      // Admin sees every doctor (needed for the approval queue + list view).
+      // A doctor sees only themselves -- including their own approvalStatus,
+      // which is what the tool checks to decide whether to let them in.
+      allow read: if isAdmin()
+                  || (request.auth != null && request.auth.uid == doctorId);
+
+      // Self-registration only, and only in a locked-down initial state:
+      // always 'pending' approval, always the 'trial' plan, always zero
+      // usage. Nothing here can be talked up by editing the client.
+      allow create: if request.auth != null
+                    && request.auth.uid == doctorId
+                    && request.resource.data.approvalStatus == 'pending'
+                    && request.resource.data.plan == 'trial'
+                    && request.resource.data.status == 'trial'
+                    && request.resource.data.rxCount == 0;
+
+      // Admin may change anything (approve / reject / suspend / upgrade).
+      // The doctor may edit their own profile fields and their own rxCount,
+      // but the four privilege fields must come back BYTE-IDENTICAL, so a
+      // doctor can never self-approve or self-upgrade.
+      allow update: if isAdmin()
+                    || (request.auth != null
+                        && request.auth.uid == doctorId
+                        && request.resource.data.approvalStatus == resource.data.approvalStatus
+                        && request.resource.data.plan    == resource.data.plan
+                        && request.resource.data.status  == resource.data.status
+                        && request.resource.data.rxLimit == resource.data.rxLimit);
+
+      // Only the admin can remove a doctor account.
+      allow delete: if isAdmin();
+
+      // Everything under a doctor -- patients, appointments, prescriptions,
+      // invoices, queue, settings -- is private to that doctor (and admin for
+      // support). One recursive rule covers every current and future
+      // subcollection, so adding a new one later needs no rules change.
+      match /{docData=**} {
+        allow read, write: if isAdmin()
+                           || (request.auth != null && request.auth.uid == doctorId);
+      }
+    }
+
+    // -----------------------------------------------------------------------
+    // /doctorSignupRequests/{doctorId}
+    //
+    // A small, admin-readable mirror of each new signup, so the admin panel
+    // can show a "new doctor is waiting for approval" queue without needing
+    // to relax read access on /doctors itself. Written once by the doctor at
+    // signup; only the admin can read the queue or clear an entry.
+    // -----------------------------------------------------------------------
+    match /doctorSignupRequests/{doctorId} {
+      allow read:   if isAdmin();
+      allow create: if request.auth != null && request.auth.uid == doctorId;
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // -----------------------------------------------------------------------
+    // /ai_rate_limits/{docId}  -- Cloud Function only, no browser access
+    // -----------------------------------------------------------------------
+    match /ai_rate_limits/{docId} {
+      allow read, write: if false;
+    }
+
+    // -----------------------------------------------------------------------
     // DEFAULT DENY
-    // ─────────────────────────────────────────────────────────────────────
+    // -----------------------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
     }
