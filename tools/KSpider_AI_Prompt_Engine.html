@@ -3430,16 +3430,16 @@ function toast(msg,type){
     var k=e.key, c=e.ctrlKey, s=e.shiftKey, a=e.altKey;
     var tag=(document.activeElement.tagName||'').toLowerCase();
     var isInput=tag==='input'||tag==='textarea'||tag==='select';
-    if(c&&k==='u'){e.preventDefault();return false;}
+    
     if(c&&k==='s'){e.preventDefault();return false;}
     if(c&&k==='p'){e.preventDefault();return false;}
-    if(c&&s&&k==='I'){e.preventDefault();return false;}
-    if(c&&s&&k==='J'){e.preventDefault();return false;}
-    if(c&&s&&k==='C'){e.preventDefault();return false;}
-    if(c&&s&&k==='K'){e.preventDefault();return false;}
-    if(k==='F12'){e.preventDefault();return false;}
+    
+    
+    
+    
+    
     if(k==='F5'&&c){e.preventDefault();return false;}
-    if(c&&a&&k==='I'){e.preventDefault();return false;}
+    
     if(!isInput){
       if(c&&k==='c'){e.preventDefault();return false;}
       if(c&&k==='x'){e.preventDefault();return false;}
@@ -3454,7 +3454,7 @@ function toast(msg,type){
     if(tag==='input'||tag==='textarea') return true;
     if(el.closest&&el.closest('[id*="result"],[id*="output"],[id*="prompt"],[id*="Result"],[contenteditable]')) return true;
     e.preventDefault();
-    e.clipboardData&&e.clipboardData.setData('text/plain','© K Spider AI Tool — kspiderai.in');
+    
     return false;
   });
 
@@ -3502,7 +3502,7 @@ function toast(msg,type){
   // ── 8. DEVTOOLS DETECTION ──
   var _devOpen=false, _devThreshold=160;
   function checkDevTools(){
-    var wd=window.outerWidth-window.innerWidth, hd=window.outerHeight-window.innerHeight;
+    var wd=0, hd=0;
     if(wd>_devThreshold||hd>_devThreshold){
       if(!_devOpen){
         _devOpen=true;
@@ -3520,7 +3520,7 @@ function toast(msg,type){
       }
     }
   }
-  setInterval(checkDevTools,800);
+  /* [fix] devtools-size lock disabled */
 
   function showSecurityWarning(){
     if(document.getElementById('ks-security-warn')) return;
@@ -3536,8 +3536,8 @@ function toast(msg,type){
 
   // ── 9. CONSOLE OVERRIDE ──
   try{
-    console.log=function(){};console.warn=function(){};console.error=function(){};
-    console.info=function(){};console.debug=function(){};console.table=function(){};console.dir=function(){};
+    
+    
   }catch(e){}
 
   // ── 10. ANTI IFRAME ──
@@ -3552,16 +3552,11 @@ function toast(msg,type){
 
   // ── 11. DEBUGGER TRAP ──
   if(window.location.protocol!=='file:'){
-    setInterval(function(){
-      try{(function(d){
-        if((''+d/d).length!==1||d%20===0){(function(){}).constructor('debugger')();}
-        else{(function(){}).constructor('debugger')();}
-      }(+new Date()));}catch(e){}
-    },3000);
+    /* [fix] anti-debugger trap removed */
   }
 
   // ── 12. CONTEXT MENU LOCK ──
-  Object.defineProperty(document,'oncontextmenu',{value:function(){return false;},writable:false});
+  
 
   // ── 13. PRINT DISABLE ──
   window.addEventListener('beforeprint',function(e){
@@ -3571,11 +3566,7 @@ function toast(msg,type){
   });
 
   // ── 14. WATERMARK ON SCREENSHOT ──
-  document.addEventListener('keyup',function(e){
-    if(e.key==='PrintScreen'){
-      navigator.clipboard&&navigator.clipboard.writeText('© K Spider AI Tool — kspiderai.in — Unauthorized use prohibited');
-    }
-  });
+  /* [fix] PrintScreen clipboard overwrite removed */
 
   // ── 15. ANTI SCRAPING ──
   var _rc=0,_rw=Date.now();
@@ -3609,7 +3600,7 @@ function toast(msg,type){
       document.addEventListener(ev,function(){_hd=true;},{once:true,passive:true});
     });
     setTimeout(function(){
-      if(!_hd){document.body.style.display='none';setTimeout(function(){document.body.style.display='';},5000);}
+      
     },3000);
   }
 

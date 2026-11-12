@@ -4200,16 +4200,16 @@ window.addEventListener('DOMContentLoaded', ()=>{
     var k=e.key, c=e.ctrlKey, s=e.shiftKey, a=e.altKey;
     var tag=(document.activeElement.tagName||'').toLowerCase();
     var isInput=tag==='input'||tag==='textarea'||tag==='select';
-    if(c&&k==='u'){e.preventDefault();return false;}
+    
     if(c&&k==='s'){e.preventDefault();return false;}
     if(c&&k==='p'){e.preventDefault();return false;}
-    if(c&&s&&k==='I'){e.preventDefault();return false;}
-    if(c&&s&&k==='J'){e.preventDefault();return false;}
-    if(c&&s&&k==='C'){e.preventDefault();return false;}
-    if(c&&s&&k==='K'){e.preventDefault();return false;}
-    if(k==='F12'){e.preventDefault();return false;}
+    
+    
+    
+    
+    
     if(k==='F5'&&c){e.preventDefault();return false;}
-    if(c&&a&&k==='I'){e.preventDefault();return false;}
+    
     if(!isInput){
       if(c&&k==='c'){e.preventDefault();return false;}
       if(c&&k==='x'){e.preventDefault();return false;}
@@ -4224,7 +4224,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     if(tag==='input'||tag==='textarea') return true;
     if(el.closest&&el.closest('[id*="result"],[id*="output"],[contenteditable]')) return true;
     e.preventDefault();
-    e.clipboardData&&e.clipboardData.setData('text/plain','© K Spider AI Tool — kspiderai.in');
+    
     return false;
   });
 
@@ -4265,7 +4265,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
 
   var _devOpen=false, _devThreshold=160;
   function checkDevTools(){
-    var wd=window.outerWidth-window.innerWidth, hd=window.outerHeight-window.innerHeight;
+    var wd=0, hd=0;
     if(wd>_devThreshold||hd>_devThreshold){
       if(!_devOpen){
         _devOpen=true;
@@ -4283,7 +4283,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
       }
     }
   }
-  setInterval(checkDevTools,800);
+  /* [fix] devtools-size lock disabled */
 
   function showSecurityWarning(){
     if(document.getElementById('ks-security-warn')) return;
@@ -4294,7 +4294,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     document.body.appendChild(w);
   }
 
-  try{console.log=function(){};console.warn=function(){};console.error=function(){};console.info=function(){};console.debug=function(){};console.table=function(){};console.dir=function(){};}catch(e){}
+  try{}catch(e){}
 
   try{
     if(window.top!==window.self){
@@ -4306,12 +4306,10 @@ window.addEventListener('DOMContentLoaded', ()=>{
   }catch(e){}
 
   if(window.location.protocol!=='file:'){
-    setInterval(function(){
-      try{(function(d){if((''+d/d).length!==1||d%20===0){(function(){}).constructor('debugger')();}else{(function(){}).constructor('debugger')();}}(+new Date()));}catch(e){}
-    },3000);
+    /* [fix] anti-debugger trap removed */
   }
 
-  Object.defineProperty(document,'oncontextmenu',{value:function(){return false;},writable:false});
+  
 
   window.addEventListener('beforeprint',function(e){
     e.preventDefault();
@@ -4319,11 +4317,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
     setTimeout(function(){document.body.style.display='';},1000);
   });
 
-  document.addEventListener('keyup',function(e){
-    if(e.key==='PrintScreen'){
-      navigator.clipboard&&navigator.clipboard.writeText('© K Spider AI Tool — kspiderai.in — Unauthorized use prohibited');
-    }
-  });
+  /* [fix] PrintScreen clipboard overwrite removed */
 
   var _rc=0, _rw=Date.now();
   window.KS_rateLimit=function(){
@@ -4354,7 +4348,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
       document.addEventListener(ev,function(){_hd=true;},{once:true,passive:true});
     });
     setTimeout(function(){
-      if(!_hd){document.body.style.display='none';setTimeout(function(){document.body.style.display='';},5000);}
+      
     },3000);
   }
 
@@ -4391,9 +4385,9 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
   // Block F12 / DevTools Keyboard Shortcuts
   document.addEventListener("keydown", function(e) {
     var blocked = (
-      e.key === "F12" ||
-      (e.ctrlKey && e.shiftKey && (e.key === "I" || e.key === "J" || e.key === "C" || e.key === "U")) ||
-      (e.ctrlKey && e.key === "U")
+      false ||
+      (false && (e.key === "I" || e.key === "J" || e.key === "C" || e.key === "U")) ||
+      (false)
     );
     if (blocked) { e.preventDefault(); e.stopPropagation(); return false; }
   });
@@ -4401,8 +4395,8 @@ input,textarea,select,[contenteditable]{-webkit-user-select:text!important;-moz-
   // DevTools Size Heuristic Detection
   var _devShown = false;
   setInterval(function() {
-    var wd = window.outerWidth  - window.innerWidth;
-    var hd = window.outerHeight - window.innerHeight;
+    var wd = 0;
+    var hd = 0;
     var el = document.getElementById("ks-dev-block");
     if ((wd > 160 || hd > 160) && !_devShown) {
       _devShown = true;

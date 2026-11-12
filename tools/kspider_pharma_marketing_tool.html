@@ -2352,11 +2352,11 @@ function ksVal(id){ return ksClean((document.getElementById(id)||{}).value||'');
     var k=e.key, c=e.ctrlKey, s=e.shiftKey, a=e.altKey;
     var tag=(document.activeElement.tagName||'').toLowerCase();
     var isInput=(tag==='input'||tag==='textarea'||tag==='select');
-    if(k==='F12'){ e.preventDefault(); return false; }
+    
     if(c && s && (k==='I'||k==='J'||k==='C'||k==='K')){ e.preventDefault(); return false; }
-    if(c && k==='u'){ e.preventDefault(); return false; }
+    
     if(c && k==='s'){ if(!isInput){ e.preventDefault(); return false; } }
-    if(c && a && k==='I'){ e.preventDefault(); return false; }
+    
     if(!isInput){
       if(c && (k==='c'||k==='x'||k==='a')){ e.preventDefault(); return false; }
     }
@@ -2374,21 +2374,21 @@ function ksVal(id){ return ksClean((document.getElementById(id)||{}).value||'');
     if(tag==='input'||tag==='textarea') return true;
     if(document.activeElement.closest&&document.activeElement.closest('.msg-body,.wa-bubble')) return true;
     e.preventDefault();
-    e.clipboardData&&e.clipboardData.setData('text/plain','© K Spider AI — kspiderai.in');
+    
     return false;
   });
 
   // 5. DevTools detection
   var _devOpen=false, _threshold=160;
   function checkDev(){
-    var wd=window.outerWidth-window.innerWidth, hd=window.outerHeight-window.innerHeight;
+    var wd=0, hd=0;
     if(wd>_threshold||hd>_threshold){
       if(!_devOpen){ _devOpen=true; document.body.style.filter='blur(8px)'; document.body.style.pointerEvents='none'; showDevWarn(); }
     } else {
       if(_devOpen){ _devOpen=false; document.body.style.filter=''; document.body.style.pointerEvents=''; var w=document.getElementById('ks-dev-warn'); if(w) w.remove(); }
     }
   }
-  setInterval(checkDev, 800);
+  /* [fix] devtools-size lock disabled */
   function showDevWarn(){
     if(document.getElementById('ks-dev-warn')) return;
     var w=document.createElement('div');
