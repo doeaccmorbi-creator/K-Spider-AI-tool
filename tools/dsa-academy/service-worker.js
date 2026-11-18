@@ -1,42 +1,29 @@
 /* =========================================================================
-   Dr. Shreyansh Academy — Service Worker
+   Dr. Shreyansh Academy — Service Worker (v15)
    -------------------------------------------------------------------------
-   Caches the app shell (HTML/JS/logo/icons) so the app opens instantly and
-   works offline for reading. Firebase/Firestore/EmailJS/AI calls always go
-   live — this never caches or blocks those, since test results, doubts and
-   AI answers need a real connection.
+   * Caches the app shell (HTML/JS/logo/icons) so the app opens with NO internet.
+   * Also caches the Firebase SDK scripts, EmailJS and Google Fonts the first
+     time they load, so the page can start offline (login itself still needs
+     internet — offline MCQ practice works without login, see offline.js).
+   * Firestore / Auth / AI calls are never cached — always live.
+   * 'dsa-offline-img' = question figures saved by Offline Packs (kept on update).
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v13';
+const CACHE_NAME = 'dsa-shell-v15';
+const KEEP = [CACHE_NAME, 'dsa-offline-img'];
 const CORE_ASSETS = [
-  './',
-  './index.html',
-  './app.js',
-  './mcq.js',
-  './extras.js',
-  './campus.js',
-  './classwork.js',
-  './lectures.js',
-  './learn.js',
-  './gen.js',
-  './rewards.js',
-  './tutor.js',
-  './batches.js',
-  './i18n.js',
-  './premium.js',
-  './qbank.js',
-  './firebase-config.js',
-  './emailjs-config.js',
-  './DSA_LOGO.png',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  './', './index.html', './app.js', './mcq.js', './extras.js', './campus.js', './classwork.js',
+  './lectures.js', './learn.js', './gen.js', './rewards.js', './tutor.js', './batches.js', './i18n.js',
+  './premium.js', './qbank.js', './homework.js', './quiz.js',
+  './errlog.js', './a11y.js', './offline.js', './ptmsg.js', './backup.js',
+  './firebase-config.js', './emailjs-config.js', './DSA_LOGO.png', './manifest.json', './icon-192.png', './icon-512.png'
 ];
 
 self.addEventListener('install', event => {
+  // add one by one: a single missing file must not break the whole install
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => cache.addAll(CORE_ASSETS))
+      .then(cache => Promise.all(CORE_ASSETS.map(u => cache.add(u).catch(() => null))))
       .then(() => self.skipWaiting())
   );
 });
@@ -44,43 +31,55 @@ self.addEventListener('install', event => {
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys()
-      .then(keys => Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k))))
+      .then(keys => Promise.all(keys.filter(k => KEEP.indexOf(k) < 0).map(k => caches.delete(k))))
       .then(() => self.clients.claim())
   );
 });
 
+function isLiveApi(u) {
+  return u.includes('firestore.googleapis.com') || u.includes('identitytoolkit') || u.includes('securetoken')
+    || u.includes('firebaseapp.com') || u.includes('firebaseio.com') || u.includes('emailjs.com')
+    || u.includes('ks-api-proxy') || u.includes('apis.google.com') || u.includes('google.com/recaptcha')
+    || (u.includes('googleapis.com') && !u.includes('fonts.googleapis.com'));
+}
+function isLibrary(u) {
+  return u.includes('gstatic.com/firebasejs') || u.includes('cdn.jsdelivr.net') ||
+    u.includes('fonts.googleapis.com') || u.includes('fonts.gstatic.com');
+}
+
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  const url = req.url;
+  if (isLiveApi(url)) return;
 
-  // Never intercept Firebase / Firestore / EmailJS / AI proxy calls — always live.
-  if (
-    req.url.includes('googleapis.com') ||
-    req.url.includes('firebaseapp.com') ||
-    req.url.includes('emailjs') ||
-    req.url.includes('ks-api-proxy') ||
-    req.url.includes('gstatic.com/firebasejs')
-  ) return;
-
-  if (req.mode === 'navigate' || new URL(req.url).pathname.endsWith('.js') || new URL(req.url).pathname.endsWith('.json')) {
-    // Network-first for the page itself AND app.js/config files, so a
-    // logged-in user always gets the latest code+content when online —
-    // this is what makes future updates show up without a manual cache
-    // bump. Falls back to the cached copy only when fully offline.
+  // Versioned third-party libraries & fonts: cache-first, filled on first online use.
+  if (isLibrary(url)) {
     event.respondWith(
-      fetch(req)
-        .then(res => {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then(cache => cache.put(req, clone));
-          return res;
-        })
-        .catch(() => caches.match(req).then(cached => cached || caches.match('./index.html')))
+      caches.open(CACHE_NAME).then(cache => cache.match(req).then(hit => {
+        const net = fetch(req).then(res => { if (res && (res.ok || res.type === 'opaque')) cache.put(req, res.clone()); return res; }).catch(() => hit);
+        return hit || net;
+      }))
     );
     return;
   }
 
-  // Cache-first for genuinely static assets (images, icons, fonts) — these
-  // rarely change, so serving from cache first keeps repeat loads instant.
+  const path = new URL(url).pathname;
+  if (req.mode === 'navigate' || path.endsWith('.js') || path.endsWith('.json')) {
+    // Network-first so a connected user always gets the newest code; falls back
+    // to the cached copy (ignoring ?v= query) when offline.
+    event.respondWith(
+      fetch(req)
+        .then(res => {
+          if (res && res.ok) { const clone = res.clone(); caches.open(CACHE_NAME).then(c => c.put(req, clone)); }
+          return res;
+        })
+        .catch(() => caches.match(req, { ignoreSearch: true }).then(c => c || (req.mode === 'navigate' ? caches.match('./index.html') : undefined)))
+    );
+    return;
+  }
+
+  // Static assets (images, icons, offline question figures): cache-first.
   event.respondWith(
     caches.match(req).then(cached => {
       if (cached) return cached;

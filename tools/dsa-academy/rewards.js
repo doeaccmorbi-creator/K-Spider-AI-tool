@@ -86,5 +86,14 @@ RWD.render=function(){
     '<div style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.6">XP: +1 per question tried, +2 more for each correct answer, +5 for each revision cleared, +15 perfect round, +20 daily goal, +50 mock exam.</div>');
   return html;
 };
+/* extra XP from other activities (e.g. Live Quiz) */
+RWD.addXP=function(n,why){
+  if(!window.LRN||!LRN.data) return;
+  var D=LRN.data(); if(!D){ LRN.load().then(function(){ RWD.addXP(n,why); }); return; }
+  var gx=D.gx=Object.assign({xp:0,wk:{w:'',xp:0},gd:0,rc:0,mk:0},D.gx||{}), wk=weekKey(), old=lvOf(gx.xp);
+  if(!gx.wk||gx.wk.w!==wk) gx.wk={w:wk,xp:0}; gx.xp+=n; gx.wk.xp+=n;
+  if(window.toast){ toast('+'+n+' XP'+(why?' · '+why:''),'⭐'); if(lvOf(gx.xp)>old) setTimeout(function(){ toast('🎉 Level up! You are now Level '+lvOf(gx.xp),'🎉'); },900); }
+  LRN.save(); mirror(gx);
+};
 RWD.badges=BADGES; RWD.level=lvOf;
 })();

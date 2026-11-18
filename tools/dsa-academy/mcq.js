@@ -62,9 +62,13 @@ function kickIndex(){
   if(S.idxBusy) return; S.idxBusy=true;
   db().collection('mcqMeta').doc('index').get().then(function(d){
     S.idxBusy=false;
-    if(d.exists && d.data() && d.data().chapters && d.data().chapters.length){ S.index=d.data(); S.idxErr=''; }
+    if(d.exists && d.data() && d.data().chapters && d.data().chapters.length){ S.index=d.data(); S.idxErr=''; if(window.OFF) OFF.saveIndex(S.index); }
     else S.idxErr='empty';
-  }).catch(function(e){ S.idxBusy=false; S.idxErr='err'; console.warn('[MCQ] index load failed',e); }).then(refresh);
+  }).catch(function(e){
+    console.warn('[MCQ] index load failed',e);
+    if(!window.OFF){ S.idxBusy=false; S.idxErr='err'; return; }
+    return OFF.loadIndex().then(function(ix){ S.idxBusy=false; if(ix){ S.index=ix; S.idxErr=''; } else S.idxErr='err'; }); // offline: last saved chapter list
+  }).then(refresh);
 }
 S.loadProg=function(){
   if(S.prog) return Promise.resolve(S.prog);
@@ -73,7 +77,14 @@ S.loadProg=function(){
   S.progP=db().collection('mcqProgress').doc(u.uid).get().then(function(d){
     var p=newProg(); if(d.exists){ var x=d.data()||{}; for(var k in p){ if(x[k]!==undefined) p[k]=x[k]; } }
     S.prog=p;
-  }).catch(function(e){ console.warn('[MCQ] progress load failed',e); S.prog=newProg(); })
+    if(!window.OFF) return;
+    return OFF.loadProg(u.uid).then(function(loc){
+      if(loc&&loc.dirty&&loc.p){ S.prog=Object.assign(newProg(),loc.p); setTimeout(saveProg,500); } // unsynced offline work wins
+      else OFF.saveProg(u.uid,S.prog,false);
+    });
+  }).catch(function(e){ console.warn('[MCQ] progress load failed',e);
+    if(!window.OFF){ S.prog=newProg(); return; }
+    return OFF.loadProg(u.uid).then(function(loc){ S.prog=(loc&&loc.p)?Object.assign(newProg(),loc.p):newProg(); }); })
   .then(function(){ S.progP=null; return S.prog; });
   return S.progP;
 };
@@ -91,10 +102,11 @@ function mirror(){
 function saveProg(){
   var u=user(); if(!u||!u.uid||!S.prog||!db()) return;
   clearTimeout(S.saveT);
+  if(window.OFF) OFF.saveProg(u.uid,S.prog,true); // local copy right away; marked clean once Firestore confirms
   S.saveT=setTimeout(function(){
     var p=Object.assign({},S.prog,{upd:firebase.firestore.FieldValue.serverTimestamp()});
     var keep={}, t=Date.now(); Object.keys(p.days||{}).forEach(function(d){ if(t-new Date(d).getTime()<36*864e5) keep[d]=p.days[d]; }); p.days=keep;
-    db().collection('mcqProgress').doc(u.uid).set(p).then(mirror).catch(function(e){ console.warn('[MCQ] progress save failed',e); });
+    db().collection('mcqProgress').doc(u.uid).set(p).then(function(){ if(window.OFF) OFF.saveProg(u.uid,S.prog,false); mirror(); }).catch(function(e){ console.warn('[MCQ] progress save failed',e); });
   },800);
 }
 S.save=function(){ saveProg(); };
@@ -103,7 +115,7 @@ S.chapByKey=function(k){ return chapByKey(k); };
 S.loadIndex=function(){
   if(S.index) return Promise.resolve(S.index);
   if(!db()) return Promise.resolve(null);
-  return db().collection('mcqMeta').doc('index').get().then(function(d){ if(d.exists&&d.data().chapters&&d.data().chapters.length) S.index=d.data(); return S.index; }).catch(function(){ return null; });
+  return db().collection('mcqMeta').doc('index').get().then(function(d){ if(d.exists&&d.data().chapters&&d.data().chapters.length){ S.index=d.data(); if(window.OFF) OFF.saveIndex(S.index); } return S.index; }).catch(function(){ return window.OFF?OFF.loadIndex().then(function(ix){ if(ix) S.index=ix; return S.index||null; }):null; });
 };
 var STOPW={and:1,the:1,of:1,in:1,to:1,for:1,with:1,their:1,its:1};
 function toks(s){ return String(s).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(function(w){ return w.length>2&&!STOPW[w]; }); }
@@ -153,10 +165,20 @@ function loadChapter(k){
   var tier=(prem()||staff)?'B':'F', ck=tier+k;
   if(S.cache[ck]) return Promise.resolve(S.cache[ck]);
   function fromFree(){ return db().collection('mcqFree').doc(k).get().then(function(d){ return d.exists?(d.data().qs||[]):[]; }); }
-  var p = tier==='B'
-    ? db().collection('mcqBank').doc(k).get().then(function(d){ return d.exists?(d.data().qs||[]):[]; }).catch(function(e){ console.warn('[MCQ] bank denied, using sample',e); return fromFree(); })
-    : fromFree();
-  return p.then(function(qs){ qs=qs.map(function(x){ x.k=k; return x; }); S.cache[ck]=qs; return qs; });
+  if(tier==='F' && window.OFF) OFF.purgePremiumIfLapsed();
+  var meta=S.index?chapByKey(k):null;
+  var pk=window.OFF?OFF.fromPack(k,tier,(tier==='B'&&meta)?meta.n:null):Promise.resolve(null); // downloaded pack first (offline + saves Firestore reads)
+  return pk.then(function(hit){
+    var p;
+    if(hit) p=Promise.resolve(hit);
+    else {
+      p = tier==='B'
+        ? db().collection('mcqBank').doc(k).get().then(function(d){ return d.exists?(d.data().qs||[]):[]; }).catch(function(e){ console.warn('[MCQ] bank denied, using sample',e); return fromFree(); })
+        : fromFree();
+      if(window.OFF) p=p.catch(function(e){ return OFF.offlineFallback(k).then(function(q){ if(q) return q; throw e; }); });
+    }
+    return p.then(function(qs){ qs=qs.map(function(x){ x.k=k; return x; }); S.cache[ck]=qs; return qs; });
+  });
 }
 S.loadChapter=function(k){ return loadChapter(k); };
 function chaptersOf(exam,subj){ return S.index.chapters.filter(function(c){ return c.e===exam && c.s===subj; }); }
@@ -311,7 +333,7 @@ function begin(qs,label,opts){
   var n=qs.length, mode=opts.mode;
   S.sess={qs:qs,i:0,ans:qs.map(function(){return null;}),marked:qs.map(function(){return false;}),times:qs.map(function(){return 0;}),
     mode:mode,label:label,daily:!!opts.daily,timer:(mode==='test'&&opts.timer),total:(opts.mins?opts.mins*60:n*SEC_PER_Q),deadline:Date.now()+(opts.mins?opts.mins*60:n*SEC_PER_Q)*1000,
-    qStart:Date.now(),started:Date.now(),tid:null};
+    qStart:Date.now(),started:Date.now(),tid:null,hw:opts.hw||null};
   S.busy=false; S.screen='session'; render(); window.scrollTo({top:0,behavior:'instant'});
 }
 function filterQs(qs,sel){
@@ -456,6 +478,7 @@ window.mcqSubmit=function(force){
   S.res={label:s.label,mode:s.mode,items:items,c:c,w:w,sk:sk,score:score,max:s.qs.length*4,secs:secs,per:per,meta:s.meta||null};
   if(s.meta&&s.meta.onDone){ try{ s.meta.onDone(S.res); }catch(e){ console.warn(e); } }
   if(!s.meta&&window.LRN&&LRN.onResult){ try{ LRN.onResult(items,s.label); }catch(e){ console.warn(e); } }
+  if(s.hw){ S.res.hw=true; if(s.hw.onDone){ try{ s.hw.onDone(S.res); }catch(e){ console.warn(e); } } }
   S.sess=null; S.screen='result'; render(); window.scrollTo({top:0,behavior:'instant'});
 };
 function scrResult(){
@@ -471,6 +494,7 @@ function scrResult(){
   (window.lrnResultExtra&&!r.meta?window.lrnResultExtra(r):'')+
   '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'+
     (r.meta?'<button class="btn btn-primary btn-sm" onclick="go(\'classtests\')">← Back to class tests</button>':'')+
+    (r.hw?'<button class="btn btn-gold btn-sm" onclick="go(\'homework\')">← Back to homework</button>':'')+
     (r.meta?'':(wrongQs.length?'<button class="btn btn-gold btn-sm" onclick="mcqRetryWrong()">🔁 Retry the '+wrongQs.length+' wrong</button>':'')+
     '<button class="btn btn-primary btn-sm" onclick="mcqGo(\'subject\',\''+esc(S.exam)+'\',\''+esc(S.subj)+'\')">Practice more</button>'+
     '<button class="btn btn-outline btn-sm" onclick="mcqGo(\'home\')">Hub home</button>')+'</div>'+

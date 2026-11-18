@@ -219,8 +219,11 @@ function render(){
     lectures: R_('renderLectures'), // lectures.js
     learn: R_('renderLearn'), // learn.js
     qauthor: R_('renderQAuthor'), // qbank.js
+    homework: R_('renderHomework'), parenthomework: R_('renderParentHomework'), // homework.js
+    livequiz: R_('renderLiveQuiz'), quizjoin: R_('renderQuizJoin'), // quiz.js
     batches: R_('renderBatches'), tanalytics: R_('renderTAnalytics'), admintanalytics: R_('renderTAnalytics'), // batches.js
     adminfees: R_('renderAdminFees'), facultytests: R_('renderFacultyTests'), admintests: R_('renderFacultyTests'), classtests: R_('renderClassTests'), parenttests: R_('renderParentTests'), // classwork.js
+    offline: R_('renderOffline'), pt: R_('renderPT'), backup: R_('renderBackup'), errlog: R_('renderErrLog'), // offline.js / ptmsg.js / backup.js
     mcqsubjects: renderMcqSubjects,
     mcqtopics: renderMcqTopics,
     leaderboard: renderLeaderboard,
@@ -246,7 +249,7 @@ function render(){
     plans:'student', myfees:'student', mcq:'student', studyhub:'student',
     parentreport:'parent', facultyinsights:'faculty', adminmcq:'admin',
     myattendance:'student', parentattendance:'parent', facultyattendance:'faculty', adminattendance:'admin',
-    learn:'student', tanalytics:'faculty', admintanalytics:'admin', classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
+    learn:'student', parenthomework:'parent', quizjoin:'student', tanalytics:'faculty', admintanalytics:'admin', classtests:'student', parenttests:'parent', facultytests:'faculty', admintests:'admin', adminfees:'admin',
     parent:'parent', parentaddchild:'parent',
     admin:'admin', adminstudent:'admin', admindoubts:'admin', adminfaculty:'admin',
     adminfacultydetail:'admin', adminparents:'admin', adminanalytics:'admin',
@@ -275,6 +278,7 @@ const NAV = {
     {id:'overview', ic:'🏠', label:'Dashboard', view:'student'},
     {id:'mock', ic:'🧪', label:'Full Mock Test', view:'mock'},
     {id:'mcqtracks', ic:'📚', label:'MCQ Practice Hub', view:'mcq'},
+    {id:'offline', ic:'📴', label:'Offline Packs', view:'offline'},
     {id:'learn', ic:'🧠', label:'Learning Hub', view:'learn'},
     {id:'studyhub', ic:'🎯', label:'Study Planner', view:'studyhub'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
@@ -282,6 +286,8 @@ const NAV = {
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'myattendance', ic:'✅', label:'My Attendance', view:'myattendance'},
     {id:'classtests', ic:'📝', label:'Class Tests', view:'classtests'},
+    {id:'homework', ic:'📌', label:'Homework', view:'homework'},
+    {id:'quizjoin', ic:'🎮', label:'Live Quiz', view:'quizjoin'},
     {id:'batches', ic:'🎓', label:'My Batch', view:'batches'},
     {id:'leaderboard', ic:'🏆', label:'Leaderboard', view:'leaderboard'},
     {id:'progress', ic:'📈', label:'My Progress', view:'progress'},
@@ -290,17 +296,21 @@ const NAV = {
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
     {id:'plans', ic:'💎', label:'Plans', view:'plans'},
     {id:'myfees', ic:'💳', label:'My Fees', view:'myfees'},
+    {id:'backup', ic:'🛟', label:'Backup & Restore', view:'backup'},
     {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
   parent: [
     {id:'overview', ic:'🏠', label:'Overview', view:'parent'},
     {id:'parentreport', ic:'📄', label:'Weekly Report', view:'parentreport'},
     {id:'parentattendance', ic:'✅', label:'Attendance', view:'parentattendance'},
+    {id:'parenthomework', ic:'📌', label:'Homework', view:'parenthomework'},
     {id:'parenttests', ic:'📝', label:'Class Tests', view:'parenttests'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
+    {id:'pt', ic:'✉️', label:'Message Teachers', view:'pt'},
+    {id:'backup', ic:'🛟', label:'Backup & Restore', view:'backup'},
   ],
   admin: [
     {id:'overview', ic:'🏠', label:'Overview', view:'admin'},
@@ -313,12 +323,17 @@ const NAV = {
     {id:'adminfees', ic:'💰', label:'Fee Reminders', view:'adminfees'},
     {id:'admintests', ic:'📝', label:'Class Tests', view:'admintests'},
     {id:'qauthor', ic:'➕', label:'Add Questions', view:'qauthor'},
+    {id:'homework', ic:'📌', label:'Homework', view:'homework'},
+    {id:'livequiz', ic:'🎮', label:'Live Quiz', view:'livequiz'},
     {id:'batches', ic:'🎓', label:'Batches', view:'batches'},
     {id:'admintanalytics', ic:'📊', label:'Teacher Analytics', view:'admintanalytics'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
+    {id:'pt', ic:'💬', label:'Parent Messages', view:'pt'},
+    {id:'errlog', ic:'🐞', label:'Error Log', view:'errlog'},
+    {id:'backup', ic:'🛟', label:'Backup & Restore', view:'backup'},
   ],
   faculty: [
     {id:'facultydoubts', ic:'💬', label:'Doubts inbox', view:'facultydoubts'},
@@ -327,12 +342,15 @@ const NAV = {
     {id:'facultyattendance', ic:'✅', label:'Mark Attendance', view:'facultyattendance'},
     {id:'facultytests', ic:'📝', label:'Class Tests', view:'facultytests'},
     {id:'qauthor', ic:'➕', label:'Add Questions', view:'qauthor'},
+    {id:'homework', ic:'📌', label:'Homework', view:'homework'},
+    {id:'livequiz', ic:'🎮', label:'Live Quiz', view:'livequiz'},
     {id:'batches', ic:'🎓', label:'Batches', view:'batches'},
     {id:'tanalytics', ic:'📊', label:'Teacher Analytics', view:'tanalytics'},
     {id:'lectures', ic:'🎬', label:'Video Lectures', view:'lectures'},
     {id:'timetable', ic:'🗓', label:'Timetable', view:'timetable'},
     {id:'resources', ic:'📂', label:'Resource Library', view:'resources'},
     {id:'notices', ic:'🔔', label:'Notice Board', view:'notices'},
+    {id:'pt', ic:'💬', label:'Parent Messages', view:'pt'},
     {id:'myprofile', ic:'👤', label:'My Profile', view:'myprofile'},
   ],
 };
