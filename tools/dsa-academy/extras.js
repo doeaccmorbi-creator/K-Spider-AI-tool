@@ -196,8 +196,8 @@ window.xTodoAdd=function(){ var el=document.getElementById('xTodoIn'), t=el&&el.
 window.xTodoTog=function(i){ var t=MCQ.prog.todo[i]; if(t){ t.d=!t.d; saveP(); render(); } };
 window.xTodoDel=function(i){ MCQ.prog.todo.splice(i,1); saveP(); render(); };
 window.xLoadLb=function(){
-  fbDb.collection('users').where('role','==','student').limit(300).get().then(function(s){
-    var rows=[]; s.forEach(function(d){ var u=d.data(), m=u.mcqSummary; if(m&&m.n7>0&&!u.banned) rows.push({n:firstName(u.name),v:m.n7}); });
+  fbDb.collection('lb').limit(300).get().then(function(s){
+    var rows=[]; s.forEach(function(d){ var m=d.data(); if(m.n7>0) rows.push({n:m.n||'Student',v:m.n7}); });
     rows.sort(function(a,b){ return b.v-a.v; }); X.lb=rows.slice(0,10); again('studyhub');
   }).catch(function(){ toast('Could not load leaderboard','⚠️'); });
 };

@@ -56,12 +56,15 @@ RWD.onResult=function(x){
 var mt=null;
 function mirror(gx){
   var u=me(); if(!u||!u.uid||!window.FIREBASE_ENABLED) return; clearTimeout(mt);
-  mt=setTimeout(function(){ fbDb.collection('users').doc(u.uid).update({gx:{xp:gx.xp,lv:lvOf(gx.xp),w:gx.wk.w,wxp:gx.wk.xp}}).catch(function(){}); },4000);
+  mt=setTimeout(function(){
+    fbDb.collection('users').doc(u.uid).update({gx:{xp:gx.xp,lv:lvOf(gx.xp),w:gx.wk.w,wxp:gx.wk.xp}}).catch(function(){});
+    if(u.role==='student') fbDb.collection('lb').doc(u.uid).set({n:firstName(u.name),xp:gx.xp,lv:lvOf(gx.xp),w:gx.wk.w,wxp:gx.wk.xp,b:u.batchId||'',upd:Date.now()},{merge:true}).catch(function(){}); // public, first-name-only card
+  },4000);
 }
 function loadLeague(){
   if(W.lbusy||W.league) return; W.lbusy=true;
-  fbDb.collection('users').where('role','==','student').limit(300).get().then(function(s){
-    var wk=weekKey(), rows=[]; s.forEach(function(d){ var u=d.data(); if(u.banned) return; var g=u.gx||{}; rows.push({id:d.id,n:firstName(u.name),b:u.batchId||'',x:g.w===wk?(g.wxp||0):0,lv:g.lv||1}); });
+  fbDb.collection('lb').limit(300).get().then(function(s){
+    var wk=weekKey(), rows=[]; s.forEach(function(d){ var g=d.data(); rows.push({id:d.id,n:g.n||'Student',b:g.b||'',x:g.w===wk?(g.wxp||0):0,lv:g.lv||1}); });
     W.league=rows; W.t=Date.now();
   }).catch(function(){ W.league=[]; }).then(function(){ W.lbusy=false; if(ROUTE.view==='learn') render(); });
 }

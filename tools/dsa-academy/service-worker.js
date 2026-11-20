@@ -15,7 +15,7 @@ const CORE_ASSETS = [
   './', './index.html', './app.js', './mcq.js', './extras.js', './campus.js', './classwork.js',
   './lectures.js', './learn.js', './gen.js', './rewards.js', './tutor.js', './batches.js', './i18n.js',
   './premium.js', './qbank.js', './homework.js', './quiz.js',
-  './errlog.js', './a11y.js', './offline.js', './ptmsg.js', './backup.js',
+  './errlog.js', './a11y.js', './offline.js', './ptmsg.js', './backup.js', './sharecard.js',
   './firebase-config.js', './emailjs-config.js', './DSA_LOGO.png', './manifest.json', './icon-192.png', './icon-512.png'
 ];
 

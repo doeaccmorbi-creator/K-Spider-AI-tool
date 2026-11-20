@@ -98,6 +98,7 @@ function mirror(){
   var weak=S.index?Object.keys(P.ch).filter(function(k){ return P.ch[k].a>=5&&chapByKey(k); }).sort(function(x,y){ return pct(P.ch[x].c,P.ch[x].a)-pct(P.ch[y].c,P.ch[y].a); }).slice(0,3).map(function(k){ return chapByKey(k).c; }):[];
   var ex=(window.LRN&&LRN.summary)?LRN.summary():{};
   db().collection('users').doc(u.uid).update({mcqSummary:Object.assign({a:a,c:c,n7:n7,streak:(P.streak&&P.streak.n)||0,last:(P.streak&&P.streak.last)||'',weak:weak,upd:Date.now()},ex)}).catch(function(){});
+  if(u.role==='student') db().collection('lb').doc(u.uid).set({n:String(u.name||'Student').trim().split(/\s+/).slice(0,2).map(function(w,i){ return i?w[0]+'.':w; }).join(' '),n7:n7,b:u.batchId||'',upd:Date.now()},{merge:true}).catch(function(){});
 }
 function saveProg(){
   var u=user(); if(!u||!u.uid||!S.prog||!db()) return;
@@ -495,6 +496,7 @@ function scrResult(){
   '<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">'+
     (r.meta?'<button class="btn btn-primary btn-sm" onclick="go(\'classtests\')">← Back to class tests</button>':'')+
     (r.hw?'<button class="btn btn-gold btn-sm" onclick="go(\'homework\')">← Back to homework</button>':'')+
+    '<button class="btn btn-sm" style="background:#25d366;color:#fff" onclick="shareCard()">📤 Share result</button>'+
     (r.meta?'':(wrongQs.length?'<button class="btn btn-gold btn-sm" onclick="mcqRetryWrong()">🔁 Retry the '+wrongQs.length+' wrong</button>':'')+
     '<button class="btn btn-primary btn-sm" onclick="mcqGo(\'subject\',\''+esc(S.exam)+'\',\''+esc(S.subj)+'\')">Practice more</button>'+
     '<button class="btn btn-outline btn-sm" onclick="mcqGo(\'home\')">Hub home</button>')+'</div>'+

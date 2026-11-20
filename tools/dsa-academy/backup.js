@@ -128,6 +128,92 @@ B.exportAll=async function(){
   B.busy=''; refresh();
 };
 
+
+/* ================= admin: one-time privacy migration (#7) ================= */
+B.migrate=async function(){
+  var d=fdb(); if(!d||user().role!=='admin') return;
+  if(!confirm('Privacy migration chalayein? (Purane parent links me childUid bharega + leaderboard cards banayega.) Reads: sab users + parentLinks.')) return;
+  B.busy='mig'; B.log=''; refresh();
+  try{
+    logln('⏳ Students load ho rahe hain…');
+    var us=await d.collection('users').get(), byEmail={}, studs=[];
+    us.forEach(function(x){ var v=x.data(); if(v.role==='student'){ byEmail[String(v.email||'').toLowerCase()]={uid:x.id}; studs.push({id:x.id,v:v}); } });
+    logln('   ✓ '+studs.length+' students');
+    var ls=await d.collection('parentLinks').get(), fixed=0, skipped=0;
+    for(var i=0;i<ls.docs.length;i++){
+      var l=ls.docs[i], v=l.data();
+      if(v.status!=='approved'||v.childUid) continue;
+      var m=byEmail[String(v.childEmail||'').toLowerCase()];
+      if(!m){ skipped++; continue; }
+      await d.collection('parentLinks').doc(l.id).update({childUid:m.uid}); fixed++;
+    }
+    logln('✅ Parent links updated: '+fixed+(skipped?' (student not found for '+skipped+')':''));
+    var n=0;
+    for(var j=0;j<studs.length;j++){
+      var u=studs[j].v; if(u.banned) continue;
+      var g=u.gx||{}, ms=u.mcqSummary||{}, p=String(u.name||'Student').trim().split(/\s+/);
+      await d.collection('lb').doc(studs[j].id).set({n:p[0]+(p[1]?' '+p[1][0]+'.':''),xp:g.xp||0,lv:g.lv||1,w:g.w||'',wxp:g.wxp||0,b:u.batchId||'',n7:ms.n7||0,upd:Date.now()}); n++;
+    }
+    logln('✅ Leaderboard cards: '+n);
+    var tr=await d.collection('testResults').orderBy('pct','desc').limit(600).get(), seen={}, bn=0;
+    for(var q=0;q<tr.docs.length;q++){
+      var r=tr.docs[q].data(), st=byEmail[String(r.email||'').toLowerCase()]; if(!st||seen[st.uid]) continue; seen[st.uid]=1;
+      await d.collection('lb').doc(st.uid).set({bp:Math.round(r.pct||0),bl:r.mode==='mock'?'Full Mock':(r.subject||'')+' · Ch.'+(r.chapter||''),bw:Date.now(),upd:Date.now()},{merge:true}); bn++;
+    }
+    logln('✅ Best test scores added: '+bn+'\n🎉 Migration complete.');
+    lsSet('dsa_priv_mig',String(Date.now()));
+  }catch(e){ console.warn(e); logln('❌ '+(e&&e.message||e)); }
+  B.busy=''; refresh();
+};
+
+
+/* ================= privacy check (live self-test of the Firestore rules) ================= */
+B.priv=null;
+B.privCheck=async function(){
+  var d=fdb(), u=user(); if(!d||!u||!u.uid){ toast('Live mode + login chahiye','⚠️'); return; }
+  B.busy='priv'; B.priv=null; refresh();
+  var P=[], c=function(n){ return d.collection(n); }, me=u.email, role=u.role;
+  function add(name,expect,fn){ P.push({name:name,expect:expect,fn:fn}); }
+  add('Apni profile padhna','allow',function(){ return c('users').doc(u.uid).get(); });
+  add('Leaderboard cards padhna','allow',function(){ return c('lb').limit(1).get(); });
+  if(role==='student'){
+    add('Apne test results (email se)','allow',function(){ return c('testResults').where('email','==',me).limit(1).get(); });
+    add('Apni attendance','allow',function(){ return c('attendance').where('email','==',me).limit(1).get(); });
+    add('Apne doubts','allow',function(){ return c('doubts').where('email','==',me).limit(1).get(); });
+    add('Doosre students ki profile (list)','deny',function(){ return c('users').where('role','==','student').limit(1).get(); });
+    add('Sab ke test results','deny',function(){ return c('testResults').limit(1).get(); });
+    add('Sab ke doubts','deny',function(){ return c('doubts').limit(1).get(); });
+    add('Sab ki attendance','deny',function(){ return c('attendance').limit(1).get(); });
+    add('Sab ke class test results','deny',function(){ return c('classTestResults').limit(1).get(); });
+    add('Sab ka homework record','deny',function(){ return c('homeworkDone').limit(1).get(); });
+    add('Kisi aur ka email se test result','deny',function(){ return c('testResults').where('email','==','someone.else@example.com').limit(1).get(); });
+  } else if(role==='parent'){
+    var ls=await c('parentLinks').where('parentUid','==',u.uid).get(), ap=ls.docs.map(function(x){ return Object.assign({id:x.id},x.data()); }).filter(function(l){ return l.status==='approved'; });
+    if(window.PTLink) await window.PTLink.ensureAll(ap).catch(function(){});
+    ap.forEach(function(l){
+      add('Bachche ('+l.childEmail+') ke test results','allow',function(){ return c('testResults').where('email','==',l.childEmail).limit(1).get(); });
+      add('Bachche ki attendance','allow',function(){ return c('attendance').where('email','==',l.childEmail).limit(1).get(); });
+      if(l.childUid) add('Bachche ki profile','allow',function(){ return c('users').doc(l.childUid).get(); });
+    });
+    add('Kisi aur bachche ke test results','deny',function(){ return c('testResults').where('email','==','someone.else@example.com').limit(1).get(); });
+    add('Sab students ki profile (list)','deny',function(){ return c('users').where('role','==','student').limit(1).get(); });
+    add('Sab ke test results','deny',function(){ return c('testResults').limit(1).get(); });
+    if(!ap.length) add('(Koi approved bachcha link nahi — parent checks adhoore)','allow',function(){ return Promise.resolve(); });
+  } else { // faculty / admin
+    add('Students ki list padhna','allow',function(){ return c('users').where('role','==','student').limit(1).get(); });
+    add('Test results padhna','allow',function(){ return c('testResults').limit(1).get(); });
+    add('Doubts padhna','allow',function(){ return c('doubts').limit(1).get(); });
+    add('Attendance padhna','allow',function(){ return c('attendance').limit(1).get(); });
+  }
+  var out=[];
+  for(var i=0;i<P.length;i++){
+    var r='allow', code='';
+    try{ await P[i].fn(); }catch(e){ code=(e&&e.code)||''; r=/permission/.test(code+(e&&e.message||''))?'deny':'error'; }
+    out.push({name:P[i].name,expect:P[i].expect,got:r,ok:r===P[i].expect});
+  }
+  B.priv=out; B.busy=''; refresh();
+};
+
 /* ================= screens ================= */
 window.renderBackup=function(){
   var u=user(); if(!u) return renderAuth();
@@ -152,6 +238,13 @@ window.renderBackup=function(){
       '<pre id="bkpLog" style="margin-top:12px;max-height:180px;overflow:auto;background:var(--paper-2);padding:10px 12px;border-radius:10px;font-size:12px;white-space:pre-wrap">'+esc(B.log)+'</pre>'+
       '<div style="font-size:12px;color:var(--faint);margin-top:8px">Restore of institute data is done by Claude from this file (safer than a button) — send the file when needed.</div>');
   }
+  h+=card('<b>🔒 Privacy check</b><div style="font-size:13px;color:var(--muted);margin:6px 0 12px">Live rules ka self-test: aapke role ke hisaab se kuch reads try karta hai jo allowed hone chahiye aur kuch jo band hone chahiye.</div>'+
+    '<button class="btn btn-outline btn-sm" '+((!canLive||B.busy)?'disabled':'')+' onclick="BKP.privCheck()">'+(B.busy==='priv'?'Checking…':'▶ Run privacy check')+'</button>'+
+    (B.priv?'<table class="table-simple" style="margin-top:12px;width:100%"><thead><tr><th>Check</th><th>Hona chahiye</th><th>Mila</th><th></th></tr></thead><tbody>'+B.priv.map(function(x){ return '<tr><td>'+esc(x.name)+'</td><td>'+(x.expect==='allow'?'✅ allowed':'🚫 blocked')+'</td><td>'+(x.got==='allow'?'allowed':x.got==='deny'?'blocked':'error')+'</td><td>'+(x.ok?'✅':'❌')+'</td></tr>'; }).join('')+'</tbody></table>'+
+      (B.priv.some(function(x){ return !x.ok&&x.expect==='allow'; })?'<div style="color:var(--red-600);font-size:13px;margin-top:8px">⚠️ Koi zaroori access band ho gaya — rules me gadbad. Purani (v3) rules wapas paste karo aur mujhe ye table batao.</div>':'')+
+      (B.priv.some(function(x){ return !x.ok&&x.expect==='deny'; })?'<div style="color:var(--gold-600);font-size:13px;margin-top:8px">ℹ️ ❌ with "blocked" expected = data abhi bhi khula hai (Phase B rules abhi publish nahi hue).</div>':'')+
+      (B.priv.every(function(x){ return x.ok; })?'<div style="color:var(--green-700);font-size:13px;margin-top:8px">✅ Sab sahi — privacy rules theek kaam kar rahe hain.</div>':''):''));
+  if(u.role==='admin') h+=card('<b>🔐 Privacy migration (ek baar)</b><div style="font-size:13px;color:var(--muted);margin:6px 0 10px">Nayi privacy rules publish karne ke BAAD ye ek baar chalao: purane parent links ko verify-ready banata hai aur leaderboard cards banata hai.'+(+lsGet('dsa_priv_mig')?'<br>Last run: <b>'+new Date(+lsGet('dsa_priv_mig')).toLocaleDateString()+'</b>':'')+'</div><button class="btn btn-gold btn-sm" '+(B.busy?'disabled':'')+' onclick="BKP.migrate()">'+(B.busy==='mig'?'Running…':'▶ Run privacy migration')+'</button>');
   h+=card('<b>🐞 Is phone ki problem report</b><div style="font-size:13px;color:var(--muted);margin:6px 0 12px">'+(errs.length?errs.length+' error(s) is device par record hue. Agar app me kuch galat chal raha hai to report copy karke admin ko bhejo.':'Koi error record nahi hua. 👍')+'</div>'+
     '<button class="btn btn-outline btn-sm" '+(errs.length?'':'disabled')+' onclick="BKP.copyLocal()">📋 Copy report</button> <button class="btn btn-ghost btn-sm" '+(errs.length?'':'disabled')+' onclick="BKP.clearLocal()">Clear</button>');
   return shell(h);

@@ -748,6 +748,7 @@ function loadParentLinks(){
   if(!window.FIREBASE_ENABLED) return Promise.resolve([]);
   return fbDb.collection('parentLinks').where('parentUid','==',DB.currentUser.uid).get()
     .then(snap=>snap.docs.map(d=>Object.assign({id:d.id}, d.data())))
+    .then(rows=>(window.PTLink?window.PTLink.ensureAll(rows):Promise.resolve()).then(()=>rows,()=>rows)) // register verified links before child data is read
     .catch(()=>[]);
 }
 function requestChildLink(childEmail){
@@ -771,7 +772,14 @@ function loadChildData(childEmail){
   return Promise.all([
     fbDb.collection('testResults').where('email','==',childEmail).get().then(s=>s.docs.map(d=>d.data())),
     fbDb.collection('doubts').where('email','==',childEmail).get().then(s=>s.docs.map(d=>d.data())),
-    fbDb.collection('users').where('email','==',childEmail).limit(1).get().then(s=>s.empty?null:Object.assign({uid:s.docs[0].id}, s.docs[0].data()))
+    // Privacy: a child's profile is read BY UID and only through a verified link (linkOk), never by e-mail search.
+    (function(){
+      const link=(DB._parentLinksCache||[]).find(l=>l.childEmail===childEmail && l.status==='approved');
+      if(!link || !link.childUid || !window.PTLink) return null;
+      return window.PTLink.ensure({uid:link.childUid,email:childEmail,linkId:link.id})
+        .then(()=>fbDb.collection('users').doc(link.childUid).get())
+        .then(d=>d.exists?Object.assign({uid:d.id}, d.data()):null).catch(()=>null);
+    })()
   ]).then(([results, doubts, profile])=>({childEmail, results, doubts, profile}));
 }
 
@@ -783,7 +791,7 @@ function loadPendingLinkRequests(){
     .catch(()=>[]);
 }
 function respondToLinkRequest(id, approve){
-  fbDb.collection('parentLinks').doc(id).update({status: approve?'approved':'rejected'})
+  fbDb.collection('parentLinks').doc(id).update(approve?{status:'approved', childUid: DB.currentUser.uid}:{status:'rejected'})
     .then(()=>{
       toast(approve?'Parent link approved ✅':'Request rejected');
       DB._pendingLinkRequests = (DB._pendingLinkRequests||[]).filter(r=>r.id!==id);
@@ -1274,6 +1282,13 @@ function submitTest(){
   if(window.FIREBASE_ENABLED){
     fbDb.collection('testResults').add(Object.assign({}, result, {when: firebase.firestore.FieldValue.serverTimestamp()}))
       .catch(err=>console.error('[DSA] could not save result', err));
+    try{ // public leaderboard card keeps only the BEST score
+      const best = DB.results.reduce((m,r)=>(r.pct>(m?m.pct:-1)?r:m), null);
+      if(best===result && DB.currentUser.role==='student'){
+        const p=String(DB.currentUser.name||'Student').trim().split(/\s+/);
+        fbDb.collection('lb').doc(DB.currentUser.uid).set({n:p[0]+(p[1]?' '+p[1][0]+'.':''), bp:Math.round(result.pct), bl: result.mode==='mock'?'Full Mock':`${result.subject} · Ch.${result.chapter}`, bw:Date.now(), upd:Date.now()},{merge:true}).catch(()=>{});
+      }
+    }catch(e){}
   }
   go('result', {});
 }
@@ -1526,10 +1541,11 @@ function loadLeaderboard(){
     const mine = DB.results.map(r=>({name:DB.currentUser.name, pct:r.pct, subject: r.mode==='mock'?'Full Mock':`${r.subject} · Ch.${r.chapter}`, when: formatWhen(r.when)}));
     return Promise.resolve(DEMO_LEADERBOARD.concat(mine).sort((a,b)=>b.pct-a.pct).slice(0,15));
   }
-  return fbDb.collection('testResults').orderBy('pct','desc').limit(15).get()
+  // Privacy: ranks the public leaderboard cards (first name + best score), not everyone's test results.
+  return fbDb.collection('lb').orderBy('bp','desc').limit(15).get()
     .then(snap=>snap.docs.map(d=>{
       const x = d.data();
-      return {name:x.name, pct:x.pct, subject: x.mode==='mock'?'Full Mock':`${x.subject} · Ch.${x.chapter}`, when: formatWhen(x.when)};
+      return {name:x.n||'Student', pct:x.bp||0, subject:x.bl||'', when: x.bw?new Date(x.bw).toLocaleDateString():''};
     }))
     .catch(()=>DEMO_LEADERBOARD);
 }
@@ -2184,6 +2200,7 @@ function loadStudentFullRecord(uid){
 function banStudent(uid, banned){
   fbDb.collection('users').doc(uid).update({banned})
     .then(()=>{
+      if(banned) fbDb.collection('lb').doc(uid).delete().catch(()=>{}); // drop from public leaderboards
       toast(banned ? 'Student banned 🚫' : 'Student access restored ✅');
       if(DB._studentDetailCache && DB._studentDetailCache.uid===uid) DB._studentDetailCache.banned = banned;
       if(DB._studentsCache){ const s = DB._studentsCache.find(x=>x.uid===uid); if(s) s.banned = banned; }

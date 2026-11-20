@@ -60,11 +60,12 @@ function loadKids(){
   d.collection('parentLinks').where('parentUid','==',u.uid).get().then(function(s){
     var links=s.docs.map(function(x){ return Object.assign({id:x.id},x.data()); }).filter(function(l){ return l.status==='approved'; });
     return Promise.all(links.map(function(l){
-      return d.collection('users').where('email','==',l.childEmail).limit(1).get().then(function(r){
-        if(r.empty) return null; var c=r.docs[0]; return {uid:c.id,name:c.data().name||l.childEmail,email:l.childEmail,linkId:l.id};
+      if(!l.childUid) return {uid:'',name:l.childEmail,email:l.childEmail,linkId:l.id,pending:true}; // old link: needs the one-time migration
+      return ensureLinkOk({uid:l.childUid,email:l.childEmail,linkId:l.id}).then(function(){ return d.collection('users').doc(l.childUid).get(); }).then(function(r){
+        return r.exists?{uid:r.id,name:r.data().name||l.childEmail,email:l.childEmail,linkId:l.id}:null;
       }).catch(function(){ return null; });
     }));
-  }).then(function(a){ P.kids=a.filter(Boolean); }).catch(function(){ P.kids=[]; }).then(function(){ P.kidsBusy=false; refresh(); });
+  }).then(function(a){ P.kids=a.filter(function(k){ return k&&!k.pending; }); P.kidsPending=a.filter(function(k){ return k&&k.pending; }).length; }).catch(function(){ P.kids=[]; }).then(function(){ P.kidsBusy=false; refresh(); });
 }
 function loadFaculty(){
   var d=fdb(); if(!d||P.faculty||P.facBusy) return; P.facBusy=true;
@@ -76,6 +77,19 @@ function ensureLinkOk(kid){ // proof (checked by the rules) that this child real
   var d=fdb(), u=user(), id=u.uid+'_'+kid.uid, ref=d.collection('linkOk').doc(id);
   return ref.get().then(function(s){ if(s.exists) return; return ref.set({parentUid:u.uid,childUid:kid.uid,childEmail:kid.email,linkId:kid.linkId}); });
 }
+function ensureLinkMail(l){ // proof, per child e-mail, used by the privacy rules for results / attendance / doubts
+  var d=fdb(), u=user(), id=u.uid+'_'+l.childEmail, ref=d.collection('linkMail').doc(id);
+  return ref.get().then(function(s){ if(s.exists) return; return ref.set({parentUid:u.uid,childEmail:l.childEmail,linkId:l.id}); });
+}
+window.PTLink={
+  ensure:function(kid){ return ensureLinkOk(kid); },
+  ensureAll:function(links){
+    if(!fdb()||!user()||user().role!=='parent') return Promise.resolve();
+    return Promise.all(links.filter(function(l){ return l.status==='approved'; }).map(function(l){
+      return ensureLinkMail(l).then(function(){ if(l.childUid) return ensureLinkOk({uid:l.childUid,email:l.childEmail,linkId:l.id}); }).catch(function(){});
+    }));
+  }
+};
 
 /* ---------- open / listen ---------- */
 function stopListen(){ if(P.unsub){ try{ P.unsub(); }catch(e){} P.unsub=null; } if(P.tick){ clearInterval(P.tick); P.tick=null; } }
@@ -158,7 +172,7 @@ window.renderPT=function(){
 function scrCompose(){
   var c=P.comp; loadKids(); loadFaculty();
   if(!P.kids||!P.faculty) return head('✉️ New message','')+card('<div style="text-align:center;color:var(--muted);padding:16px">⏳ Loading teachers…</div>');
-  if(!P.kids.length) return head('✉️ New message','')+card('Pehle apne bachche ka link approve karwao (Overview → Link your child). Uske baad yahan se message kar sakte ho.')+'<button class="btn btn-outline btn-sm" onclick="PT.back()">← Back</button>';
+  if(!P.kids.length) return head('✉️ New message','')+card(P.kidsPending?'Aapka link purana hai — bachche ko app ek baar kholkar Overview me link dobara approve karna hoga (ya admin ko "Privacy migration" chalane ko bolo).':'Pehle apne bachche ka link approve karwao (Overview → Link your child). Uske baad yahan se message kar sakte ho.')+'<button class="btn btn-outline btn-sm" onclick="PT.back()">← Back</button>';
   if(!c.kid&&P.kids.length===1) c.kid=P.kids[0].uid;
   return head('✉️ New message','Teacher aur office ko seedha likho')+
   card('<div class="field"><label>Kis bachche ke baare me?</label><select id="ptKid" onchange="PT.compSet(\'kid\',this.value)"><option value="">— chuno —</option>'+P.kids.map(function(k){ return '<option value="'+esc(k.uid)+'" '+(c.kid===k.uid?'selected':'')+'>'+esc(k.name)+'</option>'; }).join('')+'</select></div>'+
