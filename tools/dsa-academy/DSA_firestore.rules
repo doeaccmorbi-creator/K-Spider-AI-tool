@@ -1,0 +1,516 @@
+/* =========================================================================
+   Firestore Security Rules — Dr. Shreyansh Academy
+   -------------------------------------------------------------------------
+   HOW TO USE:
+   1. Firebase Console → Build → Firestore Database → Rules tab
+      (project: dsacademy-42f59  — the DSA project, NOT the kspideraimain one)
+   2. Delete everything there and paste this whole file
+   3. Click "Publish"
+
+   LEVEL 1 HARDENING (kept): only the admin's verified Google sign-in can create
+   an admin profile; new profiles must be student / parent / faculty(approved:false)
+   with plan 'free'; a person can no longer edit role, email, approved, banned,
+   cls, createdAt or any fee / admin-note field on their own profile.
+
+   PREMIUM (this version): "plan", "planExpiry" and "planSince" are now ADMIN-ONLY
+   fields, so a student can no longer switch themselves to Premium. Students pay
+   by UPI and file a request (premiumRequests, document id = the UPI transaction
+   id, so one id can only be used once); the admin verifies it in their UPI app
+   and activates Premium from kspiderai.in/admin → DSA Admin → 💎 Premium.
+   The full question bank is readable only while plan == 'premium' AND the
+   expiry date (if any) has not passed. "config/premium" holds the UPI id and
+   plan prices (everyone signed-in reads, only the admin writes).
+
+   QUESTION BANK AUTHORING (this version): approved teachers send questions to
+   "questionDrafts"; only the admin can publish them into the bank (mcqBank).
+
+   HOMEWORK + LIVE QUIZ (this version): homework assignments with one completion record per student;
+   real-time quizzes whose answer key is readable only by the host until each answer is revealed.
+
+   PRIVACY #7 (this version): users/{student} no longer readable by other students / anonymous users;
+   parentLinks.update limited to status+childUid; new public collection lb (leaderboard cards).
+   PARENT-TEACHER MESSAGING + ERROR LOG (this version): new collections linkOk, ptThreads (+msgs)
+   and errorLogs — see the blocks at the bottom. Nothing else was changed.
+
+   Everything else (MCQ hub, lectures, classwork, learning hub, batches) is
+   unchanged from the previous version.
+   ========================================================================= */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    function isAdmin() {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    function isFacultyFor(subject) {
+      return isSignedIn() &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subject == subject &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true;
+    }
+    function isNotBanned() {
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.banned != true;
+    }
+    function myEmail() {
+      return isSignedIn() && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email
+        : null;
+    }
+
+    // ---- Level 1 hardening helpers (used only by the "users" block) ----
+
+    // True only for the real admin's verified Google sign-in token.
+    function isAdminToken() {
+      return isSignedIn()
+        && request.auth.token.get('email', '').lower() == 'kspider221206@gmail.com'
+        && request.auth.token.get('email_verified', false) == true;
+    }
+
+    // Rules for a brand-new profile document (create).
+    function newProfileOk(d) {
+      return d.get('plan', 'free') == 'free'
+        && !d.keys().hasAny(['banned', 'feeTotal', 'feePaid', 'feeDueDate', 'feeHistory', 'adminNote', 'lastFeeReminder', 'planExpiry', 'planSince'])
+        && (
+             request.auth.token.firebase.sign_in_provider == 'anonymous'
+          || d.get('email', '').lower() == request.auth.token.get('email', '').lower()
+           )
+        && (
+             (d.role == 'admin' && isAdminToken())
+          || (d.role == 'faculty' && d.get('approved', null) == false)
+          || (d.role in ['student', 'parent'] && !('approved' in d))
+           );
+    }
+
+    // Fields only the admin may change on someone's profile.
+    function lockedUserKeys() {
+      return ['role', 'email', 'approved', 'banned', 'cls', 'createdAt',
+              'feeTotal', 'feePaid', 'feeDueDate', 'feeHistory',
+              'adminNote', 'lastFeeReminder',
+              'plan', 'planExpiry', 'planSince'];
+    }
+
+    // A person editing their OWN profile (not an admin).
+    function selfEditOk() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(lockedUserKeys())
+        && (
+             !request.resource.data.diff(resource.data).affectedKeys().hasAny(['subject'])
+          || resource.data.get('approved', false) != true
+           );
+    }
+
+    match /parentLinks/{linkId} {
+      allow create: if isSignedIn() && request.resource.data.parentUid == request.auth.uid;
+      allow read: if isSignedIn() && (resource.data.parentUid == request.auth.uid || myEmail() == resource.data.childEmail || isAdmin());
+      allow update: if isSignedIn() && myEmail() == resource.data.childEmail // only the student being linked can approve/reject
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','childUid'])
+        && request.resource.data.get('childUid', request.auth.uid) == request.auth.uid
+        || isAdmin() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['childUid']); // admin privacy migration fills childUid on old links
+      allow delete: if isSignedIn() && resource.data.parentUid == request.auth.uid; // parent can cancel their own request
+    }
+
+    match /announcements/{annId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      // PRIVACY (#7): a student's profile (e-mail, fees, admin note, progress) is readable only by
+      // the student, admin, approved faculty, and a parent whose link the student approved (linkOk).
+      // Other students / anonymous users can no longer read it. Faculty profiles stay readable
+      // (needed for doubts + messaging). Public leaderboards use the separate "lb" collection.
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin() || isStaff()
+        || resource.data.role == 'faculty'
+        || (resource.data.role == 'student' && exists(/databases/$(database)/documents/linkOk/$(request.auth.uid + '_' + userId))));
+      // Level 1: admin can only be created from the real admin's verified token (see header).
+      allow create: if isSignedIn() && request.auth.uid == userId
+        && newProfileOk(request.resource.data);
+      // Level 1: admin may update anything (same admin-email guard as before);
+      // everyone else may only edit their own profile, minus the locked fields (incl. plan).
+      allow update: if isSignedIn()
+        && (isAdmin() || (request.auth.uid == userId && selfEditOk()))
+        && (request.resource.data.role != 'admin' || request.resource.data.email.lower() == 'kspider221206@gmail.com');
+      allow delete: if false;
+    }
+
+    match /testResults/{resultId} {
+      allow create: if isSignedIn() && isNotBanned() && request.resource.data.email is string && request.resource.data.email.size() > 3;
+      allow read: if isSignedIn(); // parents/admin need broader read — tighten once child-linking is verified server-side
+      allow update, delete: if false;
+    }
+
+    match /doubts/{doubtId} {
+      allow create: if isSignedIn() && isNotBanned() && request.resource.data.email is string && request.resource.data.email.size() > 3;
+      allow read: if isSignedIn(); // student reads own via query filter; admin inbox reads all
+      allow update: if isAdmin() || isFacultyFor(resource.data.subject) // admin or matching-subject faculty can reply
+        || (isSignedIn() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['aiAnswer'])); // anyone signed-in may attach the instant AI answer only — no other field
+      allow delete: if false;
+    }
+
+    /* ======================================================================
+       MCQ PRACTICE HUB  (NEW — nothing above this line was changed)
+       ====================================================================== */
+    function isPremiumStudent() {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.plan == 'premium' &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('planExpiry', null) == null
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.planExpiry > request.time);
+    }
+
+    // Chapter list + counts (names only, no questions)
+    match /mcqMeta/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Free sample: 10 questions per chapter
+    match /mcqFree/{chapterId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Full question bank: Premium students, the admin, and approved faculty (to build class tests)
+    match /mcqBank/{chapterId} {
+      allow read: if isAdmin() || isStaff() || (isSignedIn() && isNotBanned() && isPremiumStudent());
+      allow write: if isAdmin();
+    }
+
+    // Each student's own practice progress (document id = their uid)
+    match /mcqProgress/{uid} {
+      allow read: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn() && request.auth.uid == uid && isNotBanned()
+        && request.resource.data.keys().hasOnly(['v','ch','wrong','mark','hist','streak','daily','days','goal','todo','upd']);
+      allow delete: if isSignedIn() && request.auth.uid == uid;
+    }
+    // Students can flag a wrong question; only the admin can read / clear reports
+    match /mcqReports/{reportId} {
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.keys().hasOnly(['qid','k','q','reason','by','uid','when'])
+        && request.resource.data.uid == request.auth.uid;
+      allow read, delete: if isAdmin();
+      allow update: if false;
+    }
+
+    /* ======================================================================
+       CAMPUS: timetable, resource library, attendance  (NEW)
+       "Staff" = the admin, or a faculty member the admin has approved.
+       ====================================================================== */
+    function isStaff() {
+      return isAdmin() || (isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'faculty' &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.approved == true);
+    }
+
+    match /schedule/{classId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.keys().hasOnly(['date','time','dur','subject','topic','teacher','link','batchId','batchName','by','byUid','when'])
+        && request.resource.data.link.matches('^$|^https://.*');
+      allow delete: if isStaff();
+      allow update: if false;
+    }
+
+    match /resources/{resId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.keys().hasOnly(['subject','chapter','title','url','type','by','byUid','when'])
+        && request.resource.data.url.matches('^https://.*');
+      allow delete: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    // Attendance: one record per student per class. Staff write; any signed-in user can read
+    // (same openness as testResults, so parents can see their linked child's record).
+    match /attendance/{recId} {
+      allow read: if isSignedIn();
+      allow create, update: if isStaff() && request.resource.data.keys().hasOnly(['uid','email','name','date','subject','status','by','when'])
+        && request.resource.data.status in ['P','A'];
+      allow delete: if isAdmin();
+    }
+
+    /* ======================================================================
+       CLASSWORK: notifications, class tests  (NEW)
+       ====================================================================== */
+    // Personal notifications (fee reminders, new-test alerts). The recipient is matched by email.
+    match /notifications/{noteId} {
+      allow create: if isStaff() && request.resource.data.keys().hasOnly(['toEmail','title','msg','kind','by','when','read']);
+      allow read: if isAdmin() || (isSignedIn() && myEmail() == resource.data.toEmail);
+      allow update: if isSignedIn() && myEmail() == resource.data.toEmail
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if isAdmin() || (isSignedIn() && myEmail() == resource.data.toEmail);
+    }
+
+    // Teacher-made class tests (questions are stored inside the test)
+    match /facultyTests/{testId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.keys().hasOnly(['title','subject','mins','count','qs','batchId','batchName','by','byUid','active','when'])
+        && request.resource.data.qs.size() >= 1 && request.resource.data.qs.size() <= 60
+        && request.resource.data.byUid == request.auth.uid;
+      allow update: if isStaff() && (isAdmin() || resource.data.byUid == request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['active']);
+      allow delete: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid);
+    }
+
+    // One result per student per test: the document id is "<testId>_<uid>" and can never be overwritten
+    match /classTestResults/{resultId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.uid == request.auth.uid
+        && resultId == request.resource.data.testId + '_' + request.auth.uid
+        && request.resource.data.keys().hasOnly(['testId','uid','email','name','title','score','max','correct','wrong','skipped','secs','ans','when']);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    /* ======================================================================
+       VIDEO LECTURES  (NEW) — only links are stored (YouTube / Drive), never video files
+       ====================================================================== */
+    match /lectures/{lectureId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.keys().hasOnly(['title','subject','chapter','topic','videos','live','by','byUid','when'])
+        && request.resource.data.byUid == request.auth.uid
+        && request.resource.data.videos.size() >= 1 && request.resource.data.videos.size() <= 20;
+      allow update: if isStaff() && (isAdmin() || resource.data.byUid == request.auth.uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['videos','live'])
+        && request.resource.data.videos.size() >= 1 && request.resource.data.videos.size() <= 20;
+      allow delete: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid);
+    }
+
+    // Each student's own "watched" ticks (document id = their uid)
+    match /lectureWatch/{uid} {
+      allow read, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn() && request.auth.uid == uid && isNotBanned()
+        && request.resource.data.keys().hasOnly(['w','upd']);
+    }
+
+    /* ======================================================================
+       LEARNING HUB  (NEW)
+       ====================================================================== */
+    // Each student's own revision schedule, mistake notebook, plan and mock history (document id = their uid)
+    match /learnData/{uid} {
+      allow read, delete: if isSignedIn() && request.auth.uid == uid;
+      allow create, update: if isSignedIn() && request.auth.uid == uid && isNotBanned()
+        && request.resource.data.keys().hasOnly(['v','srs','nb','seen','plan','td','mocks','gx','bd','upd']);
+    }
+
+    // Shared, anonymous per-question counters (attempts / correct) used to label Easy / Medium / Hard
+    match /qStats/{chapterId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isNotBanned()
+        && request.resource.data.keys().hasOnly(['s']);
+      allow delete: if isAdmin();
+    }
+
+    /* ======================================================================
+       BATCHES  (NEW) — students join with a 6-letter code; staff create batches
+       ====================================================================== */
+    match /batches/{batchId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.keys().hasOnly(['name','cls','exam','time','code','by','byUid','when'])
+        && request.resource.data.byUid == request.auth.uid;
+      allow delete: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    /* ======================================================================
+       PREMIUM PAYMENTS  (NEW) — UPI payment, admin-verified activation
+       ====================================================================== */
+    // UPI id + plan prices shown on the Plans screen
+    match /config/{docId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // A student's payment claim. Document id = the UPI transaction id, so the same id can never be used twice.
+    match /premiumRequests/{reqId} {
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.utr == reqId
+        && request.resource.data.keys().hasOnly(['uid','email','name','planId','planName','days','amount','utr','status','kind','when'])
+        && request.resource.data.kind in ['new','restore'];
+      allow read: if isAdmin() || (isSignedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if isAdmin();
+    }
+
+    /* ======================================================================
+       QUESTION BANK AUTHORING  (NEW) — teachers send questions, the admin approves them
+       ====================================================================== */
+    match /questionDrafts/{draftId} {
+      allow create: if isStaff() && request.resource.data.byUid == request.auth.uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.keys().hasOnly(['exam','subject','chapter','cls','tag','year','q','o','a','e','img','by','byUid','byEmail','status','note','when'])
+        && request.resource.data.o.size() == 4
+        && request.resource.data.a in [0,1,2,3]
+        && request.resource.data.q.size() >= 12 && request.resource.data.q.size() <= 600
+        && request.resource.data.img.matches('^$|^https://.*');
+      allow read: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid);
+      allow update: if isAdmin();
+      allow delete: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid && resource.data.status == 'pending');
+    }
+
+    /* ======================================================================
+       HOMEWORK  (NEW) — teacher assigns a practice set; students complete it once
+       ====================================================================== */
+    match /homework/{hwId} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.byUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['title','exam','subject','chs','count','due','batchId','batchName','note','qs','by','byUid','when'])
+        && request.resource.data.qs.size() >= 1 && request.resource.data.qs.size() <= 40;
+      allow delete: if isAdmin() || (isStaff() && resource.data.byUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    // One completion record per student per homework (document id = "<homeworkId>_<uid>"), never overwritten
+    match /homeworkDone/{doneId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.uid == request.auth.uid
+        && doneId == request.resource.data.hwId + '_' + request.auth.uid
+        && request.resource.data.keys().hasOnly(['hwId','uid','email','name','n','a','c','secs','late','when']);
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    /* ======================================================================
+       LIVE QUIZ  (NEW) — real-time class quiz; answers stay in a host-only document until revealed
+       ====================================================================== */
+    match /liveQuiz/{code} {
+      allow read: if isSignedIn();
+      allow create: if isStaff() && request.resource.data.hostUid == request.auth.uid
+        && request.resource.data.keys().hasOnly(['title','hostUid','hostName','state','qi','total','secs','q','t0','ans','dist','ex','scores','batchId','when'])
+        && request.resource.data.total <= 25;
+      allow update: if isSignedIn() && resource.data.hostUid == request.auth.uid;
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.hostUid == request.auth.uid);
+
+      // the answer key — only the host can ever read it
+      match /keys/{keyId} {
+        allow read, write: if isSignedIn() && get(/databases/$(database)/documents/liveQuiz/$(code)).data.hostUid == request.auth.uid;
+      }
+      match /players/{playerId} {
+        allow read: if isSignedIn();
+        allow create: if isSignedIn() && playerId == request.auth.uid && request.resource.data.keys().hasOnly(['name','when']);
+        allow update: if false;
+        allow delete: if isSignedIn() && (playerId == request.auth.uid || get(/databases/$(database)/documents/liveQuiz/$(code)).data.hostUid == request.auth.uid);
+      }
+      match /answers/{answerId} {
+        allow create: if isSignedIn() && request.resource.data.uid == request.auth.uid
+          && answerId == string(request.resource.data.qi) + '_' + request.auth.uid
+          && request.resource.data.keys().hasOnly(['qi','uid','name','o','ms','when'])
+          && request.resource.data.o in [0,1,2,3];
+        allow read, delete: if isSignedIn() && get(/databases/$(database)/documents/liveQuiz/$(code)).data.hostUid == request.auth.uid;
+        allow update: if false;
+      }
+    }
+
+    /* ======================================================================
+       PARENT <-> TEACHER MESSAGING  (NEW)
+       linkOk  : proof that a child really approved this parent. The parent
+                 creates it, but the rule re-checks the approved parentLinks
+                 record and the child's e-mail, so it cannot be faked.
+       ptThreads: one conversation per (parent, teacher/office, child).
+                 Only the parent, that teacher (or admin for "office") and the
+                 admin can read it.
+       ====================================================================== */
+    match /linkOk/{linkOkId} {
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.keys().hasOnly(['parentUid','childUid','childEmail','linkId'])
+        && request.resource.data.parentUid == request.auth.uid
+        && linkOkId == request.auth.uid + '_' + request.resource.data.childUid
+        && get(/databases/$(database)/documents/parentLinks/$(request.resource.data.linkId)).data.parentUid == request.auth.uid
+        && get(/databases/$(database)/documents/parentLinks/$(request.resource.data.linkId)).data.status == 'approved'
+        && get(/databases/$(database)/documents/parentLinks/$(request.resource.data.linkId)).data.childEmail == request.resource.data.childEmail
+        && get(/databases/$(database)/documents/users/$(request.resource.data.childUid)).data.email == request.resource.data.childEmail;
+      allow read: if isSignedIn() && (resource.data.parentUid == request.auth.uid || resource.data.childUid == request.auth.uid || isAdmin());
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.parentUid == request.auth.uid);
+      allow update: if false;
+    }
+
+    function ptStaffOk(staffId) {
+      return staffId == 'office'
+        || (exists(/databases/$(database)/documents/users/$(staffId))
+            && get(/databases/$(database)/documents/users/$(staffId)).data.role == 'faculty'
+            && get(/databases/$(database)/documents/users/$(staffId)).data.approved == true);
+    }
+    function ptMember(t) {
+      return isSignedIn() && (t.parentUid == request.auth.uid || t.staffId == request.auth.uid || isAdmin());
+    }
+
+    match /ptThreads/{threadId} {
+      allow read: if ptMember(resource.data);
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.keys().hasOnly(['parentUid','parentName','parentEmail','staffId','staffName','staffRole','staffSubject','childUid','childName','last','lastBy','lastTs','unreadP','unreadS','created'])
+        && request.resource.data.parentUid == request.auth.uid
+        && threadId == request.auth.uid + '_' + request.resource.data.staffId + '_' + request.resource.data.childUid
+        && ptStaffOk(request.resource.data.staffId)
+        && exists(/databases/$(database)/documents/linkOk/$(request.auth.uid + '_' + request.resource.data.childUid));
+      allow update: if ptMember(resource.data) && isNotBanned()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['last','lastBy','lastTs','unreadP','unreadS']);
+      allow delete: if isAdmin();
+
+      match /msgs/{msgId} {
+        allow read: if ptMember(get(/databases/$(database)/documents/ptThreads/$(threadId)).data);
+        allow create: if isSignedIn() && isNotBanned()
+          && request.resource.data.keys().hasOnly(['from','side','name','text','ts'])
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.text is string && request.resource.data.text.size() > 0 && request.resource.data.text.size() <= 1000
+          && (
+               (request.resource.data.side == 'p' && get(/databases/$(database)/documents/ptThreads/$(threadId)).data.parentUid == request.auth.uid)
+            || (request.resource.data.side == 's' && (get(/databases/$(database)/documents/ptThreads/$(threadId)).data.staffId == request.auth.uid || isAdmin()))
+             );
+        allow update: if false;
+        allow delete: if isAdmin();
+      }
+    }
+
+    /* ======================================================================
+       ERROR LOG  (NEW) — one document per distinct error per day; the same
+       error again only raises "count" by exactly 1. Only the admin reads it.
+       ====================================================================== */
+    match /errorLogs/{errId} {
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.keys().hasOnly(['msg','src','line','stack','kind','ver','view','role','ua','uid','count','last'])
+        && request.resource.data.count == 1
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.msg is string && request.resource.data.msg.size() <= 400
+        && request.resource.data.get('stack','') is string && request.resource.data.get('stack','').size() <= 1200;
+      allow update: if isSignedIn() && isNotBanned()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['count','last','ua','view','role','ver','uid'])
+        && request.resource.data.count == resource.data.count + 1;
+      allow read, delete: if isAdmin();
+    }
+
+    /* ======================================================================
+       PUBLIC LEADERBOARD CARDS  (NEW, privacy #7)
+       Only first name + XP / weekly count / batch id. Everyone signed-in may read;
+       a student writes only his own card; admin may seed / delete.
+       ====================================================================== */
+    match /lb/{lbId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn()
+        && (request.auth.uid == lbId && isNotBanned() || isAdmin())
+        && request.resource.data.keys().hasOnly(['n','xp','lv','w','wxp','b','n7','upd','bp','bl','bw'])
+        && request.resource.data.n is string && request.resource.data.n.size() <= 30;
+      allow delete: if isAdmin() || request.auth.uid == lbId;
+    }
+
+    /* linkMail: per child e-mail proof (parent creates, rule re-checks the approved link). Used by Phase-B read rules. */
+    match /linkMail/{lmId} {
+      allow create: if isSignedIn() && isNotBanned()
+        && request.resource.data.keys().hasOnly(['parentUid','childEmail','linkId'])
+        && request.resource.data.parentUid == request.auth.uid
+        && lmId == request.auth.uid + '_' + request.resource.data.childEmail
+        && get(/databases/$(database)/documents/parentLinks/$(request.resource.data.linkId)).data.parentUid == request.auth.uid
+        && get(/databases/$(database)/documents/parentLinks/$(request.resource.data.linkId)).data.status == 'approved'
+        && get(/databases/$(database)/documents/parentLinks/$(request.resource.data.linkId)).data.childEmail == request.resource.data.childEmail;
+      allow read: if isSignedIn() && (resource.data.parentUid == request.auth.uid || isAdmin());
+      allow update: if false;
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.parentUid == request.auth.uid);
+    }
+  }
+}
