@@ -2782,6 +2782,12 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
             <div id="dp-pending" style="font-size:.8rem;margin-bottom:18px;color:var(--t2)">Open this tab to load…</div>
             <div style="font-weight:700;font-size:.9rem;margin:6px 0 8px">★ Premium students</div>
             <div id="dp-active" style="font-size:.8rem;margin-bottom:18px;color:var(--t2)"></div>
+            <div style="font-weight:700;font-size:.9rem;margin:6px 0 8px">🎁 Give Premium by e-mail (manual / cash / offline payment)</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px">
+              <input id="dp-gem" type="email" placeholder="student e-mail" style="flex:2;min-width:200px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">
+              <input id="dp-gdays" type="number" min="0" value="365" title="days (0 = no expiry)" style="width:100px;padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">
+              <button class="btn btn-g btn-sm" onclick="dsaPrGrantEmail()">★ Give Premium</button>
+            </div>
             <div style="font-weight:700;font-size:.9rem;margin:6px 0 8px">⚙️ Payment settings</div>
             <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:10px">
               <input id="dp-upi" placeholder="Your UPI ID (e.g. name@okaxis)" style="padding:8px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg1);color:var(--t1)">
@@ -12110,6 +12116,38 @@ function dsaPrRemind(uid) {
   var s = (window._dsaPrStuds || []).filter(function(x) { return x.uid === uid; })[0]; if (!s) return;
   var e = dsaPrMs(s.planExpiry); dsaPrNote(s.email, '⏳ Premium expiring soon', 'Your Premium ends on ' + new Date(e).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) + '. Open Plans to renew and keep full access.').then(function() { toast('🔔 Reminder sent'); }).catch(function(err) { toast('❌ ' + err.message); });
 }
+
+/* give Premium by e-mail + live "waiting" badge on the Premium tab */
+async function dsaPrGrantEmail() {
+  var em = (document.getElementById('dp-gem').value || '').trim().toLowerCase(), d = Math.max(0, Math.round(+document.getElementById('dp-gdays').value || 0));
+  if (!_dsaSignedIn) { toast('Connect the DSA admin account first'); return; }
+  if (!/^\S+@\S+\.\S+$/.test(em)) { toast('Enter a valid e-mail'); return; }
+  try {
+    var q = await _dsaDb.collection('users').where('email', '==', em).get(), docs = q.docs.filter(function(x) { return x.data().role === 'student'; });
+    if (!docs.length) { toast('❌ No student with this e-mail (student must sign up once first)'); return; }
+    if (!confirm('Give Premium to ' + em + (d ? ' for ' + d + ' days?' : ' with no expiry?'))) return;
+    var base = Date.now(), b = _dsaDb.batch();
+    docs.forEach(function(x) { var e = dsaPrMs(x.data().planExpiry); if (x.data().plan === 'premium' && e > base) base = e; });
+    var exp = d ? base + d * 864e5 : 0;
+    docs.forEach(function(x) { b.update(x.ref, { plan: 'premium', planExpiry: exp ? firebase.firestore.Timestamp.fromMillis(exp) : firebase.firestore.FieldValue.delete() }); });
+    await b.commit();
+    await dsaPrNote(em, '💎 Premium activated', 'Your Premium is active' + (exp ? ' till ' + new Date(exp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '') + '. Open Plans → Refresh my plan if you do not see it yet.');
+    toast('★ Premium given to ' + em); document.getElementById('dp-gem').value = ''; dsaPrLoad();
+  } catch (e) { toast('❌ ' + (e.message || 'Could not give Premium')); }
+}
+function dsaPrBadge() {
+  try {
+    if (!_dsaSignedIn || !window._dsaDb) return;
+    _dsaDb.collection('premiumRequests').where('status', '==', 'pending').limit(30).get().then(function(s) {
+      var b = document.getElementById('dsa-tab-prem'); if (!b) return;
+      b.textContent = s.size ? '💎 Premium (' + s.size + ' waiting)' : '💎 Premium';
+      b.style.boxShadow = s.size ? '0 0 0 2px #d97706' : '';
+      if (s.size > (window._dsaPrSeen || 0) && window._dsaPrSeen !== undefined) { try { toast('🔔 ' + s.size + ' premium request(s) waiting'); } catch (e) {} }
+      window._dsaPrSeen = s.size;
+    }).catch(function() {});
+  } catch (e) {}
+}
+setInterval(dsaPrBadge, 60000); setTimeout(dsaPrBadge, 8000);
 /* manual grant from Students → View: now asks for the validity (replaces the old no-expiry switch) */
 function dsaSetPlan(uid, plan) {
   var FV = firebase.firestore.FieldValue, upd = { plan: plan };
