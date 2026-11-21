@@ -18,6 +18,35 @@ function live(){ return !!window.FIREBASE_ENABLED && typeof fbDb!=='undefined'; 
 function again(v){ if(ROUTE.view===v) render(); }
 function me(){ return DB.currentUser; }
 function ts(){ return firebase.firestore.FieldValue.serverTimestamp(); }
+
+/* ---- safe save: retry once, explain the real reason, keep a local copy and re-send later ---- */
+var PEND='dsa_pending_save';
+function pendGet(){ try{ return JSON.parse(localStorage.getItem(PEND)||'[]'); }catch(e){ return []; } }
+function pendSet(a){ try{ localStorage.setItem(PEND,JSON.stringify(a.slice(-20))); }catch(e){} }
+window.safeSave=function(coll,id,data,okMsg,onOk,what){
+  var ref=fbDb.collection(coll).doc(id), tries=0;
+  function done(){ if(onOk) try{ onOk(); }catch(e){} toast(okMsg,'✅'); }
+  function fail(e){
+    var code=(e&&e.code)||'error';
+    if(code==='permission-denied'){ // maybe this attempt was already saved (one attempt only)
+      return ref.get().then(function(d){ if(d.exists){ if(onOk) try{ onOk(); }catch(x){} toast('Already submitted earlier ✅','✅'); } else keep(code); }).catch(function(){ keep(code); }); }
+    if(tries<1 && code!=='invalid-argument'){ tries++; return setTimeout(go,1500); }
+    keep(code);
+  }
+  function keep(code){
+    var d=Object.assign({},data); delete d.when; var a=pendGet().filter(function(x){ return !(x.c===coll&&x.i===id); }); a.push({c:coll,i:id,d:d}); pendSet(a);
+    try{ if(window.ERRLOG) ERRLOG.report('Save failed ('+(what||coll)+'): '+code); }catch(x){}
+    toast('Result save nahi hua ('+code+') — phone me safe hai, internet aate hi apne-aap bhej diya jayega. Teacher ko ye code batao: '+code,'⚠️');
+  }
+  function go(){ ref.set(data).then(done).catch(fail); }
+  go();
+};
+function flushPend(){
+  var a=pendGet(); if(!a.length||!window.fbDb||!window.fbAuth||!fbAuth.currentUser||navigator.onLine===false) return;
+  var left=[]; var p=a.map(function(x){ var d=Object.assign({},x.d,{when:ts()}); return fbDb.collection(x.c).doc(x.i).set(d).catch(function(e){ if(!(e&&e.code==='permission-denied')) left.push(x); }); });
+  Promise.all(p).then(function(){ pendSet(left); if(left.length<a.length) try{ toast('Pending result bhej diya ✅','✅'); }catch(e){} });
+}
+window.addEventListener('online',function(){ setTimeout(flushPend,1500); }); setTimeout(flushPend,8000); setInterval(flushPend,120000);
 function shell(a,b){ return '<div class="app-shell">'+sidebar(a)+'<div class="main" style="max-width:980px">'+b+'</div></div>'; }
 function head(t,s){ return '<div class="main-head"><div><h2>'+t+'</h2><p>'+s+'</p></div></div>'; }
 function note(ic,m){ return '<div class="card" style="padding:34px;text-align:center"><div style="font-size:32px;margin-bottom:8px">'+ic+'</div><div style="font-size:14px;color:var(--muted);line-height:1.6">'+m+'</div></div>'; }
@@ -133,6 +162,7 @@ window.renderFacultyTests=function(){
 window.cwFb=function(k,v){ var c=val('cwTitle'); W.fb[k]=v; if(k==='exam'||k==='subj') W.fb.sel={}; render(); var e=document.getElementById('cwTitle'); if(e&&c) e.value=c; };
 window.cwFbCh=function(k){ var c=val('cwTitle'); W.fb.sel[k]=!W.fb.sel[k]; render(); var e=document.getElementById('cwTitle'); if(e&&c) e.value=c; };
 window.cwCreate=async function(){
+  if(W.cb) return;
   var u=me(), bid=val('cwBatch'), title=val('cwTitle'), mins=Math.max(5,Math.min(180,+val('cwMins')||20)), subj=val('cwSubj')||'General', qs=[], fb=W.fb;
   if(!title){ toast('Give the test a title','⚠️'); return; }
   try{
@@ -177,8 +207,7 @@ window.cwStart=function(id){
   var t=W.tests.filter(function(x){ return x.id===id; })[0]; if(!t||W.my[id]) return;
   if(!confirm('Start “'+t.title+'”?\nYou have '+t.mins+' minutes and only one attempt.')) return;
   mcqRunTest(t.qs,t.title,{testId:id,mins:t.mins,onDone:function(r){
-    var u=me(); fbDb.collection('classTestResults').doc(id+'_'+u.uid).set({testId:id,uid:u.uid,email:u.email||'',name:u.name||'',title:t.title,score:r.score,max:r.max,correct:r.c,wrong:r.w,skipped:r.sk,secs:r.secs,ans:r.items.map(function(x){ return x.a===null?-1:x.a; }),when:ts()})
-      .then(function(){ W.my=null; toast('Result saved ✅'); }).catch(function(){ toast('Could not save your result — tell your teacher','⚠️'); });
+    var u=me(); safeSave('classTestResults',id+'_'+u.uid,{testId:id,uid:u.uid,email:u.email||'',name:u.name||'',title:t.title,score:r.score,max:r.max,correct:r.c,wrong:r.w,skipped:r.sk,secs:r.secs,ans:r.items.map(function(x){ return x.a===null?-1:x.a; }),when:ts()},'Result saved',function(){ W.my=null; },'class test');
   }});
 };
 

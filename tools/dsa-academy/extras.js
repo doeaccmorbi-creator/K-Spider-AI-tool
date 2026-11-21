@@ -55,7 +55,7 @@ function buildGlance(u,v){
     if(role==='faculty') cl=cl.filter(function(c){ return c.byUid===u.uid||u.role==='admin'; });
     var first=cl[0]; return tile('🗓',cl.length?(cl.length+' class'+(cl.length>1?'es':'')+' today'):'No class today',first?esc(fmt12(first.time)+' · '+first.subject):'Timetable',"go('timetable')");
   }
-  function notiTile(s){ var n=s?s.size:0; return tile('🔔',n?(n+' new'):'All caught up','Notifications',"go('notices')"); }
+  function notiTile(s){ var gm={}; if(s) s.docs.forEach(function(d){ var x=d.data(); gm[[x.title,x.msg,x.by].join('|')]=1; }); var n=Object.keys(gm).length; return tile('🔔',n?(n+' new'):'All caught up','Notifications',"go('notices')"); }
   if(role==='student'){
     var tests=q0(fbDb.collection('facultyTests').where('active','==',true).limit(30).get()), mine=q0(fbDb.collection('classTestResults').where('uid','==',u.uid).get()), prog=(window.MCQ&&MCQ.loadProg)?MCQ.loadProg():Promise.resolve(null);
     var hwP=(window.HW&&HW.load)?HW.load().then(function(){ return HW.pending(); }).catch(function(){ return 0; }):Promise.resolve(0);
@@ -109,11 +109,14 @@ function loadPn(){
     .then(function(s){ X.pn=s.docs.map(function(d){ return Object.assign({id:d.id},d.data()); }).sort(function(a,b){ return ms(b.when)-ms(a.when); }); })
     .catch(function(){ X.pn=[]; }).then(function(){ X.pnb=false; again('notices'); });
 }
+function pnGroup(list){ // identical title+message+sender collapse into one row with a count
+  var m={}, out=[]; (list||[]).forEach(function(n){ var k=[n.title,n.msg,n.by].join('|'); var g=m[k]; if(!g){ g=m[k]=Object.assign({},n,{cnt:0,unr:0}); out.push(g); } g.cnt++; if(!n.read) g.unr++; if(!n.read) g.read=false; });
+  return out; }
 function pnHtml(){
   if(!X.pn||!X.pn.length) return '';
-  var un=X.pn.filter(function(n){ return !n.read; }).length;
+  var G=pnGroup(X.pn), un=G.filter(function(n){ return !n.read; }).length;
   return card('<div style="display:flex;align-items:center;margin-bottom:10px">'+h3('📬 For you'+(un?' ('+un+' new)':'')).replace('margin:0 0 12px','margin:0')+(un?'<button class="btn btn-outline btn-sm" style="margin-left:auto" onclick="xPnRead()">Mark all read</button>':'')+'</div>'+
-    X.pn.slice(0,15).map(function(n){ return '<div style="padding:9px 0;border-top:1px solid var(--border);font-size:13.5px;'+(n.read?'opacity:.7':'')+'"><b>'+(n.read?'':'● ')+esc(n.title)+'</b><div style="margin-top:2px;line-height:1.5">'+esc(n.msg)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(formatWhen(n.when))+(n.by?' · '+esc(n.by):'')+'</div></div>'; }).join(''));
+    G.slice(0,15).map(function(n){ return '<div style="padding:9px 0;border-top:1px solid var(--border);font-size:13.5px;'+(n.read?'opacity:.7':'')+'"><b>'+(n.read?'':'● ')+esc(n.title)+(n.cnt>1?' <span class="pill pill-navy" style="font-size:11px">×'+n.cnt+'</span>':'')+'</b><div style="margin-top:2px;line-height:1.5">'+esc(n.msg)+'</div><div style="font-size:11.5px;color:var(--muted);margin-top:3px">'+esc(formatWhen(n.when))+(n.by?' · '+esc(n.by):'')+'</div></div>'; }).join(''));
 }
 window.xPnRead=function(){
   var b=fbDb.batch(), n=0; (X.pn||[]).forEach(function(p){ if(!p.read){ b.update(fbDb.collection('notifications').doc(p.id),{read:true}); p.read=true; n++; } });
@@ -315,6 +318,6 @@ var _go=window.go; window.go=function(v,p){
   var u=DB.currentUser;
   if(u&&u.email&&live()&&X.unreadFor!==u.email){ X.unreadFor=u.email;
     fbDb.collection('notifications').where('toEmail','==',u.email).where('read','==',false).limit(20).get()
-      .then(function(s){ if(s.size) toast('🔔 You have '+s.size+' new notification'+(s.size>1?'s':'')+' — open Notice Board','🔔'); }).catch(function(){}); }
+      .then(function(s){ var gm={}; s.docs.forEach(function(d){ var x=d.data(); gm[[x.title,x.msg,x.by].join('|')]=1; }); var gn=Object.keys(gm).length; if(gn) toast('🔔 You have '+gn+' new notification'+(gn>1?'s':'')+' — open Notice Board','🔔'); }).catch(function(){}); }
   if(v==='notices'){ X.notices=null; X.pn=null; } if(v==='adminmcq') X.am=null; if(v==='facultyinsights') X.fi=null; if(v==='parentreport'&&!(p&&p.child)){ if(X.pr){ X.pr.data=null; } } return _go(v,p); };
 })();

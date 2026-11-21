@@ -153,6 +153,7 @@ window.lecWatch=function(id,i){
   fbDb.collection('lectureWatch').doc(u.uid).set({w:L.watch,upd:ts()}).catch(function(){ toast('Could not save progress','⚠️'); }); render();
 };
 window.lecAdd=async function(){
+  if(L.busy) return;
   var u=me(), title=val('lcTitle'), ch=val('lcCh'), topic=val('lcTopic'), sub=val('lcSub'), p=parseLinks(val('lcLinks'));
   if(p.errs.length){ toast(p.errs[0],'⚠️'); return; }
   if(!p.v.length){ toast('Add at least one link','⚠️'); return; }

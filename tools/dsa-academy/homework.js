@@ -68,7 +68,7 @@ window.hwStart=function(id){
       if(ans<Math.ceil(n*0.8)){ toast('Attempt at least '+Math.ceil(n*0.8)+' of '+n+' questions to complete this homework','ℹ️'); return; }
       if(H.done[h.id]){ return; }
       var rec={hwId:h.id,uid:u.uid,email:u.email||'',name:u.name||'',n:n,a:ans,c:r.c,secs:r.secs,late:daysTo(h.due)<0,when:ts()};
-      fbDb.collection('homeworkDone').doc(h.id+'_'+u.uid).set(rec).then(function(){ H.done[h.id]=rec; toast('Homework completed ✅ '+pct(r.c,n)+'%','✅'); }).catch(function(){ toast('Could not save completion — tell your teacher','⚠️'); });
+      safeSave('homeworkDone',h.id+'_'+u.uid,rec,'Homework completed '+pct(r.c,n)+'%',function(){ H.done[h.id]=rec; },'homework');
     }}}); go('mcq');
   });
 };
@@ -118,6 +118,7 @@ function keepForm(){ ['hwTitle','hwDue','hwNote','hwBatch'].forEach(function(id)
 function restoreForm(){ Object.keys(KEEP).forEach(function(id){ var e=document.getElementById(id); if(e&&KEEP[id]!==undefined) e.value=KEEP[id]; }); }
 window.hwCh=function(k){ keepForm(); var n=Object.keys(H.f.ch).filter(function(x){ return H.f.ch[x]; }).length; if(!H.f.ch[k]&&n>=3){ toast('Choose up to 3 chapters','⚠️'); return; } H.f.ch[k]=!H.f.ch[k]; H.f.count=+val('hwCount')||H.f.count; render(); restoreForm(); };
 window.hwCreate=async function(){
+  if(H.cb) return;
   var u=me(), f=H.f, title=val('hwTitle'), due=val('hwDue'), count=+val('hwCount')||20, bid=val('hwBatch'), noteT=val('hwNote'), keys=Object.keys(f.ch).filter(function(k){ return f.ch[k]; });
   if(!title){ toast('Give the homework a title','⚠️'); return; } if(!keys.length){ toast('Choose at least one chapter','⚠️'); return; } if(!due||due<today()){ toast('Pick a due date from today onwards','⚠️'); return; }
   H.cb=true; render();
