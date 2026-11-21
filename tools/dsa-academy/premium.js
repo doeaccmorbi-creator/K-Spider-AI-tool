@@ -93,7 +93,15 @@ window.pmSubmit=function(){
   if(!/^[A-Z0-9]{8,22}$/.test(utr)){ toast('Enter the 8–22 character UPI reference / UTR','⚠️'); return; }
   fbDb.collection('premiumRequests').doc(utr).set({uid:u.uid,email:u.email||'',name:u.name||'',planId:p.id,planName:p.name,days:p.days,amount:p.price,utr:utr,status:'pending',kind:'new',when:ts()})
     .then(function(){ P.reqs=null; toast('Submitted ✅ — the admin will verify and activate Premium','✅'); render(); })
-    .catch(function(e){ toast(/permission|insufficient/i.test(e.message||'')?'This transaction ID has already been submitted':(e.message||'Could not submit'),'⚠️'); });
+    .catch(function(e){
+      var code=(e&&e.code)||'error';
+      if(code!=='permission-denied'){ toast((e&&e.message)||'Could not submit','⚠️'); return; }
+      // permission-denied: either this UTR is already in use, or the rules / account blocked the write. Tell them apart.
+      fbDb.collection('premiumRequests').doc(utr).get().then(function(d){
+        if(d.exists){ var st=(d.data()||{}).status; toast('Ye transaction ID aap pehle hi submit kar chuke ho ('+(st==='approved'?'approved':st==='rejected'?'rejected':'pending — admin verify kar raha hai')+')','ℹ️'); P.reqs=null; render(); }
+        else { toast('Submit nahi hua (permission-denied). Ye ID kisi aur ne use ki ho sakti hai, ya account/rules me dikkat hai — admin ko ye code batao: permission-denied','⚠️'); try{ if(window.ERRLOG) ERRLOG.report('Premium submit permission-denied'); }catch(x){} }
+      }).catch(function(){ toast('Ye ID pehle use ho chuki hai ya rules block kar rahe hain (permission-denied). Alag ID try karo / admin ko batao.','⚠️'); });
+    });
 };
 window.pmRestore=function(){
   var u=me(); if(!confirm('Use this only if you already paid for Premium and it is not showing on this device.\nSend a restore request to the admin?')) return;
