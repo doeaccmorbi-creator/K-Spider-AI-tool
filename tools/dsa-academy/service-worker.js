@@ -9,7 +9,7 @@
    * 'dsa-offline-img' = question figures saved by Offline Packs (kept on update).
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v18';
+const CACHE_NAME = 'dsa-shell-v19';
 const KEEP = [CACHE_NAME, 'dsa-offline-img'];
 const CORE_ASSETS = [
   './', './index.html', './app.js', './mcq.js', './extras.js', './campus.js', './classwork.js',
@@ -39,7 +39,7 @@ self.addEventListener('activate', event => {
 function isLiveApi(u) {
   return u.includes('firestore.googleapis.com') || u.includes('identitytoolkit') || u.includes('securetoken')
     || u.includes('firebaseapp.com') || u.includes('firebaseio.com') || u.includes('emailjs.com')
-    || u.includes('ks-api-proxy') || u.includes('apis.google.com') || u.includes('google.com/recaptcha')
+    || u.includes('ytimg.com') || u.includes('youtube.com/oembed') || u.includes('ks-api-proxy') || u.includes('apis.google.com') || u.includes('google.com/recaptcha')
     || (u.includes('googleapis.com') && !u.includes('fonts.googleapis.com'));
 }
 function isLibrary(u) {
