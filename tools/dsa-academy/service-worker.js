@@ -9,7 +9,7 @@
    * 'dsa-offline-img' = question figures saved by Offline Packs (kept on update).
    Bump CACHE_NAME whenever you ship new files so old caches get cleared.
    ========================================================================= */
-const CACHE_NAME = 'dsa-shell-v17';
+const CACHE_NAME = 'dsa-shell-v18';
 const KEEP = [CACHE_NAME, 'dsa-offline-img'];
 const CORE_ASSETS = [
   './', './index.html', './app.js', './mcq.js', './extras.js', './campus.js', './classwork.js',

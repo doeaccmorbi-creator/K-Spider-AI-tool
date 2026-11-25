@@ -120,7 +120,7 @@ function body(){
   if(S.tab==='mydata') return myData(hi);
   var t=(T[S.tab]||T.privacy)[hi?'hi':'en'];
   return '<h2 style="font-size:22px;margin-bottom:6px">'+t.h+'</h2><div style="font-size:12px;color:var(--muted);margin-bottom:14px">v'+VER+' · '+esc(C.updated)+'</div>'+
-    t.b.map(function(s,i){ return '<div style="margin:14px 0"><div style="font-weight:800;font-size:15px;margin-bottom:4px">'+(i+1)+'. '+s[0]+'</div><div style="font-size:14px;line-height:1.7;color:var(--text)">'+s[1]+'</div></div>'; }).join('');
+    t.b.map(function(s,i){ return '<div style="margin:14px 0"><div style="font-weight:800;font-size:15px;margin-bottom:4px">'+(i+1)+'. '+s[0]+'</div><div style="font-size:14px;line-height:1.7;color:var(--ink)">'+s[1]+'</div></div>'; }).join('');
 }
 function myData(hi){
   var u=(typeof DB!=='undefined'&&DB.currentUser);
@@ -213,7 +213,7 @@ function showGate(u){
   if(G.shown) return; G.shown=true;
   var o=document.createElement('div'); o.id='consentGate';
   o.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(2,6,23,.78);display:flex;align-items:center;justify-content:center;padding:16px';
-  o.innerHTML='<div role="dialog" aria-modal="true" aria-label="Terms and privacy" style="background:var(--card,#fff);color:var(--text,#111);max-width:460px;width:100%;border-radius:16px;padding:22px;max-height:90vh;overflow:auto"><div style="font-size:20px;font-weight:800;margin-bottom:6px">📜 Terms & Privacy</div><p style="font-size:13.5px;line-height:1.6;margin-bottom:10px">We have added a Privacy Policy, Terms of Use and Refund Policy. Please read and accept to continue. / कृपया नई शर्तें पढ़कर स्वीकार करें।</p><p style="font-size:13px;margin-bottom:10px"><a onclick="LEGAL.open(\'terms\')" style="color:var(--green-600);font-weight:700;cursor:pointer">Terms</a> · <a onclick="LEGAL.open(\'privacy\')" style="color:var(--green-600);font-weight:700;cursor:pointer">Privacy</a> · <a onclick="LEGAL.open(\'refund\')" style="color:var(--green-600);font-weight:700;cursor:pointer">Refund</a></p>'+
+  o.innerHTML='<div role="dialog" aria-modal="true" aria-label="Terms and privacy" style="background:var(--card,#fff);color:var(--ink,#111);max-width:460px;width:100%;border-radius:16px;padding:22px;max-height:90vh;overflow:auto"><div style="font-size:20px;font-weight:800;margin-bottom:6px">📜 Terms & Privacy</div><p style="font-size:13.5px;line-height:1.6;margin-bottom:10px">We have added a Privacy Policy, Terms of Use and Refund Policy. Please read and accept to continue. / कृपया नई शर्तें पढ़कर स्वीकार करें।</p><p style="font-size:13px;margin-bottom:10px"><a onclick="LEGAL.open(\'terms\')" style="color:var(--green-600);font-weight:700;cursor:pointer">Terms</a> · <a onclick="LEGAL.open(\'privacy\')" style="color:var(--green-600);font-weight:700;cursor:pointer">Privacy</a> · <a onclick="LEGAL.open(\'refund\')" style="color:var(--green-600);font-weight:700;cursor:pointer">Refund</a></p>'+
    '<label style="display:flex;gap:8px;font-size:13px;margin-bottom:6px"><input type="checkbox" id="cgOk" style="margin-top:3px"> <span>I accept the Terms, Privacy Policy and Refund Policy.</span></label>'+
    '<label style="display:flex;gap:8px;font-size:13px;margin-bottom:14px"><input type="checkbox" id="cgMinor" style="margin-top:3px"> <span>I am under 18 and my parent / guardian has agreed.</span></label>'+
    '<div style="display:flex;gap:8px"><button class="btn btn-primary" id="cgBtn" style="flex:1">Accept & continue</button><button class="btn btn-outline" id="cgOut">Log out</button></div></div>';
