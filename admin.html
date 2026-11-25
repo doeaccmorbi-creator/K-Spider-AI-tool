@@ -11845,7 +11845,7 @@ function dsaMcqPreview(){
   _dsaMcqRows = null; btn.disabled = true;
   if (!inp.files.length) { pv.innerHTML = ''; return; }
   pv.innerHTML = 'Reading files…';
-  Promise.all(Array.prototype.map.call(inp.files, function(f){ return f.text().then(function(t){ return dsaMcqToObjects(dsaMcqParseCsv(t)); }); }))
+  Promise.all(Array.prototype.map.call(inp.files, function(f){ return f.text().then(function(t){ try { return dsaMcqToObjects(dsaMcqParseCsv(t)); } catch(err) { throw new Error('File "' + f.name + '" is not in the admin format — ' + err.message + '. Use the converted CSVs from DSA_CSV_FOR_ADMIN.zip.'); } }); }))
     .then(function(arrs){
       var all = [].concat.apply([], arrs), b = dsaMcqBuild(all), g = dsaMcqSummary(b), keys = Object.keys(g).sort();
       if (!keys.length) { pv.innerHTML = '<span style="color:#dc2626">No valid questions found in the selected file(s).</span>'; return; }
