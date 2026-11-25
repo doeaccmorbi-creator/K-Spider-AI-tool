@@ -1,0 +1,23 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Firebase test</title>
+<style>body{font:15px system-ui;margin:16px;background:#0b1220;color:#e5e7eb}.r{padding:10px;margin:8px 0;border-radius:8px}.ok{background:#064e3b}.bad{background:#7f1d1d}small{opacity:.85}</style></head><body>
+<h2>Firebase / Google login test</h2><div id="out"></div>
+<script>
+var out=document.getElementById('out');function row(ok,t,d){var e=document.createElement('div');e.className='r '+(ok?'ok':'bad');e.innerHTML=(ok?'✅ ':'❌ ')+'<b>'+t+'</b><br><small>'+(d||'')+'</small>';out.appendChild(e);}
+document.addEventListener('securitypolicyviolation',function(e){row(false,'BLOCKED by security policy',e.blockedURI+' ('+e.violatedDirective+')');});
+window.addEventListener('error',function(e){if(e.target&&e.target.src)row(false,'Script failed to load',e.target.src);},true);
+</script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js?t=1"></script>
+<script>
+setTimeout(function(){
+ row(typeof firebase!=='undefined','Firebase library (gstatic.com)',typeof firebase!=='undefined'?'loaded':'NOT loaded - blocked by CSP / network');
+ row(!!window.FIREBASE_ENABLED,'FIREBASE_ENABLED',String(window.FIREBASE_ENABLED)+' (must be true)');
+ try{var a=firebase.app().options;row(true,'Project',a.projectId+' | authDomain: '+a.authDomain+' | page host: '+location.host);}catch(e){row(false,'firebase.app()',String(e&&e.message||e));}
+ fetch('firebase-config.js',{cache:'no-store'}).then(function(r){return r.text().then(function(t){row(r.ok&&t.indexOf('apiKey')>=0,'firebase-config.js file','HTTP '+r.status+', has apiKey: '+(t.indexOf('apiKey')>=0)+', looks like HTML: '+(t.trim().charAt(0)==='<'));});}).catch(function(e){row(false,'firebase-config.js fetch',String(e));});
+ try{firebase.auth().signInAnonymously().then(function(u){row(true,'Anonymous sign-in works','uid '+u.user.uid);}).catch(function(e){row(false,'Anonymous sign-in',e.code+' '+e.message);});}catch(e){}
+ try{firebase.firestore().collection('config').doc('x').get().then(function(){row(true,'Firestore reachable','');}).catch(function(e){row(e.code==='permission-denied','Firestore',e.code+' (permission-denied = server reachable, OK)');});}catch(e){}
+ row(true,'Current page','If Google login fails with unauthorized-domain, add '+location.host+' in Firebase Console > Authentication > Settings > Authorized domains');
+},2500);
+</script></body></html>
