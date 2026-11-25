@@ -2744,7 +2744,7 @@ input[name="ai-video-style"]:checked+.vstyle-chip,input[name="ai-video-sound-pro
               check the summary, then press <b>Sync to students</b>. Uploading a subject again replaces that subject's old questions; other subjects stay untouched.
             </div>
             <div id="dsa-mcq-status" style="font-size:.8rem;color:var(--t2);margin-bottom:12px;padding:10px 12px;background:var(--bg2);border-radius:8px">Loading current bank status…</div>
-            <input type="file" id="dsa-mcq-files" accept=".csv,text/csv" multiple onchange="dsaMcqPreview()" style="margin-bottom:10px;font-size:.82rem">
+            <input type="file" id="dsa-mcq-files" accept=".csv,.xlsx,.xls,text/csv" multiple onchange="dsaMcqPreview()" style="margin-bottom:10px;font-size:.82rem">
             <div id="dsa-mcq-preview" style="font-size:.8rem;color:var(--t2);line-height:1.7;margin-bottom:12px"></div>
             <button class="btn btn-g btn-sm" id="dsa-mcq-btn" onclick="dsaMcqSync()" disabled>⬆️ Sync to students</button>
             <button class="btn btn-sm btn-gh" onclick="dsaMcqLoadStatus()" style="margin-left:6px">🔄 Refresh status</button>
@@ -11806,8 +11806,28 @@ function dsaMcqParseCsv(text){
   if (f !== '' || row.length) { row.push(f); rows.push(row); }
   return rows;
 }
+var _dsaMcqSkip = 0;
+/* Raw question-bank format (Q_ID, Exam_Group, Topic, Option_A.., Correct_Option) -> admin format. Rows that are not single-answer 4-option MCQs are skipped. */
+function dsaMcqRawToObjects(h, rows){
+  var ix = {}; h.forEach(function(k, i){ ix[k] = i; });
+  function g(r, k){ var v = r[ix[k]]; return v === undefined ? '' : String(v).trim(); }
+  var out = [];
+  rows.slice(1).forEach(function(r){
+    var L = 'ABCD'.indexOf(g(r, 'Correct_Option').toUpperCase());
+    var opts = [g(r,'Option_A'), g(r,'Option_B'), g(r,'Option_C'), g(r,'Option_D')];
+    if (g(r,'Correct_Option').length !== 1 || L < 0 || opts.some(function(x){ return !x; })) { _dsaMcqSkip++; return; }
+    var ex = g(r, 'Exam_Group'), sb = g(r, 'Subject');
+    if (/^neet/i.test(ex)) ex = 'NEET';
+    if (/^math/i.test(sb)) sb = 'Maths';
+    out.push({ ID: g(r,'Q_ID'), Exam: ex, Subject: sb, Chapter: g(r,'Topic') || g(r,'Subtopic'), Class: g(r,'Class'), Tag: g(r,'Source_Tag'), Year: g(r,'Year'),
+      Question: g(r,'Question'), OptionA: opts[0], OptionB: opts[1], OptionC: opts[2], OptionD: opts[3], 'Answer(0-3)': String(L), Explanation: g(r,'Explanation') });
+  });
+  return out;
+}
 function dsaMcqToObjects(rows){
-  var h = rows[0].map(function(x){ return x.trim(); }), need = ['ID','Exam','Subject','Chapter','Question','OptionA','OptionB','OptionC','OptionD','Answer(0-3)'];
+  var h = rows[0].map(function(x){ return String(x).trim(); });
+  if (h.indexOf('Q_ID') >= 0 && h.indexOf('Question') >= 0 && (h.indexOf('Correct_Option') >= 0 || h.indexOf('Numerical_Answer') >= 0)) return dsaMcqRawToObjects(h, rows);
+  var need = ['ID','Exam','Subject','Chapter','Question','OptionA','OptionB','OptionC','OptionD','Answer(0-3)'];
   var miss = need.filter(function(k){ return h.indexOf(k) < 0; });
   if (miss.length) throw new Error('Missing column(s): ' + miss.join(', '));
   return rows.slice(1).map(function(r){ var o = {}; h.forEach(function(k, i){ o[k] = (r[i] === undefined ? '' : r[i]); }); return o; });
@@ -11840,12 +11860,23 @@ function dsaMcqLog(msg, reset){
   var el = document.getElementById('dsa-mcq-log'); if (!el) return;
   el.style.display = 'block'; el.textContent = (reset ? '' : el.textContent) + msg + '\n'; el.scrollTop = el.scrollHeight;
 }
+function dsaMcqReadFile(f){
+  if (/\.xlsx?$/i.test(f.name)) {
+    return (window.XLSX ? Promise.resolve() : new Promise(function(res, rej){ var sc = document.createElement('script'); sc.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'; sc.onload = res; sc.onerror = function(){ rej(new Error('Could not load the Excel reader — save the sheet as CSV and upload that.')); }; document.head.appendChild(sc); }))
+      .then(function(){ return f.arrayBuffer(); })
+      .then(function(buf){ var wb = XLSX.read(buf, {type:'array'}), all = [];
+        wb.SheetNames.forEach(function(n, i){ var rr = XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, raw:false, defval:''}); if (i > 0 && rr.length) rr = rr.slice(1); all = all.concat(rr); });
+        return all.filter(function(r){ return r.length > 1 || (r[0] !== '' && r[0] !== undefined); }); });
+  }
+  return f.text().then(dsaMcqParseCsv);
+}
 function dsaMcqPreview(){
   var inp = document.getElementById('dsa-mcq-files'), pv = document.getElementById('dsa-mcq-preview'), btn = document.getElementById('dsa-mcq-btn');
   _dsaMcqRows = null; btn.disabled = true;
   if (!inp.files.length) { pv.innerHTML = ''; return; }
   pv.innerHTML = 'Reading files…';
-  Promise.all(Array.prototype.map.call(inp.files, function(f){ return f.text().then(function(t){ try { return dsaMcqToObjects(dsaMcqParseCsv(t)); } catch(err) { throw new Error('File "' + f.name + '" is not in the admin format — ' + err.message + '. Use the converted CSVs from DSA_CSV_FOR_ADMIN.zip.'); } }); }))
+  _dsaMcqSkip = 0;
+  Promise.all(Array.prototype.map.call(inp.files, function(f){ return dsaMcqReadFile(f).then(function(t){ try { return dsaMcqToObjects(t); } catch(err) { throw new Error('File "' + f.name + '" is not in the admin format — ' + err.message + '. Use the converted CSVs from DSA_CSV_FOR_ADMIN.zip.'); } }); }))
     .then(function(arrs){
       var all = [].concat.apply([], arrs), b = dsaMcqBuild(all), g = dsaMcqSummary(b), keys = Object.keys(g).sort();
       if (!keys.length) { pv.innerHTML = '<span style="color:#dc2626">No valid questions found in the selected file(s).</span>'; return; }
@@ -11853,6 +11884,7 @@ function dsaMcqPreview(){
       var big = Object.keys(b.chapters).filter(function(k){ return JSON.stringify(b.chapters[k].qs).length > 900000; });
       pv.innerHTML = '<b>' + tot.toLocaleString('en-IN') + ' valid questions</b> ready:<br>' +
         keys.map(function(k){ return '• ' + k + ' — ' + g[k].q.toLocaleString('en-IN') + ' questions, ' + g[k].ch + ' chapters'; }).join('<br>') +
+        (_dsaMcqSkip ? '<br><span style="color:#6b7280">ℹ️ ' + _dsaMcqSkip.toLocaleString('en-IN') + ' numerical / multi-answer rows skipped (the student app supports single-answer 4-option MCQs only)</span>' : '') +
         (b.bad.length ? '<br><span style="color:#d97706">⚠️ ' + b.bad.length + ' row(s) skipped (incomplete/duplicate): ' + b.bad.slice(0, 5).join('; ') + (b.bad.length > 5 ? '…' : '') + '</span>' : '') +
         (big.length ? '<br><span style="color:#dc2626">❌ A chapter is too large for one record — cannot sync.</span>' : '');
       if (!big.length) { _dsaMcqRows = b; btn.disabled = !_dsaSignedIn; }
