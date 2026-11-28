@@ -2437,7 +2437,41 @@ function ksAny(list){
     list.forEach(function(p){ p.then(res, function(e){ errs.push((e&&e.message)||String(e)); if(--left===0) rej(new Error(errs.join(' | '))); }); });
   });
 }
-async function sheetFetchCSV(url){
+// ── Optional own proxy (Cloudflare Worker): paste your worker URL here, e.g. 'https://ks-sheets.YOURNAME.workers.dev/'
+//    Worker code: ks-sheet-proxy-worker.js (same folder). Leave '' to skip.
+var KS_PROXY_URL = '';
+
+// ── Offline sheet cache (IndexedDB): stale-while-revalidate ──
+var KS_CACHE_FRESH_MS = 5*60*1000;   // <5 min old → no network call at all
+var KS_LAST_SRC = 'network';
+var KS_IDB_P = null;
+function ksIdb(){
+  if (KS_IDB_P) return KS_IDB_P;
+  KS_IDB_P = new Promise(function(res){
+    try{
+      var rq = indexedDB.open('ks_sheets_v1',1);
+      rq.onupgradeneeded = function(){ rq.result.createObjectStore('csv'); };
+      rq.onsuccess = function(){ res(rq.result); };
+      rq.onerror = rq.onblocked = function(){ res(null); };
+    }catch(e){ res(null); }
+  });
+  return KS_IDB_P;
+}
+function ksIdbGet(key){
+  return ksIdb().then(function(db){ return new Promise(function(res){
+    if(!db) return res(null);
+    try{ var r = db.transaction('csv','readonly').objectStore('csv').get(key); r.onsuccess=function(){res(r.result||null);}; r.onerror=function(){res(null);}; }catch(e){ res(null); }
+  });});
+}
+function ksIdbSet(key,text){
+  return ksIdb().then(function(db){ return new Promise(function(res){
+    if(!db) return res(false);
+    try{ var tx = db.transaction('csv','readwrite'); tx.objectStore('csv').put({text:text,ts:Date.now()},key); tx.oncomplete=function(){res(true);}; tx.onerror=function(){res(false);}; }catch(e){ res(false); }
+  });});
+}
+window.ksClearSheetCache = function(){ return ksIdb().then(function(db){ if(!db) return false; return new Promise(function(res){ try{ var tx=db.transaction('csv','readwrite'); tx.objectStore('csv').clear(); tx.oncomplete=function(){ Object.keys(KS_SHEET_CACHE).forEach(function(k){ delete KS_SHEET_CACHE[k]; }); res(true); }; }catch(e){ res(false); } }); }); };
+
+async function ksNetFetch(url){
   var errs = [];
   var fresh = url + (url.indexOf('?')>-1 ? '&' : '?') + 'ksv=' + Date.now();
   // 1) Direct — Google "Publish to web" CSV is CORS-enabled; plain URL first, cache-busted second
@@ -2450,20 +2484,34 @@ async function sheetFetchCSV(url){
       break;
     }catch(e){ errs.push('direct: '+e.message); }
   }
-  // 2) Proxies in parallel (first valid CSV wins) — only if direct failed
+  // 2) Own proxy + public proxies in parallel (first valid CSV wins)
   var enc = encodeURIComponent(fresh);
-  var routes = [
-    'https://corsproxy.io/?'+enc,
-    'https://api.allorigins.win/raw?url='+enc,
-    'https://api.codetabs.com/v1/proxy?quest='+enc,
-    'https://thingproxy.freeboard.io/fetch/'+fresh
-  ];
+  var routes = [];
+  if (KS_PROXY_URL) routes.push(KS_PROXY_URL + (KS_PROXY_URL.indexOf('?')>-1 ? '&' : '?') + 'url=' + enc);
+  routes.push('https://corsproxy.io/?'+enc,
+              'https://api.allorigins.win/raw?url='+enc,
+              'https://api.codetabs.com/v1/proxy?quest='+enc,
+              'https://thingproxy.freeboard.io/fetch/'+fresh);
   try{
     return await ksAny(routes.map(function(rt){
       return ksFetchText(rt, 10000).then(function(t){ if(!isValidCSVResponse(t)) throw new Error('not CSV'); return t; });
     }));
   }catch(e){ errs.push('proxy: '+e.message); }
   var err = new Error(errs.join(' ; ')); err.ksReasons = errs; throw err;
+}
+async function sheetFetchCSV(url){
+  var cached = await ksIdbGet(url);
+  if (cached && cached.text && isValidCSVResponse(cached.text)) {
+    if (Date.now() - cached.ts < KS_CACHE_FRESH_MS) { KS_LAST_SRC = 'cache (fresh)'; return cached.text; }
+    // stale: serve instantly, refresh silently for the next visit
+    ksNetFetch(url).then(function(t){ return ksIdbSet(url,t); }).catch(function(){});
+    KS_LAST_SRC = 'cache (refreshing)';
+    return cached.text;
+  }
+  var t = await ksNetFetch(url);   // throws if every route fails
+  ksIdbSet(url,t);
+  KS_LAST_SRC = 'network';
+  return t;
 }
 var KS_SHEET_WARNED = {};
 function ksWarnOnce(key, msg){ if(KS_SHEET_WARNED[key]) return; KS_SHEET_WARNED[key]=1; try{ toast(msg,'e'); }catch(e){} }
@@ -2488,7 +2536,7 @@ async function fetchSheetQs(topic) {
       return [];
     }
     KS_SHEET_CACHE[topic] = qs; // cache in original order (sequential for practice)
-    ksDiag(topic,{ok:true,rows:qs.length,ms:Date.now()-t0});
+    ksDiag(topic,{ok:true,rows:qs.length,ms:Date.now()-t0,src:KS_LAST_SRC});
     return qs.slice();
   } catch(e) {
     ksDiag(topic,{ok:false,reason:e.message,ms:Date.now()-t0});
