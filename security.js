@@ -18,12 +18,7 @@
     // Ctrl+U (View Source)
     
     // Ctrl+C (Copy) — only block on non-input elements
-    if (e.ctrlKey && e.key === 'c') {
-      var tag = document.activeElement.tagName.toLowerCase();
-      if (tag !== 'input' && tag !== 'textarea' && tag !== 'select') {
-        e.preventDefault(); return false;
-      }
-    }
+    
     // Ctrl+Shift+I (DevTools)
     
     // Ctrl+Shift+J (Console)
@@ -37,30 +32,18 @@
     // Ctrl+P (Print)
     
     // Ctrl+A (Select All — only block outside inputs)
-    if (e.ctrlKey && e.key === 'a') {
-      var activeTag = document.activeElement.tagName.toLowerCase();
-      if (activeTag !== 'input' && activeTag !== 'textarea') {
-        e.preventDefault(); return false;
-      }
-    }
+    
   });
 
   // ──────────────────────────────────
   // 3. DISABLE TEXT SELECTION (on non-input elements)
   // ──────────────────────────────────
-  document.addEventListener('selectstart', function(e) {
-    var tag = (e.target.tagName || '').toLowerCase();
-    if (tag !== 'input' && tag !== 'textarea') {
-      e.preventDefault(); return false;
-    }
-  });
+  /* open: right-click/select blocker removed */
 
   // ──────────────────────────────────
   // 4. DISABLE DRAG
   // ──────────────────────────────────
-  document.addEventListener('dragstart', function(e) {
-    e.preventDefault(); return false;
-  });
+  /* open: right-click/select blocker removed */
 
   // ──────────────────────────────────
   // 5. DEVTOOLS DETECTION (basic)
@@ -81,7 +64,7 @@
   // 7. ANTI-IFRAME / CLICKJACKING
   // ──────────────────────────────────
   if (window.top !== window.self) {
-    window.top.location.href = window.self.location.href;
+    /* frame-busting removed */
   }
 
   // ──────────────────────────────────
