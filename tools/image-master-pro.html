@@ -3304,15 +3304,15 @@ function sanitize(s) {
 (function KSpiderMaxSecurity(){
   'use strict';
 
-  document.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+  /* open: right-click/select blocker removed */
 
   document.addEventListener('keydown', function(e){
     var k = e.key, c = e.ctrlKey, s = e.shiftKey, a = e.altKey;
     var tag = (document.activeElement.tagName||'').toLowerCase();
     var isInput = tag==='input'||tag==='textarea'||tag==='select';
     
-    if(c && k==='s')   { e.preventDefault(); return false; }
-    if(c && k==='p')   { e.preventDefault(); return false; }
+    
+    
     
     
     
@@ -3321,42 +3321,21 @@ function sanitize(s) {
     if(k==='F5' && c)   { e.preventDefault(); return false; }
     
     if(!isInput){
-      if(c && k==='c'){ e.preventDefault(); return false; }
-      if(c && k==='x'){ e.preventDefault(); return false; }
-      if(c && k==='a'){ e.preventDefault(); return false; }
+      
+      
+      
     }
   });
 
   // ── 3. BLOCK COPY EVENT — allow copy from result/output areas ──
-  document.addEventListener('copy', function(e){
-    var tag=(document.activeElement.tagName||'').toLowerCase();
-    var el=document.activeElement;
-    if(tag==='input'||tag==='textarea') return true;
-    if(el.closest&&el.closest('[id*="result"],[id*="output"],[contenteditable]')) return true;
-    e.preventDefault();
-    
-    return false;
-  });
+  /* open: right-click/select blocker removed */
 
-  document.addEventListener('cut', function(e){
-    var tag = (document.activeElement.tagName||'').toLowerCase();
-    if(tag!=='input' && tag!=='textarea'){ e.preventDefault(); return false; }
-  });
+  /* open: right-click/select blocker removed */
 
-  document.addEventListener('selectstart', function(e){
-    var tag = (e.target.tagName||'').toLowerCase();
-    if(tag!=='input' && tag!=='textarea'){ e.preventDefault(); return false; }
-  });
+  /* open: right-click/select blocker removed */
 
   // ── 6. DISABLE DRAG — allow file input drops for tool functionality ──
-  document.addEventListener('dragstart', function(e){
-    var tag=(e.target.tagName||'').toLowerCase();
-    var type=(e.target.type||'').toLowerCase();
-    // Allow drag on file inputs and their drop zones (needed for image upload tools)
-    if(tag==='input'&&type==='file') return true;
-    if(e.target.closest&&e.target.closest('[ondrop],[ondragover]')) return true;
-    e.preventDefault(); return false;
-  });
+  /* open: right-click/select blocker removed */
 
   document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('img').forEach(function(img){
@@ -3367,7 +3346,7 @@ function sanitize(s) {
          !img.closest('[onclick]')&&!img.closest('a')&&!img.id.match(/result|preview|output|canvas/i)){
         img.style.pointerEvents='none';
       }
-      img.addEventListener('contextmenu', function(e){ e.preventDefault(); return false; });
+      /* open: right-click/select blocker removed */
     });
     document.querySelectorAll('p,h1,h2,h3,h4,h5,h6,span,div,li,td,th').forEach(function(el){
       el.style.userSelect = 'none';
@@ -3437,7 +3416,7 @@ function sanitize(s) {
   try {
     if(window.top !== window.self){
       if(window.location.protocol !== 'file:' && window.location.hostname !== ''){
-        try { window.top.location.href = window.self.location.href; }
+        try { /* frame-busting removed */ }
         catch(e) { document.body.style.display = 'none'; }
       }
     }
@@ -3496,19 +3475,7 @@ function sanitize(s) {
 </script>
 
 <style>
-*, *::before, *::after {
-  -webkit-user-select: none !important;
-  -moz-user-select: none !important;
-  -ms-user-select: none !important;
-  user-select: none !important;
-  -webkit-touch-callout: none !important;
-}
-input, textarea, select, [contenteditable] {
-  -webkit-user-select: text !important;
-  -moz-user-select: text !important;
-  -ms-user-select: text !important;
-  user-select: text !important;
-}
+/* open: global no-select CSS removed */
 </style>
 
 
